@@ -9,7 +9,6 @@ import { httpErrorToHuman } from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import { ApiKey } from '@/api/account/getApiKeys';
 import tw from 'twin.macro';
-import Button from '@/components/elements/Button';
 import Input, { Textarea } from '@/components/elements/Input';
 import styled from 'styled-components/macro';
 import ApiKeyModal from '@/components/dashboard/ApiKeyModal';
@@ -21,6 +20,23 @@ interface Values {
 
 const CustomTextarea = styled(Textarea)`
     ${tw`h-32`}
+`;
+
+const SubmitButton = styled.button`
+    ${tw`w-full sm:w-auto px-8 py-3 text-xs font-bold tracking-wider uppercase border transition-all duration-150`};
+    border-radius: 0;
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #000000;
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: default;
+    }
 `;
 
 export default ({ onKeyCreated }: { onKeyCreated: (key: ApiKey) => void }) => {
@@ -56,15 +72,20 @@ export default ({ onKeyCreated }: { onKeyCreated: (key: ApiKey) => void }) => {
                 })}
             >
                 {({ isSubmitting }) => (
-                    <Form>
+                    <Form css={tw`font-mono`}>
                         <SpinnerOverlay visible={isSubmitting} />
                         <FormikFieldWrapper
                             label={'Description'}
                             name={'description'}
                             description={'A description of this API key.'}
-                            css={tw`mb-6`}
+                            css={tw`mb-6 [&>label]:text-neutral-800 [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-neutral-500 [&>div>p]:text-neutral-500 [&.has-error>p]:text-red-500 [&.has-error>div>p]:text-red-500`}
                         >
-                            <Field name={'description'} as={Input} />
+                            <Field
+                                name={'description'}
+                                as={Input}
+                                isLight
+                                css={tw`rounded-none border-black text-black focus:border-black focus:ring-black focus:ring-opacity-20`}
+                            />
                         </FormikFieldWrapper>
                         <FormikFieldWrapper
                             label={'Allowed IPs'}
@@ -72,11 +93,19 @@ export default ({ onKeyCreated }: { onKeyCreated: (key: ApiKey) => void }) => {
                             description={
                                 'Leave blank to allow any IP address to use this API key, otherwise provide each IP address on a new line.'
                             }
+                            css={tw`[&>label]:text-neutral-800 [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-neutral-500 [&>div>p]:text-neutral-500 [&.has-error>p]:text-red-500 [&.has-error>div>p]:text-red-500`}
                         >
-                            <Field name={'allowedIps'} as={CustomTextarea} />
+                            <Field
+                                name={'allowedIps'}
+                                as={CustomTextarea}
+                                isLight
+                                css={tw`rounded-none border-black text-black focus:border-black focus:ring-black focus:ring-opacity-20`}
+                            />
                         </FormikFieldWrapper>
                         <div css={tw`flex justify-end mt-6`}>
-                            <Button>Create</Button>
+                            <SubmitButton disabled={isSubmitting} type={'submit'}>
+                                Create
+                            </SubmitButton>
                         </div>
                     </Form>
                 )}

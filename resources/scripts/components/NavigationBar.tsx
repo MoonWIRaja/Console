@@ -1,41 +1,138 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCogs, faLayerGroup, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { useLocation, Link } from 'react-router-dom';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
-import SearchContainer from '@/components/dashboard/search/SearchContainer';
-import tw, { theme } from 'twin.macro';
-import styled from 'styled-components/macro';
 import http from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
-import Tooltip from '@/components/elements/tooltip/Tooltip';
 import Avatar from '@/components/Avatar';
+import {
+    Sidebar,
+    SidebarBody,
+    SidebarLink,
+    SidebarLabel,
+    useSidebar,
+} from '@/components/elements/sidebar/AceternitySidebar';
+import { motion } from 'framer-motion';
 
-const RightNavigation = styled.div`
-    & > a,
-    & > button,
-    & > .navigation-link {
-        ${tw`flex items-center h-full no-underline text-neutral-300 px-6 cursor-pointer transition-all duration-150`};
+// ---------- Logo ----------
+const SidebarLogo = () => {
+    const { open, animate } = useSidebar();
+    return (
+        <div style={{
+            padding: '20px 18px 16px',
+            borderBottom: '1px solid #1a1a1a',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+        }}>
+            <motion.div
+                animate={{
+                    fontSize: animate ? (open ? '16px' : '13px') : '16px',
+                }}
+                transition={{ duration: 0.2 }}
+                style={{
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                    lineHeight: 1.2,
+                    letterSpacing: '-0.02em',
+                }}
+            >
+                {open ? (
+                    <>BurHan<br />CONSOLE</>
+                ) : (
+                    <>B<br />C</>
+                )}
+            </motion.div>
+        </div>
+    );
+};
 
-        &:active,
-        &:hover {
-            ${tw`text-neutral-100 bg-black`};
-        }
+// ---------- UserFooter ----------
+const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
+    const { open } = useSidebar();
+    return (
+        <div style={{ borderTop: '1px solid #1a1a1a', padding: '12px 14px' }}>
+            <Link to="/account" style={{ textDecoration: 'none' }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: open ? '10px' : '0',
+                    justifyContent: open ? 'flex-start' : 'center',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                }}
+                    className="hover:bg-neutral-900 transition-colors"
+                >
+                    <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '0',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                    }}>
+                        <Avatar.User />
+                    </div>
+                    {open && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.2 }}
+                            style={{
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                color: '#ffffff',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {userName}
+                        </motion.div>
+                    )}
+                </div>
+            </Link>
+            {open && (
+                <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={onLogout}
+                    className="sidebar-link"
+                    style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '7px',
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        color: '#6b7280',
+                        backgroundColor: 'transparent',
+                        border: '1px solid #272727',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        fontFamily: "'Space Mono', monospace",
+                    }}
+                >
+                    <span>↪</span>
+                    <span>LOG OUT</span>
+                </motion.button>
+            )}
+        </div>
+    );
+};
 
-        &:active,
-        &:hover,
-        &.active {
-            box-shadow: inset 0 -2px ${theme`colors.cyan.600`.toString()};
-        }
-    }
-`;
-
+// ---------- NavigationBar (exported) ----------
 export default () => {
-    const name = useStoreState((state: ApplicationStore) => state.settings.data!.name);
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
+    const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const location = useLocation();
 
     const onTriggerLogout = () => {
         setIsLoggingOut(true);
@@ -46,47 +143,49 @@ export default () => {
     };
 
     return (
-        <div className={'w-full bg-neutral-900 shadow-md overflow-x-auto'}>
+        <>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                .sidebar-link:hover {
+                    color: #ffffff !important;
+                    background-color: #111111 !important;
+                }
+            `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
-            <div className={'mx-auto w-full flex items-center h-[3.5rem] max-w-[1200px]'}>
-                <div id={'logo'} className={'flex-1'}>
-                    <Link
-                        to={'/'}
-                        className={
-                            'text-2xl font-header font-medium px-4 no-underline text-neutral-200 hover:text-neutral-100 transition-colors duration-150'
-                        }
-                    >
-                        {name}
-                    </Link>
-                </div>
-                <RightNavigation className={'flex h-full items-center justify-center'}>
-                    <SearchContainer />
-                    <Tooltip placement={'bottom'} content={'Dashboard'}>
-                        <NavLink to={'/'} exact>
-                            <FontAwesomeIcon icon={faLayerGroup} />
-                        </NavLink>
-                    </Tooltip>
-                    {rootAdmin && (
-                        <Tooltip placement={'bottom'} content={'Admin'}>
-                            <a href={'/admin'} rel={'noreferrer'}>
-                                <FontAwesomeIcon icon={faCogs} />
-                            </a>
-                        </Tooltip>
-                    )}
-                    <Tooltip placement={'bottom'} content={'Account Settings'}>
-                        <NavLink to={'/account'}>
-                            <span className={'flex items-center w-5 h-5'}>
-                                <Avatar.User />
-                            </span>
-                        </NavLink>
-                    </Tooltip>
-                    <Tooltip placement={'bottom'} content={'Sign Out'}>
-                        <button onClick={onTriggerLogout}>
-                            <FontAwesomeIcon icon={faSignOutAlt} />
-                        </button>
-                    </Tooltip>
-                </RightNavigation>
-            </div>
-        </div>
+            <Sidebar>
+                <SidebarBody>
+                    <SidebarLogo />
+
+                    {/* Nav */}
+                    <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                        <SidebarLabel label="MAIN" />
+                        <SidebarLink
+                            link={{
+                                label: 'Dashboard',
+                                href: '/',
+                                icon: <span style={{ fontSize: '14px', lineHeight: 1 }}>⊞</span>,
+                            }}
+                            active={location.pathname === '/'}
+                        />
+
+                        {rootAdmin && (
+                            <>
+                                <SidebarLabel label="ADMIN" />
+                                <SidebarLink
+                                    link={{
+                                        label: 'Admin Panel',
+                                        href: '/admin',
+                                        icon: <span style={{ fontSize: '14px', lineHeight: 1 }}>⚙</span>,
+                                        external: true,
+                                    }}
+                                />
+                            </>
+                        )}
+                    </nav>
+
+                    <UserFooter userName={userName} onLogout={onTriggerLogout} />
+                </SidebarBody>
+            </Sidebar>
+        </>
     );
 };
