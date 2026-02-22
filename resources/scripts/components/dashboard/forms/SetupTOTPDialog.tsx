@@ -20,6 +20,10 @@ interface Props {
 }
 
 const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
+    const secondaryButtonClass =
+        '!bg-white !text-black !border !border-black !rounded-none hover:!bg-black hover:!text-white focus:!ring-black focus:!ring-offset-white';
+    const primaryButtonClass =
+        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black focus:!ring-offset-white';
     const [submitting, setSubmitting] = useState(false);
     const [value, setValue] = useState('');
     const [password, setPassword] = useState('');
@@ -59,9 +63,9 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
     };
 
     return (
-        <form id={'enable-totp-form'} onSubmit={submit}>
+        <form id={'enable-totp-form'} onSubmit={submit} className={'font-mono'}>
             <FlashMessageRender byKey={'account:two-step'} className={'mt-4'} />
-            <div className={'flex items-center justify-center w-56 h-56 p-2 bg-gray-50 shadow mx-auto mt-6'}>
+            <div className={'flex items-center justify-center w-56 h-56 p-2 bg-white border border-black mx-auto mt-6'}>
                 {!token ? (
                     <Spinner />
                 ) : (
@@ -69,11 +73,11 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                 )}
             </div>
             <CopyOnClick text={token?.secret}>
-                <p className={'font-mono text-sm text-gray-100 text-center mt-2'}>
+                <p className={'font-mono text-sm text-black text-center mt-3 tracking-wide'}>
                     {token?.secret.match(/.{1,4}/g)!.join(' ') || 'Loading...'}
                 </p>
             </CopyOnClick>
-            <p id={'totp-code-description'} className={'mt-6'}>
+            <p id={'totp-code-description'} className={'mt-6 text-sm text-gray-600'}>
                 Scan the QR code above using the two-step authentication app of your choice. Then, enter the 6-digit
                 code generated into the field below.
             </p>
@@ -82,25 +86,31 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                 variant={Input.Text.Variants.Loose}
                 value={value}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.currentTarget.value)}
-                className={'mt-3'}
+                className={
+                    'mt-3 !bg-white !text-black !border !border-black !rounded-none focus:!ring-black focus:!ring-offset-white'
+                }
                 placeholder={'000000'}
                 type={'text'}
                 inputMode={'numeric'}
                 autoComplete={'one-time-code'}
                 pattern={'\\d{6}'}
             />
-            <label htmlFor={'totp-password'} className={'block mt-3'}>
+            <label htmlFor={'totp-password'} className={'block mt-3 text-xs uppercase text-gray-700 tracking-wide'}>
                 Account Password
             </label>
             <Input.Text
                 variant={Input.Text.Variants.Loose}
-                className={'mt-1'}
+                className={
+                    'mt-1 !bg-white !text-black !border !border-black !rounded-none focus:!ring-black focus:!ring-offset-white'
+                }
                 type={'password'}
                 value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.currentTarget.value)}
             />
             <Dialog.Footer>
-                <Button.Text onClick={close}>Cancel</Button.Text>
+                <Button.Text type={'button'} onClick={close} className={secondaryButtonClass}>
+                    Cancel
+                </Button.Text>
                 <Tooltip
                     disabled={password.length > 0 && value.length === 6}
                     content={
@@ -114,6 +124,7 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                         disabled={!token || value.length !== 6 || !password.length}
                         type={'submit'}
                         form={'enable-totp-form'}
+                        className={primaryButtonClass}
                     >
                         Enable
                     </Button>

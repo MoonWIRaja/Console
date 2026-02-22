@@ -20,6 +20,8 @@ const schema = Yup.object().shape({
 });
 
 export default () => {
+    const buttonClass =
+        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black';
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
     const updateEmail = useStoreActions((state: Actions<ApplicationStore>) => state.user.updateUserEmail);
 
@@ -55,18 +57,21 @@ export default () => {
             {({ isSubmitting, isValid }) => (
                 <React.Fragment>
                     <SpinnerOverlay size={'large'} visible={isSubmitting} />
-                    <Form css={tw`m-0`}>
-                        <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} />
+                    <Form css={tw`m-0 font-mono`}>
+                        <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} light />
                         <div css={tw`mt-6`}>
                             <Field
                                 id={'confirm_password'}
                                 type={'password'}
                                 name={'password'}
                                 label={'Confirm Password'}
+                                light
                             />
                         </div>
                         <div css={tw`mt-6`}>
-                            <Button disabled={isSubmitting || !isValid}>Update Email</Button>
+                            <Button className={buttonClass} disabled={isSubmitting || !isValid}>
+                                Update Email
+                            </Button>
                         </div>
                     </Form>
                 </React.Fragment>

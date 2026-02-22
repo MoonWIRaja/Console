@@ -10,6 +10,10 @@ import { useStoreActions } from '@/state/hooks';
 import FlashMessageRender from '@/components/FlashMessageRender';
 
 const DisableTOTPDialog = () => {
+    const secondaryButtonClass =
+        '!bg-white !text-black !border !border-black !rounded-none hover:!bg-black hover:!text-white focus:!ring-black focus:!ring-offset-white';
+    const primaryButtonClass =
+        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black focus:!ring-offset-white';
     const [submitting, setSubmitting] = useState(false);
     const [password, setPassword] = useState('');
     const { clearAndAddHttpError } = useFlashKey('account:two-step');
@@ -38,9 +42,9 @@ const DisableTOTPDialog = () => {
     };
 
     return (
-        <form id={'disable-totp-form'} className={'mt-6'} onSubmit={submit}>
+        <form id={'disable-totp-form'} className={'mt-6 font-mono'} onSubmit={submit}>
             <FlashMessageRender byKey={'account:two-step'} className={'-mt-2 mb-6'} />
-            <label className={'block pb-1'} htmlFor={'totp-password'}>
+            <label className={'block pb-1 text-xs uppercase text-gray-700 tracking-wide'} htmlFor={'totp-password'}>
                 Password
             </label>
             <Input.Text
@@ -49,17 +53,27 @@ const DisableTOTPDialog = () => {
                 variant={Input.Text.Variants.Loose}
                 value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.currentTarget.value)}
+                className={
+                    '!bg-white !text-black !border !border-black !rounded-none focus:!ring-black focus:!ring-offset-white'
+                }
             />
             <Dialog.Footer>
-                <Button.Text onClick={close}>Cancel</Button.Text>
+                <Button.Text type={'button'} onClick={close} className={secondaryButtonClass}>
+                    Cancel
+                </Button.Text>
                 <Tooltip
                     delay={100}
                     disabled={password.length > 0}
                     content={'You must enter your account password to continue.'}
                 >
-                    <Button.Danger type={'submit'} form={'disable-totp-form'} disabled={submitting || !password.length}>
+                    <Button
+                        type={'submit'}
+                        form={'disable-totp-form'}
+                        disabled={submitting || !password.length}
+                        className={primaryButtonClass}
+                    >
                         Disable
-                    </Button.Danger>
+                    </Button>
                 </Tooltip>
             </Dialog.Footer>
         </form>

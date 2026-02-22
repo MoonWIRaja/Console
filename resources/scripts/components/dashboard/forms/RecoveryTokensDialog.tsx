@@ -9,6 +9,8 @@ interface RecoveryTokenDialogProps extends DialogProps {
 }
 
 export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
+    const doneButtonClass =
+        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black focus:!ring-offset-white';
     const grouped = [] as [string, string][];
     tokens.forEach((token, index) => {
         if (index % 2 === 0) {
@@ -29,13 +31,17 @@ export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
         >
             <Dialog.Icon position={'container'} type={'success'} />
             <CopyOnClick text={tokens.join('\n')} showInNotification={false}>
-                <pre className={'bg-gray-800 rounded p-2 mt-6'}>
+                <pre
+                    className={
+                        'mt-6 border border-black bg-white text-black rounded-none p-3 font-mono text-sm leading-6'
+                    }
+                >
                     {grouped.map((value) => (
                         <span key={value.join('_')} className={'block'}>
                             {value[0]}
-                            <span className={'mx-2 selection:bg-gray-800'}>&nbsp;</span>
+                            <span className={'mx-2 selection:bg-black selection:text-white'}>&nbsp;</span>
                             {value[1]}
-                            <span className={'selection:bg-gray-800'}>&nbsp;</span>
+                            <span className={'selection:bg-black selection:text-white'}>&nbsp;</span>
                         </span>
                     ))}
                 </pre>
@@ -44,7 +50,9 @@ export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
                 These codes will not be shown again.
             </Alert>
             <Dialog.Footer>
-                <Button.Text onClick={onClose}>Done</Button.Text>
+                <Button.Text type={'button'} onClick={onClose} className={doneButtonClass}>
+                    Done
+                </Button.Text>
             </Dialog.Footer>
         </Dialog>
     );

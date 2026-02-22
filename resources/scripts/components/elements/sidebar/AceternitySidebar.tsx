@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType>({
     open: false,
-    setOpen: () => {},
+    setOpen: () => undefined,
     animate: true,
 });
 
@@ -29,16 +29,17 @@ interface SidebarProviderProps {
     animate?: boolean;
 }
 
-export const SidebarProvider = ({ children, open: openProp, setOpen: setOpenProp, animate = true }: SidebarProviderProps) => {
+export const SidebarProvider = ({
+    children,
+    open: openProp,
+    setOpen: setOpenProp,
+    animate = true,
+}: SidebarProviderProps) => {
     const [openState, setOpenState] = useState(false);
     const open = openProp !== undefined ? openProp : openState;
     const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
-    return (
-        <SidebarContext.Provider value={{ open, setOpen, animate }}>
-            {children}
-        </SidebarContext.Provider>
-    );
+    return <SidebarContext.Provider value={{ open, setOpen, animate }}>{children}</SidebarContext.Provider>;
 };
 
 // ---------- Sidebar ----------
@@ -61,19 +62,11 @@ export const Sidebar = ({ children, open, setOpen, animate = true }: SidebarProp
 interface SidebarBodyProps {
     children: React.ReactNode;
     className?: string;
+    showMobileHeader?: boolean;
 }
 
-export const SidebarBody = ({ children, className }: SidebarBodyProps) => {
-    return (
-        <>
-            <DesktopSidebar className={className}>{children}</DesktopSidebar>
-            <MobileSidebar className={className}>{children}</MobileSidebar>
-        </>
-    );
-};
-
 // ---------- DesktopSidebar ----------
-const DesktopSidebar = ({ children, className }: SidebarBodyProps) => {
+function DesktopSidebar({ children, className }: SidebarBodyProps) {
     const { open, setOpen, animate: shouldAnimate } = useSidebar();
 
     return (
@@ -96,7 +89,7 @@ const DesktopSidebar = ({ children, className }: SidebarBodyProps) => {
                     fontFamily: "'Space Mono', monospace",
                     overflow: 'hidden',
                 }}
-                className={`hidden lg:flex ${className || ''}`}
+                className={className || ''}
             >
                 {children}
             </motion.div>
@@ -104,53 +97,52 @@ const DesktopSidebar = ({ children, className }: SidebarBodyProps) => {
             <motion.div
                 animate={{ width: shouldAnimate ? (open ? '250px' : '60px') : '250px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="hidden lg:block flex-shrink-0"
+                className='flex-shrink-0'
             />
         </>
     );
-};
+}
 
 // ---------- MobileSidebar ----------
-const MobileSidebar = ({ children, className }: SidebarBodyProps) => {
+function MobileSidebar({ children, className, showMobileHeader = true }: SidebarBodyProps) {
     const { open, setOpen } = useSidebar();
 
     return (
-        <div className={`lg:hidden ${className || ''}`}>
-            {/* Mobile Header Bar */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#000000',
-                    padding: '10px 16px',
-                    fontFamily: "'Space Mono', monospace",
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
-                    borderBottom: '1px solid #1a1a1a',
-                }}
-            >
-                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>
-                    BurHan CONSOLE
-                </div>
-                <button
-                    onClick={() => setOpen(!open)}
+        <div className={className || ''}>
+            {showMobileHeader && (
+                <div
                     style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#ffffff',
-                        fontSize: '20px',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        lineHeight: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#000000',
+                        padding: '10px 16px',
+                        fontFamily: "'Space Mono', monospace",
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        zIndex: 1000,
+                        borderBottom: '1px solid #1a1a1a',
                     }}
                 >
-                    {open ? '✕' : '☰'}
-                </button>
-            </div>
+                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>BurHan CONSOLE</div>
+                    <button
+                        onClick={() => setOpen(!open)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ffffff',
+                            fontSize: '20px',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            lineHeight: 1,
+                        }}
+                    >
+                        {open ? '✕' : '☰'}
+                    </button>
+                </div>
+            )}
 
             {/* Mobile Overlay + Drawer */}
             <AnimatePresence>
@@ -208,6 +200,30 @@ const MobileSidebar = ({ children, className }: SidebarBodyProps) => {
             </AnimatePresence>
         </div>
     );
+}
+
+export const SidebarBody = ({ children, className, showMobileHeader = true }: SidebarBodyProps) => {
+    const [isMobile, setIsMobile] = useState(
+        typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false
+    );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 1023px)');
+        const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+
+        setIsMobile(mediaQuery.matches);
+        mediaQuery.addEventListener('change', handleChange);
+
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    return isMobile ? (
+        <MobileSidebar className={className} showMobileHeader={showMobileHeader}>
+            {children}
+        </MobileSidebar>
+    ) : (
+        <DesktopSidebar className={className}>{children}</DesktopSidebar>
+    );
 };
 
 // ---------- SidebarLink ----------
@@ -226,7 +242,21 @@ interface SidebarLinkProps {
 }
 
 export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
-    const { open, animate: shouldAnimate } = useSidebar();
+    const { open, setOpen, animate: shouldAnimate } = useSidebar();
+
+    const closeOnMobile = useCallback(() => {
+        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+            setOpen(false);
+        }
+    }, [setOpen]);
+
+    const handleActivate = useCallback(() => {
+        if (link.onClick) {
+            link.onClick();
+        }
+
+        closeOnMobile();
+    }, [closeOnMobile, link]);
 
     const content = (
         <div
@@ -246,9 +276,7 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
             }}
             className={`sidebar-link ${className || ''}`}
         >
-            <div style={{ flexShrink: 0, width: '20px', display: 'flex', justifyContent: 'center' }}>
-                {link.icon}
-            </div>
+            <div style={{ flexShrink: 0, width: '20px', display: 'flex', justifyContent: 'center' }}>{link.icon}</div>
             <motion.span
                 animate={{
                     display: shouldAnimate ? (open ? 'inline-block' : 'none') : 'inline-block',
@@ -269,14 +297,22 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
     );
 
     if (link.onClick) {
-        return <div onClick={link.onClick}>{content}</div>;
+        return <div onClick={handleActivate}>{content}</div>;
     }
 
     if (link.external) {
-        return <a href={link.href} rel="noreferrer" style={{ textDecoration: 'none' }}>{content}</a>;
+        return (
+            <a href={link.href} rel='noreferrer' style={{ textDecoration: 'none' }} onClick={handleActivate}>
+                {content}
+            </a>
+        );
     }
 
-    return <Link to={link.href} style={{ textDecoration: 'none' }}>{content}</Link>;
+    return (
+        <Link to={link.href} style={{ textDecoration: 'none' }} onClick={handleActivate}>
+            {content}
+        </Link>
+    );
 };
 
 // ---------- SidebarLabel ----------

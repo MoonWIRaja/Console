@@ -15,16 +15,24 @@ import {
 } from '@/components/elements/sidebar/AceternitySidebar';
 import { motion } from 'framer-motion';
 
+interface NavigationBarProps {
+    sidebarOpen?: boolean;
+    setSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+    showMobileHeader?: boolean;
+}
+
 // ---------- Logo ----------
 const SidebarLogo = () => {
     const { open, animate } = useSidebar();
     return (
-        <div style={{
-            padding: '20px 18px 16px',
-            borderBottom: '1px solid #1a1a1a',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-        }}>
+        <div
+            style={{
+                padding: '20px 18px 16px',
+                borderBottom: '1px solid #1a1a1a',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+            }}
+        >
             <motion.div
                 animate={{
                     fontSize: animate ? (open ? '16px' : '13px') : '16px',
@@ -38,9 +46,15 @@ const SidebarLogo = () => {
                 }}
             >
                 {open ? (
-                    <>BurHan<br />CONSOLE</>
+                    <>
+                        BurHan
+                        <br />
+                        CONSOLE
+                    </>
                 ) : (
-                    <>B<br />C</>
+                    <>
+                        B<br />C
+                    </>
                 )}
             </motion.div>
         </div>
@@ -49,29 +63,38 @@ const SidebarLogo = () => {
 
 // ---------- UserFooter ----------
 const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
-    const { open } = useSidebar();
+    const { open, setOpen } = useSidebar();
+    const closeSidebarOnMobile = () => {
+        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+            setOpen(false);
+        }
+    };
+
     return (
         <div style={{ borderTop: '1px solid #1a1a1a', padding: '12px 14px' }}>
-            <Link to="/account" style={{ textDecoration: 'none' }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: open ? '10px' : '0',
-                    justifyContent: open ? 'flex-start' : 'center',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    borderRadius: '4px',
-                }}
-                    className="hover:bg-neutral-900 transition-colors"
+            <Link to='/account' style={{ textDecoration: 'none' }} onClick={closeSidebarOnMobile}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: open ? '10px' : '0',
+                        justifyContent: open ? 'flex-start' : 'center',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                    }}
+                    className='hover:bg-neutral-900 transition-colors'
                 >
-                    <div style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '0',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                    }}>
+                    <div
+                        style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '0',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                        }}
+                    >
                         <Avatar.User />
                     </div>
                     {open && (
@@ -99,7 +122,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
                     onClick={onLogout}
-                    className="sidebar-link"
+                    className='sidebar-link'
                     style={{
                         width: '100%',
                         display: 'flex',
@@ -118,6 +141,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         transition: 'all 0.15s',
                         fontFamily: "'Space Mono', monospace",
                     }}
+                    type='button'
                 >
                     <span>↪</span>
                     <span>LOG OUT</span>
@@ -128,7 +152,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
 };
 
 // ---------- NavigationBar (exported) ----------
-export default () => {
+export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: NavigationBarProps) => {
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
     const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -152,13 +176,13 @@ export default () => {
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
-            <Sidebar>
-                <SidebarBody>
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
+                <SidebarBody showMobileHeader={showMobileHeader}>
                     <SidebarLogo />
 
                     {/* Nav */}
                     <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-                        <SidebarLabel label="MAIN" />
+                        <SidebarLabel label='MAIN' />
                         <SidebarLink
                             link={{
                                 label: 'Dashboard',
@@ -170,7 +194,7 @@ export default () => {
 
                         {rootAdmin && (
                             <>
-                                <SidebarLabel label="ADMIN" />
+                                <SidebarLabel label='ADMIN' />
                                 <SidebarLink
                                     link={{
                                         label: 'Admin Panel',

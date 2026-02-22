@@ -113,8 +113,11 @@ export default ({
                                             <Button.Text
                                                 size={Button.Sizes.Small}
                                                 shape={Button.Shapes.IconSquare}
+                                                type={'button'}
                                                 onClick={onClose}
-                                                className={'group'}
+                                                className={
+                                                    'group !bg-white !text-black !border !border-black !rounded-none hover:!bg-black hover:!text-white focus:!ring-black focus:!ring-offset-white'
+                                                }
                                             >
                                                 <XIcon className={styles.close_icon} />
                                             </Button.Text>
