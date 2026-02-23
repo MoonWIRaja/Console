@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ITerminalOptions, Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { SearchAddon } from 'xterm-addon-search';
@@ -99,6 +99,10 @@ export default () => {
     .xterm-search-bar__addon {
         z-index: 10;
     }`;
+    const fitTerminal = useCallback(() => {
+        if (!terminal.element) return;
+        fitAddon.fit();
+    }, [terminal, fitAddon]);
 
     const handleConsoleOutput = (line: string, prelude = false) =>
         terminal.writeln((prelude ? TERMINAL_PRELUDE : '') + line.replace(/(?:\r\n|\r|\n)$/im, '') + '\u001b[0m');
@@ -163,7 +167,9 @@ export default () => {
             // Activate Unicode 11 for proper emoji and special character width handling
             terminal.unicode.activeVersion = '11';
 
-            fitAddon.fit();
+            fitTerminal();
+            window.setTimeout(fitTerminal, 50);
+            window.setTimeout(fitTerminal, 200);
             searchBar.addNewStyle(zIndex);
 
             // Add support for capturing keys
@@ -183,14 +189,46 @@ export default () => {
         }
     }, [terminal, connected]);
 
-    useEventListener(
-        'resize',
-        debounce(() => {
-            if (terminal.element) {
-                fitAddon.fit();
+    useEventListener('resize', debounce(fitTerminal, 100));
+
+    useEffect(() => {
+        if (!ref.current || !terminal.element) return;
+
+        const observer = new ResizeObserver(() => fitTerminal());
+        observer.observe(ref.current);
+        if (ref.current.parentElement) {
+            observer.observe(ref.current.parentElement);
+        }
+
+        // Fit once on mount/layout settle to avoid visible empty space.
+        requestAnimationFrame(fitTerminal);
+        window.setTimeout(fitTerminal, 120);
+
+        return () => observer.disconnect();
+    }, [terminal, connected, fitTerminal]);
+
+    useEffect(() => {
+        if (!terminal.element) return;
+
+        const onViewportChange = debounce(fitTerminal, 80);
+        const visualViewport = window.visualViewport;
+
+        window.addEventListener('orientationchange', onViewportChange);
+        document.addEventListener('visibilitychange', onViewportChange);
+        if (visualViewport) {
+            visualViewport.addEventListener('resize', onViewportChange);
+            visualViewport.addEventListener('scroll', onViewportChange);
+        }
+
+        return () => {
+            window.removeEventListener('orientationchange', onViewportChange);
+            document.removeEventListener('visibilitychange', onViewportChange);
+            if (visualViewport) {
+                visualViewport.removeEventListener('resize', onViewportChange);
+                visualViewport.removeEventListener('scroll', onViewportChange);
             }
-        }, 100)
-    );
+        };
+    }, [terminal, fitTerminal]);
 
     useEffect(() => {
         const listeners: Record<string, (s: string) => void> = {
@@ -238,10 +276,10 @@ export default () => {
                 <div
                     className={classNames(
                         styles.overflows_container,
-                        'rounded-b-xl border border-t-0 border-gray-200 bg-gray-50/50 p-2 dark:border-gray-700 dark:bg-gray-800/50'
+                        'border border-t-0 border-gray-200 bg-gray-50/60 p-2 dark:border-gray-700 dark:bg-gray-800/60'
                     )}
                 >
-                    <div className={'flex items-center gap-2'}>
+                    <div className={'relative flex items-center'}>
                         <input
                             className={classNames(styles.command_input)}
                             type={'text'}
@@ -252,26 +290,6 @@ export default () => {
                             autoCorrect={'off'}
                             autoCapitalize={'none'}
                         />
-                        <div className={'flex items-center space-x-1'}>
-                            <button
-                                type={'button'}
-                                className={
-                                    'rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
-                                }
-                                onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
-                            >
-                                <span className={'material-icons-round text-lg'}>open_in_new</span>
-                            </button>
-                            <button
-                                type={'button'}
-                                className={
-                                    'rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
-                                }
-                                onClick={() => searchBar.show()}
-                            >
-                                <span className={'material-icons-round text-lg'}>more_vert</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

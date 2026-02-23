@@ -290,9 +290,7 @@ export const ServerNavigationBar = ({
         return currentPath.startsWith(targetPath);
     };
 
-    // Split routes into Server Management (first 4) and Advanced (rest)
-    const serverManagementRoutes = routes.filter((r) => !!r.name).slice(0, 4);
-    const advancedRoutes = routes.filter((r) => !!r.name).slice(4);
+    const visibleRoutes = routes.filter((r) => !!r.name);
 
     return (
         <>
@@ -305,31 +303,14 @@ export const ServerNavigationBar = ({
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
-            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} animate={false}>
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
                 <SidebarBody showMobileHeader={showMobileHeader}>
                     <SidebarLogo />
 
                     {/* Nav */}
                     <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-                        <SidebarLabel label='Server Management' />
-                        {serverManagementRoutes.map((route) => (
-                            <SidebarLink
-                                key={route.path}
-                                link={{
-                                    label: route.name,
-                                    href: `/server/${serverId}${route.path.replace('/*', '')}`,
-                                    icon: (
-                                        <span className='material-icons-round' style={{ fontSize: '20px' }}>
-                                            {getIconForRoute(route.name)}
-                                        </span>
-                                    ),
-                                }}
-                                active={matchUrl(route.path)}
-                            />
-                        ))}
-
-                        <SidebarLabel label='Advanced' />
-                        {advancedRoutes.map((route) => (
+                        <SidebarLabel label='MAIN' />
+                        {visibleRoutes.map((route) => (
                             <SidebarLink
                                 key={route.path}
                                 link={{

@@ -30,7 +30,6 @@ const ServerConsoleContainer = () => {
     const status = ServerContext.useStoreState((state) => state.status.value);
     const limits = ServerContext.useStoreState((state) => state.server.data!.limits);
     const node = ServerContext.useStoreState((state) => state.server.data!.node);
-    const internalId = ServerContext.useStoreState((state) => state.server.data!.internalId);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const isInstalling = ServerContext.useStoreState((state) => state.server.isInstalling);
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
@@ -92,7 +91,7 @@ const ServerConsoleContainer = () => {
     const diskPercent = diskLimitBytes > 0 ? clampPercent((stats.disk / diskLimitBytes) * 100) : 0;
 
     const statusBadgeClass = classNames(
-        'rounded border px-2 py-0.5 text-xs font-bold',
+        'rounded-none border px-2 py-0.5 text-xs font-bold',
         status === 'running'
             ? 'border-green-200 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400'
             : status === 'offline' || status === null
@@ -101,19 +100,39 @@ const ServerConsoleContainer = () => {
     );
 
     return (
-        <div className={'relative flex h-full w-full overflow-hidden'} style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div
+            className={
+                'relative flex min-h-screen w-full overflow-x-hidden bg-gray-100 text-gray-900 lg:h-screen lg:overflow-hidden dark:bg-gray-900 dark:text-gray-100'
+            }
+            style={{
+                fontFamily:
+                    "'Space Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            }}
+        >
+            <div className={'pointer-events-none absolute inset-0 z-0 hidden lg:flex'}>
+                <div className={'h-full w-[80%] bg-gray-100 dark:bg-gray-900'} />
+                <div className={'h-full w-[20%] bg-black/90'} />
+            </div>
             <div
                 className={
-                    'pointer-events-none absolute -left-[10%] -top-[10%] h-[40%] w-[40%] rounded-full bg-blue-400/10 blur-[100px]'
+                    'pointer-events-none absolute -left-[10%] -top-[10%] hidden h-[40%] w-[40%] rounded-full bg-blue-400/10 blur-[100px]'
                 }
             />
             <div
                 className={
-                    'pointer-events-none absolute -bottom-[10%] -right-[10%] h-[40%] w-[40%] rounded-full bg-purple-400/10 blur-[100px]'
+                    'pointer-events-none absolute -bottom-[10%] -right-[10%] hidden h-[40%] w-[40%] rounded-full bg-purple-400/10 blur-[100px]'
                 }
             />
-            <div className={'relative z-10 flex h-full w-full flex-col overflow-hidden md:flex-row'}>
-                <div className={'flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6'}>
+            <div
+                className={
+                    'relative z-10 flex min-h-screen w-full min-w-0 flex-col overflow-x-hidden overflow-y-visible lg:h-full lg:overflow-hidden xl:flex-row'
+                }
+            >
+                <div
+                    className={
+                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[80%] xl:flex-none'
+                    }
+                >
                     {(isNodeUnderMaintenance || isInstalling || isTransferring) && (
                         <Alert type={'warning'} className={'mb-0'}>
                             {isNodeUnderMaintenance
@@ -125,15 +144,19 @@ const ServerConsoleContainer = () => {
                     )}
                     <div
                         className={
-                            'flex min-h-[500px] flex-1 flex-col rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-none border border-gray-200 bg-white shadow-sm md:min-h-[500px] dark:border-gray-700 dark:bg-gray-800'
                         }
                     >
                         <div
                             className={
-                                'flex items-center justify-between rounded-t-xl border-b border-gray-200 bg-gray-50/50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50'
+                                'flex items-center justify-between border-b border-gray-200 bg-gray-50/60 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60'
                             }
                         >
-                            <h2 className={'flex items-center text-sm font-bold text-gray-700 dark:text-gray-200'}>
+                            <h2
+                                className={
+                                    'flex items-center text-sm font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
+                                }
+                            >
                                 <span
                                     className={classNames('mr-2 h-2 w-2 rounded-full', {
                                         'animate-pulse bg-green-500': status === 'running',
@@ -145,7 +168,7 @@ const ServerConsoleContainer = () => {
                                 Live Console
                             </h2>
                         </div>
-                        <div className={'flex-1 overflow-hidden p-4'}>
+                        <div className={'min-w-0 flex-1 overflow-hidden p-4'}>
                             <Spinner.Suspense>
                                 <Console />
                             </Spinner.Suspense>
@@ -154,10 +177,16 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'rounded-none border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800'
                         }
                     >
-                        <h3 className={'mb-6 text-lg font-bold text-gray-900 dark:text-white'}>Server Statistics</h3>
+                        <h3
+                            className={
+                                'mb-6 text-lg font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
+                            }
+                        >
+                            Server Statistics
+                        </h3>
                         <div className={'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4'}>
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
@@ -170,7 +199,9 @@ const ServerConsoleContainer = () => {
                                 </div>
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
-                                        className={'h-2 rounded-full bg-blue-600 transition-all duration-500'}
+                                        className={
+                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                        }
                                         style={{ width: `${cpuPercent}%` }}
                                     />
                                 </div>
@@ -191,7 +222,9 @@ const ServerConsoleContainer = () => {
                                 </div>
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
-                                        className={'h-2 rounded-full bg-purple-600 transition-all duration-500'}
+                                        className={
+                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                        }
                                         style={{ width: `${memoryPercent}%` }}
                                     />
                                 </div>
@@ -212,7 +245,9 @@ const ServerConsoleContainer = () => {
                                 </div>
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
-                                        className={'h-2 rounded-full bg-pink-600 transition-all duration-500'}
+                                        className={
+                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                        }
                                         style={{ width: `${diskPercent}%` }}
                                     />
                                 </div>
@@ -240,7 +275,11 @@ const ServerConsoleContainer = () => {
                                             'flex items-center text-sm font-bold text-gray-700 dark:text-gray-300'
                                         }
                                     >
-                                        <span className={'material-icons-round mr-1 text-base text-blue-500'}>
+                                        <span
+                                            className={
+                                                'material-icons-round mr-1 text-base text-neutral-700 dark:text-neutral-300'
+                                            }
+                                        >
                                             arrow_upward
                                         </span>
                                         {bytesToString(networkRate.tx)}/s
@@ -253,15 +292,19 @@ const ServerConsoleContainer = () => {
                     <Features enabled={eggFeatures} />
                 </div>
 
-                <aside className={'flex min-h-0 w-full flex-col gap-6 overflow-y-auto p-6 md:w-80 md:pl-0'}>
+                <aside
+                    className={
+                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[20%] xl:flex-none xl:bg-black/90 xl:pl-0 xl:backdrop-blur-xl'
+                    }
+                >
                     <div
                         className={
-                            'flex items-center rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'flex items-center rounded-none border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800'
                         }
                     >
                         <div
                             className={
-                                'mr-3 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white shadow-md shadow-blue-500/30'
+                                'mr-3 flex h-10 w-10 items-center justify-center rounded-none bg-blue-600 text-lg font-bold text-white shadow-md shadow-blue-500/30'
                             }
                         >
                             {username.charAt(0).toUpperCase()}
@@ -274,40 +317,46 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'rounded-none border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
                         }
                     >
-                        <h3 className={'mb-4 text-lg font-bold text-gray-900 dark:text-white'}>Server Control</h3>
+                        <h3
+                            className={
+                                'mb-4 text-lg font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
+                            }
+                        >
+                            Server Control
+                        </h3>
                         <div className={'mb-6 space-y-3 text-sm'}>
-                            <div className={'flex items-center justify-between'}>
+                            <div className={'flex items-start justify-between gap-3'}>
                                 <span className={'text-gray-500 dark:text-gray-400'}>IP:</span>
                                 <span
                                     className={
-                                        'rounded bg-gray-100 px-2 py-0.5 font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                                        'max-w-[70%] break-all rounded-none bg-gray-100 px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200'
                                     }
                                 >
                                     {allocation}
                                 </span>
                             </div>
-                            <div className={'flex items-center justify-between'}>
+                            <div className={'flex items-start justify-between gap-3'}>
                                 <span className={'text-gray-500 dark:text-gray-400'}>Status:</span>
                                 <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
                             </div>
-                            <div className={'flex items-center justify-between'}>
+                            <div className={'flex items-start justify-between gap-3'}>
                                 <span className={'text-gray-500 dark:text-gray-400'}>Node:</span>
                                 <code
                                     className={
-                                        'rounded bg-neutral-200 px-2 py-1 font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
+                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
                                     }
                                 >
                                     {node}
                                 </code>
                             </div>
-                            <div className={'flex items-center justify-between'}>
+                            <div className={'flex items-start justify-between gap-3'}>
                                 <span className={'text-gray-500 dark:text-gray-400'}>Server ID:</span>
                                 <code
                                     className={
-                                        'rounded bg-neutral-200 px-2 py-1 font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
+                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
                                     }
                                 >
                                     {uuid}
@@ -319,7 +368,7 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'flex min-h-[300px] flex-1 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'flex min-h-[300px] flex-1 flex-col rounded-none border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
                         }
                     >
                         <div className={'mb-4 flex items-center justify-between'}>
@@ -332,24 +381,66 @@ const ServerConsoleContainer = () => {
                                 1 Online
                             </span>
                         </div>
-                        <div
-                            className={
-                                'rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40'
-                            }
-                        >
-                            <div className={'flex items-center gap-3'}>
+                        <div className={'relative mb-4'}>
+                            <input
+                                className={
+                                    'w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-xs text-gray-700 outline-none focus:border-transparent focus:ring-1 focus:ring-black dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:ring-white'
+                                }
+                                placeholder={'Filter by Name or ID...'}
+                                type={'text'}
+                            />
+                            <span
+                                className={
+                                    'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-400'
+                                }
+                            >
+                                search
+                            </span>
+                        </div>
+                        <div className={'space-y-3 overflow-y-auto pr-1'}>
+                            {[{ name: 'admin', ping: '32ms', color: 'bg-blue-500', tag: 'A' }].map((player) => (
                                 <div
+                                    key={player.name}
                                     className={
-                                        'flex h-9 w-9 items-center justify-center rounded bg-blue-600 text-sm font-bold text-white shadow-sm'
+                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-gray-100 hover:bg-gray-50 dark:hover:border-gray-700 dark:hover:bg-gray-800/50'
                                     }
                                 >
-                                    A
+                                    <div className={'flex items-center gap-3'}>
+                                        <div
+                                            className={classNames(
+                                                'flex h-9 w-9 items-center justify-center rounded text-sm font-bold text-white shadow-sm',
+                                                player.color
+                                            )}
+                                        >
+                                            {player.tag}
+                                        </div>
+                                        <div>
+                                            <p className={'text-sm font-bold text-gray-800 dark:text-gray-200'}>
+                                                {player.name}
+                                            </p>
+                                            <p className={'text-[10px] text-gray-500'}>Ping: {player.ping}</p>
+                                        </div>
+                                    </div>
+                                    <div className={'flex gap-1'}>
+                                        <button
+                                            className={
+                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                            }
+                                            type={'button'}
+                                        >
+                                            <span className={'material-icons-round text-sm'}>edit_note</span>
+                                        </button>
+                                        <button
+                                            className={
+                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                            }
+                                            type={'button'}
+                                        >
+                                            <span className={'material-icons-round text-sm'}>settings</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className={'text-sm font-bold text-gray-800 dark:text-gray-200'}>admin</p>
-                                    <p className={'text-[10px] text-gray-500'}>Role: Administrator</p>
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </aside>
