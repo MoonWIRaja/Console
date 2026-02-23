@@ -200,7 +200,7 @@ const ServerConsoleContainer = () => {
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
                                         className={
-                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                            'h-2 rounded-none bg-blue-600 transition-all duration-500'
                                         }
                                         style={{ width: `${cpuPercent}%` }}
                                     />
@@ -223,7 +223,7 @@ const ServerConsoleContainer = () => {
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
                                         className={
-                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                            'h-2 rounded-none bg-purple-600 transition-all duration-500'
                                         }
                                         style={{ width: `${memoryPercent}%` }}
                                     />
@@ -246,7 +246,7 @@ const ServerConsoleContainer = () => {
                                 <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
                                     <div
                                         className={
-                                            'h-2 rounded-none bg-black transition-all duration-500 dark:bg-white'
+                                            'h-2 rounded-none bg-pink-600 transition-all duration-500'
                                         }
                                         style={{ width: `${diskPercent}%` }}
                                     />
@@ -277,7 +277,7 @@ const ServerConsoleContainer = () => {
                                     >
                                         <span
                                             className={
-                                                'material-icons-round mr-1 text-base text-neutral-700 dark:text-neutral-300'
+                                                'material-icons-round mr-1 text-base text-blue-500'
                                             }
                                         >
                                             arrow_upward
@@ -398,7 +398,13 @@ const ServerConsoleContainer = () => {
                             </span>
                         </div>
                         <div className={'space-y-3 overflow-y-auto pr-1'}>
-                            {[{ name: 'admin', ping: '32ms', color: 'bg-blue-500', tag: 'A' }].map((player) => (
+                            {[
+                                { name: 'Ekarl', ping: '32ms', color: 'bg-blue-500', tag: 'E' },
+                                { name: 'Coral', ping: '45ms', color: 'bg-indigo-500', tag: 'C' },
+                                { name: 'Izzxt', ping: '28ms', color: 'bg-cyan-500', tag: 'I' },
+                                { name: 'Quantizen', ping: '37ms', color: 'bg-sky-500', tag: 'Q' },
+                                { name: 'Nxim', ping: '41ms', color: 'bg-blue-400', tag: 'N' },
+                            ].map((player) => (
                                 <div
                                     key={player.name}
                                     className={
