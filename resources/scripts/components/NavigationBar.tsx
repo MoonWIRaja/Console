@@ -213,3 +213,100 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
         </>
     );
 };
+
+export const ServerNavigationBar = ({
+    sidebarOpen,
+    setSidebarOpen,
+    showMobileHeader = true,
+    routes,
+    serverId
+}: NavigationBarProps & { routes: any[]; serverId: string }) => {
+    const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
+    const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const location = useLocation();
+
+    const onTriggerLogout = () => {
+        setIsLoggingOut(true);
+        http.post('/auth/logout').finally(() => {
+            // @ts-expect-error this is valid
+            window.location = '/';
+        });
+    };
+
+    // Helper to map route paths to icons (using simple text/emoji for stark theme)
+    const getIconForRoute = (name: string) => {
+        const lower = name.toLowerCase();
+        if (lower.includes('console')) return 'terminal';
+        if (lower.includes('file')) return 'folder_open';
+        if (lower.includes('database')) return 'dns';
+        if (lower.includes('schedule')) return 'calendar_today';
+        if (lower.includes('user')) return 'group';
+        if (lower.includes('backup')) return 'backup';
+        if (lower.includes('network')) return 'hub';
+        if (lower.includes('startup')) return 'bolt';
+        if (lower.includes('setting')) return 'settings';
+        if (lower.includes('activity')) return 'show_chart';
+        return 'circle';
+    };
+
+    // Helper to match the URL exactly
+    const matchUrl = (path: string) => {
+        const currentPath = location.pathname;
+        const targetPath = `/server/${serverId}${path.replace('/*', '')}`;
+        if (path === '/') {
+            return currentPath === `/server/${serverId}`;
+        }
+        return currentPath.startsWith(targetPath);
+    };
+
+    return (
+        <>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
+                .sidebar-link:hover {
+                    color: #ffffff !important;
+                    background-color: #111111 !important;
+                }
+            `}</style>
+            <SpinnerOverlay visible={isLoggingOut} />
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
+                <SidebarBody showMobileHeader={showMobileHeader}>
+                    <SidebarLogo />
+
+                    {/* Nav */}
+                    <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                        <SidebarLabel label='SERVER MANAGEMENT' />
+                        {routes.filter((r) => !!r.name).slice(0, 4).map((route) => (
+                            <SidebarLink
+                                key={route.path}
+                                link={{
+                                    label: route.name,
+                                    href: `/server/${serverId}${route.path.replace('/*', '')}`,
+                                    icon: <span className="material-icons-round" style={{ fontSize: '18px' }}>{getIconForRoute(route.name)}</span>,
+                                }}
+                                active={matchUrl(route.path)}
+                            />
+                        ))}
+
+                        <SidebarLabel label='ADVANCED' />
+                        {routes.filter((r) => !!r.name).slice(4).map((route) => (
+                            <SidebarLink
+                                key={route.path}
+                                link={{
+                                    label: route.name,
+                                    href: `/server/${serverId}${route.path.replace('/*', '')}`,
+                                    icon: <span className="material-icons-round" style={{ fontSize: '18px' }}>{getIconForRoute(route.name)}</span>,
+                                }}
+                                active={matchUrl(route.path)}
+                            />
+                        ))}
+                    </nav>
+
+                    <UserFooter userName={userName} onLogout={onTriggerLogout} />
+                </SidebarBody>
+            </Sidebar>
+        </>
+    );
+};

@@ -62,7 +62,7 @@ export default () => {
                 </div>
                 {rootAdmin && (
                     <button
-                        onClick={() => setShowOnlyAdmin((s: boolean) => !s)}
+                        onClick={() => setShowOnlyAdmin((s) => !s)}
                         style={{
                             padding: '8px 16px',
                             fontSize: '10px',
