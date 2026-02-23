@@ -56,8 +56,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={classNames(
                         'flex w-full items-center justify-center rounded-none bg-green-600 px-4 py-3 text-sm font-bold text-white transition-colors',
                         'hover:bg-green-700',
-                        status !== 'offline' &&
-                        'cursor-not-allowed bg-green-600/50 text-white/50 hover:bg-green-600/50'
+                        status !== 'offline' && 'cursor-not-allowed bg-green-600/50 text-white/50 hover:bg-green-600/50'
                     )}
                     disabled={status !== 'offline'}
                     onClick={onButtonClick.bind(this, 'start')}
@@ -72,8 +71,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={classNames(
                         'flex w-full items-center justify-center rounded-none bg-amber-500 px-4 py-3 text-sm font-bold text-white transition-colors',
                         'hover:bg-amber-600',
-                        !status &&
-                        'cursor-not-allowed bg-amber-500/50 text-white/50 hover:bg-amber-500/50'
+                        !status && 'cursor-not-allowed bg-amber-500/50 text-white/50 hover:bg-amber-500/50'
                     )}
                     disabled={!status}
                     onClick={onButtonClick.bind(this, 'restart')}
@@ -88,8 +86,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={classNames(
                         'flex w-full items-center justify-center rounded-none bg-red-600 px-4 py-3 text-sm font-bold text-white transition-colors',
                         'hover:bg-red-700',
-                        status === 'offline' &&
-                        'cursor-not-allowed bg-red-600/50 text-white/50 hover:bg-red-600/50'
+                        status === 'offline' && 'cursor-not-allowed bg-red-600/50 text-white/50 hover:bg-red-600/50'
                     )}
                     disabled={status === 'offline'}
                     onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}

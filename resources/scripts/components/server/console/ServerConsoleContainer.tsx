@@ -95,14 +95,14 @@ const ServerConsoleContainer = () => {
         status === 'running'
             ? 'border-green-200 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400'
             : status === 'offline' || status === null
-                ? 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400'
-                : 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+            ? 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400'
+            : 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
     );
 
     return (
         <div
             className={
-                'relative flex min-h-screen w-full overflow-x-hidden bg-gray-100 text-gray-900 lg:h-screen lg:overflow-hidden dark:bg-gray-900 dark:text-gray-100'
+                'relative flex min-h-screen w-full overflow-x-hidden bg-white text-gray-900 lg:h-screen lg:overflow-hidden'
             }
             style={{
                 fontFamily:
@@ -110,8 +110,8 @@ const ServerConsoleContainer = () => {
             }}
         >
             <div className={'pointer-events-none absolute inset-0 z-0 hidden lg:flex'}>
-                <div className={'h-full w-[80%] bg-gray-100 dark:bg-gray-900'} />
-                <div className={'h-full w-[20%] bg-black/90'} />
+                <div className={'h-full w-[77%] bg-white'} />
+                <div className={'h-full w-[23%] bg-white'} />
             </div>
             <div
                 className={
@@ -130,7 +130,7 @@ const ServerConsoleContainer = () => {
             >
                 <div
                     className={
-                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[80%] xl:flex-none'
+                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[77%] xl:flex-none'
                     }
                 >
                     {(isNodeUnderMaintenance || isInstalling || isTransferring) && (
@@ -138,23 +138,23 @@ const ServerConsoleContainer = () => {
                             {isNodeUnderMaintenance
                                 ? 'The node of this server is currently under maintenance and all actions are unavailable.'
                                 : isInstalling
-                                    ? 'This server is currently running its installation process and most actions are unavailable.'
-                                    : 'This server is currently being transferred to another node and all actions are unavailable.'}
+                                ? 'This server is currently running its installation process and most actions are unavailable.'
+                                : 'This server is currently being transferred to another node and all actions are unavailable.'}
                         </Alert>
                     )}
                     <div
                         className={
-                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-none border border-gray-200 bg-white shadow-sm md:min-h-[500px] dark:border-gray-700 dark:bg-gray-800'
+                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-none border border-gray-200 bg-white shadow-sm md:min-h-[500px]'
                         }
                     >
                         <div
                             className={
-                                'flex items-center justify-between border-b border-gray-200 bg-gray-50/60 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60'
+                                'flex items-center justify-between border-b border-gray-200 bg-gray-50/60 px-4 py-3'
                             }
                         >
                             <h2
                                 className={
-                                    'flex items-center text-sm font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
+                                    'flex items-center text-sm font-bold uppercase tracking-wide text-neutral-900'
                                 }
                             >
                                 <span
@@ -175,33 +175,19 @@ const ServerConsoleContainer = () => {
                         </div>
                     </div>
 
-                    <div
-                        className={
-                            'rounded-none border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800'
-                        }
-                    >
-                        <h3
-                            className={
-                                'mb-6 text-lg font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
-                            }
-                        >
+                    <div className={'rounded-none border border-gray-200 bg-white p-6 shadow-sm'}>
+                        <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-neutral-900'}>
                             Server Statistics
                         </h3>
                         <div className={'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4'}>
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500 dark:text-gray-400'}>
-                                        CPU Usage
-                                    </span>
+                                    <span className={'text-sm font-medium text-gray-500'}>CPU Usage</span>
                                 </div>
-                                <div className={'text-3xl font-black text-gray-900 dark:text-white'}>
-                                    {stats.cpu.toFixed(1)}%
-                                </div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
+                                <div className={'text-3xl font-black text-gray-900'}>{stats.cpu.toFixed(1)}%</div>
+                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
                                     <div
-                                        className={
-                                            'h-2 rounded-none bg-blue-600 transition-all duration-500'
-                                        }
+                                        className={'h-2 rounded-none bg-blue-600 transition-all duration-500'}
                                         style={{ width: `${cpuPercent}%` }}
                                     />
                                 </div>
@@ -209,22 +195,18 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500 dark:text-gray-400'}>
-                                        Memory Usage
-                                    </span>
+                                    <span className={'text-sm font-medium text-gray-500'}>Memory Usage</span>
                                 </div>
-                                <div className={'text-2xl font-black text-gray-900 dark:text-white'}>
+                                <div className={'text-2xl font-black text-gray-900'}>
                                     {bytesToString(stats.memory)}
                                     <span className={'text-lg font-normal text-gray-400'}>
                                         {' '}
                                         / {memoryLimitBytes > 0 ? bytesToString(memoryLimitBytes) : '\u221E'}
                                     </span>
                                 </div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
+                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
                                     <div
-                                        className={
-                                            'h-2 rounded-none bg-purple-600 transition-all duration-500'
-                                        }
+                                        className={'h-2 rounded-none bg-purple-600 transition-all duration-500'}
                                         style={{ width: `${memoryPercent}%` }}
                                     />
                                 </div>
@@ -232,22 +214,18 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500 dark:text-gray-400'}>
-                                        Disk Usage
-                                    </span>
+                                    <span className={'text-sm font-medium text-gray-500'}>Disk Usage</span>
                                 </div>
-                                <div className={'text-2xl font-black text-gray-900 dark:text-white'}>
+                                <div className={'text-2xl font-black text-gray-900'}>
                                     {bytesToString(stats.disk)}
                                     <span className={'text-lg font-normal text-gray-400'}>
                                         {' '}
                                         / {diskLimitBytes > 0 ? bytesToString(diskLimitBytes) : '\u221E'}
                                     </span>
                                 </div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700'}>
+                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
                                     <div
-                                        className={
-                                            'h-2 rounded-none bg-pink-600 transition-all duration-500'
-                                        }
+                                        className={'h-2 rounded-none bg-pink-600 transition-all duration-500'}
                                         style={{ width: `${diskPercent}%` }}
                                     />
                                 </div>
@@ -255,31 +233,17 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500 dark:text-gray-400'}>
-                                        Network
-                                    </span>
+                                    <span className={'text-sm font-medium text-gray-500'}>Network</span>
                                 </div>
                                 <div className={'flex flex-col space-y-1'}>
-                                    <div
-                                        className={
-                                            'flex items-center text-sm font-bold text-gray-700 dark:text-gray-300'
-                                        }
-                                    >
+                                    <div className={'flex items-center text-sm font-bold text-gray-700'}>
                                         <span className={'material-icons-round mr-1 text-base text-green-500'}>
                                             arrow_downward
                                         </span>
                                         {bytesToString(networkRate.rx)}/s
                                     </div>
-                                    <div
-                                        className={
-                                            'flex items-center text-sm font-bold text-gray-700 dark:text-gray-300'
-                                        }
-                                    >
-                                        <span
-                                            className={
-                                                'material-icons-round mr-1 text-base text-blue-500'
-                                            }
-                                        >
+                                    <div className={'flex items-center text-sm font-bold text-gray-700'}>
+                                        <span className={'material-icons-round mr-1 text-base text-blue-500'}>
                                             arrow_upward
                                         </span>
                                         {bytesToString(networkRate.tx)}/s
@@ -294,14 +258,10 @@ const ServerConsoleContainer = () => {
 
                 <aside
                     className={
-                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[20%] xl:flex-none xl:bg-black/90 xl:pl-0 xl:backdrop-blur-xl'
+                        'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[23%] xl:flex-none xl:pl-0'
                     }
                 >
-                    <div
-                        className={
-                            'flex items-center rounded-none border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800'
-                        }
-                    >
+                    <div className={'flex items-center rounded-none border border-gray-200 bg-white p-4 shadow-sm'}>
                         <div
                             className={
                                 'mr-3 flex h-10 w-10 items-center justify-center rounded-none bg-blue-600 text-lg font-bold text-white shadow-md shadow-blue-500/30'
@@ -310,53 +270,45 @@ const ServerConsoleContainer = () => {
                             {username.charAt(0).toUpperCase()}
                         </div>
                         <div className={'min-w-0'}>
-                            <h3 className={'truncate font-bold text-gray-900 dark:text-white'}>{username}</h3>
-                            <p className={'truncate text-xs text-gray-500 dark:text-gray-400'}>{email}</p>
+                            <h3 className={'truncate font-bold text-gray-900'}>{username}</h3>
+                            <p className={'truncate text-xs text-gray-500'}>{email}</p>
                         </div>
                     </div>
 
-                    <div
-                        className={
-                            'rounded-none border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
-                        }
-                    >
-                        <h3
-                            className={
-                                'mb-4 text-lg font-bold uppercase tracking-wide text-neutral-900 dark:text-white'
-                            }
-                        >
+                    <div className={'rounded-none border border-gray-200 bg-white p-5 shadow-sm'}>
+                        <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-neutral-900'}>
                             Server Control
                         </h3>
                         <div className={'mb-6 space-y-3 text-sm'}>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500 dark:text-gray-400'}>IP:</span>
+                                <span className={'text-gray-500'}>IP:</span>
                                 <span
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-gray-100 px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                                        'max-w-[70%] break-all rounded-none bg-gray-100 px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-700'
                                     }
                                 >
                                     {allocation}
                                 </span>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500 dark:text-gray-400'}>Status:</span>
+                                <span className={'text-gray-500'}>Status:</span>
                                 <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500 dark:text-gray-400'}>Node:</span>
+                                <span className={'text-gray-500'}>Node:</span>
                                 <code
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
+                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800'
                                     }
                                 >
                                     {node}
                                 </code>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500 dark:text-gray-400'}>Server ID:</span>
+                                <span className={'text-gray-500'}>Server ID:</span>
                                 <code
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800 dark:bg-neutral-900 dark:text-white'
+                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800'
                                     }
                                 >
                                     {uuid}
@@ -368,23 +320,19 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'flex min-h-[300px] flex-1 flex-col rounded-none border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800'
+                            'flex min-h-[300px] flex-1 flex-col rounded-none border border-gray-200 bg-white p-5 shadow-sm'
                         }
                     >
                         <div className={'mb-4 flex items-center justify-between'}>
-                            <h3 className={'text-lg font-bold text-gray-900 dark:text-white'}>Players</h3>
-                            <span
-                                className={
-                                    'rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                }
-                            >
+                            <h3 className={'text-lg font-bold text-gray-900'}>Players</h3>
+                            <span className={'rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600'}>
                                 1 Online
                             </span>
                         </div>
                         <div className={'relative mb-4'}>
                             <input
                                 className={
-                                    'w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-xs text-gray-700 outline-none focus:border-transparent focus:ring-1 focus:ring-black dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:ring-white'
+                                    'w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-xs text-gray-700 outline-none focus:border-transparent focus:ring-1 focus:ring-black'
                                 }
                                 placeholder={'Filter by Name or ID...'}
                                 type={'text'}
@@ -408,7 +356,7 @@ const ServerConsoleContainer = () => {
                                 <div
                                     key={player.name}
                                     className={
-                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-gray-100 hover:bg-gray-50 dark:hover:border-gray-700 dark:hover:bg-gray-800/50'
+                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-gray-100 hover:bg-gray-50'
                                     }
                                 >
                                     <div className={'flex items-center gap-3'}>
@@ -421,16 +369,14 @@ const ServerConsoleContainer = () => {
                                             {player.tag}
                                         </div>
                                         <div>
-                                            <p className={'text-sm font-bold text-gray-800 dark:text-gray-200'}>
-                                                {player.name}
-                                            </p>
+                                            <p className={'text-sm font-bold text-gray-800'}>{player.name}</p>
                                             <p className={'text-[10px] text-gray-500'}>Ping: {player.ping}</p>
                                         </div>
                                     </div>
                                     <div className={'flex gap-1'}>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
                                             }
                                             type={'button'}
                                         >
@@ -438,7 +384,7 @@ const ServerConsoleContainer = () => {
                                         </button>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
                                             }
                                             type={'button'}
                                         >
