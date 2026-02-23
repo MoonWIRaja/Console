@@ -15,32 +15,55 @@ import { debounce } from 'debounce';
 import { usePersistedState } from '@/plugins/usePersistedState';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
-import { ChevronDoubleRightIcon } from '@heroicons/react/solid';
 
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
 
-const theme = {
-    background: th`colors.black`.toString(),
-    cursor: 'transparent',
-    black: th`colors.black`.toString(),
-    red: '#E54B4B',
-    green: '#9ECE58',
-    yellow: '#FAED70',
-    blue: '#396FE2',
-    magenta: '#BB80B3',
-    cyan: '#2DDAFD',
-    white: '#d0d0d0',
-    brightBlack: 'rgba(255, 255, 255, 0.2)',
-    brightRed: '#FF5370',
-    brightGreen: '#C3E88D',
-    brightYellow: '#FFCB6B',
-    brightBlue: '#82AAFF',
-    brightMagenta: '#C792EA',
-    brightCyan: '#89DDFF',
-    brightWhite: '#ffffff',
-    selection: '#FAF089',
-};
+const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false;
+
+const theme = isDark
+    ? {
+          background: 'transparent',
+          cursor: 'transparent',
+          black: th`colors.black`.toString(),
+          red: '#E54B4B',
+          green: '#9ECE58',
+          yellow: '#FAED70',
+          blue: '#396FE2',
+          magenta: '#BB80B3',
+          cyan: '#2DDAFD',
+          white: '#d0d0d0',
+          brightBlack: 'rgba(255, 255, 255, 0.2)',
+          brightRed: '#FF5370',
+          brightGreen: '#C3E88D',
+          brightYellow: '#FFCB6B',
+          brightBlue: '#82AAFF',
+          brightMagenta: '#C792EA',
+          brightCyan: '#89DDFF',
+          brightWhite: '#ffffff',
+          selection: '#FAF089',
+      }
+    : {
+          background: 'transparent',
+          cursor: '#111827',
+          black: '#111827',
+          red: '#dc2626',
+          green: '#16a34a',
+          yellow: '#ca8a04',
+          blue: '#2563eb',
+          magenta: '#7c3aed',
+          cyan: '#0891b2',
+          white: '#111827',
+          brightBlack: '#6b7280',
+          brightRed: '#ef4444',
+          brightGreen: '#22c55e',
+          brightYellow: '#eab308',
+          brightBlue: '#3b82f6',
+          brightMagenta: '#8b5cf6',
+          brightCyan: '#06b6d4',
+          brightWhite: '#0f172a',
+          selection: '#d1d5db',
+      };
 
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
@@ -49,7 +72,10 @@ const terminalProps: ITerminalOptions = {
     fontSize: 12,
     fontFamily: th('fontFamily.mono'),
     rows: 30,
+    rendererType: 'dom',
     theme: theme,
+    // Keep compatibility with environments that block accelerated/canvas renderer optimizations.
+    allowProposedApi: true,
 };
 
 export default () => {
@@ -209,24 +235,43 @@ export default () => {
                 </div>
             </div>
             {canSendCommands && (
-                <div className={classNames('relative', styles.overflows_container)}>
-                    <input
-                        className={classNames('peer', styles.command_input)}
-                        type={'text'}
-                        placeholder={'Type a command...'}
-                        aria-label={'Console command input.'}
-                        disabled={!instance || !connected}
-                        onKeyDown={handleCommandKeyDown}
-                        autoCorrect={'off'}
-                        autoCapitalize={'none'}
-                    />
-                    <div
-                        className={classNames(
-                            'text-gray-100 peer-focus:text-gray-50 peer-focus:animate-pulse',
-                            styles.command_icon
-                        )}
-                    >
-                        <ChevronDoubleRightIcon className={'w-4 h-4'} />
+                <div
+                    className={classNames(
+                        styles.overflows_container,
+                        'rounded-b-xl border border-t-0 border-gray-200 bg-gray-50/50 p-2 dark:border-gray-700 dark:bg-gray-800/50'
+                    )}
+                >
+                    <div className={'flex items-center gap-2'}>
+                        <input
+                            className={classNames(styles.command_input)}
+                            type={'text'}
+                            placeholder={'Type a command...'}
+                            aria-label={'Console command input.'}
+                            disabled={!instance || !connected}
+                            onKeyDown={handleCommandKeyDown}
+                            autoCorrect={'off'}
+                            autoCapitalize={'none'}
+                        />
+                        <div className={'flex items-center space-x-1'}>
+                            <button
+                                type={'button'}
+                                className={
+                                    'rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                }
+                                onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
+                            >
+                                <span className={'material-icons-round text-lg'}>open_in_new</span>
+                            </button>
+                            <button
+                                type={'button'}
+                                className={
+                                    'rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                                }
+                                onClick={() => searchBar.show()}
+                            >
+                                <span className={'material-icons-round text-lg'}>more_vert</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

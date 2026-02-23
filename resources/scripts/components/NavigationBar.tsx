@@ -5,7 +5,6 @@ import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import http from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
-import Avatar from '@/components/Avatar';
 import {
     Sidebar,
     SidebarBody,
@@ -24,36 +23,46 @@ interface NavigationBarProps {
 // ---------- Logo ----------
 const SidebarLogo = () => {
     const { open, animate } = useSidebar();
+    const expanded = animate ? open : true;
     return (
         <div
             style={{
-                padding: '20px 18px 16px',
-                borderBottom: '1px solid #1a1a1a',
+                padding: '24px 24px 16px',
                 overflow: 'hidden',
                 whiteSpace: 'nowrap',
             }}
         >
             <motion.div
                 animate={{
-                    fontSize: animate ? (open ? '16px' : '13px') : '16px',
+                    fontSize: animate ? (open ? '24px' : '16px') : '24px',
                 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                    fontWeight: 'bold',
+                    fontWeight: 900,
                     color: '#ffffff',
-                    lineHeight: 1.2,
+                    lineHeight: 1.1,
                     letterSpacing: '-0.02em',
                 }}
             >
-                {open ? (
+                {expanded ? (
                     <>
-                        BurHan
-                        <br />
-                        CONSOLE
+                        <div style={{ fontSize: '24px', fontWeight: 900 }}>BusHen</div>
+                        <div
+                            style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                letterSpacing: '0.1em',
+                                color: '#9ca3af',
+                                marginTop: '4px',
+                            }}
+                        >
+                            CONSOLE
+                        </div>
                     </>
                 ) : (
                     <>
-                        B<br />C
+                        <div style={{ fontSize: '18px', fontWeight: 900 }}>B</div>
+                        <div style={{ fontSize: '8px', fontWeight: 700, color: '#9ca3af' }}>C</div>
                     </>
                 )}
             </motion.div>
@@ -63,7 +72,8 @@ const SidebarLogo = () => {
 
 // ---------- UserFooter ----------
 const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
-    const { open, setOpen } = useSidebar();
+    const { open, setOpen, animate } = useSidebar();
+    const expanded = animate ? open : true;
     const closeSidebarOnMobile = () => {
         if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
             setOpen(false);
@@ -71,40 +81,54 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
     };
 
     return (
-        <div style={{ borderTop: '1px solid #1a1a1a', padding: '12px 14px' }}>
+        <div
+            style={{
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                padding: '16px',
+                backgroundColor: 'rgba(0,0,0,0.2)',
+            }}
+        >
             <Link to='/account' style={{ textDecoration: 'none' }} onClick={closeSidebarOnMobile}>
                 <div
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        marginBottom: open ? '10px' : '0',
-                        justifyContent: open ? 'flex-start' : 'center',
+                        gap: '12px',
+                        marginBottom: expanded ? '16px' : '0',
+                        justifyContent: expanded ? 'flex-start' : 'center',
                         cursor: 'pointer',
                         padding: '4px',
-                        borderRadius: '4px',
+                        borderRadius: '8px',
                     }}
-                    className='hover:bg-neutral-900 transition-colors'
+                    className='hover:bg-white/5 transition-colors'
                 >
                     <div
                         style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '0',
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
                             overflow: 'hidden',
                             flexShrink: 0,
+                            backgroundColor: '#22c55e',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '16px',
+                            boxShadow: '0 4px 6px -1px rgba(34, 197, 94, 0.2)',
                         }}
                     >
-                        <Avatar.User />
+                        {userName.charAt(0).toUpperCase()}
                     </div>
-                    {open && (
+                    {expanded && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.2 }}
                             style={{
-                                fontSize: '10px',
-                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                fontWeight: 700,
                                 color: '#ffffff',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -116,7 +140,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                     )}
                 </div>
             </Link>
-            {open && (
+            {expanded && (
                 <motion.button
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -127,23 +151,21 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         width: '100%',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        padding: '7px',
-                        fontSize: '9px',
-                        fontWeight: 'bold',
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                        color: '#6b7280',
+                        gap: '12px',
+                        padding: '8px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#9ca3af',
                         backgroundColor: 'transparent',
-                        border: '1px solid #272727',
+                        border: 'none',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
-                        fontFamily: "'Space Mono', monospace",
                     }}
                     type='button'
                 >
-                    <span>↪</span>
+                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                        logout
+                    </span>
                     <span>LOG OUT</span>
                 </motion.button>
             )}
@@ -169,10 +191,11 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
     return (
         <>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+                @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
                 .sidebar-link:hover {
                     color: #ffffff !important;
-                    background-color: #111111 !important;
+                    background-color: rgba(255,255,255,0.05) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
@@ -181,13 +204,17 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     <SidebarLogo />
 
                     {/* Nav */}
-                    <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                    <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
                         <SidebarLabel label='MAIN' />
                         <SidebarLink
                             link={{
                                 label: 'Dashboard',
                                 href: '/',
-                                icon: <span style={{ fontSize: '14px', lineHeight: 1 }}>⊞</span>,
+                                icon: (
+                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                        dashboard
+                                    </span>
+                                ),
                             }}
                             active={location.pathname === '/'}
                         />
@@ -199,7 +226,11 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                     link={{
                                         label: 'Admin Panel',
                                         href: '/admin',
-                                        icon: <span style={{ fontSize: '14px', lineHeight: 1 }}>⚙</span>,
+                                        icon: (
+                                            <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                                admin_panel_settings
+                                            </span>
+                                        ),
                                         external: true,
                                     }}
                                 />
@@ -219,9 +250,8 @@ export const ServerNavigationBar = ({
     setSidebarOpen,
     showMobileHeader = true,
     routes,
-    serverId
+    serverId,
 }: NavigationBarProps & { routes: any[]; serverId: string }) => {
-    const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
     const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
@@ -234,7 +264,7 @@ export const ServerNavigationBar = ({
         });
     };
 
-    // Helper to map route paths to icons (using simple text/emoji for stark theme)
+    // Helper to map route paths to icons (using Material Icons Round)
     const getIconForRoute = (name: string) => {
         const lower = name.toLowerCase();
         if (lower.includes('console')) return 'terminal';
@@ -260,44 +290,56 @@ export const ServerNavigationBar = ({
         return currentPath.startsWith(targetPath);
     };
 
+    // Split routes into Server Management (first 4) and Advanced (rest)
+    const serverManagementRoutes = routes.filter((r) => !!r.name).slice(0, 4);
+    const advancedRoutes = routes.filter((r) => !!r.name).slice(4);
+
     return (
         <>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
                 @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
                 .sidebar-link:hover {
                     color: #ffffff !important;
-                    background-color: #111111 !important;
+                    background-color: rgba(255,255,255,0.05) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
-            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} animate={false}>
                 <SidebarBody showMobileHeader={showMobileHeader}>
                     <SidebarLogo />
 
                     {/* Nav */}
-                    <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-                        <SidebarLabel label='SERVER MANAGEMENT' />
-                        {routes.filter((r) => !!r.name).slice(0, 4).map((route) => (
+                    <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
+                        <SidebarLabel label='Server Management' />
+                        {serverManagementRoutes.map((route) => (
                             <SidebarLink
                                 key={route.path}
                                 link={{
                                     label: route.name,
                                     href: `/server/${serverId}${route.path.replace('/*', '')}`,
-                                    icon: <span className="material-icons-round" style={{ fontSize: '18px' }}>{getIconForRoute(route.name)}</span>,
+                                    icon: (
+                                        <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                            {getIconForRoute(route.name)}
+                                        </span>
+                                    ),
                                 }}
                                 active={matchUrl(route.path)}
                             />
                         ))}
 
-                        <SidebarLabel label='ADVANCED' />
-                        {routes.filter((r) => !!r.name).slice(4).map((route) => (
+                        <SidebarLabel label='Advanced' />
+                        {advancedRoutes.map((route) => (
                             <SidebarLink
                                 key={route.path}
                                 link={{
                                     label: route.name,
                                     href: `/server/${serverId}${route.path.replace('/*', '')}`,
-                                    icon: <span className="material-icons-round" style={{ fontSize: '18px' }}>{getIconForRoute(route.name)}</span>,
+                                    icon: (
+                                        <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                            {getIconForRoute(route.name)}
+                                        </span>
+                                    ),
                                 }}
                                 active={matchUrl(route.path)}
                             />

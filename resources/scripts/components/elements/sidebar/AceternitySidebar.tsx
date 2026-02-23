@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 // ============================================================
 // Aceternity-style Sidebar (ported for React 16 + framer-motion v6)
-// Collapsible on hover, mobile responsive, dark theme
+// Collapsible on hover, mobile responsive, dark theme with glass effect
 // ============================================================
 
 interface SidebarContextType {
@@ -74,20 +74,23 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
             <motion.div
                 onMouseEnter={() => setOpen(true)}
                 onMouseLeave={() => setOpen(false)}
-                animate={{ width: shouldAnimate ? (open ? '250px' : '60px') : '250px' }}
+                animate={{ width: shouldAnimate ? (open ? '256px' : '72px') : '256px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 style={{
                     height: '100vh',
                     position: 'fixed',
                     top: 0,
                     left: 0,
-                    zIndex: 1000,
-                    backgroundColor: '#000000',
+                    zIndex: 20,
+                    background: 'rgba(0, 0, 0, 0.9)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid #1a1a1a',
-                    fontFamily: "'Space Mono', monospace",
+                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    fontFamily: "'Inter', sans-serif",
                     overflow: 'hidden',
+                    flexShrink: 0,
                 }}
                 className={className || ''}
             >
@@ -95,7 +98,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
             </motion.div>
             {/* Spacer to push content right */}
             <motion.div
-                animate={{ width: shouldAnimate ? (open ? '250px' : '60px') : '250px' }}
+                animate={{ width: shouldAnimate ? (open ? '256px' : '72px') : '256px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className='flex-shrink-0'
             />
@@ -115,18 +118,20 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        backgroundColor: '#000000',
-                        padding: '10px 16px',
-                        fontFamily: "'Space Mono', monospace",
+                        background: 'rgba(0, 0, 0, 0.9)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        padding: '12px 16px',
+                        fontFamily: "'Inter', sans-serif",
                         position: 'fixed',
                         top: 0,
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid #1a1a1a',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                     }}
                 >
-                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>BurHan CONSOLE</div>
+                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BusHen</div>
                     <button
                         onClick={() => setOpen(!open)}
                         style={{
@@ -170,13 +175,15 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                 top: 0,
                                 left: 0,
                                 height: '100vh',
-                                width: '260px',
-                                backgroundColor: '#000000',
+                                width: '256px',
+                                background: 'rgba(0, 0, 0, 0.95)',
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                fontFamily: "'Space Mono', monospace",
-                                borderRight: '1px solid #1a1a1a',
+                                fontFamily: "'Inter', sans-serif",
+                                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px' }}>
@@ -243,6 +250,7 @@ interface SidebarLinkProps {
 
 export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
     const { open, setOpen, animate: shouldAnimate } = useSidebar();
+    const expanded = shouldAnimate ? open : true;
 
     const closeOnMobile = useCallback(() => {
         if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
@@ -263,12 +271,13 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: open ? '10px' : '0px',
-                padding: '10px 18px',
+                gap: expanded ? '12px' : '0px',
+                padding: '10px 12px',
                 textDecoration: 'none',
-                color: active ? '#ffffff' : '#6b7280',
-                backgroundColor: active ? '#111111' : 'transparent',
-                borderLeft: active ? '2px solid #ffffff' : '2px solid transparent',
+                color: active ? '#ffffff' : '#9ca3af',
+                backgroundColor: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                borderRadius: '8px',
+                margin: '2px 0',
                 transition: 'all 0.15s',
                 cursor: 'pointer',
                 overflow: 'hidden',
@@ -284,10 +293,8 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
+                    fontSize: '14px',
+                    fontWeight: 500,
                     whiteSpace: 'nowrap',
                 }}
             >
@@ -331,11 +338,11 @@ export const SidebarLabel = ({ label }: SidebarLabelProps) => {
             }}
             transition={{ duration: 0.2 }}
             style={{
-                padding: '12px 18px 6px',
-                fontSize: '9px',
-                fontWeight: 'bold',
-                letterSpacing: '0.1em',
-                color: '#4b5563',
+                padding: '16px 12px 8px',
+                fontSize: '12px',
+                fontWeight: 500,
+                letterSpacing: '0.05em',
+                color: '#6b7280',
                 textTransform: 'uppercase',
             }}
         >

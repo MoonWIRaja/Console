@@ -4,12 +4,14 @@ import Can from '@/components/elements/Can';
 import { ServerContext } from '@/state/server';
 import { PowerAction } from '@/components/server/console/ServerConsoleContainer';
 import { Dialog } from '@/components/elements/dialog';
+import classNames from 'classnames';
 
 interface PowerButtonProps {
     className?: string;
+    variant?: 'default' | 'glass';
 }
 
-export default ({ className }: PowerButtonProps) => {
+export default ({ className, variant = 'default' }: PowerButtonProps) => {
     const [open, setOpen] = useState(false);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
@@ -36,7 +38,65 @@ export default ({ className }: PowerButtonProps) => {
         }
     }, [status]);
 
-    return (
+    return variant === 'glass' ? (
+        <div className={className}>
+            <Dialog.Confirm
+                open={open}
+                hideCloseIcon
+                onClose={() => setOpen(false)}
+                title={'Forcibly Stop Process'}
+                confirm={'Continue'}
+                onConfirmed={onButtonClick.bind(this, 'kill-confirmed')}
+            >
+                Forcibly stopping a server can lead to data corruption.
+            </Dialog.Confirm>
+            <Can action={'control.start'}>
+                <button
+                    type={'button'}
+                    className={classNames(
+                        'flex w-full items-center justify-center rounded-lg bg-green-600 px-4 py-3 font-bold text-white shadow-lg shadow-green-500/20 transition-all',
+                        'hover:scale-[1.02] hover:bg-green-700',
+                        status !== 'offline' && 'cursor-not-allowed opacity-60 hover:scale-100 hover:bg-green-600'
+                    )}
+                    disabled={status !== 'offline'}
+                    onClick={onButtonClick.bind(this, 'start')}
+                >
+                    <span className={'material-icons-round mr-2 text-xl'}>play_arrow</span>
+                    Start Server
+                </button>
+            </Can>
+            <Can action={'control.restart'}>
+                <button
+                    type={'button'}
+                    className={classNames(
+                        'flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-3 font-bold text-white shadow-lg shadow-amber-500/20 transition-all',
+                        'hover:scale-[1.02] hover:bg-amber-600',
+                        !status && 'cursor-not-allowed opacity-60 hover:scale-100 hover:bg-amber-500'
+                    )}
+                    disabled={!status}
+                    onClick={onButtonClick.bind(this, 'restart')}
+                >
+                    <span className={'material-icons-round mr-2 text-xl'}>refresh</span>
+                    Restart Server
+                </button>
+            </Can>
+            <Can action={'control.stop'}>
+                <button
+                    type={'button'}
+                    className={classNames(
+                        'flex w-full items-center justify-center rounded-lg bg-red-600 px-4 py-3 font-bold text-white shadow-lg shadow-red-500/20 transition-all',
+                        'hover:scale-[1.02] hover:bg-red-700',
+                        status === 'offline' && 'cursor-not-allowed opacity-60 hover:scale-100 hover:bg-red-600'
+                    )}
+                    disabled={status === 'offline'}
+                    onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}
+                >
+                    <span className={'material-icons-round mr-2 text-xl'}>{killable ? 'warning' : 'stop'}</span>
+                    {killable ? 'Kill Server' : 'Stop Server'}
+                </button>
+            </Can>
+        </div>
+    ) : (
         <div className={className}>
             <Dialog.Confirm
                 open={open}

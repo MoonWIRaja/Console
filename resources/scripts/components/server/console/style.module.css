@@ -1,37 +1,34 @@
 .stat_block {
-    @apply flex items-center rounded shadow-lg relative;
+    @apply relative flex items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm;
     @apply col-span-3 md:col-span-2 lg:col-span-6;
     @apply px-3 py-2 md:p-3 lg:p-4;
+    @apply dark:border-gray-700 dark:bg-gray-800;
 
     & > .status_bar {
-        @apply w-1 h-full absolute left-0 top-0 rounded-l sm:hidden;
+        @apply absolute left-0 top-0 h-full w-1 rounded-l sm:hidden;
     }
 
     & > .icon {
-        @apply hidden flex-shrink-0 items-center justify-center rounded-lg shadow-md w-12 h-12;
+        @apply hidden h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg shadow-sm;
         @apply transition-colors duration-500;
-        @apply sm:flex sm:mr-4;
+        @apply sm:mr-3 sm:flex;
 
         & > svg {
-            @apply w-6 h-6 m-auto;
+            @apply m-auto h-5 w-5;
         }
     }
 }
 
 .terminal {
-    @apply flex flex-col w-full;
+    @apply flex w-full flex-col;
 
     & .overflows_container {
-        @apply -ml-4 sm:ml-0;
-        width: calc(100% + 2rem);
-
-        @screen sm {
-            @apply w-full;
-        }
+        @apply w-full;
     }
 
     & > .container {
-        @apply rounded-t p-1 sm:p-2 bg-black min-h-[16rem] flex-1 font-mono text-sm;
+        @apply min-h-[20rem] flex-1 rounded-t-xl border border-b-0 border-gray-200 bg-white font-mono text-sm;
+        @apply shadow-inner dark:border-gray-700 dark:bg-gray-900;
 
         & #terminal {
             @apply h-full;
@@ -46,18 +43,16 @@
         }
     }
 
-    & .command_icon {
-        @apply flex items-center top-0 left-0 absolute z-10 select-none h-full px-3 transition-colors duration-100;
-    }
-
     & .command_input {
-        @apply relative bg-gray-900 px-2 text-gray-100 pl-10 pr-4 py-2 w-full font-mono text-sm sm:rounded-b;
-        @apply focus:ring-0 outline-none focus-visible:outline-none;
-        @apply border-0 border-b-2 border-transparent transition-colors duration-100;
-        @apply active:border-cyan-500 focus:border-cyan-500;
+        @apply min-w-0 flex-1 rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-4 text-sm text-gray-700;
+        @apply transition-shadow outline-none focus-visible:outline-none;
+        @apply focus:border-transparent focus:ring-2 focus:ring-black;
+        @apply dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:focus:ring-white;
+        @apply placeholder:text-gray-400;
     }
 }
 
 .chart_container {
-    @apply bg-gray-600 rounded shadow-lg pt-2 border-b-4 border-gray-700 relative;
+    @apply relative overflow-hidden rounded-xl border border-gray-200 bg-white p-2 shadow-sm;
+    @apply dark:border-gray-700 dark:bg-gray-800;
 }

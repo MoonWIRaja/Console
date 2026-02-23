@@ -81,10 +81,11 @@ export default () => {
 
     return (
         <React.Fragment key={'server-router'}>
-            <div className="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 font-sans h-[100vh] overflow-hidden flex w-full relative">
+            <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans h-screen overflow-hidden flex w-full relative">
                 <style>{`
-                    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
                     @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
+                    
                     .glass-panel {
                         background: rgba(255, 255, 255, 0.7);
                         backdrop-filter: blur(12px);
@@ -95,11 +96,7 @@ export default () => {
                         background: rgba(31, 41, 55, 0.7);
                         border: 1px solid rgba(255, 255, 255, 0.05);
                     }
-                    .glass-sidebar {
-                        background: rgba(0, 0, 0, 0.9);
-                        backdrop-filter: blur(16px);
-                        -webkit-backdrop-filter: blur(16px);
-                    }
+                    
                     .server-main-content ::-webkit-scrollbar {
                         width: 8px;
                         height: 8px;
@@ -117,15 +114,6 @@ export default () => {
                     .server-main-content ::-webkit-scrollbar-thumb:hover {
                         background: #94a3b8; 
                     }
-                    .console-line {
-                        line-height: 1.6;
-                    }
-                    
-                    /* Utility classes matching user provided tailwind config */
-                    .bg-background-light { background-color: #f3f4f6; }
-                    .bg-background-dark { background-color: #111827; }
-                    .bg-card-light { background-color: #ffffff; }
-                    .bg-card-dark { background-color: #1f2937; }
                 `}</style>
                 <ServerNavigationBar
                     sidebarOpen={isMobileViewport ? mobileSidebarOpen : undefined}
@@ -135,7 +123,7 @@ export default () => {
                     serverId={match.params.id}
                 />
 
-                <main className="server-main-content flex-1 flex flex-col overflow-hidden relative" style={{ minWidth: 0, fontFamily: "'Space Mono', monospace" }}>
+                <main className="server-main-content flex-1 flex flex-col overflow-hidden relative" style={{ minWidth: 0, fontFamily: "'Inter', sans-serif" }}>
                     {isMobileViewport && (
                         <>
                             <div
@@ -144,15 +132,17 @@ export default () => {
                                     position: 'sticky',
                                     top: 0,
                                     zIndex: 1000,
-                                    backgroundColor: '#000000',
-                                    borderBottom: '1px solid #1a1a1a',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                    backdropFilter: 'blur(16px)',
+                                    WebkitBackdropFilter: 'blur(16px)',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     padding: '0 16px',
                                 }}
                             >
-                                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>BurHan CONSOLE</div>
+                                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BusHen CONSOLE</div>
                                 <button
                                     type='button'
                                     onClick={() => setMobileSidebarOpen(true)}
@@ -180,29 +170,29 @@ export default () => {
                         )
                     ) : (
                         <>
-                                <InstallListener />
-                                <TransferListener />
-                                <WebsocketHandler />
-                                {inConflictState && (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
-                                    <div className="p-6"><ConflictStateRenderer /></div>
-                                ) : (
-                                    <ErrorBoundary>
-                                        <TransitionRouter>
-                                <Switch location={location}>
-                                    {routes.server.map(({ path, permission, component: Component }) => (
-                                        <PermissionRoute key={path} permission={permission} path={to(path)} exact>
-                                            <Spinner.Suspense>
-                                                <Component />
-                                            </Spinner.Suspense>
-                                        </PermissionRoute>
-                                    ))}
-                                    <Route path={'*'} component={NotFound} />
-                                </Switch>
-                            </TransitionRouter>
-                        </ErrorBoundary>
+                            <InstallListener />
+                            <TransferListener />
+                            <WebsocketHandler />
+                            {inConflictState && (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
+                                <div className="p-6"><ConflictStateRenderer /></div>
+                            ) : (
+                                <ErrorBoundary>
+                                    <TransitionRouter>
+                                        <Switch location={location}>
+                                            {routes.server.map(({ path, permission, component: Component }) => (
+                                                <PermissionRoute key={path} permission={permission} path={to(path)} exact>
+                                                    <Spinner.Suspense>
+                                                        <Component />
+                                                    </Spinner.Suspense>
+                                                </PermissionRoute>
+                                            ))}
+                                            <Route path={'*'} component={NotFound} />
+                                        </Switch>
+                                    </TransitionRouter>
+                                </ErrorBoundary>
+                            )}
+                        </>
                     )}
-                </>
-            )}
                 </main>
             </div>
         </React.Fragment>
