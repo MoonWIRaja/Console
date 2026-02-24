@@ -24,13 +24,14 @@ const CustomTextarea = styled(Textarea)`
 
 const SubmitButton = styled.button`
     ${tw`w-full sm:w-auto px-8 py-3 text-xs font-bold tracking-wider uppercase border transition-all duration-150`};
-    border-radius: 0;
-    background-color: #000000;
-    color: #ffffff;
-    border-color: #000000;
+    border-radius: 0.5rem;
+    background-color: #a3ff12;
+    color: #000000;
+    border-color: #a3ff12;
+    box-shadow: 0 0 14px rgba(163, 255, 18, 0.3);
 
     &:hover:not(:disabled) {
-        opacity: 0.9;
+        filter: brightness(1.06);
     }
 
     &:disabled {
@@ -78,13 +79,12 @@ export default ({ onKeyCreated }: { onKeyCreated: (key: ApiKey) => void }) => {
                             label={'Description'}
                             name={'description'}
                             description={'A description of this API key.'}
-                            css={tw`mb-6 [&>label]:text-neutral-800 [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-neutral-500 [&>div>p]:text-neutral-500 [&.has-error>p]:text-red-500 [&.has-error>div>p]:text-red-500`}
+                            css={tw`mb-6 [&>label]:text-white/80 [&>label]:uppercase [&>label]:text-xs [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-white/60 [&>div>p]:text-white/60 [&.has-error>p]:text-red-400 [&.has-error>div>p]:text-red-400`}
                         >
                             <Field
                                 name={'description'}
                                 as={Input}
-                                isLight
-                                css={tw`rounded-none border-black text-black focus:border-black focus:ring-black focus:ring-opacity-20`}
+                                css={tw`rounded-lg border-gray-800 bg-[#000000] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]`}
                             />
                         </FormikFieldWrapper>
                         <FormikFieldWrapper
@@ -93,13 +93,12 @@ export default ({ onKeyCreated }: { onKeyCreated: (key: ApiKey) => void }) => {
                             description={
                                 'Leave blank to allow any IP address to use this API key, otherwise provide each IP address on a new line.'
                             }
-                            css={tw`[&>label]:text-neutral-800 [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-neutral-500 [&>div>p]:text-neutral-500 [&.has-error>p]:text-red-500 [&.has-error>div>p]:text-red-500`}
+                            css={tw`[&>label]:text-white/80 [&>label]:uppercase [&>label]:text-xs [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-white/60 [&>div>p]:text-white/60 [&.has-error>p]:text-red-400 [&.has-error>div>p]:text-red-400`}
                         >
                             <Field
                                 name={'allowedIps'}
                                 as={CustomTextarea}
-                                isLight
-                                css={tw`rounded-none border-black text-black focus:border-black focus:ring-black focus:ring-opacity-20`}
+                                css={tw`rounded-lg border-gray-800 bg-[#000000] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]`}
                             />
                         </FormikFieldWrapper>
                         <div css={tw`flex justify-end mt-6`}>

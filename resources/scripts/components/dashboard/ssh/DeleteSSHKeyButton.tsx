@@ -36,8 +36,9 @@ export default ({ name, fingerprint }: { name: string; fingerprint: string }) =>
                 Removing the <Code>{name}</Code> SSH key will invalidate its usage across the Panel.
             </Dialog.Confirm>
             <button
-                css={tw`ml-4 p-2 text-sm border border-transparent hover:border-black transition-colors duration-150`}
+                css={tw`ml-4 rounded-md border border-transparent p-2 text-sm transition-colors duration-150 hover:border-red-700`}
                 onClick={() => setVisible(true)}
+                type={'button'}
             >
                 <FontAwesomeIcon
                     icon={faTrashAlt}

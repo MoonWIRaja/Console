@@ -7,6 +7,7 @@ import { Form, useFormikContext, withFormik } from 'formik';
 import useFlash from '@/plugins/useFlash';
 import { FlashStore } from '@/state/flashes';
 import FlashMessageRender from '@/components/FlashMessageRender';
+import { GlowCard } from '@/components/ui/spotlight-card';
 
 interface Values {
     code: string;
@@ -31,42 +32,27 @@ const LoginCheckpointContainer = () => {
     const activeError = touched[activeField] ? (errors[activeField] as string | undefined) : undefined;
 
     return (
-        <div className='h-screen w-full overflow-hidden flex fixed inset-0 z-50' style={{ backgroundColor: '#ffffff' }}>
+        <div className='fixed inset-0 z-50 flex h-screen w-full overflow-hidden bg-[#000000] text-gray-100'>
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
                 .font-mono {
                     font-family: 'Space Mono', monospace;
                 }
-                .sharp-corners {
-                    border-radius: 0;
-                }
-                .checkpoint-panel input:focus {
-                    outline: none;
-                    border-color: #000000 !important;
-                    box-shadow: none;
-                }
             `}</style>
-            <div className='hidden lg:block w-[70%] h-full font-mono' style={{ backgroundColor: '#000000' }}>
-                <span className='sr-only'>A minimalist solid black background area.</span>
+            <div className='hidden h-full w-[70%] bg-[#000000] font-mono lg:block'>
+                <span className='sr-only'>A dark neon background area.</span>
             </div>
-            <div
-                className='checkpoint-panel w-full lg:w-[30%] h-full flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-10 xl:px-12 overflow-y-auto font-mono'
-                style={{ backgroundColor: '#ffffff' }}
-            >
-                <div className='w-full max-w-md mx-auto'>
+            <div className='w-full overflow-y-auto bg-[#000000] px-8 font-mono sm:px-12 md:px-16 lg:w-[30%] lg:px-10 xl:px-12'>
+                <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
                     <div className='mb-10'>
-                        <h1 className='text-4xl font-bold leading-tight tracking-tight' style={{ color: '#000000' }}>
-                            BurHan
-                            <br />
-                            CONSOLE
+                        <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
+                            BurHan Console
                         </h1>
                     </div>
 
                     <div className='mb-6'>
-                        <h2 className='text-sm font-bold tracking-wider uppercase' style={{ color: '#000000' }}>
-                            DEVICE CHECKPOINT
-                        </h2>
-                        <p className='mt-2 text-xs' style={{ color: '#6b7280' }}>
+                        <h2 className='text-sm font-bold uppercase tracking-wider text-gray-200'>DEVICE CHECKPOINT</h2>
+                        <p className='mt-2 text-xs text-gray-400'>
                             {isMissingDevice
                                 ? 'Use one backup recovery code to complete sign in.'
                                 : 'Complete sign in with your two-factor authentication code.'}
@@ -75,42 +61,56 @@ const LoginCheckpointContainer = () => {
 
                     <FlashMessageRender className='mb-4 px-1' />
 
-                    <Form className='space-y-5'>
-                        <div className='relative'>
-                            <input
-                                name={activeField}
-                                type={'text'}
-                                value={values[activeField]}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                disabled={isSubmitting}
-                                id={activeField}
-                                autoComplete={'one-time-code'}
-                                autoFocus
-                                className='w-full border bg-transparent px-4 py-3 text-sm focus:ring-0 sharp-corners'
-                                style={{ borderColor: activeError ? '#ef4444' : '#000000', color: '#000000' }}
-                                placeholder={activePlaceholder}
-                            />
-                            {activeError && (
-                                <div className='absolute -bottom-5 left-0 text-[10px] text-red-500 font-bold'>
-                                    {activeError}
+                    <GlowCard
+                        glowColor='green'
+                        customSize
+                        orbit
+                        orbitDurationMs={2800}
+                        className='w-full rounded-xl [--radius:12] [--border:2] [--size:185]'
+                    >
+                        <div className='rounded-xl bg-[#000000] p-8'>
+                            <Form className='space-y-5'>
+                                <div className='group space-y-1'>
+                                    <label
+                                        htmlFor={activeField}
+                                        className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[#a3ff12]'
+                                    >
+                                        {isMissingDevice ? 'Recovery Code' : 'Authentication Code'}
+                                    </label>
+                                    <div className='relative'>
+                                        <input
+                                            name={activeField}
+                                            type={'text'}
+                                            value={values[activeField]}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            disabled={isSubmitting}
+                                            id={activeField}
+                                            autoComplete={'one-time-code'}
+                                            autoFocus
+                                            className='w-full rounded-lg border border-gray-800 bg-[#000000] px-4 py-3 pr-11 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]'
+                                            placeholder={activePlaceholder}
+                                        />
+                                        <i className='fa-solid fa-shield-halved absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-500' />
+                                    </div>
+                                    {activeError && (
+                                        <div className='text-[10px] font-bold text-red-400'>{activeError}</div>
+                                    )}
                                 </div>
-                            )}
+
+                                <p className='text-[10px] uppercase tracking-wide text-gray-500'>{activeDescription}</p>
+
+                                <button
+                                    type='submit'
+                                    disabled={isSubmitting}
+                                    className='mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#a3ff12] px-4 py-3 text-sm font-bold uppercase tracking-wide text-black transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(163,255,18,0.55)] disabled:opacity-50'
+                                >
+                                    {isSubmitting ? 'Verifying...' : 'Continue'}
+                                    <i className='fa-solid fa-arrow-right text-xs' />
+                                </button>
+                            </Form>
                         </div>
-
-                        <p className='text-[10px] leading-relaxed uppercase tracking-wide' style={{ color: '#6b7280' }}>
-                            {activeDescription}
-                        </p>
-
-                        <button
-                            type='submit'
-                            disabled={isSubmitting}
-                            className='w-full py-4 text-xs font-bold tracking-wider sharp-corners border mt-2 transition-colors disabled:opacity-50 hover:opacity-90'
-                            style={{ backgroundColor: '#000000', color: '#ffffff', borderColor: '#000000' }}
-                        >
-                            {isSubmitting ? 'VERIFYING...' : 'CONTINUE'}
-                        </button>
-                    </Form>
+                    </GlowCard>
 
                     <div className='mt-8 text-center'>
                         <button
@@ -121,8 +121,7 @@ const LoginCheckpointContainer = () => {
                                 setIsMissingDevice((s) => !s);
                             }}
                             disabled={isSubmitting}
-                            className='text-xs transition-colors hover:opacity-70 uppercase tracking-wide disabled:opacity-50'
-                            style={{ color: '#6b7280' }}
+                            className='text-xs uppercase tracking-wide text-gray-500 transition-colors hover:text-[#a3ff12] disabled:opacity-50'
                         >
                             {!isMissingDevice ? "I've Lost My Device" : 'I Have My Device'}
                         </button>
@@ -130,8 +129,7 @@ const LoginCheckpointContainer = () => {
 
                     <div className='mt-6 text-center'>
                         <Link
-                            className='text-xs transition-colors hover:opacity-70'
-                            style={{ color: '#6b7280' }}
+                            className='text-xs text-gray-500 transition-colors hover:text-[#a3ff12]'
                             to={'/auth/login'}
                         >
                             Return to Login

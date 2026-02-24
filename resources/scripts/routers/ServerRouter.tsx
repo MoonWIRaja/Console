@@ -81,7 +81,7 @@ export default () => {
 
     return (
         <React.Fragment key={'server-router'}>
-            <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans h-screen overflow-hidden flex w-full relative">
+            <div className='bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans h-screen overflow-hidden flex w-full relative'>
                 <style>{`
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
                     @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
@@ -123,7 +123,10 @@ export default () => {
                     serverId={match.params.id}
                 />
 
-                <main className="server-main-content flex-1 flex flex-col overflow-hidden relative" style={{ minWidth: 0, fontFamily: "'Inter', sans-serif" }}>
+                <main
+                    className='server-main-content flex-1 flex flex-col overflow-hidden relative'
+                    style={{ minWidth: 0, fontFamily: "'Inter', sans-serif" }}
+                >
                     {isMobileViewport && (
                         <>
                             <div
@@ -142,14 +145,16 @@ export default () => {
                                     padding: '0 16px',
                                 }}
                             >
-                                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BusHen CONSOLE</div>
+                                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>
+                                    BurHan Console
+                                </div>
                                 <button
                                     type='button'
                                     onClick={() => setMobileSidebarOpen(true)}
                                     style={{
                                         background: 'none',
                                         border: 'none',
-                                        color: '#ffffff',
+                                        color: '#a3ff12',
                                         fontSize: '20px',
                                         cursor: 'pointer',
                                         padding: '4px',
@@ -164,23 +169,35 @@ export default () => {
 
                     {!uuid || !id ? (
                         error ? (
-                            <div className="p-6"><ServerError message={error} /></div>
+                            <div className='p-6'>
+                                <ServerError message={error} />
+                            </div>
                         ) : (
-                            <div className="p-6"><Spinner size={'large'} centered /></div>
+                            <div className='p-6'>
+                                <Spinner size={'large'} centered />
+                            </div>
                         )
                     ) : (
                         <>
                             <InstallListener />
                             <TransferListener />
                             <WebsocketHandler />
-                            {inConflictState && (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
-                                <div className="p-6"><ConflictStateRenderer /></div>
+                            {inConflictState &&
+                            (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
+                                <div className='p-6'>
+                                    <ConflictStateRenderer />
+                                </div>
                             ) : (
                                 <ErrorBoundary>
                                     <TransitionRouter>
                                         <Switch location={location}>
                                             {routes.server.map(({ path, permission, component: Component }) => (
-                                                <PermissionRoute key={path} permission={permission} path={to(path)} exact>
+                                                <PermissionRoute
+                                                    key={path}
+                                                    permission={permission}
+                                                    path={to(path)}
+                                                    exact
+                                                >
                                                     <Spinner.Suspense>
                                                         <Component />
                                                     </Spinner.Suspense>

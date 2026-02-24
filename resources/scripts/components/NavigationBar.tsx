@@ -4,6 +4,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import http from '@/api/http';
+import Avatar from '@/components/Avatar';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import {
     Sidebar,
@@ -33,37 +34,39 @@ const SidebarLogo = () => {
             }}
         >
             <motion.div
-                animate={{
-                    fontSize: animate ? (open ? '24px' : '16px') : '24px',
-                }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                    fontWeight: 900,
-                    color: '#ffffff',
-                    lineHeight: 1.1,
-                    letterSpacing: '-0.02em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
                 }}
             >
-                {expanded ? (
-                    <>
-                        <div style={{ fontSize: '24px', fontWeight: 900 }}>BusHen</div>
-                        <div
-                            style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                letterSpacing: '0.1em',
-                                color: '#9ca3af',
-                                marginTop: '4px',
-                            }}
-                        >
-                            CONSOLE
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div style={{ fontSize: '18px', fontWeight: 900 }}>B</div>
-                        <div style={{ fontSize: '8px', fontWeight: 700, color: '#9ca3af' }}>C</div>
-                    </>
+                <img
+                    src={'/assets/svgs/pterodactyl.svg'}
+                    alt={'System Logo'}
+                    style={{
+                        width: expanded ? '28px' : '22px',
+                        height: expanded ? '28px' : '22px',
+                        objectFit: 'contain',
+                        filter: 'brightness(1.15)',
+                        flexShrink: 0,
+                    }}
+                />
+                {expanded && (
+                    <div
+                        style={{
+                            fontSize: '18px',
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            lineHeight: 1,
+                            letterSpacing: '-0.02em',
+                            textShadow: '0 0 10px rgba(255,255,255,0.12)',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        BurHan Console
+                    </div>
                 )}
             </motion.div>
         </div>
@@ -109,17 +112,15 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                             borderRadius: '8px',
                             overflow: 'hidden',
                             flexShrink: 0,
-                            backgroundColor: '#22c55e',
+                            backgroundColor: '#050505',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: '16px',
-                            boxShadow: '0 4px 6px -1px rgba(34, 197, 94, 0.2)',
+                            border: '1px solid rgba(163, 255, 18, 0.35)',
+                            boxShadow: '0 0 0 1px rgba(163, 255, 18, 0.08), 0 6px 14px -6px rgba(163, 255, 18, 0.45)',
                         }}
                     >
-                        {userName.charAt(0).toUpperCase()}
+                        <Avatar.User size={36} variant={'beam'} />
                     </div>
                     {expanded && (
                         <motion.div
@@ -193,9 +194,52 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
                 @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
+                .sidebar-desktop-shell {
+                    position: relative;
+                }
+                .sidebar-desktop-shell::after {
+                    content: '';
+                    position: absolute;
+                    top: 10px;
+                    bottom: 10px;
+                    right: -1px;
+                    width: 2px;
+                    border-radius: 999px;
+                    background: #1f2937;
+                    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                    pointer-events: none;
+                }
+                .sidebar-desktop-shell::before {
+                    content: '';
+                    position: absolute;
+                    top: 10px;
+                    right: -4px;
+                    width: 8px;
+                    height: 42px;
+                    border-radius: 999px;
+                    background: radial-gradient(
+                        ellipse at center,
+                        rgba(220, 255, 162, 0.98) 0%,
+                        rgba(163, 255, 18, 0.92) 35%,
+                        rgba(163, 255, 18, 0.28) 60%,
+                        rgba(163, 255, 18, 0) 100%
+                    );
+                    animation: sidebar-neon-flow 2.6s linear infinite;
+                    filter: drop-shadow(0 0 10px rgba(163, 255, 18, 0.85));
+                    pointer-events: none;
+                }
+                @keyframes sidebar-neon-flow {
+                    from {
+                        transform: translateY(0);
+                    }
+                    to {
+                        transform: translateY(calc(100vh - 62px));
+                    }
+                }
                 .sidebar-link:hover {
-                    color: #ffffff !important;
-                    background-color: rgba(255,255,255,0.05) !important;
+                    color: #a3ff12 !important;
+                    background-color: rgba(163, 255, 18, 0.08) !important;
+                    border-color: rgba(163, 255, 18, 0.25) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
@@ -297,9 +341,52 @@ export const ServerNavigationBar = ({
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
                 @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
+                .sidebar-desktop-shell {
+                    position: relative;
+                }
+                .sidebar-desktop-shell::after {
+                    content: '';
+                    position: absolute;
+                    top: 10px;
+                    bottom: 10px;
+                    right: -1px;
+                    width: 2px;
+                    border-radius: 999px;
+                    background: #1f2937;
+                    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                    pointer-events: none;
+                }
+                .sidebar-desktop-shell::before {
+                    content: '';
+                    position: absolute;
+                    top: 10px;
+                    right: -4px;
+                    width: 8px;
+                    height: 42px;
+                    border-radius: 999px;
+                    background: radial-gradient(
+                        ellipse at center,
+                        rgba(220, 255, 162, 0.98) 0%,
+                        rgba(163, 255, 18, 0.92) 35%,
+                        rgba(163, 255, 18, 0.28) 60%,
+                        rgba(163, 255, 18, 0) 100%
+                    );
+                    animation: sidebar-neon-flow 2.6s linear infinite;
+                    filter: drop-shadow(0 0 10px rgba(163, 255, 18, 0.85));
+                    pointer-events: none;
+                }
+                @keyframes sidebar-neon-flow {
+                    from {
+                        transform: translateY(0);
+                    }
+                    to {
+                        transform: translateY(calc(100vh - 62px));
+                    }
+                }
                 .sidebar-link:hover {
-                    color: #ffffff !important;
-                    background-color: rgba(255,255,255,0.05) !important;
+                    color: #a3ff12 !important;
+                    background-color: rgba(163, 255, 18, 0.08) !important;
+                    border-color: rgba(163, 255, 18, 0.25) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />

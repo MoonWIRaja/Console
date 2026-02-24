@@ -20,6 +20,9 @@ import PaginationFooter from '@/components/elements/table/PaginationFooter';
 type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
 
+const cardClass =
+    'rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.06),0_20px_35px_rgba(0,0,0,0.45)]';
+
 export default () => {
     const user = useStoreState((state: ApplicationStore) => state.user.data!);
     const [activeTab, setActiveTab] = useState<Tab>('API');
@@ -29,6 +32,7 @@ export default () => {
         page: 1,
         sorts: { timestamp: -1 },
     });
+
     const {
         data: activityData,
         isValidating: activityLoading,
@@ -38,287 +42,308 @@ export default () => {
         revalidateOnFocus: false,
     });
 
-    const close = () => setModal(null);
-
     useEffect(() => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
 
     return (
-        <div
-            style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                maxWidth: '100%',
-                margin: '0',
-                padding: '0',
-                fontFamily: "'Space Mono', monospace",
-                backgroundColor: '#f3f4f6',
-                color: '#000000',
-                height: '100vh',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-            }}
-        >
+        <div className={'account-theme h-screen overflow-y-auto bg-[#000000] px-6 py-8 font-mono text-white md:px-10'}>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+                .account-theme {
+                    --neon-green: #a3ff12;
+                }
+
+                .account-theme .activity-feed-shell .bg-gray-700 {
+                    background-color: transparent !important;
+                }
+
+                .account-theme .activity-feed-shell .bg-gray-600 {
+                    background-color: #0f172a !important;
+                }
+
+                .account-theme .activity-feed-shell .grid {
+                    min-height: 104px;
+                    border-color: rgba(163, 255, 18, 0.18) !important;
+                }
+
+                .account-theme .activity-feed-shell .group:hover {
+                    background-color: rgba(163, 255, 18, 0.05) !important;
+                }
+
+                .account-theme .activity-feed-shell .text-gray-50 {
+                    color: #f8f6ef !important;
+                    font-weight: 700;
+                }
+
+                .account-theme .activity-feed-shell .text-gray-400 {
+                    color: #9ca3af !important;
+                }
+
+                .account-theme .activity-feed-shell .elements-activity-style-module__description {
+                    color: #cbd5e1 !important;
+                }
+
+                .account-theme .activity-feed-shell .elements-activity-style-module__description strong {
+                    color: #f8f6ef !important;
+                }
+
+                .account-theme .activity-feed-shell .elements-activity-style-module__icons {
+                    color: #94a3b8 !important;
+                }
+
+                .account-theme .activity-feed-shell a {
+                    color: #d1d5db !important;
+                }
+
+                .account-theme .activity-feed-shell a:hover {
+                    color: var(--neon-green) !important;
+                }
+
+                .account-theme .activity-feed-shell .self-center button {
+                    color: #9ca3af !important;
+                }
+
+                .account-theme .activity-feed-shell .self-center button:hover {
+                    color: var(--neon-green) !important;
+                }
+
+                .account-theme .activity-pagination-top .my-2 {
+                    margin: 0 !important;
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 14px;
+                }
+
+                .account-theme .activity-pagination-top p {
+                    margin: 0 !important;
+                    color: #9ca3af !important;
+                    font-size: 11px !important;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+
+                .account-theme .activity-pagination-top span {
+                    color: #f8f6ef !important;
+                    font-weight: 700 !important;
+                }
+
+                .account-theme .activity-pagination-top button {
+                    color: #9ca3af !important;
+                }
+
+                .account-theme .activity-pagination-top button:hover {
+                    color: var(--neon-green) !important;
+                }
+
+                .account-theme .account-tabs-shell .bg-white {
+                    background-color: transparent !important;
+                }
+
+                .account-theme .account-tabs-shell > div,
+                .account-theme .account-tabs-shell > div > div {
+                    background-color: transparent !important;
+                }
+
+                .account-theme .account-tabs-shell section {
+                    background-color: #000000 !important;
+                    border: 1px solid #1f2a14 !important;
+                    border-radius: 0.75rem !important;
+                    padding: 1.5rem !important;
+                }
+
+                .account-theme .account-tabs-shell .text-black {
+                    color: #f8f6ef !important;
+                }
+
+                .account-theme .account-tabs-shell .text-neutral-500 {
+                    color: #9ca3af !important;
+                }
+
+                .account-theme .account-tabs-shell .text-neutral-700 {
+                    color: #cbd5e1 !important;
+                }
+
+                .account-theme .account-tabs-shell .border-black,
+                .account-theme .account-tabs-shell .border-neutral-200 {
+                    border-color: rgba(163, 255, 18, 0.25) !important;
+                }
+
+                .account-theme .account-tabs-shell h2 {
+                    color: #f8f6ef !important;
+                }
+
+                .account-theme .account-tabs-shell input,
+                .account-theme .account-tabs-shell textarea,
+                .account-theme .account-tabs-shell select {
+                    background-color: #000000 !important;
+                    border-color: rgba(163, 255, 18, 0.28) !important;
+                    color: #f8f6ef !important;
+                    border-radius: 8px !important;
+                }
+
+                .account-theme .account-tabs-shell input::placeholder,
+                .account-theme .account-tabs-shell textarea::placeholder {
+                    color: rgba(248, 246, 239, 0.45) !important;
+                }
+
+                .account-theme .account-tabs-shell input:focus,
+                .account-theme .account-tabs-shell textarea:focus,
+                .account-theme .account-tabs-shell select:focus {
+                    border-color: var(--neon-green) !important;
+                    box-shadow: 0 0 0 1px rgba(163, 255, 18, 0.35), 0 0 0 4px rgba(163, 255, 18, 0.1) !important;
+                }
+
+                .account-theme .account-tabs-shell label {
+                    color: #d1d5db !important;
+                }
+
+                .account-theme .account-tabs-shell code {
+                    background-color: #0a1104 !important;
+                    color: #d9ff93 !important;
+                    border: 1px solid rgba(163, 255, 18, 0.32) !important;
+                    border-radius: 6px !important;
+                }
+
+                .account-theme .account-tabs-shell button[type='submit'],
+                .account-theme .account-tabs-shell .Button__ButtonStyle-sc-1qu1gou-0 {
+                    border-color: var(--neon-green) !important;
+                    background-color: var(--neon-green) !important;
+                    color: #000000 !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 0 14px rgba(163, 255, 18, 0.25) !important;
+                }
+
+                .account-theme .account-tabs-shell button[type='submit']:hover,
+                .account-theme .account-tabs-shell .Button__ButtonStyle-sc-1qu1gou-0:hover {
+                    filter: brightness(1.06) !important;
+                    box-shadow: 0 0 18px rgba(163, 255, 18, 0.35) !important;
+                }
+
+                .account-theme .account-tabs-shell button .text-neutral-400,
+                .account-theme .account-tabs-shell button svg {
+                    color: #94a3b8 !important;
+                }
+
+                .account-theme .account-tabs-shell button:hover svg {
+                    color: #ef4444 !important;
+                }
             `}</style>
 
-            <Dialog open={modal === 'EMAIL'} onClose={close} title='Update Email Address'>
+            <Dialog open={modal === 'EMAIL'} onClose={() => setModal(null)} title={'Update Email Address'}>
                 <UpdateEmailAddressForm />
             </Dialog>
-            <Dialog open={modal === 'PASSWORD'} onClose={close} title='Update Password'>
+            <Dialog open={modal === 'PASSWORD'} onClose={() => setModal(null)} title={'Update Password'}>
                 <UpdatePasswordForm />
             </Dialog>
-            <Dialog open={modal === '2FA'} onClose={close} title='Two-Step Verification'>
+            <Dialog open={modal === '2FA'} onClose={() => setModal(null)} title={'Two-Step Verification'}>
                 <ConfigureTwoFactorForm />
             </Dialog>
 
-            <div style={{ padding: '16px 16px 0' }}>
-                <FlashMessageRender byKey={'account'} />
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px',
-                        marginBottom: '16px',
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <div
-                        style={{ width: '64px', height: '64px', flexShrink: 0, borderRadius: '0', overflow: 'hidden' }}
-                    >
-                        <Avatar.User />
+            <FlashMessageRender byKey={'account'} />
+
+            <section
+                className={
+                    'mb-6 w-full max-w-[620px] rounded-xl border border-[#1f2a14] bg-[#000000] p-4 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                }
+            >
+                <div className={'flex flex-wrap items-center gap-4'}>
+                    <div className={'h-16 w-16 overflow-hidden rounded-lg border border-[#a3ff12]/40 bg-black'}>
+                        <Avatar.User size={64} variant={'beam'} />
                     </div>
-                    <div>
-                        <div
-                            style={{
-                                fontSize: 'clamp(18px, 2vw, 22px)',
-                                fontWeight: 'bold',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                letterSpacing: '-0.02em',
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            {user.username}
+                    <div className={'min-w-0'}>
+                        <div className={'flex flex-wrap items-center gap-2'}>
+                            <h1 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                {user.username}
+                            </h1>
                             {user.rootAdmin && (
                                 <span
-                                    style={{
-                                        fontSize: '10px',
-                                        backgroundColor: '#000000',
-                                        color: '#ffffff',
-                                        padding: '2px 6px',
-                                        letterSpacing: '0.05em',
-                                        textTransform: 'uppercase',
-                                    }}
+                                    className={
+                                        'rounded-lg border border-[#a3ff12]/45 bg-[#a3ff12]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#d9ff93]'
+                                    }
                                 >
                                     Administrator
                                 </span>
                             )}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', wordBreak: 'break-word' }}>
-                            {user.email}
-                        </div>
+                        <p className={'mt-1 text-xs text-gray-400'}>{user.email}</p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div
-                style={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    padding: '8px 16px 16px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '24px',
-                    alignItems: 'start',
-                }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{ border: '1px solid #000000', padding: '24px', backgroundColor: '#ffffff' }}>
-                        <h2
-                            style={{
-                                fontSize: '18px',
-                                fontWeight: 'bold',
-                                marginBottom: '20px',
-                                letterSpacing: '-0.02em',
-                            }}
-                        >
-                            Account Information
-                        </h2>
+            <div className={'grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
+                <div className={'flex flex-col gap-6'}>
+                    <section className={cardClass}>
+                        <h2 className={'mb-5 text-lg font-bold tracking-tight text-[#f8f6ef]'}>Account Information</h2>
 
                         <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                borderBottom: '1px solid #000000',
-                                paddingBottom: '16px',
-                                marginBottom: '16px',
-                                gap: '16px',
-                                flexWrap: 'wrap',
-                            }}
+                            className={
+                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#1f2a14] pb-4'
+                            }
                         >
-                            <div style={{ minWidth: '220px' }}>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        marginBottom: '4px',
-                                    }}
-                                >
-                                    Email
-                                </div>
-                                <div style={{ fontSize: '13px', wordBreak: 'break-word' }}>{user.email}</div>
+                            <div className={'min-w-[220px]'}>
+                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Email</p>
+                                <p className={'text-sm text-gray-100'}>{user.email}</p>
                             </div>
                             <button
                                 onClick={() => setModal('EMAIL')}
-                                style={{
-                                    padding: '6px 12px',
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #000000',
-                                    color: '#000000',
-                                    cursor: 'pointer',
-                                    fontFamily: "'Space Mono', monospace",
-                                    textTransform: 'uppercase',
-                                }}
+                                className={
+                                    'rounded-lg border border-[#2f3f17] bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 transition hover:border-[#a3ff12] hover:text-[#a3ff12]'
+                                }
+                                type={'button'}
                             >
                                 Edit
                             </button>
                         </div>
 
                         <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                borderBottom: '1px solid #000000',
-                                paddingBottom: '16px',
-                                marginBottom: '16px',
-                                gap: '16px',
-                                flexWrap: 'wrap',
-                            }}
+                            className={
+                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#1f2a14] pb-4'
+                            }
                         >
                             <div>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        marginBottom: '4px',
-                                    }}
-                                >
-                                    Password
-                                </div>
-                                <div style={{ fontSize: '13px' }}>********</div>
+                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Password</p>
+                                <p className={'text-sm text-gray-100'}>********</p>
                             </div>
                             <button
                                 onClick={() => setModal('PASSWORD')}
-                                style={{
-                                    padding: '6px 12px',
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #000000',
-                                    color: '#000000',
-                                    cursor: 'pointer',
-                                    fontFamily: "'Space Mono', monospace",
-                                    textTransform: 'uppercase',
-                                }}
+                                className={
+                                    'rounded-lg border border-[#2f3f17] bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 transition hover:border-[#a3ff12] hover:text-[#a3ff12]'
+                                }
+                                type={'button'}
                             >
                                 Change
                             </button>
                         </div>
 
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '16px',
-                                flexWrap: 'wrap',
-                            }}
-                        >
+                        <div className={'flex flex-wrap items-center justify-between gap-4'}>
                             <div>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        marginBottom: '4px',
-                                    }}
-                                >
+                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
                                     Two-Step Verification
-                                </div>
-                                <div style={{ fontSize: '13px', color: user.useTotp ? '#22c55e' : '#ef4444' }}>
+                                </p>
+                                <p className={`text-sm font-bold ${user.useTotp ? 'text-[#a3ff12]' : 'text-red-400'}`}>
                                     {user.useTotp ? 'Currently enabled' : 'Currently disabled'}
-                                </div>
+                                </p>
                             </div>
                             <button
                                 onClick={() => setModal('2FA')}
-                                style={{
-                                    padding: '6px 12px',
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    backgroundColor: user.useTotp ? '#ef4444' : '#000000',
-                                    border: '1px solid',
-                                    borderColor: user.useTotp ? '#ef4444' : '#000000',
-                                    color: '#ffffff',
-                                    cursor: 'pointer',
-                                    fontFamily: "'Space Mono', monospace",
-                                    textTransform: 'uppercase',
-                                }}
+                                className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition ${
+                                    user.useTotp
+                                        ? 'border border-red-600 bg-red-600 text-white hover:bg-red-500'
+                                        : 'border border-[#a3ff12] bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)] hover:brightness-110'
+                                }`}
+                                type={'button'}
                             >
                                 {user.useTotp ? 'Disable' : 'Enable'}
                             </button>
                         </div>
-                    </div>
+                    </section>
 
-                    <div className='login-activity' style={{ border: '1px solid #000000', padding: '24px', backgroundColor: '#ffffff' }}>
-                        <style>{`
-                            .login-activity .bg-gray-700 { background-color: #ffffff !important; }
-                            .login-activity .grid { border-color: #000000 !important; min-height: 104px; }
-                            .login-activity .group:hover { background-color: #f9fafb !important; }
-                            .login-activity .text-gray-50 { color: #000000 !important; font-weight: 700; }
-                            .login-activity .text-gray-400 { color: #6b7280 !important; }
-                            .login-activity .elements-activity-style-module__description { color: #4b5563 !important; }
-                            .login-activity .elements-activity-style-module__icons { color: #000000 !important; }
-                            .login-activity a { color: #000000 !important; }
-                            .login-activity a:hover { color: #4b5563 !important; }
-                            .login-activity .bg-gray-600 { background-color: #e5e7eb !important; }
-                            .login-activity .self-center button { color: #000000 !important; }
-                            .login-activity .self-center button:hover { color: #6b7280 !important; }
-                            
-                            /* Pagination Top Right Fixes */
-                            .login-activity .activity-pagination-top .my-2 { margin: 0 !important; align-items: center; justify-content: flex-end; gap: 16px; }
-                            .login-activity .activity-pagination-top p { margin: 0 !important; color: #6b7280 !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'Space Mono', monospace !important; }
-                            .login-activity .activity-pagination-top span { color: #000000 !important; font-weight: bold !important; font-size: 13px !important; }
-                            .login-activity .activity-pagination-top button { color: #000000 !important; padding: 4px !important; }
-                            .login-activity .activity-pagination-top svg { width: 16px; height: 16px; }
-                        `}</style>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
-                            <h2
-                                style={{
-                                    fontSize: '18px',
-                                    fontWeight: 'bold',
-                                    margin: 0,
-                                    letterSpacing: '-0.02em',
-                                }}
-                            >
-                                Recent Activity
-                            </h2>
+                    <section className={cardClass}>
+                        <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
+                            <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Recent Activity</h2>
                             {activityData && (
-                                <div className="activity-pagination-top">
+                                <div className={'activity-pagination-top'}>
                                     <PaginationFooter
                                         pagination={activityData.pagination}
                                         onPageSelect={(page) => setActivityFilters((value) => ({ ...value, page }))}
@@ -326,220 +351,71 @@ export default () => {
                                 </div>
                             )}
                         </div>
-                        <div style={{ fontFamily: 'inherit' }}>
-                            {!activityData && activityLoading ? (
-                                <Spinner centered />
-                            ) : (
-                                <div style={{ height: '520px', overflowY: 'auto', paddingRight: '6px' }}>
+
+                        {!activityData && activityLoading ? (
+                            <Spinner centered />
+                        ) : (
+                            <div className={'max-h-[520px] overflow-y-auto pr-1'}>
+                                <div className={'activity-feed-shell'}>
                                     <div className={'bg-gray-700'}>
-                                        {activityData?.items.map((activity) => (
-                                            <ActivityLogEntry key={activity.id} activity={activity}>
-                                                {typeof activity.properties.useragent === 'string' && (
-                                                    <Tooltip content={activity.properties.useragent} placement={'top'}>
-                                                        <span>
-                                                            <DesktopComputerIcon />
-                                                        </span>
-                                                    </Tooltip>
-                                                )}
-                                            </ActivityLogEntry>
-                                        ))}
+                                        {activityData?.items.length ? (
+                                            activityData.items.map((activity) => (
+                                                <ActivityLogEntry key={activity.id} activity={activity}>
+                                                    {typeof activity.properties.useragent === 'string' && (
+                                                        <Tooltip
+                                                            content={activity.properties.useragent}
+                                                            placement={'top'}
+                                                        >
+                                                            <span>
+                                                                <DesktopComputerIcon />
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                </ActivityLogEntry>
+                                            ))
+                                        ) : (
+                                            <p className={'py-8 text-center text-xs text-gray-500'}>
+                                                No activity found for this account.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
+                            </div>
+                        )}
+                    </section>
                 </div>
 
-                <div
-                    style={{
-                        border: '1px solid #000000',
-                        backgroundColor: '#ffffff',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minWidth: 0,
-                    }}
-                >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #000000' }}>
+                <section className={'rounded-xl border border-[#1f2a14] bg-[#050505]'}>
+                    <div className={'grid grid-cols-2 border-b border-[#1f2a14]'}>
                         <button
                             onClick={() => setActiveTab('API')}
-                            style={{
-                                padding: '16px',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                backgroundColor: activeTab === 'API' ? '#000000' : 'transparent',
-                                color: activeTab === 'API' ? '#ffffff' : '#6b7280',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontFamily: "'Space Mono', monospace",
-                                letterSpacing: '0.05em',
-                                transition: 'all 0.15s',
-                                textTransform: 'uppercase',
-                            }}
+                            className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
+                                activeTab === 'API'
+                                    ? 'bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)]'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                            type={'button'}
                         >
                             API Keys
                         </button>
                         <button
                             onClick={() => setActiveTab('SSH')}
-                            style={{
-                                padding: '16px',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                backgroundColor: activeTab === 'SSH' ? '#000000' : 'transparent',
-                                color: activeTab === 'SSH' ? '#ffffff' : '#6b7280',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontFamily: "'Space Mono', monospace",
-                                letterSpacing: '0.05em',
-                                transition: 'all 0.15s',
-                                textTransform: 'uppercase',
-                            }}
+                            className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
+                                activeTab === 'SSH'
+                                    ? 'bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)]'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                            type={'button'}
                         >
                             SSH Keys
                         </button>
                     </div>
 
-                    <div className='embedded-tabs-content' style={{ minWidth: 0 }}>
-                        <style>{`
-                            .embedded-tabs-content .PageContentBlock > h1 { display: none !important; }
-                            .embedded-tabs-content .ContentContainer-sc-x3r2dw-0:last-child { display: none !important; }
-                            .embedded-tabs-content .ContentContainer-sc-x3r2dw-0 { margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-                            
-                            /* Tab View Responsiveness: 50/50 Layout */
-                            .embedded-tabs-content .md\\:flex { 
-                                display: flex !important; 
-                                flex-direction: row !important; 
-                                gap: 24px !important; 
-                                align-items: flex-start !important; 
-                            }
-                            .embedded-tabs-content .md\\:w-1\\/2 { 
-                                width: calc(50% - 12px) !important; 
-                                border: 1px solid #000000 !important; 
-                                background-color: #ffffff !important; 
-                                padding: 24px !important; 
-                                box-sizing: border-box !important;
-                            }
-                            .embedded-tabs-content .md\\:ml-8 { margin-left: 0 !important; }
-                            
-                            /* Inner ContentBox completely transparent to remove "box dalam" */
-                            .embedded-tabs-content .ContentBox { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-                            
-                            /* Headers */
-                            .embedded-tabs-content h2,
-                            .embedded-tabs-content .ContentBox > h2 { 
-                                font-size: 18px !important; 
-                                font-weight: bold !important; 
-                                border-bottom: none !important; 
-                                padding: 0 !important; 
-                                margin: 0 0 20px 0 !important; 
-                                background: transparent !important; 
-                                color: #000000 !important; 
-                                letter-spacing: -0.02em !important; 
-                                text-transform: none !important;
-                                font-family: 'Space Mono', monospace !important; 
-                            }
-                            .embedded-tabs-content .ContentBox > div { padding: 0 !important; }
-                            
-                            /* Form overrides to match stark theme */
-                            .embedded-tabs-content input, 
-                            .embedded-tabs-content textarea,
-                            .embedded-tabs-content select { 
-                                background-color: #ffffff !important; 
-                                border: 1px solid #000000 !important; 
-                                color: #000000 !important; 
-                                border-radius: 0 !important; 
-                                font-family: 'Space Mono', monospace !important; 
-                                padding: 12px !important;
-                                font-size: 13px !important;
-                                width: 100% !important;
-                                box-sizing: border-box !important;
-                            }
-                            .embedded-tabs-content input:focus, 
-                            .embedded-tabs-content textarea:focus { 
-                                outline: none !important;
-                            }
-                            
-                            .embedded-tabs-content label { 
-                                color: #6b7280 !important; 
-                                text-transform: uppercase !important; 
-                                font-size: 10px !important; 
-                                letter-spacing: 0.05em !important; 
-                                font-family: 'Space Mono', monospace !important; 
-                                display: block !important;
-                                margin-bottom: 4px !important;
-                            }
-                            
-                            .embedded-tabs-content p.text-sm, 
-                            .embedded-tabs-content .InputError___StyledP2-sc-12bxu09-0,
-                            .embedded-tabs-content p { 
-                                color: #6b7280 !important; 
-                                font-family: 'Space Mono', monospace !important; 
-                                font-size: 12px !important;
-                                margin-top: 4px !important;
-                                line-height: 1.5 !important;
-                            }
-                            
-                            /* Buttons */
-                            .embedded-tabs-content button[type="submit"], 
-                            .embedded-tabs-content button.Button__ButtonStyle-sc-1qu1gou-0 { 
-                                background-color: transparent !important; 
-                                color: #000000 !important; 
-                                border-radius: 0 !important; 
-                                font-family: 'Space Mono', monospace !important; 
-                                font-size: 10px !important; 
-                                font-weight: bold !important; 
-                                text-transform: uppercase !important; 
-                                padding: 6px 12px !important; 
-                                border: 1px solid #000000 !important; 
-                                cursor: pointer !important;
-                                transition: all 0.2s ease !important;
-                                box-shadow: none !important;
-                                display: inline-block !important;
-                                margin-top: 16px !important;
-                            }
-                            .embedded-tabs-content button[type="submit"]:hover, 
-                            .embedded-tabs-content button.Button__ButtonStyle-sc-1qu1gou-0:hover { 
-                                background-color: #000000 !important; 
-                                color: #ffffff !important; 
-                            }
-                            
-                            /* List Items / API Key Cards */
-                            .embedded-tabs-content .GreyRowBox-sc-1bczx2-0, 
-                            .embedded-tabs-content .grid { 
-                                background-color: #ffffff !important; 
-                                border: 1px solid #000000 !important; 
-                                color: #000000 !important; 
-                                border-radius: 0 !important; 
-                                box-shadow: none !important; 
-                                margin-bottom: 12px !important; 
-                                padding: 16px !important;
-                                display: flex !important;
-                                align-items: center !important;
-                                justify-content: space-between !important;
-                            }
-                            
-                            .embedded-tabs-content code { 
-                                background-color: #f3f4f6 !important; 
-                                color: #000000 !important; 
-                                padding: 4px 8px !important; 
-                                border-radius: 0 !important; 
-                                font-family: 'Space Mono', monospace !important; 
-                                font-size: 12px !important;
-                                border: 1px solid #e5e7eb !important;
-                            }
-                            
-                            /* Delete Buttons in List */
-                            .embedded-tabs-content button .text-neutral-400,
-                            .embedded-tabs-content button svg { 
-                                color: #000000 !important; 
-                            }
-                            .embedded-tabs-content button:hover svg { 
-                                color: #ef4444 !important; 
-                            }
-                        `}</style>
+                    <div className={'account-tabs-shell min-w-0 px-4 pb-4 pt-5'}>
                         {activeTab === 'API' && <AccountApiContainer />}
                         {activeTab === 'SSH' && <AccountSSHContainer />}
                     </div>
-                </div>
+                </section>
             </div>
         </div>
     );

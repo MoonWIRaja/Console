@@ -71,7 +71,7 @@ export default () => {
                                 style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#ffffff',
+                                    color: '#a3ff12',
                                     fontSize: '20px',
                                     cursor: 'pointer',
                                     padding: '4px',

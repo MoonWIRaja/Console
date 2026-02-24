@@ -11,6 +11,7 @@ import { PaginatedResult } from '@/api/http';
 import Pagination from '@/components/elements/Pagination';
 import { useLocation } from 'react-router-dom';
 import FlashMessageRender from '@/components/FlashMessageRender';
+import ToggleSwitch from '@/components/ui/toggle-switch';
 
 export default () => {
     const { search } = useLocation();
@@ -48,78 +49,85 @@ export default () => {
     }, [error]);
 
     return (
-        <div style={{ padding: '32px 40px', fontFamily: "'Space Mono', monospace", minHeight: '100vh', backgroundColor: '#ffffff' }}>
-            <FlashMessageRender byKey={'dashboard'} />
+        <div className='min-h-screen bg-[#000000] px-6 py-8 font-mono text-white md:px-10'>
+            <style>{`
+                .dashboard-theme {
+                    --neon-green: #a3ff12;
+                }
+                .shine-border {
+                    border-radius: 12px;
+                    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+                    transition: background 0.35s ease;
+                }
+                .shine-border:hover {
+                    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+                }
+                .neon-glow-text {
+                    text-shadow: 0 0 8px rgba(163, 255, 18, 0.5);
+                }
+                .progress-neon {
+                    box-shadow: 0 0 10px rgba(163, 255, 18, 0.55);
+                }
+            `}</style>
+            <div className='dashboard-theme'>
+                <FlashMessageRender byKey={'dashboard'} />
 
-            <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
-                        YOUR SERVERS
-                    </h1>
-                    <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                        {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
-                    </p>
+                <div className='mb-8 flex flex-wrap items-center justify-between gap-4'>
+                    <div>
+                        <h1 className='text-2xl font-black tracking-tight text-white'>YOUR SERVERS</h1>
+                        <p className='mt-1 text-[11px] text-gray-400'>
+                            {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
+                        </p>
+                    </div>
+                    {rootAdmin && (
+                        <ToggleSwitch
+                            id='toggle-admin-servers'
+                            checked={!!showOnlyAdmin}
+                            onChange={(value) => setShowOnlyAdmin(value)}
+                            label={showOnlyAdmin ? 'Showing All Servers' : 'Showing My Servers'}
+                        />
+                    )}
                 </div>
-                {rootAdmin && (
-                    <button
-                        onClick={() => setShowOnlyAdmin((s) => !s)}
-                        style={{
-                            padding: '8px 16px',
-                            fontSize: '10px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            border: '1px solid #000000',
-                            backgroundColor: showOnlyAdmin ? '#000000' : 'transparent',
-                            color: showOnlyAdmin ? '#ffffff' : '#000000',
-                            cursor: 'pointer',
-                            fontFamily: "'Space Mono', monospace",
-                            transition: 'all 0.15s',
-                        }}
-                    >
-                        {showOnlyAdmin ? 'SHOW MINE' : 'SHOW ALL'}
-                    </button>
-                )}
-            </div>
 
-            {!servers ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-                    <Spinner centered size={'large'} />
-                </div>
-            ) : (
-                <Pagination data={servers} onPageSelect={setPage}>
-                    {({ items }) =>
-                        items.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {!servers ? (
+                    <div className='flex justify-center py-16'>
+                        <Spinner centered size={'large'} />
+                    </div>
+                ) : (
+                    <Pagination data={servers} onPageSelect={setPage}>
+                        {({ items }) =>
+                            items.length > 0 ? (
+                                    <div className='flex flex-col gap-3'>
                                     {items.map((server) => (
                                         <ServerRow key={server.uuid} server={server} />
                                     ))}
                                 </div>
-                        ) : (
-                                    <div style={{ textAlign: 'center', padding: '60px 0' }}>
-                                        <p style={{ color: '#9ca3af', fontSize: '12px' }}>
-                                            {showOnlyAdmin
-                                                ? 'There are no other servers to display.'
-                                                : 'There are no servers associated with your account.'}
-                                        </p>
-                                    </div>
-                        )
-                    }
-                </Pagination>
-            )}
+                                ) : (
+                                <div className='py-16 text-center'>
+                                    <p className='text-xs text-gray-500'>
+                                        {showOnlyAdmin
+                                            ? 'There are no other servers to display.'
+                                            : 'There are no servers associated with your account.'}
+                                    </p>
+                                </div>
+                            )
+                        }
+                    </Pagination>
+                )}
 
-            <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                <p style={{ fontSize: '10px', color: '#d1d5db' }}>
-                    <a
-                        rel={'noopener nofollow noreferrer'}
-                        href={'https://pterodactyl.io'}
-                        target={'_blank'}
-                        style={{ color: '#d1d5db', textDecoration: 'none' }}
-                    >
-                        Pterodactyl&reg;
-                    </a>
-                    &nbsp;&copy; 2015 - {new Date().getFullYear()}
-                </p>
+                <div className='mt-10 text-center'>
+                    <p className='text-[10px] text-gray-600'>
+                        <a
+                            rel={'noopener nofollow noreferrer'}
+                            href={'https://pterodactyl.io'}
+                            target={'_blank'}
+                            className='text-gray-600 no-underline hover:text-gray-500'
+                        >
+                            Pterodactyl&reg;
+                        </a>
+                        &nbsp;&copy; 2015 - {new Date().getFullYear()}
+                    </p>
+                </div>
             </div>
         </div>
     );

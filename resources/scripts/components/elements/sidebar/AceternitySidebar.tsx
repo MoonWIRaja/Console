@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 // ============================================================
 // Aceternity-style Sidebar (ported for React 16 + framer-motion v6)
-// Collapsible on hover, mobile responsive, dark theme with glass effect
+// Collapsible on hover, mobile responsive, dark neon theme
 // ============================================================
 
 interface SidebarContextType {
@@ -82,17 +82,15 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
                     top: 0,
                     left: 0,
                     zIndex: 20,
-                    background: 'rgba(0, 0, 0, 0.9)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
+                    background: '#000000',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRight: '1px solid rgba(163, 255, 18, 0.2)',
                     fontFamily: "'Inter', sans-serif",
                     overflow: 'hidden',
                     flexShrink: 0,
                 }}
-                className={className || ''}
+                className={`sidebar-desktop-shell ${className || ''}`}
             >
                 {children}
             </motion.div>
@@ -118,9 +116,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'rgba(0, 0, 0, 0.9)',
-                        backdropFilter: 'blur(16px)',
-                        WebkitBackdropFilter: 'blur(16px)',
+                        background: '#000000',
                         padding: '12px 16px',
                         fontFamily: "'Inter', sans-serif",
                         position: 'fixed',
@@ -128,16 +124,16 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderBottom: '1px solid rgba(163, 255, 18, 0.2)',
                     }}
                 >
-                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BusHen</div>
+                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BurHan Console</div>
                     <button
                         onClick={() => setOpen(!open)}
                         style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ffffff',
+                            color: '#a3ff12',
                             fontSize: '20px',
                             cursor: 'pointer',
                             padding: '4px',
@@ -176,15 +172,14 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                 left: 0,
                                 height: '100vh',
                                 width: '256px',
-                                background: 'rgba(0, 0, 0, 0.95)',
-                                backdropFilter: 'blur(16px)',
-                                WebkitBackdropFilter: 'blur(16px)',
+                                background: '#000000',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 fontFamily: "'Inter', sans-serif",
-                                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRight: '1px solid rgba(163, 255, 18, 0.2)',
                             }}
+                            className='sidebar-mobile-shell'
                         >
                             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px' }}>
                                 <button
@@ -192,7 +187,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                     style={{
                                         background: 'none',
                                         border: 'none',
-                                        color: '#ffffff',
+                                        color: '#a3ff12',
                                         fontSize: '18px',
                                         cursor: 'pointer',
                                     }}
@@ -274,8 +269,10 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 gap: expanded ? '12px' : '0px',
                 padding: '10px 12px',
                 textDecoration: 'none',
-                color: active ? '#ffffff' : '#9ca3af',
-                backgroundColor: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                color: active ? '#a3ff12' : '#d1d5db',
+                backgroundColor: active ? 'rgba(163, 255, 18, 0.1)' : 'transparent',
+                border: `1px solid ${active ? 'rgba(163, 255, 18, 0.35)' : 'transparent'}`,
+                boxShadow: active ? '0 0 12px rgba(163, 255, 18, 0.16)' : 'none',
                 borderRadius: '8px',
                 margin: '2px 0',
                 transition: 'all 0.15s',
@@ -342,7 +339,7 @@ export const SidebarLabel = ({ label }: SidebarLabelProps) => {
                 fontSize: '12px',
                 fontWeight: 500,
                 letterSpacing: '0.05em',
-                color: '#6b7280',
+                color: '#7a7a7a',
                 textTransform: 'uppercase',
             }}
         >
