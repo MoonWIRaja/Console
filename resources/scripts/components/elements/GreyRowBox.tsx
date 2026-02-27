@@ -2,11 +2,11 @@ import styled from 'styled-components/macro';
 import tw from 'twin.macro';
 
 export default styled.div<{ $hoverable?: boolean }>`
-    ${tw`flex rounded no-underline text-neutral-200 items-center bg-neutral-700 p-4 border border-transparent transition-colors duration-150 overflow-hidden`};
+    ${tw`flex items-center overflow-hidden rounded-xl border border-[#1f2a14] bg-[#000000] p-4 text-[#f8f6ef] no-underline transition-colors duration-150`};
 
-    ${(props) => props.$hoverable !== false && tw`hover:border-neutral-500`};
+    ${(props) => props.$hoverable !== false && tw`hover:border-[#2d3c1f] hover:bg-[#040404]`};
 
     & .icon {
-        ${tw`rounded-full w-16 flex items-center justify-center bg-neutral-500 p-3`};
+        ${tw`flex w-16 items-center justify-center rounded-full border border-[#1f2a14] bg-[#090909] p-3`};
     }
 `;

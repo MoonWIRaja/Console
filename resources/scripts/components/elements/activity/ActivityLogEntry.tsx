@@ -44,26 +44,26 @@ export default ({ activity, children }: Props) => {
     const properties = wrapProperties(activity.properties);
 
     return (
-        <div className={'grid grid-cols-10 py-4 border-b-2 border-gray-800 last:rounded-b last:border-0 group'}>
+        <div className={'group grid grid-cols-10 border-b border-[#1f2a14] py-4 last:rounded-b-xl last:border-0'}>
             <div className={'hidden sm:flex sm:col-span-1 items-center justify-center select-none'}>
-                <div className={'flex items-center w-10 h-10 rounded-full bg-gray-600 overflow-hidden'}>
+                <div className={'flex h-10 w-10 items-center overflow-hidden rounded-full border border-[#1f2a14] bg-[#050505]'}>
                     <Avatar name={actor?.uuid || 'system'} />
                 </div>
             </div>
             <div className={'col-span-10 sm:col-span-9 flex'}>
                 <div className={'flex-1 px-4 sm:px-0'}>
-                    <div className={'flex items-center text-gray-50'}>
+                    <div className={'flex items-center text-[#f8f6ef]'}>
                         <Tooltip placement={'top'} content={actor?.email || 'System User'}>
                             <span>{actor?.username || 'System'}</span>
                         </Tooltip>
-                        <span className={'text-gray-400'}>&nbsp;&mdash;&nbsp;</span>
+                        <span className={'text-neutral-500'}>&nbsp;&mdash;&nbsp;</span>
                         <Link
                             to={`#${pathTo({ event: activity.event })}`}
-                            className={'transition-colors duration-75 active:text-cyan-400 hover:text-cyan-400'}
+                            className={'transition-colors duration-75 hover:text-[#d9ff93] active:text-[#a3ff12]'}
                         >
                             {activity.event}
                         </Link>
-                        <div className={classNames(style.icons, 'group-hover:text-gray-300')}>
+                        <div className={classNames(style.icons, 'group-hover:text-[#d9ff93]')}>
                             {activity.isApi && (
                                 <Tooltip placement={'top'} content={'Using API Key'}>
                                     <TerminalIcon />
@@ -84,7 +84,7 @@ export default ({ activity, children }: Props) => {
                         {activity.ip && (
                             <span>
                                 {activity.ip}
-                                <span className={'text-gray-400'}>&nbsp;|&nbsp;</span>
+                                <span className={'text-neutral-500'}>&nbsp;|&nbsp;</span>
                             </span>
                         )}
                         <Tooltip placement={'right'} content={format(activity.timestamp, 'MMM do, yyyy H:mm:ss')}>

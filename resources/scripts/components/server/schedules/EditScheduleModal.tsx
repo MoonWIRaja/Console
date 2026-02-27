@@ -90,7 +90,9 @@ const EditScheduleModal = ({ schedule }: Props) => {
         >
             {({ isSubmitting }) => (
                 <Form>
-                    <h3 css={tw`text-2xl mb-6`}>{schedule ? 'Edit schedule' : 'Create new schedule'}</h3>
+                    <h3 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>
+                        {schedule ? 'Edit schedule' : 'Create new schedule'}
+                    </h3>
                     <FlashMessageRender byKey={'schedule:edit'} css={tw`mb-6`} />
                     <Field
                         name={'name'}
@@ -104,11 +106,11 @@ const EditScheduleModal = ({ schedule }: Props) => {
                         <Field name={'month'} label={'Month'} />
                         <Field name={'dayOfWeek'} label={'Day of week'} />
                     </div>
-                    <p css={tw`text-neutral-400 text-xs mt-2`}>
+                    <p css={tw`mt-2 text-xs text-neutral-400`}>
                         The schedule system supports the use of Cronjob syntax when defining when tasks should begin
                         running. Use the fields above to specify when these tasks should begin running.
                     </p>
-                    <div css={tw`mt-6 bg-neutral-700 border border-neutral-800 shadow-inner p-4 rounded`}>
+                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
                         <Switch
                             name={'show_cheatsheet'}
                             description={'Show the cron cheatsheet for some examples.'}
@@ -122,14 +124,14 @@ const EditScheduleModal = ({ schedule }: Props) => {
                             </div>
                         )}
                     </div>
-                    <div css={tw`mt-6 bg-neutral-700 border border-neutral-800 shadow-inner p-4 rounded`}>
+                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'onlyWhenOnline'}
                             description={'Only execute this schedule when the server is in a running state.'}
                             label={'Only When Server Is Online'}
                         />
                     </div>
-                    <div css={tw`mt-6 bg-neutral-700 border border-neutral-800 shadow-inner p-4 rounded`}>
+                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'enabled'}
                             description={'This schedule will be executed automatically if enabled.'}

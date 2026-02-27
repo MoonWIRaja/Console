@@ -91,18 +91,18 @@ const ServerConsoleContainer = () => {
     const diskPercent = diskLimitBytes > 0 ? clampPercent((stats.disk / diskLimitBytes) * 100) : 0;
 
     const statusBadgeClass = classNames(
-        'rounded-none border px-2 py-0.5 text-xs font-bold',
+        'rounded-lg border px-2 py-0.5 text-xs font-bold',
         status === 'running'
-            ? 'border-green-200 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400'
+            ? 'border-[#a3ff12]/45 bg-[#a3ff12]/10 text-[#d9ff93]'
             : status === 'offline' || status === null
-            ? 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400'
-            : 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+            ? 'border-red-500/40 bg-red-500/10 text-red-400'
+            : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
     );
 
     return (
         <div
             className={
-                'relative flex min-h-screen w-full overflow-x-hidden bg-white text-gray-900 lg:h-screen lg:overflow-hidden'
+                'relative flex min-h-screen w-full overflow-x-hidden bg-[#000000] text-gray-100 lg:h-screen lg:overflow-hidden'
             }
             style={{
                 fontFamily:
@@ -110,8 +110,8 @@ const ServerConsoleContainer = () => {
             }}
         >
             <div className={'pointer-events-none absolute inset-0 z-0 hidden lg:flex'}>
-                <div className={'h-full w-[77%] bg-white'} />
-                <div className={'h-full w-[23%] bg-white'} />
+                <div className={'h-full w-[77%] bg-[#000000]'} />
+                <div className={'h-full w-[23%] bg-[#000000]'} />
             </div>
             <div
                 className={
@@ -144,18 +144,16 @@ const ServerConsoleContainer = () => {
                     )}
                     <div
                         className={
-                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-none border border-gray-200 bg-white shadow-sm md:min-h-[500px]'
+                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-xl border border-[#1f2a14] bg-[#000000] shadow-none md:min-h-[500px]'
                         }
                     >
                         <div
                             className={
-                                'flex items-center justify-between border-b border-gray-200 bg-gray-50/60 px-4 py-3'
+                                'flex items-center justify-between border-b border-[#1f2a14] bg-[#000000] px-4 py-3'
                             }
                         >
                             <h2
-                                className={
-                                    'flex items-center text-sm font-bold uppercase tracking-wide text-neutral-900'
-                                }
+                                className={'flex items-center text-sm font-bold uppercase tracking-wide text-[#f8f6ef]'}
                             >
                                 <span
                                     className={classNames('mr-2 h-2 w-2 rounded-full', {
@@ -175,17 +173,21 @@ const ServerConsoleContainer = () => {
                         </div>
                     </div>
 
-                    <div className={'rounded-none border border-gray-200 bg-white p-6 shadow-sm'}>
-                        <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-neutral-900'}>
+                    <div
+                        className={
+                            'rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.06)]'
+                        }
+                    >
+                        <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
                             Server Statistics
                         </h3>
                         <div className={'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4'}>
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500'}>CPU Usage</span>
+                                    <span className={'text-sm font-medium text-gray-400'}>CPU Usage</span>
                                 </div>
-                                <div className={'text-3xl font-black text-gray-900'}>{stats.cpu.toFixed(1)}%</div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
+                                <div className={'text-3xl font-black text-[#f8f6ef]'}>{stats.cpu.toFixed(1)}%</div>
+                                <div className={'h-2 w-full rounded-full bg-white/10'}>
                                     <div
                                         className={'h-2 rounded-none bg-blue-600 transition-all duration-500'}
                                         style={{ width: `${cpuPercent}%` }}
@@ -195,16 +197,16 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500'}>Memory Usage</span>
+                                    <span className={'text-sm font-medium text-gray-400'}>Memory Usage</span>
                                 </div>
-                                <div className={'text-2xl font-black text-gray-900'}>
+                                <div className={'text-2xl font-black text-[#f8f6ef]'}>
                                     {bytesToString(stats.memory)}
-                                    <span className={'text-lg font-normal text-gray-400'}>
+                                    <span className={'text-lg font-normal text-gray-500'}>
                                         {' '}
                                         / {memoryLimitBytes > 0 ? bytesToString(memoryLimitBytes) : '\u221E'}
                                     </span>
                                 </div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
+                                <div className={'h-2 w-full rounded-full bg-white/10'}>
                                     <div
                                         className={'h-2 rounded-none bg-purple-600 transition-all duration-500'}
                                         style={{ width: `${memoryPercent}%` }}
@@ -214,16 +216,16 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500'}>Disk Usage</span>
+                                    <span className={'text-sm font-medium text-gray-400'}>Disk Usage</span>
                                 </div>
-                                <div className={'text-2xl font-black text-gray-900'}>
+                                <div className={'text-2xl font-black text-[#f8f6ef]'}>
                                     {bytesToString(stats.disk)}
-                                    <span className={'text-lg font-normal text-gray-400'}>
+                                    <span className={'text-lg font-normal text-gray-500'}>
                                         {' '}
                                         / {diskLimitBytes > 0 ? bytesToString(diskLimitBytes) : '\u221E'}
                                     </span>
                                 </div>
-                                <div className={'h-2 w-full rounded-full bg-gray-200'}>
+                                <div className={'h-2 w-full rounded-full bg-white/10'}>
                                     <div
                                         className={'h-2 rounded-none bg-pink-600 transition-all duration-500'}
                                         style={{ width: `${diskPercent}%` }}
@@ -233,16 +235,16 @@ const ServerConsoleContainer = () => {
 
                             <div className={'space-y-2'}>
                                 <div className={'flex items-end justify-between'}>
-                                    <span className={'text-sm font-medium text-gray-500'}>Network</span>
+                                    <span className={'text-sm font-medium text-gray-400'}>Network</span>
                                 </div>
                                 <div className={'flex flex-col space-y-1'}>
-                                    <div className={'flex items-center text-sm font-bold text-gray-700'}>
+                                    <div className={'flex items-center text-sm font-bold text-gray-200'}>
                                         <span className={'material-icons-round mr-1 text-base text-green-500'}>
                                             arrow_downward
                                         </span>
                                         {bytesToString(networkRate.rx)}/s
                                     </div>
-                                    <div className={'flex items-center text-sm font-bold text-gray-700'}>
+                                    <div className={'flex items-center text-sm font-bold text-gray-200'}>
                                         <span className={'material-icons-round mr-1 text-base text-blue-500'}>
                                             arrow_upward
                                         </span>
@@ -261,57 +263,66 @@ const ServerConsoleContainer = () => {
                         'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[23%] xl:flex-none xl:pl-0'
                     }
                 >
-                    <div className={'flex items-center rounded-none border border-gray-200 bg-white p-4 shadow-sm'}>
+                    <div
+                        className={
+                            'flex items-center rounded-xl border border-[#1f2a14] bg-[#000000] p-4 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                        }
+                    >
                         <div
                             className={
-                                'mr-3 flex h-10 w-10 items-center justify-center rounded-none bg-blue-600 text-lg font-bold text-white shadow-md shadow-blue-500/30'
+                                'mr-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[#a3ff12]/35 bg-[#000000] text-lg font-bold text-[#d9ff93] shadow-[0_0_12px_rgba(163,255,18,0.25)]'
                             }
                         >
                             {username.charAt(0).toUpperCase()}
                         </div>
                         <div className={'min-w-0'}>
-                            <h3 className={'truncate font-bold text-gray-900'}>{username}</h3>
-                            <p className={'truncate text-xs text-gray-500'}>{email}</p>
+                            <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
+                            <p className={'truncate text-xs text-gray-400'}>{email}</p>
                         </div>
                     </div>
 
-                    <div className={'rounded-none border border-gray-200 bg-white p-5 shadow-sm'}>
-                        <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-neutral-900'}>
+                    <div
+                        className={
+                            'rounded-xl border border-[#1f2a14] bg-[#000000] p-5 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                        }
+                    >
+                        <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
                             Server Control
                         </h3>
                         <div className={'mb-6 space-y-3 text-sm'}>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500'}>IP:</span>
+                                <span className={'text-gray-400'}>IP:</span>
                                 <span
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-gray-100 px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-700'
+                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
                                     }
                                 >
                                     {allocation}
                                 </span>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500'}>Status:</span>
+                                <span className={'text-gray-400'}>Status:</span>
                                 <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500'}>Node:</span>
+                                <span className={'text-gray-400'}>Node:</span>
                                 <code
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800'
+                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-right font-mono text-xs text-gray-200'
                                     }
                                 >
                                     {node}
                                 </code>
                             </div>
                             <div className={'flex items-start justify-between gap-3'}>
-                                <span className={'text-gray-500'}>Server ID:</span>
+                                <span className={'text-gray-400'}>Server ID:</span>
                                 <code
+                                    title={uuid}
                                     className={
-                                        'max-w-[70%] break-all rounded-none bg-neutral-200 px-2 py-1 text-right font-mono text-xs text-neutral-800'
+                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-right font-mono text-xs text-gray-200'
                                     }
                                 >
-                                    {uuid}
+                                    {uuid.slice(0, 8)}
                                 </code>
                             </div>
                         </div>
@@ -320,26 +331,30 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'flex min-h-[300px] flex-1 flex-col rounded-none border border-gray-200 bg-white p-5 shadow-sm'
+                            'flex min-h-[300px] flex-1 flex-col rounded-xl border border-[#1f2a14] bg-[#000000] p-5 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
                         }
                     >
                         <div className={'mb-4 flex items-center justify-between'}>
-                            <h3 className={'text-lg font-bold text-gray-900'}>Players</h3>
-                            <span className={'rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600'}>
+                            <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
+                            <span
+                                className={
+                                    'rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-xs font-medium text-gray-300'
+                                }
+                            >
                                 1 Online
                             </span>
                         </div>
                         <div className={'relative mb-4'}>
                             <input
                                 className={
-                                    'w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-xs text-gray-700 outline-none focus:border-transparent focus:ring-1 focus:ring-black'
+                                    'w-full rounded-lg border border-gray-800 bg-[#000000] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]'
                                 }
                                 placeholder={'Filter by Name or ID...'}
                                 type={'text'}
                             />
                             <span
                                 className={
-                                    'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-400'
+                                    'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-500'
                                 }
                             >
                                 search
@@ -356,7 +371,7 @@ const ServerConsoleContainer = () => {
                                 <div
                                     key={player.name}
                                     className={
-                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-gray-100 hover:bg-gray-50'
+                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[#1f2a14] hover:bg-[#000000]/40'
                                     }
                                 >
                                     <div className={'flex items-center gap-3'}>
@@ -369,14 +384,14 @@ const ServerConsoleContainer = () => {
                                             {player.tag}
                                         </div>
                                         <div>
-                                            <p className={'text-sm font-bold text-gray-800'}>{player.name}</p>
+                                            <p className={'text-sm font-bold text-gray-100'}>{player.name}</p>
                                             <p className={'text-[10px] text-gray-500'}>Ping: {player.ping}</p>
                                         </div>
                                     </div>
                                     <div className={'flex gap-1'}>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                                                'rounded p-1 text-gray-500 hover:bg-[#a3ff12]/10 hover:text-[#a3ff12]'
                                             }
                                             type={'button'}
                                         >
@@ -384,7 +399,7 @@ const ServerConsoleContainer = () => {
                                         </button>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                                                'rounded p-1 text-gray-500 hover:bg-[#a3ff12]/10 hover:text-[#a3ff12]'
                                             }
                                             type={'button'}
                                         >

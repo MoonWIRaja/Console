@@ -3,7 +3,6 @@ import { useActivityLogs } from '@/api/server/activity';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { useFlashKey } from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
-import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
 import PaginationFooter from '@/components/elements/table/PaginationFooter';
 import { ActivityLogFilters } from '@/api/account/activity';
@@ -12,6 +11,7 @@ import classNames from 'classnames';
 import { styles as btnStyles } from '@/components/elements/button/index';
 import { XCircleIcon } from '@heroicons/react/solid';
 import useLocationHash from '@/plugins/useLocationHash';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const { hash } = useLocationHash();
@@ -46,11 +46,11 @@ export default () => {
                 </div>
             )}
             {!data && isValidating ? (
-                <Spinner centered />
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : !data?.items.length ? (
-                <p className={'text-sm text-center text-gray-400'}>No activity logs available for this server.</p>
+                <p className={'text-center text-sm text-neutral-400'}>No activity logs available for this server.</p>
             ) : (
-                <div className={'bg-gray-700'}>
+                <div className={'overflow-hidden rounded-xl border border-[#1f2a14] bg-[#000000]'}>
                     {data?.items.map((activity) => (
                         <ActivityLogEntry key={activity.id} activity={activity}>
                             <span />

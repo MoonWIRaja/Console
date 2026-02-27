@@ -1,5 +1,8 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileAlt, faFileArchive, faFileImport, faFolder } from '@fortawesome/free-solid-svg-icons';
+import {
+    faFileAlt,
+    faFileImport,
+} from '@fortawesome/free-solid-svg-icons';
 import { encodePathSegments } from '@/helpers';
 import { differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import React, { memo } from 'react';
@@ -14,6 +17,20 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { join } from 'pathe';
 import { bytesToString } from '@/lib/formatters';
 import styles from './style.module.css';
+import {
+    DEFAULT_FILE,
+    DEFAULT_FOLDER,
+    getIconForFile,
+    getIconForFolder,
+    getIconForOpenFolder,
+} from 'vscode-icons-js';
+
+const VSCODE_ICON_BASE = 'https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons';
+
+const getVscodeIconName = (file: FileObject): string => {
+    if (!file.isFile) return getIconForOpenFolder(file.name) || getIconForFolder(file.name) || DEFAULT_FOLDER;
+    return getIconForFile(file.name) || DEFAULT_FILE;
+};
 
 const Clickable: React.FC<{ file: FileObject }> = memo(({ file, children }) => {
     const [canRead] = usePermissions(['file.read']);
@@ -34,37 +51,58 @@ const Clickable: React.FC<{ file: FileObject }> = memo(({ file, children }) => {
     );
 }, isEqual);
 
-const FileObjectRow = ({ file }: { file: FileObject }) => (
-    <div
-        className={styles.file_row}
-        key={file.name}
-        onContextMenu={(e) => {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent(`pterodactyl:files:ctx:${file.key}`, { detail: e.clientX }));
-        }}
-    >
-        <SelectFileCheckbox name={file.name} />
-        <Clickable file={file}>
-            <div css={tw`flex-none text-neutral-400 ml-6 mr-4 text-lg pl-3`}>
-                {file.isFile ? (
-                    <FontAwesomeIcon
-                        icon={file.isSymlink ? faFileImport : file.isArchiveType() ? faFileArchive : faFileAlt}
-                    />
-                ) : (
-                    <FontAwesomeIcon icon={faFolder} />
+const FileObjectRow = ({ file }: { file: FileObject }) => {
+    const iconName = getVscodeIconName(file);
+    const iconUrl = `${VSCODE_ICON_BASE}/${iconName}`;
+
+    return (
+        <div
+            className={`${styles.file_row} group`}
+            key={file.name}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(
+                    new CustomEvent(`pterodactyl:files:ctx:${file.key}`, { detail: { x: e.clientX, y: e.clientY } })
+                );
+            }}
+        >
+            <SelectFileCheckbox name={file.name} />
+            <Clickable file={file}>
+                <div
+                    css={tw`mr-4 flex-none pl-1 text-lg transition-colors duration-150`}
+                >
+                    {file.isSymlink ? (
+                        <FontAwesomeIcon icon={faFileImport} className={'text-[#22d3ee]'} />
+                    ) : (
+                        <img
+                            src={iconUrl}
+                            alt={''}
+                            css={tw`h-[2rem] w-[2rem] object-contain`}
+                            loading={'lazy'}
+                            onError={(event) => {
+                                const target = event.currentTarget;
+                                target.onerror = null;
+                                target.src = `${VSCODE_ICON_BASE}/${file.isFile ? DEFAULT_FILE : DEFAULT_FOLDER}`;
+                            }}
+                        />
+                    )}
+                </div>
+                <div css={tw`flex-1 truncate`}>{file.name}</div>
+                {file.isFile && (
+                    <div css={tw`mr-4 hidden w-1/6 text-right text-xs text-gray-400 sm:block`}>
+                        {bytesToString(file.size)}
+                    </div>
                 )}
-            </div>
-            <div css={tw`flex-1 truncate`}>{file.name}</div>
-            {file.isFile && <div css={tw`w-1/6 text-right mr-4 hidden sm:block`}>{bytesToString(file.size)}</div>}
-            <div css={tw`w-1/5 text-right mr-4 hidden md:block`} title={file.modifiedAt.toString()}>
-                {Math.abs(differenceInHours(file.modifiedAt, new Date())) > 48
-                    ? format(file.modifiedAt, 'MMM do, yyyy h:mma')
-                    : formatDistanceToNow(file.modifiedAt, { addSuffix: true })}
-            </div>
-        </Clickable>
-        <FileDropdownMenu file={file} />
-    </div>
-);
+                <div css={tw`mr-4 hidden w-1/5 text-right text-xs text-gray-400 md:block`} title={file.modifiedAt.toString()}>
+                    {Math.abs(differenceInHours(file.modifiedAt, new Date())) > 48
+                        ? format(file.modifiedAt, 'MMM do, yyyy h:mma')
+                        : formatDistanceToNow(file.modifiedAt, { addSuffix: true })}
+                </div>
+            </Clickable>
+            <FileDropdownMenu file={file} />
+        </div>
+    );
+};
 
 export default memo(FileObjectRow, (prevProps, nextProps) => {
     /* eslint-disable @typescript-eslint/no-unused-vars */

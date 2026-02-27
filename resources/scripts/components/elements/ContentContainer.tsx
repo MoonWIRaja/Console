@@ -6,6 +6,13 @@ const ContentContainer = styled.div`
     max-width: 1200px;
     ${tw`mx-4`};
 
+    &.content-container-full {
+        max-width: 100%;
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
     ${breakpoint('xl')`
         ${tw`mx-auto`};
     `};

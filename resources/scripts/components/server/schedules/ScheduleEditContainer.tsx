@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import getServerSchedule from '@/api/server/schedules/getServerSchedule';
-import Spinner from '@/components/elements/Spinner';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import EditScheduleModal from '@/components/server/schedules/EditScheduleModal';
 import NewTaskButton from '@/components/server/schedules/NewTaskButton';
@@ -17,15 +16,17 @@ import isEqual from 'react-fast-compare';
 import { format } from 'date-fns';
 import ScheduleCronRow from '@/components/server/schedules/ScheduleCronRow';
 import RunScheduleButton from '@/components/server/schedules/RunScheduleButton';
+import Spinner from '@/components/elements/Spinner';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 interface Params {
     id: string;
 }
 
 const CronBox = ({ title, value }: { title: string; value: string }) => (
-    <div css={tw`bg-neutral-700 rounded p-3`}>
-        <p css={tw`text-neutral-300 text-sm`}>{title}</p>
-        <p css={tw`text-xl font-medium text-neutral-100`}>{value}</p>
+    <div css={tw`rounded-lg border border-[#1f2a14] bg-[#050505] p-3`}>
+        <p css={tw`text-sm text-neutral-400`}>{title}</p>
+        <p css={tw`text-xl font-medium text-[#f8f6ef]`}>{value}</p>
     </div>
 );
 
@@ -81,20 +82,23 @@ export default () => {
         <PageContentBlock title={'Schedules'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedule || isLoading ? (
-                <Spinner size={'large'} centered />
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={8} className='min-h-[360px]' />
             ) : (
                 <>
-                    <ScheduleCronRow cron={schedule.cron} css={tw`sm:hidden bg-neutral-700 rounded mb-4 p-3`} />
-                    <div css={tw`rounded shadow`}>
+                    <ScheduleCronRow
+                        cron={schedule.cron}
+                        css={tw`mb-4 rounded-lg border border-[#1f2a14] bg-[#050505] p-3 sm:hidden`}
+                    />
+                    <div css={tw`overflow-hidden rounded-xl border border-[#1f2a14] bg-[#000000]`}>
                         <div
-                            css={tw`sm:flex items-center bg-neutral-900 p-3 sm:p-6 border-b-4 border-neutral-600 rounded-t`}
+                            css={tw`rounded-t-xl border-b border-[#1f2a14] bg-[#050505] p-3 sm:flex sm:items-center sm:p-6`}
                         >
                             <div css={tw`flex-1`}>
-                                <h3 css={tw`flex items-center text-neutral-100 text-2xl`}>
+                                <h3 css={tw`flex items-center text-2xl text-[#f8f6ef]`}>
                                     {schedule.name}
                                     {schedule.isProcessing ? (
                                         <span
-                                            css={tw`flex items-center rounded-full px-2 py-px text-xs ml-4 uppercase bg-neutral-600 text-white`}
+                                            css={tw`ml-4 flex items-center rounded-full border border-[#1f2a14] bg-[#111827] px-2 py-px text-xs uppercase text-[#d9ff93]`}
                                         >
                                             <Spinner css={tw`w-3! h-3! mr-2`} />
                                             Processing
@@ -103,19 +107,19 @@ export default () => {
                                         <ActivePill active={schedule.isActive} />
                                     )}
                                 </h3>
-                                <p css={tw`mt-1 text-sm text-neutral-200`}>
+                                <p css={tw`mt-1 text-sm text-neutral-300`}>
                                     Last run at:&nbsp;
                                     {schedule.lastRunAt ? (
                                         format(schedule.lastRunAt, "MMM do 'at' h:mma")
                                     ) : (
-                                        <span css={tw`text-neutral-300`}>n/a</span>
+                                        <span css={tw`text-neutral-500`}>n/a</span>
                                     )}
-                                    <span css={tw`ml-4 pl-4 border-l-4 border-neutral-600 py-px`}>
+                                    <span css={tw`ml-4 border-l-2 border-[#1f2a14] py-px pl-4`}>
                                         Next run at:&nbsp;
                                         {schedule.nextRunAt ? (
                                             format(schedule.nextRunAt, "MMM do 'at' h:mma")
                                         ) : (
-                                            <span css={tw`text-neutral-300`}>n/a</span>
+                                            <span css={tw`text-neutral-500`}>n/a</span>
                                         )}
                                     </span>
                                 </p>
@@ -129,14 +133,14 @@ export default () => {
                                 </Can>
                             </div>
                         </div>
-                        <div css={tw`hidden sm:grid grid-cols-5 md:grid-cols-5 gap-4 mb-4 mt-4`}>
+                        <div css={tw`mb-4 mt-4 hidden grid-cols-5 gap-4 px-4 sm:grid md:grid-cols-5`}>
                             <CronBox title={'Minute'} value={schedule.cron.minute} />
                             <CronBox title={'Hour'} value={schedule.cron.hour} />
                             <CronBox title={'Day (Month)'} value={schedule.cron.dayOfMonth} />
                             <CronBox title={'Month'} value={schedule.cron.month} />
                             <CronBox title={'Day (Week)'} value={schedule.cron.dayOfWeek} />
                         </div>
-                        <div css={tw`bg-neutral-700 rounded-b`}>
+                        <div css={tw`rounded-b-xl bg-[#000000]`}>
                             {schedule.tasks.length > 0
                                 ? schedule.tasks
                                       .sort((a, b) =>

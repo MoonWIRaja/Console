@@ -15,6 +15,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import { Dialog, DialogWrapperContext } from '@/components/elements/dialog';
 import Code from '@/components/elements/Code';
 import asDialog from '@/hoc/asDialog';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     directoryName: string;
@@ -71,22 +72,34 @@ const NewDirectoryDialog = asDialog({
                 <>
                     <FlashMessageRender key={'files:directory-modal'} />
                     <Form css={tw`m-0`}>
-                        <Field autoFocus id={'directoryName'} name={'directoryName'} label={'Name'} />
+                        <Field
+                            autoFocus
+                            id={'directoryName'}
+                            name={'directoryName'}
+                            label={'Name'}
+                            className={'!border-[#1f2a14] !bg-[#000000] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'}
+                        />
                         <p css={tw`mt-2 text-sm md:text-base break-all`}>
-                            <span css={tw`text-neutral-200`}>This directory will be created as&nbsp;</span>
-                            <Code>
+                            <span css={tw`text-gray-300`}>This directory will be created as&nbsp;</span>
+                            <Code className={'!border !border-[#1f2a14] !bg-[#050505] !text-gray-200'}>
                                 /home/container/
-                                <span css={tw`text-cyan-200`}>
+                                <span css={tw`text-[#d9ff93]`}>
                                     {join(directory, values.directoryName).replace(/^(\.\.\/|\/)+/, '')}
                                 </span>
                             </Code>
                         </p>
                     </Form>
                     <Dialog.Footer>
-                        <Button.Text className={'w-full sm:w-auto'} onClick={close}>
+                        <Button.Text
+                            className={'w-full sm:w-auto !border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}
+                            onClick={close}
+                        >
                             Cancel
                         </Button.Text>
-                        <Button className={'w-full sm:w-auto'} onClick={submitForm}>
+                        <Button
+                            className={'w-full sm:w-auto !border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}
+                            onClick={submitForm}
+                        >
                             Create
                         </Button>
                     </Dialog.Footer>
@@ -102,9 +115,11 @@ export default ({ className }: WithClassname) => {
     return (
         <>
             <NewDirectoryDialog open={open} onClose={setOpen.bind(this, false)} />
-            <Button.Text onClick={setOpen.bind(this, true)} className={className}>
-                Create Directory
-            </Button.Text>
+            <InteractiveHoverButton
+                onClick={setOpen.bind(this, true)}
+                text={'Create Directory'}
+                className={className ?? ''}
+            />
         </>
     );
 };

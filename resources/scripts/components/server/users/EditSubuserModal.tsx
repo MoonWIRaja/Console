@@ -104,7 +104,7 @@ const EditSubuserModal = ({ subuser }: Props) => {
         >
             <Form>
                 <div css={tw`flex justify-between`}>
-                    <h2 css={tw`text-2xl`} ref={ref}>
+                    <h2 css={tw`text-2xl text-[#f8f6ef]`} ref={ref}>
                         {subuser
                             ? `${canEditUser ? 'Modify' : 'View'} permissions for ${subuser.email}`
                             : 'Create new subuser'}
@@ -117,7 +117,7 @@ const EditSubuserModal = ({ subuser }: Props) => {
                 </div>
                 <FlashMessageRender byKey={'user:edit'} css={tw`mt-4`} />
                 {!isRootAdmin && loggedInPermissions[0] !== '*' && (
-                    <div css={tw`mt-4 pl-4 py-2 border-l-4 border-cyan-400`}>
+                    <div css={tw`mt-4 border-l-4 border-[#a3ff12] bg-[#050505] py-2 pl-4`}>
                         <p css={tw`text-sm text-neutral-300`}>
                             Only permissions which your account is currently assigned may be selected when creating or
                             modifying other users.
@@ -146,7 +146,7 @@ const EditSubuserModal = ({ subuser }: Props) => {
                                 permissions={Object.keys(permissions[key].keys).map((pkey) => `${key}.${pkey}`)}
                                 css={index > 0 ? tw`mt-4` : undefined}
                             >
-                                <p css={tw`text-sm text-neutral-400 mb-4`}>{permissions[key].description}</p>
+                                <p css={tw`mb-4 text-sm text-neutral-400`}>{permissions[key].description}</p>
                                 {Object.keys(permissions[key].keys).map((pkey) => (
                                     <PermissionRow
                                         key={`permission_${key}.${pkey}`}

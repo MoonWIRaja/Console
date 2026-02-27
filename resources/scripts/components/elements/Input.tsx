@@ -18,7 +18,7 @@ const light = css<Props>`
 `;
 
 const checkboxStyle = css<Props>`
-    ${tw`bg-neutral-500 cursor-pointer appearance-none inline-block align-middle select-none flex-shrink-0 w-4 h-4 text-primary-400 border border-neutral-300 rounded-sm`};
+    ${tw`inline-block h-4 w-4 cursor-pointer select-none appearance-none rounded-sm border border-[#1f2a14] bg-[#000000] align-middle text-[#a3ff12]`};
     color-adjust: exact;
     background-origin: border-box;
     transition: all 75ms linear, box-shadow 25ms linear;
@@ -31,8 +31,8 @@ const checkboxStyle = css<Props>`
     }
 
     &:focus {
-        ${tw`outline-none border-primary-300`};
-        box-shadow: 0 0 0 1px rgba(9, 103, 210, 0.25);
+        ${tw`border-[#a3ff12] outline-none`};
+        box-shadow: 0 0 0 1px rgba(163, 255, 18, 0.35);
     }
 `;
 
@@ -41,11 +41,17 @@ const inputStyle = css<Props>`
     resize: none;
     ${tw`appearance-none outline-none w-full min-w-0`};
     ${tw`p-3 border-2 rounded text-sm transition-all duration-150`};
-    ${tw`bg-neutral-600 border-neutral-500 hover:border-neutral-400 text-neutral-200 shadow-none focus:ring-0`};
+    ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef] shadow-none focus:ring-0`};
+    &::placeholder {
+        color: #6b7280;
+    }
+    &:hover:not(:disabled):not(:read-only) {
+        ${tw`border-[#2d3c1f]`};
+    }
 
     & + .input-help {
         ${tw`mt-1 text-xs`};
-        ${(props) => (props.hasError ? tw`text-red-200` : tw`text-neutral-200`)};
+        ${(props) => (props.hasError ? tw`text-red-300` : tw`text-neutral-300`)};
     }
 
     &:required,
@@ -54,16 +60,16 @@ const inputStyle = css<Props>`
     }
 
     &:not(:disabled):not(:read-only):focus {
-        ${tw`shadow-md border-primary-300 ring-2 ring-primary-400 ring-opacity-50`};
-        ${(props) => props.hasError && tw`border-red-300 ring-red-200`};
+        ${tw`border-[#a3ff12] shadow-md ring-2 ring-[#a3ff12] ring-opacity-30`};
+        ${(props) => props.hasError && tw`border-red-400 ring-red-400 ring-opacity-30`};
     }
 
     &:disabled {
-        ${tw`opacity-75`};
+        ${tw`cursor-not-allowed border-[#1f2a14] bg-[#050505] opacity-75`};
     }
 
     ${(props) => props.isLight && light};
-    ${(props) => props.hasError && tw`text-red-100 border-red-400 hover:border-red-300`};
+    ${(props) => props.hasError && tw`border-red-500 text-red-100 hover:border-red-400`};
 `;
 
 const Input = styled.input<Props>`

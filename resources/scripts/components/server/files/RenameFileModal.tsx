@@ -67,6 +67,9 @@ const RenameFileModal = ({ files, useMoveTerminology, ...props }: OwnProps) => {
                                     id={'file_name'}
                                     name={'name'}
                                     label={'File Name'}
+                                    className={
+                                        '!border-[#1f2a14] !bg-[#000000] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'
+                                    }
                                     description={
                                         useMoveTerminology
                                             ? 'Enter the new name and directory of this file or folder, relative to the current directory.'
@@ -76,12 +79,14 @@ const RenameFileModal = ({ files, useMoveTerminology, ...props }: OwnProps) => {
                                 />
                             </div>
                             <div css={tw`w-full sm:w-auto mt-4 sm:mt-0`}>
-                                <Button css={tw`w-full`}>{useMoveTerminology ? 'Move' : 'Rename'}</Button>
+                                <Button css={tw`w-full`} className={'!border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}>
+                                    {useMoveTerminology ? 'Move' : 'Rename'}
+                                </Button>
                             </div>
                         </div>
                         {useMoveTerminology && (
-                            <p css={tw`text-xs mt-2 text-neutral-400`}>
-                                <strong css={tw`text-neutral-200`}>New location:</strong>
+                            <p css={tw`mt-2 text-xs text-gray-400`}>
+                                <strong css={tw`text-gray-200`}>New location:</strong>
                                 &nbsp;/home/container/{join(directory, values.name).replace(/^(\.\.\/|\/)+/, '')}
                             </p>
                         )}

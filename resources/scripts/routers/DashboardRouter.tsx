@@ -6,7 +6,7 @@ import AccountProfileContainer from '@/components/dashboard/AccountProfileContai
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import { useLocation } from 'react-router';
-import Spinner from '@/components/elements/Spinner';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const location = useLocation();
@@ -86,7 +86,7 @@ export default () => {
                     </>
                 )}
                 <TransitionRouter>
-                    <React.Suspense fallback={<Spinner centered />}>
+                    <React.Suspense fallback={<PageLoadingSkeleton rows={7} showChrome={false} className='min-h-[65vh]' />}>
                         <Switch location={location}>
                             <Route path={'/'} exact>
                                 <DashboardContainer />

@@ -2,6 +2,7 @@ import React, { createRef } from 'react';
 import styled from 'styled-components/macro';
 import tw from 'twin.macro';
 import Fade from '@/components/elements/Fade';
+import { createPortal } from 'react-dom';
 
 interface Props {
     children: React.ReactNode;
@@ -9,16 +10,20 @@ interface Props {
 }
 
 export const DropdownButtonRow = styled.button<{ danger?: boolean }>`
-    ${tw`p-2 flex items-center rounded w-full text-neutral-500`};
+    ${tw`flex w-full items-center rounded-md border border-transparent p-2 text-gray-300`};
     transition: 150ms all ease;
 
     &:hover {
-        ${(props) => (props.danger ? tw`text-red-700 bg-red-100` : tw`text-neutral-700 bg-neutral-100`)};
+        ${(props) =>
+            props.danger
+                ? tw`border-red-500 bg-[#2b1111] text-red-300`
+                : tw`border-[#2d3c1f] bg-[#050505] text-[#d9ff93]`};
     }
 `;
 
 interface State {
     posX: number;
+    posY: number;
     visible: boolean;
 }
 
@@ -27,6 +32,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
 
     state: State = {
         posX: 0,
+        posY: 0,
         visible: false,
     };
 
@@ -37,10 +43,28 @@ class DropdownMenu extends React.PureComponent<Props, State> {
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
         const menu = this.menu.current;
 
-        if (this.state.visible && !prevState.visible && menu) {
+        if (this.state.visible && menu && (!prevState.visible || prevState.posX !== this.state.posX || prevState.posY !== this.state.posY)) {
             document.addEventListener('click', this.windowListener);
             document.addEventListener('contextmenu', this.contextMenuListener);
-            menu.style.left = `${Math.round(this.state.posX - menu.clientWidth)}px`;
+            const margin = 8;
+            const menuWidth = menu.clientWidth;
+            const menuHeight = menu.clientHeight;
+
+            let left = Math.round(this.state.posX - menuWidth);
+            let top = Math.round(this.state.posY);
+
+            if (left < margin) left = margin;
+            if (left + menuWidth > window.innerWidth - margin) {
+                left = Math.max(margin, window.innerWidth - menuWidth - margin);
+            }
+
+            if (top + menuHeight > window.innerHeight - margin) {
+                top = Math.max(margin, this.state.posY - menuHeight);
+            }
+            if (top < margin) top = margin;
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
         }
 
         if (!this.state.visible && prevState.visible) {
@@ -55,7 +79,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
 
     onClickHandler = (e: React.MouseEvent<any, MouseEvent>) => {
         e.preventDefault();
-        this.triggerMenu(e.clientX);
+        this.triggerMenu(e.clientX, e.clientY, 'toggle');
     };
 
     contextMenuListener = () => this.setState({ visible: false });
@@ -76,29 +100,34 @@ class DropdownMenu extends React.PureComponent<Props, State> {
         }
     };
 
-    triggerMenu = (posX: number) =>
+    triggerMenu = (posX: number, posY: number, mode: 'toggle' | 'open' = 'toggle') =>
         this.setState((s) => ({
-            posX: !s.visible ? posX : s.posX,
-            visible: !s.visible,
+            posX,
+            posY,
+            visible: mode === 'open' ? true : !s.visible,
         }));
 
     render() {
+        const menu = (
+            <Fade timeout={150} in={this.state.visible} unmountOnExit>
+                <div
+                    ref={this.menu}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        this.setState({ visible: false });
+                    }}
+                    style={{ width: '12rem' }}
+                    css={tw`fixed z-50 rounded-lg border border-[#1f2a14] bg-[#000000] p-2 text-gray-300 shadow-xl`}
+                >
+                    {this.props.children}
+                </div>
+            </Fade>
+        );
+
         return (
             <div>
                 {this.props.renderToggle(this.onClickHandler)}
-                <Fade timeout={150} in={this.state.visible} unmountOnExit>
-                    <div
-                        ref={this.menu}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            this.setState({ visible: false });
-                        }}
-                        style={{ width: '12rem' }}
-                        css={tw`absolute bg-white p-2 rounded border border-neutral-700 shadow-lg text-neutral-500 z-50`}
-                    >
-                        {this.props.children}
-                    </div>
-                </Fade>
+                {typeof document !== 'undefined' ? createPortal(menu, document.body) : menu}
             </div>
         );
     }

@@ -20,6 +20,7 @@ import { useLocation } from 'react-router';
 import ConflictStateRenderer from '@/components/server/ConflictStateRenderer';
 import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
@@ -81,7 +82,7 @@ export default () => {
 
     return (
         <React.Fragment key={'server-router'}>
-            <div className='bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans h-screen overflow-hidden flex w-full relative'>
+            <div className='bg-[#000000] text-gray-100 font-sans h-screen overflow-hidden flex w-full relative'>
                 <style>{`
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
                     @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
@@ -124,7 +125,7 @@ export default () => {
                 />
 
                 <main
-                    className='server-main-content flex-1 flex flex-col overflow-hidden relative'
+                    className='server-main-content flex-1 flex flex-col overflow-hidden bg-[#000000] relative'
                     style={{ minWidth: 0, fontFamily: "'Inter', sans-serif" }}
                 >
                     {isMobileViewport && (
@@ -174,7 +175,7 @@ export default () => {
                             </div>
                         ) : (
                             <div className='p-6'>
-                                <Spinner size={'large'} centered />
+                                <PageLoadingSkeleton rows={9} />
                             </div>
                         )
                     ) : (
@@ -198,7 +199,13 @@ export default () => {
                                                     path={to(path)}
                                                     exact
                                                 >
-                                                    <Spinner.Suspense>
+                                                    <Spinner.Suspense
+                                                        fallback={
+                                                            <div className='p-6'>
+                                                                <PageLoadingSkeleton rows={9} />
+                                                            </div>
+                                                        }
+                                                    >
                                                         <Component />
                                                     </Spinner.Suspense>
                                                 </PermissionRoute>

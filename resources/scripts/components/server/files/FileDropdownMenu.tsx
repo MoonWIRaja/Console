@@ -36,9 +36,11 @@ import { Dialog } from '@/components/elements/dialog';
 type ModalType = 'rename' | 'move' | 'chmod';
 
 const StyledRow = styled.div<{ $danger?: boolean }>`
-    ${tw`p-2 flex items-center rounded`};
+    ${tw`flex items-center rounded-md border border-transparent p-2 text-gray-300`};
     ${(props) =>
-        props.$danger ? tw`hover:bg-red-100 hover:text-red-700` : tw`hover:bg-neutral-100 hover:text-neutral-700`};
+        props.$danger
+            ? tw`hover:border-red-500 hover:bg-[#2b1111] hover:text-red-300`
+            : tw`hover:border-[#2d3c1f] hover:bg-[#050505] hover:text-[#d9ff93]`};
 `;
 
 interface RowProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -65,9 +67,9 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
     const { clearAndAddHttpError, clearFlashes } = useFlash();
     const directory = ServerContext.useStoreState((state) => state.files.directory);
 
-    useEventListener(`pterodactyl:files:ctx:${file.key}`, (e: CustomEvent) => {
+    useEventListener(`pterodactyl:files:ctx:${file.key}`, (e: CustomEvent<{ x: number; y: number }>) => {
         if (onClickRef.current) {
-            onClickRef.current.triggerMenu(e.detail);
+            onClickRef.current.triggerMenu(e.detail.x, e.detail.y, 'open');
         }
     });
 
@@ -137,12 +139,12 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 onConfirmed={doDeletion}
             >
                 You will not be able to recover the contents of&nbsp;
-                <span className={'font-semibold text-gray-50'}>{file.name}</span> once deleted.
+                <span className={'font-semibold text-[#d9ff93]'}>{file.name}</span> once deleted.
             </Dialog.Confirm>
             <DropdownMenu
                 ref={onClickRef}
                 renderToggle={(onClick) => (
-                    <div css={tw`px-4 py-2 hover:text-white`} onClick={onClick}>
+                    <div css={tw`px-4 py-2 text-gray-400 transition-colors duration-150 hover:text-[#d9ff93]`} onClick={onClick}>
                         <FontAwesomeIcon icon={faEllipsisH} />
                         {modal ? (
                             modal === 'chmod' ? (

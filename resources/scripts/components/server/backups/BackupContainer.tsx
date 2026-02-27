@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react';
-import Spinner from '@/components/elements/Spinner';
 import useFlash from '@/plugins/useFlash';
 import Can from '@/components/elements/Can';
 import CreateBackupButton from '@/components/server/backups/CreateBackupButton';
@@ -10,6 +9,7 @@ import getServerBackups, { Context as ServerBackupContext } from '@/api/swr/getS
 import { ServerContext } from '@/state/server';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import Pagination from '@/components/elements/Pagination';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 const BackupContainer = () => {
     const { page, setPage } = useContext(ServerBackupContext);
@@ -29,7 +29,11 @@ const BackupContainer = () => {
     }, [error]);
 
     if (!backups || (error && isValidating)) {
-        return <Spinner size={'large'} centered />;
+        return (
+            <ServerContentBlock title={'Backups'}>
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
+            </ServerContentBlock>
+        );
     }
 
     return (
@@ -41,7 +45,7 @@ const BackupContainer = () => {
                         // Don't show any error messages if the server has no backups and the user cannot
                         // create additional ones for the server.
                         !backupLimit ? null : (
-                            <p css={tw`text-center text-sm text-neutral-300`}>
+                            <p css={tw`text-center text-sm text-neutral-400`}>
                                 {page > 1
                                     ? "Looks like we've run out of backups to show you, try going back a page."
                                     : 'It looks like there are no backups currently stored for this server.'}
@@ -55,14 +59,14 @@ const BackupContainer = () => {
                 }
             </Pagination>
             {backupLimit === 0 && (
-                <p css={tw`text-center text-sm text-neutral-300`}>
+                <p css={tw`text-center text-sm text-neutral-400`}>
                     Backups cannot be created for this server because the backup limit is set to 0.
                 </p>
             )}
             <Can action={'backup.create'}>
                 <div css={tw`mt-6 sm:flex items-center justify-end`}>
                     {backupLimit > 0 && backups.backupCount > 0 && (
-                        <p css={tw`text-sm text-neutral-300 mb-4 sm:mr-6 sm:mb-0`}>
+                        <p css={tw`mb-4 text-sm text-neutral-400 sm:mb-0 sm:mr-6`}>
                             {backups.backupCount} of {backupLimit} backups have been created for this server.
                         </p>
                     )}

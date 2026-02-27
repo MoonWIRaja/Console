@@ -11,8 +11,6 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import PageContentBlock from '@/components/elements/PageContentBlock';
 import { ServerError } from '@/components/elements/ScreenBlock';
 import tw from 'twin.macro';
-import Button from '@/components/elements/Button';
-import Select from '@/components/elements/Select';
 import modes from '@/modes';
 import useFlash from '@/plugins/useFlash';
 import { ServerContext } from '@/state/server';
@@ -20,6 +18,10 @@ import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { encodePathSegments, hashToPath } from '@/helpers';
 import { dirname } from 'pathe';
 import CodemirrorEditor from '@/components/elements/CodemirrorEditor';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import Select from '@/components/ui/select';
+import { Braces, Code2 } from 'lucide-react';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const [error, setError] = useState('');
@@ -84,75 +86,104 @@ export default () => {
     }
 
     return (
-        <PageContentBlock>
-            <FlashMessageRender byKey={'files:view'} css={tw`mb-4`} />
+        <PageContentBlock hideFooter className={'content-container-full h-screen px-0 py-0'} fullHeight>
+            <FlashMessageRender byKey={'files:view'} css={tw`mb-0`} />
             <ErrorBoundary>
-                <div css={tw`mb-4`}>
-                    <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
+                <div
+                    css={tw`flex h-screen min-h-0 w-full flex-col overflow-hidden border-0 bg-[#000000]`}
+                >
+                    <div css={tw`flex items-center justify-between border-b border-[#1f2a14] bg-[#050505] px-4 py-3`}>
+                        <div css={tw`min-w-0 pr-4`}>
+                            <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
+                        </div>
+                        <div css={tw`hidden items-center rounded-md border border-[#1f2a14] bg-[#000000] px-3 py-1 text-xs text-gray-300 md:flex`}>
+                            VSCode Style Editor
+                        </div>
+                    </div>
+
+                    {hash.replace(/^#/, '').endsWith('.pteroignore') && (
+                        <div css={tw`border-b border-[#1f2a14] bg-[#031204] px-4 py-3`}>
+                            <p css={tw`text-sm text-gray-300`}>
+                                You&apos;re editing a{' '}
+                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>
+                                    .pteroignore
+                                </code>{' '}
+                                file. Any files or directories listed in here will be excluded from backups. Wildcards
+                                are supported by using an asterisk (
+                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>*</code>).
+                                You can negate a prior rule by prepending an exclamation point (
+                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>!</code>).
+                            </p>
+                        </div>
+                    )}
+
+                    <FileNameModal
+                        visible={modalVisible}
+                        onDismissed={() => setModalVisible(false)}
+                        onFileNamed={(name) => {
+                            setModalVisible(false);
+                            save(name);
+                        }}
+                    />
+
+                    <div css={tw`relative min-h-0 flex-1`}>
+                        {loading && action === 'edit' && !content ? (
+                            <PageLoadingSkeleton
+                                showChrome={false}
+                                showSpinner={false}
+                                rows={10}
+                                className='h-full min-h-0 rounded-none border-0'
+                            />
+                        ) : (
+                            <>
+                                <SpinnerOverlay visible={loading} />
+                                <CodemirrorEditor
+                                    mode={mode}
+                                    filename={hash.replace(/^#/, '')}
+                                    onModeChanged={setMode}
+                                    initialContent={content}
+                                    fetchContent={(value) => {
+                                        fetchFileContent = value;
+                                    }}
+                                    onContentSaved={() => {
+                                        if (action !== 'edit') {
+                                            setModalVisible(true);
+                                        } else {
+                                            save();
+                                        }
+                                    }}
+                                />
+                            </>
+                        )}
+                    </div>
+
+                    <div css={tw`flex flex-wrap items-center justify-between gap-3 border-t border-[#1f2a14] bg-[#050505] px-4 py-3`}>
+                        <div css={tw`w-full sm:w-[320px]`}>
+                            <Select
+                                title={'Choose Language'}
+                                defaultValue={mode}
+                                onChange={(value) => setMode(value)}
+                                data={modes.map((entry) => ({
+                                    id: `${entry.name}_${entry.mime}`,
+                                    label: entry.name,
+                                    value: entry.mime,
+                                    description: entry.mime,
+                                    icon: entry.name.toLowerCase().includes('plain') ? <Code2 size={14} /> : <Braces size={14} />,
+                                }))}
+                            />
+                        </div>
+                        {action === 'edit' ? (
+                            <Can action={'file.update'}>
+                                <InteractiveHoverButton text={'Save Content'} onClick={() => save()} />
+                            </Can>
+                        ) : (
+                            <Can action={'file.create'}>
+                                <InteractiveHoverButton text={'Create File'} onClick={() => setModalVisible(true)} />
+                            </Can>
+                        )}
+                    </div>
                 </div>
             </ErrorBoundary>
-            {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                <div css={tw`mb-4 p-4 border-l-4 bg-neutral-900 rounded border-cyan-400`}>
-                    <p css={tw`text-neutral-300 text-sm`}>
-                        You&apos;re editing a <code css={tw`font-mono bg-black rounded py-px px-1`}>.pteroignore</code>{' '}
-                        file. Any files or directories listed in here will be excluded from backups. Wildcards are
-                        supported by using an asterisk (<code css={tw`font-mono bg-black rounded py-px px-1`}>*</code>).
-                        You can negate a prior rule by prepending an exclamation point (
-                        <code css={tw`font-mono bg-black rounded py-px px-1`}>!</code>).
-                    </p>
-                </div>
-            )}
-            <FileNameModal
-                visible={modalVisible}
-                onDismissed={() => setModalVisible(false)}
-                onFileNamed={(name) => {
-                    setModalVisible(false);
-                    save(name);
-                }}
-            />
-            <div css={tw`relative`}>
-                <SpinnerOverlay visible={loading} />
-                <CodemirrorEditor
-                    mode={mode}
-                    filename={hash.replace(/^#/, '')}
-                    onModeChanged={setMode}
-                    initialContent={content}
-                    fetchContent={(value) => {
-                        fetchFileContent = value;
-                    }}
-                    onContentSaved={() => {
-                        if (action !== 'edit') {
-                            setModalVisible(true);
-                        } else {
-                            save();
-                        }
-                    }}
-                />
-            </div>
-            <div css={tw`flex justify-end mt-4`}>
-                <div css={tw`flex-1 sm:flex-none rounded bg-neutral-900 mr-4`}>
-                    <Select value={mode} onChange={(e) => setMode(e.currentTarget.value)}>
-                        {modes.map((mode) => (
-                            <option key={`${mode.name}_${mode.mime}`} value={mode.mime}>
-                                {mode.name}
-                            </option>
-                        ))}
-                    </Select>
-                </div>
-                {action === 'edit' ? (
-                    <Can action={'file.update'}>
-                        <Button css={tw`flex-1 sm:flex-none`} onClick={() => save()}>
-                            Save Content
-                        </Button>
-                    </Can>
-                ) : (
-                    <Can action={'file.create'}>
-                        <Button css={tw`flex-1 sm:flex-none`} onClick={() => setModalVisible(true)}>
-                            Create File
-                        </Button>
-                    </Can>
-                )}
-            </div>
         </PageContentBlock>
     );
 };

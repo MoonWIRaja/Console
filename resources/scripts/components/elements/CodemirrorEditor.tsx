@@ -22,6 +22,7 @@ require('codemirror/addon/fold/xml-fold');
 require('codemirror/addon/hint/css-hint');
 require('codemirror/addon/hint/html-hint');
 require('codemirror/addon/hint/javascript-hint');
+require('codemirror/addon/hint/anyword-hint');
 require('codemirror/addon/hint/show-hint.css');
 require('codemirror/addon/hint/show-hint');
 require('codemirror/addon/hint/sql-hint');
@@ -80,25 +81,93 @@ require('codemirror/mode/xml/xml');
 require('codemirror/mode/yaml/yaml');
 
 const EditorContainer = styled.div`
-    min-height: 16rem;
-    height: calc(100vh - 20rem);
+    min-height: 20rem;
+    height: 100%;
     ${tw`relative`};
 
     > div {
-        ${tw`rounded h-full`};
+        ${tw`h-full`};
     }
 
     .CodeMirror {
-        font-size: 12px;
-        line-height: 1.375rem;
+        height: 100% !important;
+        ${tw`border-0`};
+        background: #000000;
+        color: #e5e7eb;
+        font-size: 13px;
+        line-height: 1.5rem;
+    }
+
+    .CodeMirror-scroll,
+    .CodeMirror-sizer,
+    .CodeMirror-lines,
+    .CodeMirror-code,
+    .CodeMirror-linebackground,
+    .CodeMirror-line {
+        background: #000000 !important;
+    }
+
+    .CodeMirror-gutters,
+    .CodeMirror-gutter,
+    .CodeMirror-linenumbers,
+    .CodeMirror-linenumber,
+    .CodeMirror-gutter-wrapper,
+    .CodeMirror-gutter-elt,
+    .CodeMirror-foldgutter,
+    .CodeMirror-foldgutter-open,
+    .CodeMirror-foldgutter-folded,
+    .cm-s-ayu-mirage .CodeMirror-gutters,
+    .cm-s-ayu-mirage .CodeMirror-gutter,
+    .cm-s-ayu-mirage .CodeMirror-linenumbers,
+    .cm-s-ayu-mirage .CodeMirror-linenumber,
+    .cm-s-ayu-mirage .CodeMirror-foldgutter,
+    .cm-s-ayu-mirage .CodeMirror-foldgutter-open,
+    .cm-s-ayu-mirage .CodeMirror-foldgutter-folded {
+        background: #000000 !important;
+        background-color: #000000 !important;
+        border-right-color: #1f2a14 !important;
+    }
+
+    .CodeMirror-gutters {
+        border-right: 1px solid #1f2a14 !important;
+    }
+
+    .CodeMirror-cursor {
+        border-left: 2px solid #a3ff12 !important;
+    }
+
+    .CodeMirror-selected {
+        background: rgba(163, 255, 18, 0.18) !important;
+    }
+
+    .CodeMirror-activeline-background {
+        background: rgba(163, 255, 18, 0.06);
+    }
+
+    .CodeMirror-hints {
+        ${tw`rounded-lg border border-[#1f2a14]`};
+        background: #050505 !important;
+        color: #e5e7eb;
+        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.55);
+        z-index: 60;
+    }
+
+    .CodeMirror-hint {
+        color: #e5e7eb;
+    }
+
+    .CodeMirror-hint-active {
+        background: rgba(163, 255, 18, 0.16) !important;
+        color: #d9ff93 !important;
     }
 
     .CodeMirror-linenumber {
         padding: 1px 12px 0 12px !important;
+        color: #9ca3af;
     }
 
     .CodeMirror-foldmarker {
-        color: #cbccc6;
+        color: #d9ff93;
         text-shadow: none;
         margin-left: 0.25rem;
         margin-right: 0.25rem;
@@ -173,6 +242,14 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
             autoCloseBrackets: true,
             matchBrackets: true,
             gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+            extraKeys: {
+                'Ctrl-Space': 'autocomplete',
+                'Cmd-Space': 'autocomplete',
+            },
+            hintOptions: {
+                completeSingle: false,
+                alignWithWord: true,
+            },
         });
 
         setEditor(e);
@@ -208,6 +285,25 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
         editor.addKeyMap({
             'Ctrl-S': () => onContentSaved(),
             'Cmd-S': () => onContentSaved(),
+        });
+
+        editor.on('inputRead', (cm, change) => {
+            if (!change.text || !change.text.length) {
+                return;
+            }
+
+            const typed = change.text[0];
+            if (!typed || typed.length !== 1) {
+                return;
+            }
+
+            if (!/[A-Za-z0-9_.\-]/.test(typed)) {
+                return;
+            }
+
+            if (!cm.state.completionActive) {
+                cm.showHint({ completeSingle: false });
+            }
         });
 
         fetchContent(() => Promise.resolve(editor.getValue()));

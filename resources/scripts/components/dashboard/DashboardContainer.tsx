@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Server } from '@/api/server/getServer';
 import getServers from '@/api/getServers';
 import ServerRow from '@/components/dashboard/ServerRow';
-import Spinner from '@/components/elements/Spinner';
 import useFlash from '@/plugins/useFlash';
 import { useStoreState } from 'easy-peasy';
 import { usePersistedState } from '@/plugins/usePersistedState';
@@ -12,6 +11,7 @@ import Pagination from '@/components/elements/Pagination';
 import { useLocation } from 'react-router-dom';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import ToggleSwitch from '@/components/ui/toggle-switch';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const { search } = useLocation();
@@ -90,9 +90,7 @@ export default () => {
                 </div>
 
                 {!servers ? (
-                    <div className='flex justify-center py-16'>
-                        <Spinner centered size={'large'} />
-                    </div>
+                    <PageLoadingSkeleton showChrome={false} rows={8} className='min-h-[420px]' />
                 ) : (
                     <Pagination data={servers} onPageSelect={setPage}>
                         {({ items }) =>

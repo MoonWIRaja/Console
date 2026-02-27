@@ -4,7 +4,6 @@ import { ServerContext } from '@/state/server';
 import { httpErrorToHuman } from '@/api/http';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import DatabaseRow from '@/components/server/databases/DatabaseRow';
-import Spinner from '@/components/elements/Spinner';
 import CreateDatabaseButton from '@/components/server/databases/CreateDatabaseButton';
 import Can from '@/components/elements/Can';
 import useFlash from '@/plugins/useFlash';
@@ -12,6 +11,7 @@ import tw from 'twin.macro';
 import Fade from '@/components/elements/Fade';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { useDeepMemoize } from '@/plugins/useDeepMemoize';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -40,7 +40,7 @@ export default () => {
         <ServerContentBlock title={'Databases'}>
             <FlashMessageRender byKey={'databases'} css={tw`mb-4`} />
             {!databases.length && loading ? (
-                <Spinner size={'large'} centered />
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : (
                 <Fade timeout={150}>
                     <>
@@ -53,7 +53,7 @@ export default () => {
                                 />
                             ))
                         ) : (
-                            <p css={tw`text-center text-sm text-neutral-300`}>
+                            <p css={tw`text-center text-sm text-neutral-400`}>
                                 {databaseLimit > 0
                                     ? 'It looks like you have no databases.'
                                     : 'Databases cannot be created for this server.'}
@@ -62,7 +62,7 @@ export default () => {
                         <Can action={'database.create'}>
                             <div css={tw`mt-6 flex items-center justify-end`}>
                                 {databaseLimit > 0 && databases.length > 0 && (
-                                    <p css={tw`text-sm text-neutral-300 mb-4 sm:mr-6 sm:mb-0`}>
+                                    <p css={tw`mb-4 text-sm text-neutral-400 sm:mb-0 sm:mr-6`}>
                                         {databases.length} of {databaseLimit} databases have been allocated to this
                                         server.
                                     </p>

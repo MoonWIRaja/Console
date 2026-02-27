@@ -21,24 +21,49 @@
 
 .terminal {
     @apply flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden;
+    background-color: #000000;
 
     & .overflows_container {
         @apply w-full;
+        background-color: #000000 !important;
+        box-shadow: none !important;
+        border: 1px solid #1f2a14 !important;
+        border-bottom: 0 !important;
+        border-radius: 0.75rem 0.75rem 0 0 !important;
+        outline: none !important;
+    }
+
+    & .command_bar {
+        @apply w-full bg-[#000000] p-2;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+        background-color: #000000 !important;
+    }
+
+    & .command_shell {
+        background-color: #000000 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
     }
 
     & > .container {
-        @apply min-h-0 min-w-0 max-w-full flex-1 overflow-hidden rounded-none border border-b-0 border-gray-200 bg-white font-mono text-sm;
-        @apply shadow-inner dark:border-gray-700 dark:bg-gray-900;
+        @apply min-h-0 min-w-0 max-w-full flex-1 overflow-hidden rounded-none border-0 bg-[#000000] font-mono text-sm;
+        box-shadow: none !important;
+        border-color: transparent !important;
+        outline: none !important;
 
         & #terminal {
             @apply h-full w-full min-w-0 max-w-full;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
 
-            &::-webkit-scrollbar-track {
-                @apply w-2;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                @apply bg-gray-900;
+            &::-webkit-scrollbar {
+                width: 0;
+                height: 0;
+                display: none;
             }
         }
     }
@@ -52,18 +77,70 @@
     :global(.xterm .xterm-viewport) {
         width: 100% !important;
         max-width: 100% !important;
+        background-color: #000000 !important;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    :global(.xterm .xterm-viewport::-webkit-scrollbar) {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
     }
 
     :global(.xterm .xterm-screen) {
         max-width: 100% !important;
+        background-color: #000000 !important;
+    }
+
+    :global(.xterm .xterm-rows) {
+        background-color: #000000 !important;
+    }
+
+    :global(.xterm .xterm-helpers),
+    :global(.xterm .xterm-helper-textarea),
+    :global(.xterm .xterm-scroll-area) {
+        background-color: #000000 !important;
     }
 
     & .command_input {
-        @apply w-full rounded-none border border-gray-300 bg-white py-3 pl-4 pr-4 text-sm text-gray-700;
-        @apply transition-shadow outline-none focus-visible:outline-none;
-        @apply focus:border-transparent focus:ring-2 focus:ring-black;
-        @apply dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:focus:ring-white;
-        @apply placeholder:text-gray-400;
+        @apply w-full appearance-none rounded-lg border border-[#1f2a14] bg-[#000000] py-2 pl-3 pr-8 text-xs text-white;
+        @apply transition-shadow outline-none focus:outline-none focus-visible:outline-none;
+        @apply focus:border-[#a3ff12];
+        @apply focus:ring-0 focus:ring-transparent;
+        -webkit-appearance: none;
+        @apply placeholder:text-gray-500;
+        background-color: #000000 !important;
+        box-shadow: none !important;
+    }
+
+    & .command_input:focus,
+    & .command_input:focus-visible {
+        border-color: #a3ff12 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 1px #a3ff12, 0 0 14px rgba(163, 255, 18, 0.38) !important;
+    }
+
+    & .command_input:disabled {
+        background-color: #000000 !important;
+        color: #6b7280 !important;
+        border-color: #1f2a14 !important;
+        opacity: 1 !important;
+    }
+
+    :global(input[aria-label='Console command input.']) {
+        background-color: #000000 !important;
+        border-color: #1f2a14 !important;
+        box-shadow: none !important;
+        outline: none !important;
+        color: #ffffff !important;
+    }
+
+    :global(input[aria-label='Console command input.']:focus),
+    :global(input[aria-label='Console command input.']:focus-visible) {
+        border-color: #a3ff12 !important;
+        box-shadow: 0 0 0 1px #a3ff12, 0 0 14px rgba(163, 255, 18, 0.38) !important;
+        outline: none !important;
     }
 }
 

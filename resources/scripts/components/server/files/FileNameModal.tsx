@@ -46,10 +46,13 @@ export default ({ onFileNamed, onDismissed, ...props }: Props) => {
                             name={'fileName'}
                             label={'File Name'}
                             description={'Enter the name that this file should be saved as.'}
+                            className={'!border-[#1f2a14] !bg-[#000000] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'}
                             autoFocus
                         />
                         <div css={tw`mt-6 text-right`}>
-                            <Button>Create File</Button>
+                            <Button className={'!border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}>
+                                Create File
+                            </Button>
                         </div>
                     </Form>
                 </Modal>

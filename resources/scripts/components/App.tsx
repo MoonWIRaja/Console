@@ -14,6 +14,7 @@ import AuthenticatedRoute from '@/components/elements/AuthenticatedRoute';
 import { ServerContext } from '@/state/server';
 import '@/assets/tailwind.css';
 import Spinner from '@/components/elements/Spinner';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 const DashboardRouter = lazy(() => import(/* webpackChunkName: "dashboard" */ '@/routers/DashboardRouter'));
 const ServerRouter = lazy(() => import(/* webpackChunkName: "server" */ '@/routers/ServerRouter'));
@@ -65,19 +66,19 @@ const App = () => {
                     <Router history={history}>
                         <Switch>
                             <Route path={'/auth'}>
-                                <Spinner.Suspense>
+                                <Spinner.Suspense fallback={<PageLoadingSkeleton fullScreen rows={8} />}>
                                     <AuthenticationRouter />
                                 </Spinner.Suspense>
                             </Route>
                             <AuthenticatedRoute path={'/server/:id'}>
-                                <Spinner.Suspense>
+                                <Spinner.Suspense fallback={<PageLoadingSkeleton fullScreen rows={10} />}>
                                     <ServerContext.Provider>
                                         <ServerRouter />
                                     </ServerContext.Provider>
                                 </Spinner.Suspense>
                             </AuthenticatedRoute>
                             <AuthenticatedRoute path={'/'}>
-                                <Spinner.Suspense>
+                                <Spinner.Suspense fallback={<PageLoadingSkeleton fullScreen rows={8} />}>
                                     <DashboardRouter />
                                 </Spinner.Suspense>
                             </AuthenticatedRoute>

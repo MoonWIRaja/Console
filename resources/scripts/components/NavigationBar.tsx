@@ -6,6 +6,7 @@ import { ApplicationStore } from '@/state';
 import http from '@/api/http';
 import Avatar from '@/components/Avatar';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
+import { ServerContext } from '@/state/server';
 import {
     Sidebar,
     SidebarBody,
@@ -176,8 +177,8 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
 
 // ---------- NavigationBar (exported) ----------
 export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: NavigationBarProps) => {
-    const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
-    const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
+    const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
+    const userName = useStoreState((state: ApplicationStore) => state.user.data?.username || 'User');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
 
@@ -249,7 +250,6 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
 
                     {/* Nav */}
                     <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-                        <SidebarLabel label='MAIN' />
                         <SidebarLink
                             link={{
                                 label: 'Dashboard',
@@ -296,7 +296,9 @@ export const ServerNavigationBar = ({
     routes,
     serverId,
 }: NavigationBarProps & { routes: any[]; serverId: string }) => {
-    const userName = useStoreState((state: ApplicationStore) => state.user.data!.username);
+    const userName = useStoreState((state: ApplicationStore) => state.user.data?.username || 'User');
+    const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
+    const adminServerId = ServerContext.useStoreState((state) => state.server.data?.internalId);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
 
@@ -396,7 +398,7 @@ export const ServerNavigationBar = ({
 
                     {/* Nav */}
                     <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-                        <SidebarLabel label='MAIN' />
+                        <SidebarLabel label='SERVER' />
                         {visibleRoutes.map((route) => (
                             <SidebarLink
                                 key={route.path}
@@ -412,7 +414,38 @@ export const ServerNavigationBar = ({
                                 active={matchUrl(route.path)}
                             />
                         ))}
+                        {rootAdmin && !!adminServerId && (
+                            <>
+                                <SidebarLabel label='ADMIN' />
+                                <SidebarLink
+                                    link={{
+                                        label: 'Admin Server',
+                                        href: `/admin/servers/view/${adminServerId}`,
+                                        icon: (
+                                            <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                                admin_panel_settings
+                                            </span>
+                                        ),
+                                        external: true,
+                                    }}
+                                />
+                            </>
+                        )}
                     </nav>
+                    <div style={{ padding: '0 12px 8px' }}>
+                        <SidebarLink
+                            link={{
+                                label: 'Back to Dashboard',
+                                href: '/',
+                                icon: (
+                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                        dashboard
+                                    </span>
+                                ),
+                            }}
+                            active={location.pathname === '/'}
+                        />
+                    </div>
 
                     <UserFooter userName={userName} onLogout={onTriggerLogout} />
                 </SidebarBody>

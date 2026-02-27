@@ -11,9 +11,13 @@ interface Props {
     isBlue?: boolean;
 }
 
+interface SpinnerSuspenseProps extends Props {
+    fallback?: React.ReactNode;
+}
+
 interface Spinner extends React.FC<Props> {
     Size: Record<'SMALL' | 'BASE' | 'LARGE', SpinnerSize>;
-    Suspense: React.FC<Props>;
+    Suspense: React.FC<SpinnerSuspenseProps>;
 }
 
 const spin = keyframes`
@@ -57,8 +61,8 @@ Spinner.Size = {
     LARGE: 'large',
 };
 
-Spinner.Suspense = ({ children, centered = true, size = Spinner.Size.LARGE, ...props }) => (
-    <Suspense fallback={<Spinner centered={centered} size={size} {...props} />}>
+Spinner.Suspense = ({ children, centered = true, size = Spinner.Size.LARGE, fallback, ...props }) => (
+    <Suspense fallback={fallback ?? <Spinner centered={centered} size={size} {...props} />}>
         <ErrorBoundary>{children}</ErrorBoundary>
     </Suspense>
 );

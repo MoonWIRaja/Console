@@ -16,10 +16,10 @@ const ConfirmationModal: React.FC<Props> = ({ title, children, buttonText, onCon
 
     return (
         <>
-            <h2 css={tw`text-2xl mb-6`}>{title}</h2>
+            <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>{title}</h2>
             <div css={tw`text-neutral-300`}>{children}</div>
-            <div css={tw`flex flex-wrap items-center justify-end mt-8`}>
-                <Button isSecondary onClick={() => dismiss()} css={tw`w-full sm:w-auto border-transparent`}>
+            <div css={tw`mt-8 flex flex-wrap items-center justify-end`}>
+                <Button isSecondary onClick={() => dismiss()} css={tw`w-full sm:w-auto`}>
                     Cancel
                 </Button>
                 <Button color={'red'} css={tw`w-full sm:w-auto mt-4 sm:mt-0 sm:ml-4`} onClick={() => onConfirmed()}>

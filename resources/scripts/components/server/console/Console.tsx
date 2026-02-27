@@ -23,7 +23,7 @@ const isDark = typeof document !== 'undefined' ? document.documentElement.classL
 
 const theme = isDark
     ? {
-          background: 'transparent',
+          background: '#000000',
           cursor: 'transparent',
           black: th`colors.black`.toString(),
           red: '#E54B4B',
@@ -44,7 +44,7 @@ const theme = isDark
           selection: '#FAF089',
       }
     : {
-          background: 'transparent',
+          background: '#000000',
           cursor: '#111827',
           black: '#111827',
           red: '#dc2626',
@@ -68,7 +68,7 @@ const theme = isDark
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
     cursorStyle: 'underline',
-    allowTransparency: true,
+    allowTransparency: false,
     fontSize: 12,
     fontFamily: th('fontFamily.mono'),
     rows: 30,
@@ -264,7 +264,7 @@ export default () => {
 
     return (
         <div className={classNames(styles.terminal, 'relative')}>
-            <SpinnerOverlay visible={!connected} size={'large'} />
+            {!connected && <SpinnerOverlay visible size={'large'} />}
             <div
                 className={classNames(styles.container, styles.overflows_container, { 'rounded-b': !canSendCommands })}
             >
@@ -273,18 +273,17 @@ export default () => {
                 </div>
             </div>
             {canSendCommands && (
-                <div
-                    className={classNames(
-                        styles.overflows_container,
-                        'border border-t-0 border-gray-200 bg-gray-50/60 p-2 dark:border-gray-700 dark:bg-gray-800/60'
-                    )}
-                >
-                    <div className={'relative flex items-center'}>
+                <div className={classNames(styles.command_bar)} style={{ backgroundColor: '#000000' }}>
+                    <div
+                        className={classNames('relative flex items-center', styles.command_shell)}
+                        style={{ backgroundColor: '#000000' }}
+                    >
                         <input
                             className={classNames(styles.command_input)}
                             type={'text'}
                             placeholder={'Type a command...'}
                             aria-label={'Console command input.'}
+                            style={{ backgroundColor: '#000000' }}
                             disabled={!instance || !connected}
                             onKeyDown={handleCommandKeyDown}
                             autoCorrect={'off'}

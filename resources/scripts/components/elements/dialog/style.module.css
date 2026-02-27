@@ -3,15 +3,15 @@
 }
 
 .panel {
-    @apply relative bg-white border-2 border-black rounded-none max-w-xl w-full mx-auto text-left text-black;
+    @apply relative mx-auto w-full max-w-xl rounded-xl border border-[#1f2a14] bg-[#000000] text-left text-gray-100;
 }
 
 .title {
-    @apply font-mono text-xl font-bold mb-2 text-black pr-4;
+    @apply mb-2 pr-4 font-mono text-xl font-bold text-[#d9ff93];
 }
 
 .close_icon {
-    @apply w-5 h-5 text-black group-hover:rotate-90 transition-transform duration-100;
+    @apply h-5 w-5 text-gray-100 transition-transform duration-100 group-hover:rotate-90;
 }
 
 .dialog_icon {

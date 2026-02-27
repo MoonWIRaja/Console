@@ -1,7 +1,6 @@
 import axios, { AxiosProgressEvent } from 'axios';
 import getFileUploadUrl from '@/api/server/files/getFileUploadUrl';
 import tw from 'twin.macro';
-import { Button } from '@/components/elements/button/index';
 import React, { useEffect, useRef } from 'react';
 import { ModalMask } from '@/components/elements/Modal';
 import Fade from '@/components/elements/Fade';
@@ -13,6 +12,7 @@ import { WithClassname } from '@/components/types';
 import Portal from '@/components/elements/Portal';
 import { CloudUploadIcon } from '@heroicons/react/outline';
 import { useSignal } from '@preact/signals-react';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 function isFileOrDirectory(event: DragEvent): boolean {
     if (!event.dataTransfer?.types) {
@@ -120,11 +120,11 @@ export default ({ className }: WithClassname) => {
                         <div className={'w-full flex items-center justify-center pointer-events-none'}>
                             <div
                                 className={
-                                    'flex items-center space-x-4 bg-black w-full ring-4 ring-blue-200 ring-opacity-60 rounded p-6 mx-10 max-w-sm'
+                                    'mx-10 flex w-full max-w-sm items-center space-x-4 rounded-xl border border-[#a3ff12] bg-[#000000] p-6 ring-2 ring-[#a3ff12] ring-opacity-50'
                                 }
                             >
-                                <CloudUploadIcon className={'w-10 h-10 flex-shrink-0'} />
-                                <p className={'font-header flex-1 text-lg text-neutral-100 text-center'}>
+                                <CloudUploadIcon className={'h-10 w-10 flex-shrink-0 text-[#a3ff12]'} />
+                                <p className={'font-header flex-1 text-center text-lg text-gray-100'}>
                                     Drag and drop files to upload.
                                 </p>
                             </div>
@@ -146,9 +146,11 @@ export default ({ className }: WithClassname) => {
                 }}
                 multiple
             />
-            <Button className={className} onClick={() => fileUploadInput.current && fileUploadInput.current.click()}>
-                Upload
-            </Button>
+            <InteractiveHoverButton
+                className={className ?? ''}
+                onClick={() => fileUploadInput.current && fileUploadInput.current.click()}
+                text={'Upload'}
+            />
         </>
     );
 };

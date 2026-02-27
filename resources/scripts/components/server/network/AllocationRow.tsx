@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from 'react';
+import React, { ChangeEvent, memo, useCallback, useState } from 'react';
 import isEqual from 'react-fast-compare';
 import tw from 'twin.macro';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -22,7 +22,7 @@ import { ip } from '@/lib/formatters';
 import Code from '@/components/elements/Code';
 
 const Label = styled.label`
-    ${tw`uppercase text-xs mt-1 text-neutral-400 block px-1 select-none transition-colors duration-150`}
+    ${tw`mt-1 block select-none px-1 text-xs uppercase text-neutral-500 transition-colors duration-150`}
 `;
 
 interface Props {
@@ -62,7 +62,7 @@ const AllocationRow = ({ allocation }: Props) => {
     return (
         <GreyRowBox $hoverable={false} className={'flex-wrap md:flex-nowrap mt-2'}>
             <div className={'flex items-center w-full md:w-auto'}>
-                <div className={'pl-4 pr-6 text-neutral-400'}>
+                <div className={'pl-4 pr-6 text-neutral-500'}>
                     <FontAwesomeIcon icon={faNetworkWired} />
                 </div>
                 <div className={'mr-4 flex-1 md:w-40'}>
@@ -87,16 +87,20 @@ const AllocationRow = ({ allocation }: Props) => {
             <div className={'mt-4 w-full md:mt-0 md:flex-1 md:w-auto'}>
                 <InputSpinner visible={loading}>
                     <Textarea
-                        className={'bg-neutral-800 hover:border-neutral-600 border-transparent'}
+                        className={'border-[#1f2a14] bg-[#000000] hover:border-[#2d3c1f]'}
                         placeholder={'Notes'}
                         defaultValue={allocation.notes || undefined}
-                        onChange={(e) => setAllocationNotes(e.currentTarget.value)}
+                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setAllocationNotes(e.currentTarget.value)}
                     />
                 </InputSpinner>
             </div>
             <div className={'flex justify-end space-x-4 mt-4 w-full md:mt-0 md:w-48'}>
                 {allocation.isDefault ? (
-                    <Button size={Button.Sizes.Small} className={'!text-gray-50 !bg-blue-600'} disabled>
+                    <Button
+                        size={Button.Sizes.Small}
+                        className={'!border-[#2f5e1b] !bg-[#12220b] !text-[#d9ff93]'}
+                        disabled
+                    >
                         Primary
                     </Button>
                 ) : (

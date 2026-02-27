@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import tw from 'twin.macro';
-import { Button } from '@/components/elements/button/index';
 import Fade from '@/components/elements/Fade';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import useFileManagerSwr from '@/plugins/useFileManagerSwr';
@@ -11,6 +10,7 @@ import deleteFiles from '@/api/server/files/deleteFiles';
 import RenameFileModal from '@/components/server/files/RenameFileModal';
 import Portal from '@/components/elements/Portal';
 import { Dialog } from '@/components/elements/dialog';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 const MassActionsBar = () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -75,13 +75,15 @@ const MassActionsBar = () => {
                 >
                     <p className={'mb-2'}>
                         Are you sure you want to delete&nbsp;
-                        <span className={'font-semibold text-gray-50'}>{selectedFiles.length} files</span>? This is a
+                        <span className={'font-semibold text-[#d9ff93]'}>{selectedFiles.length} files</span>? This is a
                         permanent action and the files cannot be recovered.
                     </p>
-                    {selectedFiles.slice(0, 15).map((file) => (
-                        <li key={file}>{file}</li>
-                    ))}
-                    {selectedFiles.length > 15 && <li>and {selectedFiles.length - 15} others</li>}
+                    <ul className={'space-y-1 text-sm text-gray-300'}>
+                        {selectedFiles.slice(0, 15).map((file) => (
+                            <li key={file}>{file}</li>
+                        ))}
+                        {selectedFiles.length > 15 && <li>and {selectedFiles.length - 15} others</li>}
+                    </ul>
                 </Dialog.Confirm>
                 {showMove && (
                     <RenameFileModal
@@ -95,12 +97,16 @@ const MassActionsBar = () => {
                 <Portal>
                     <div className={'pointer-events-none fixed bottom-0 mb-6 flex justify-center w-full z-50'}>
                         <Fade timeout={75} in={selectedFiles.length > 0} unmountOnExit>
-                            <div css={tw`flex items-center space-x-4 pointer-events-auto rounded p-4 bg-black/50`}>
-                                <Button onClick={() => setShowMove(true)}>Move</Button>
-                                <Button onClick={onClickCompress}>Archive</Button>
-                                <Button.Danger variant={Button.Variants.Secondary} onClick={() => setShowConfirm(true)}>
-                                    Delete
-                                </Button.Danger>
+                            <div
+                                css={tw`pointer-events-auto flex items-center space-x-3 rounded-xl border border-[#1f2a14] bg-[#000000] p-3 shadow-xl`}
+                            >
+                                <InteractiveHoverButton text={'Move'} onClick={() => setShowMove(true)} />
+                                <InteractiveHoverButton text={'Archive'} onClick={onClickCompress} />
+                                <InteractiveHoverButton
+                                    text={'Delete'}
+                                    variant={'danger'}
+                                    onClick={() => setShowConfirm(true)}
+                                />
                             </div>
                         </Fade>
                     </div>

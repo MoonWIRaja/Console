@@ -39,28 +39,34 @@ const FileUploadList = () => {
     );
 
     return (
-        <div className={'space-y-2 mt-6'}>
+        <div className={'mt-6 space-y-2'}>
             {uploads.map(([name, file]) => (
-                <div key={name} className={'flex items-center space-x-3 bg-gray-700 p-3 rounded'}>
+                <div key={name} className={'flex items-center space-x-3 rounded-lg border border-[#1f2a14] bg-[#000000] p-3'}>
                     <Tooltip content={`${Math.floor((file.loaded / file.total) * 100)}%`} placement={'left'}>
                         <div className={'flex-shrink-0'}>
-                            <Spinner progress={(file.loaded / file.total) * 100} className={'w-6 h-6'} />
+                            <Spinner progress={(file.loaded / file.total) * 100} className={'h-6 w-6 text-[#a3ff12]'} />
                         </div>
                     </Tooltip>
-                    <Code className={'flex-1 truncate'}>{name}</Code>
+                    <Code className={'flex-1 truncate border border-[#1f2a14] !bg-[#050505] !text-gray-200'}>{name}</Code>
                     <button
                         onClick={cancelFileUpload.bind(this, name)}
-                        className={'text-gray-500 hover:text-gray-200 transition-colors duration-75'}
+                        className={'text-gray-500 transition-colors duration-75 hover:text-[#d9ff93]'}
                     >
-                        <XIcon className={'w-5 h-5'} />
+                        <XIcon className={'h-5 w-5'} />
                     </button>
                 </div>
             ))}
             <Dialog.Footer>
-                <Button.Danger variant={Button.Variants.Secondary} onClick={() => clearFileUploads()}>
+                <Button.Danger
+                    variant={Button.Variants.Secondary}
+                    className={'!border-red-500 !bg-red-900 hover:!bg-red-800'}
+                    onClick={() => clearFileUploads()}
+                >
                     Cancel Uploads
                 </Button.Danger>
-                <Button.Text onClick={close}>Close</Button.Text>
+                <Button.Text className={'!border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'} onClick={close}>
+                    Close
+                </Button.Text>
             </Dialog.Footer>
         </div>
     );
@@ -91,11 +97,11 @@ export default () => {
             {count > 0 && (
                 <Tooltip content={`${count} files are uploading, click to view`}>
                     <button
-                        className={'flex items-center justify-center w-10 h-10'}
+                        className={'flex h-10 w-10 items-center justify-center rounded-lg border border-[#1f2a14] bg-[#000000] text-[#a3ff12] transition-colors duration-150 hover:border-[#a3ff12]'}
                         onClick={() => (open.value = true)}
                     >
-                        <Spinner progress={(progress.uploaded / progress.total) * 100} className={'w-8 h-8'} />
-                        <CloudUploadIcon className={'h-3 absolute mx-auto animate-pulse'} />
+                        <Spinner progress={(progress.uploaded / progress.total) * 100} className={'h-8 w-8'} />
+                        <CloudUploadIcon className={'absolute mx-auto h-3 animate-pulse'} />
                     </button>
                 </Tooltip>
             )}

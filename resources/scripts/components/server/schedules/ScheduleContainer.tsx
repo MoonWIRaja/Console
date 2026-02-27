@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import getServerSchedules from '@/api/server/schedules/getServerSchedules';
 import { ServerContext } from '@/state/server';
-import Spinner from '@/components/elements/Spinner';
 import { useHistory, useRouteMatch } from 'react-router-dom';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import ScheduleRow from '@/components/server/schedules/ScheduleRow';
@@ -13,6 +12,7 @@ import tw from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 import { Button } from '@/components/elements/button/index';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
     const match = useRouteMatch();
@@ -41,11 +41,11 @@ export default () => {
         <ServerContentBlock title={'Schedules'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedules.length && loading ? (
-                <Spinner size={'large'} centered />
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : (
                 <>
                     {schedules.length === 0 ? (
-                        <p css={tw`text-sm text-center text-neutral-300`}>
+                        <p css={tw`text-center text-sm text-neutral-400`}>
                             There are no schedules configured for this server.
                         </p>
                     ) : (

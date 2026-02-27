@@ -67,7 +67,7 @@ export default ({ schedule, task }: Props) => {
     const [title, icon] = getActionDetails(task.action);
 
     return (
-        <div css={tw`sm:flex items-center p-3 sm:p-6 border-b border-neutral-800`}>
+        <div css={tw`border-b border-[#1f2a14] p-3 sm:flex sm:items-center sm:p-6`}>
             <SpinnerOverlay visible={isLoading} fixed size={'large'} />
             <TaskDetailsModal
                 schedule={schedule}
@@ -84,16 +84,14 @@ export default ({ schedule, task }: Props) => {
             >
                 Are you sure you want to delete this task? This action cannot be undone.
             </ConfirmationModal>
-            <FontAwesomeIcon icon={icon} css={tw`text-lg text-white hidden md:block`} />
+            <FontAwesomeIcon icon={icon} css={tw`hidden text-lg text-[#d9ff93] md:block`} />
             <div css={tw`flex-none sm:flex-1 w-full sm:w-auto overflow-x-auto`}>
-                <p css={tw`md:ml-6 text-neutral-200 uppercase text-sm`}>{title}</p>
+                <p css={tw`text-sm uppercase text-[#f8f6ef] md:ml-6`}>{title}</p>
                 {task.payload && (
                     <div css={tw`md:ml-6 mt-2`}>
-                        {task.action === 'backup' && (
-                            <p css={tw`text-xs uppercase text-neutral-400 mb-1`}>Ignoring files & folders:</p>
-                        )}
+                        {task.action === 'backup' && <p css={tw`mb-1 text-xs uppercase text-neutral-400`}>Ignoring files & folders:</p>}
                         <div
-                            css={tw`font-mono bg-neutral-800 rounded py-1 px-2 text-sm w-auto inline-block whitespace-pre-wrap break-all`}
+                            css={tw`inline-block w-auto break-all whitespace-pre-wrap rounded border border-[#1f2a14] bg-[#050505] px-2 py-1 font-mono text-sm text-neutral-300`}
                         >
                             {task.payload}
                         </div>
@@ -111,7 +109,7 @@ export default ({ schedule, task }: Props) => {
                 )}
                 {task.sequenceId > 1 && task.timeOffset > 0 && (
                     <div css={tw`mr-6`}>
-                        <div css={tw`flex items-center px-2 py-1 bg-neutral-500 text-sm rounded-full`}>
+                        <div css={tw`flex items-center rounded-full border border-[#1f2a14] bg-[#050505] px-2 py-1 text-sm text-neutral-300`}>
                             <Icon icon={faClock} css={tw`w-3 h-3 mr-2`} />
                             {task.timeOffset}s later
                         </div>
@@ -121,19 +119,19 @@ export default ({ schedule, task }: Props) => {
                     <button
                         type={'button'}
                         aria-label={'Edit scheduled task'}
-                        css={tw`block text-sm p-2 text-neutral-500 hover:text-neutral-100 transition-colors duration-150 mr-4 ml-auto sm:ml-0`}
-                        onClick={() => setIsEditing(true)}
-                    >
-                        <FontAwesomeIcon icon={faPencilAlt} />
+                            css={tw`ml-auto mr-4 block p-2 text-sm text-neutral-500 transition-colors duration-150 hover:text-[#d9ff93] sm:ml-0`}
+                            onClick={() => setIsEditing(true)}
+                        >
+                            <FontAwesomeIcon icon={faPencilAlt} />
                     </button>
                 </Can>
                 <Can action={'schedule.update'}>
                     <button
                         type={'button'}
                         aria-label={'Delete scheduled task'}
-                        css={tw`block text-sm p-2 text-neutral-500 hover:text-red-600 transition-colors duration-150`}
-                        onClick={() => setVisible(true)}
-                    >
+                            css={tw`block p-2 text-sm text-neutral-500 transition-colors duration-150 hover:text-red-400`}
+                            onClick={() => setVisible(true)}
+                        >
                         <FontAwesomeIcon icon={faTrashAlt} />
                     </button>
                 </Can>

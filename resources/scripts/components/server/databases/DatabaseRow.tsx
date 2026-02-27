@@ -72,8 +72,8 @@ export default ({ database, className }: Props) => {
                         }}
                     >
                         <FlashMessageRender byKey={'database:delete'} css={tw`mb-6`} />
-                        <h2 css={tw`text-2xl mb-6`}>Confirm database deletion</h2>
-                        <p css={tw`text-sm`}>
+                        <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Confirm database deletion</h2>
+                        <p css={tw`text-sm text-neutral-300`}>
                             Deleting a database is a permanent action, it cannot be undone. This will permanently delete
                             the <strong>{database.name}</strong> database and remove all associated data.
                         </p>
@@ -99,7 +99,7 @@ export default ({ database, className }: Props) => {
             </Formik>
             <Modal visible={connectionVisible} onDismissed={() => setConnectionVisible(false)}>
                 <FlashMessageRender byKey={'database-connection-modal'} css={tw`mb-6`} />
-                <h3 css={tw`mb-6 text-2xl`}>Database connection details</h3>
+                <h3 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Database connection details</h3>
                 <div>
                     <Label>Endpoint</Label>
                     <CopyOnClick text={database.connectionString}>
@@ -145,24 +145,24 @@ export default ({ database, className }: Props) => {
                 </div>
                 <div css={tw`flex-1 ml-4`}>
                     <CopyOnClick text={database.name}>
-                        <p css={tw`text-lg`}>{database.name}</p>
+                        <p css={tw`text-lg text-[#f8f6ef]`}>{database.name}</p>
                     </CopyOnClick>
                 </div>
                 <div css={tw`ml-8 text-center hidden md:block`}>
                     <CopyOnClick text={database.connectionString}>
-                        <p css={tw`text-sm`}>{database.connectionString}</p>
+                        <p css={tw`text-sm text-neutral-300`}>{database.connectionString}</p>
                     </CopyOnClick>
-                    <p css={tw`mt-1 text-2xs text-neutral-500 uppercase select-none`}>Endpoint</p>
+                    <p css={tw`mt-1 select-none text-2xs uppercase text-neutral-500`}>Endpoint</p>
                 </div>
                 <div css={tw`ml-8 text-center hidden md:block`}>
-                    <p css={tw`text-sm`}>{database.allowConnectionsFrom}</p>
-                    <p css={tw`mt-1 text-2xs text-neutral-500 uppercase select-none`}>Connections from</p>
+                    <p css={tw`text-sm text-neutral-300`}>{database.allowConnectionsFrom}</p>
+                    <p css={tw`mt-1 select-none text-2xs uppercase text-neutral-500`}>Connections from</p>
                 </div>
                 <div css={tw`ml-8 text-center hidden md:block`}>
                     <CopyOnClick text={database.username}>
-                        <p css={tw`text-sm`}>{database.username}</p>
+                        <p css={tw`text-sm text-neutral-300`}>{database.username}</p>
                     </CopyOnClick>
-                    <p css={tw`mt-1 text-2xs text-neutral-500 uppercase select-none`}>Username</p>
+                    <p css={tw`mt-1 select-none text-2xs uppercase text-neutral-500`}>Username</p>
                 </div>
                 <div css={tw`ml-8`}>
                     <Button isSecondary css={tw`mr-2`} onClick={() => setConnectionVisible(true)}>

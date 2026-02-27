@@ -11,42 +11,44 @@ interface Props {
 }
 
 const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
-    ${tw`relative inline-block rounded p-2 uppercase tracking-wide text-sm transition-all duration-150 border`};
+    ${tw`relative inline-flex items-center justify-center rounded-full border text-sm font-semibold tracking-wide transition-all duration-150`};
+    ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef]`};
+    ${tw`hover:border-[#a3ff12] hover:text-[#d9ff93] focus:ring-2 focus:ring-[#a3ff12] focus:ring-opacity-50 focus:ring-offset-2 focus:ring-offset-black`};
 
     ${(props) =>
         ((!props.isSecondary && !props.color) || props.color === 'primary') &&
         css<Props>`
-            ${(props) => !props.isSecondary && tw`bg-primary-500 border-primary-600 border text-primary-50`};
+            ${(props) => !props.isSecondary && tw`border-[#2f5e1b] bg-[#12220b] text-[#d9ff93]`};
 
             &:hover:not(:disabled) {
-                ${tw`bg-primary-600 border-primary-700`};
+                ${tw`border-[#a3ff12] bg-[#17310d] text-[#ecfccb]`};
             }
         `};
 
     ${(props) =>
         props.color === 'grey' &&
         css`
-            ${tw`border-neutral-600 bg-neutral-500 text-neutral-50`};
+            ${tw`border-[#334155] bg-[#0b0f14] text-[#e2e8f0]`};
 
             &:hover:not(:disabled) {
-                ${tw`bg-neutral-600 border-neutral-700`};
+                ${tw`border-[#64748b] bg-[#111827] text-white`};
             }
         `};
 
     ${(props) =>
         props.color === 'green' &&
         css<Props>`
-            ${tw`border-green-600 bg-green-500 text-green-50`};
+            ${tw`border-[#2f5e1b] bg-[#12220b] text-[#d9ff93]`};
 
             &:hover:not(:disabled) {
-                ${tw`bg-green-600 border-green-700`};
+                ${tw`border-[#a3ff12] bg-[#17310d] text-[#ecfccb]`};
             }
 
             ${(props) =>
                 props.isSecondary &&
                 css`
                     &:active:not(:disabled) {
-                        ${tw`bg-green-600 border-green-700`};
+                        ${tw`border-[#a3ff12] bg-[#17310d]`};
                     }
                 `};
         `};
@@ -54,42 +56,42 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${(props) =>
         props.color === 'red' &&
         css<Props>`
-            ${tw`border-red-600 bg-red-500 text-red-50`};
+            ${tw`border-[#7f1d1d] bg-[#2a0707] text-[#fee2e2]`};
 
             &:hover:not(:disabled) {
-                ${tw`bg-red-600 border-red-700`};
+                ${tw`border-[#ef4444] bg-[#360909] text-white`};
             }
 
             ${(props) =>
                 props.isSecondary &&
                 css`
                     &:active:not(:disabled) {
-                        ${tw`bg-red-600 border-red-700`};
+                        ${tw`border-[#ef4444] bg-[#360909]`};
                     }
                 `};
         `};
 
     ${(props) => props.size === 'xsmall' && tw`px-2 py-1 text-xs`};
     ${(props) => (!props.size || props.size === 'small') && tw`px-4 py-2`};
-    ${(props) => props.size === 'large' && tw`p-4 text-sm`};
-    ${(props) => props.size === 'xlarge' && tw`p-4 w-full`};
+    ${(props) => props.size === 'large' && tw`px-5 py-3 text-sm`};
+    ${(props) => props.size === 'xlarge' && tw`px-5 py-3 w-full text-sm`};
 
     ${(props) =>
         props.isSecondary &&
         css<Props>`
-            ${tw`border-neutral-600 bg-transparent text-neutral-200`};
+            ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef]`};
 
             &:hover:not(:disabled) {
-                ${tw`border-neutral-500 text-neutral-100`};
-                ${(props) => props.color === 'red' && tw`bg-red-500 border-red-600 text-red-50`};
-                ${(props) => props.color === 'primary' && tw`bg-primary-500 border-primary-600 text-primary-50`};
-                ${(props) => props.color === 'green' && tw`bg-green-500 border-green-600 text-green-50`};
+                ${tw`border-[#a3ff12] bg-[#050505] text-[#d9ff93]`};
+                ${(props) => props.color === 'red' && tw`border-[#ef4444] bg-[#2a0707] text-[#fee2e2]`};
+                ${(props) => props.color === 'primary' && tw`border-[#a3ff12] bg-[#12220b] text-[#d9ff93]`};
+                ${(props) => props.color === 'green' && tw`border-[#a3ff12] bg-[#12220b] text-[#d9ff93]`};
+                ${(props) => props.color === 'grey' && tw`border-[#64748b] bg-[#111827] text-white`};
             }
         `};
 
     &:disabled {
-        opacity: 0.55;
-        cursor: default;
+        ${tw`cursor-not-allowed opacity-50`};
     }
 `;
 
@@ -98,7 +100,7 @@ type ComponentProps = Omit<JSX.IntrinsicElements['button'], 'ref' | keyof Props>
 const Button: React.FC<ComponentProps> = ({ children, isLoading, ...props }) => (
     <ButtonStyle {...props}>
         {isLoading && (
-            <div css={tw`flex absolute justify-center items-center w-full h-full left-0 top-0`}>
+            <div css={tw`absolute left-0 top-0 flex h-full w-full items-center justify-center`}>
                 <Spinner size={'small'} />
             </div>
         )}
