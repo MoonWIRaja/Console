@@ -90,29 +90,29 @@ export default () => {
             <FlashMessageRender byKey={'files:view'} css={tw`mb-0`} />
             <ErrorBoundary>
                 <div
-                    css={tw`flex h-screen min-h-0 w-full flex-col overflow-hidden border-0 bg-[#000000]`}
+                    css={tw`flex h-screen min-h-0 w-full flex-col overflow-hidden border-0 bg-[color:var(--card)]`}
                 >
-                    <div css={tw`flex items-center justify-between border-b border-[#1f2a14] bg-[#050505] px-4 py-3`}>
+                    <div css={tw`flex items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}>
                         <div css={tw`min-w-0 pr-4`}>
                             <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
                         </div>
-                        <div css={tw`hidden items-center rounded-md border border-[#1f2a14] bg-[#000000] px-3 py-1 text-xs text-gray-300 md:flex`}>
+                        <div css={tw`hidden items-center rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-gray-300 md:flex`}>
                             VSCode Style Editor
                         </div>
                     </div>
 
                     {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                        <div css={tw`border-b border-[#1f2a14] bg-[#031204] px-4 py-3`}>
+                        <div css={tw`border-b border-[color:var(--border)] bg-[#031204] px-4 py-3`}>
                             <p css={tw`text-sm text-gray-300`}>
                                 You&apos;re editing a{' '}
-                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>
+                                <code css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}>
                                     .pteroignore
                                 </code>{' '}
                                 file. Any files or directories listed in here will be excluded from backups. Wildcards
                                 are supported by using an asterisk (
-                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>*</code>).
+                                <code css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}>*</code>).
                                 You can negate a prior rule by prepending an exclamation point (
-                                <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-1 py-px font-mono`}>!</code>).
+                                <code css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}>!</code>).
                             </p>
                         </div>
                     )}
@@ -157,7 +157,7 @@ export default () => {
                         )}
                     </div>
 
-                    <div css={tw`flex flex-wrap items-center justify-between gap-3 border-t border-[#1f2a14] bg-[#050505] px-4 py-3`}>
+                    <div css={tw`flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}>
                         <div css={tw`w-full sm:w-[320px]`}>
                             <Select
                                 title={'Choose Language'}

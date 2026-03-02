@@ -10,9 +10,9 @@ import Can from '@/components/elements/Can';
 import useFlash from '@/plugins/useFlash';
 import tw from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
-import { Button } from '@/components/elements/button/index';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 export default () => {
     const match = useRouteMatch();
@@ -38,7 +38,7 @@ export default () => {
     }, []);
 
     return (
-        <ServerContentBlock title={'Schedules'}>
+        <ServerContentBlock title={'Schedules'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedules.length && loading ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
@@ -67,9 +67,7 @@ export default () => {
                     <Can action={'schedule.create'}>
                         <div css={tw`mt-8 flex justify-end`}>
                             <EditScheduleModal visible={visible} onModalDismissed={() => setVisible(false)} />
-                            <Button type={'button'} onClick={() => setVisible(true)}>
-                                Create schedule
-                            </Button>
+                            <InteractiveHoverButton text={'Create Schedule'} onClick={() => setVisible(true)} />
                         </div>
                     </Can>
                 </>

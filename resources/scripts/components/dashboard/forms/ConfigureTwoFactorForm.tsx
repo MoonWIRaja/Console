@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
-import { Button } from '@/components/elements/button/index';
 import SetupTOTPDialog from '@/components/dashboard/forms/SetupTOTPDialog';
 import RecoveryTokensDialog from '@/components/dashboard/forms/RecoveryTokensDialog';
 import DisableTOTPDialog from '@/components/dashboard/forms/DisableTOTPDialog';
 import { useFlashKey } from '@/plugins/useFlash';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 export default () => {
-    const actionButtonClass =
-        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black focus:!ring-offset-white';
     const [tokens, setTokens] = useState<string[]>([]);
     const [visible, setVisible] = useState<'enable' | 'disable' | null>(null);
     const isEnabled = useStoreState((state: ApplicationStore) => state.user.data!.useTotp);
@@ -31,20 +29,16 @@ export default () => {
             <SetupTOTPDialog open={visible === 'enable'} onClose={() => setVisible(null)} onTokens={onTokens} />
             <RecoveryTokensDialog tokens={tokens} open={tokens.length > 0} onClose={() => setTokens([])} />
             <DisableTOTPDialog open={visible === 'disable'} onClose={() => setVisible(null)} />
-            <p className={'text-sm text-gray-600 font-mono'}>
+            <p className={'font-mono text-sm text-[color:var(--muted-foreground)]'}>
                 {isEnabled
                     ? 'Two-step verification is currently enabled on your account.'
                     : 'You do not currently have two-step verification enabled on your account. Click the button below to begin configuring it.'}
             </p>
             <div className={'mt-6'}>
                 {isEnabled ? (
-                    <Button onClick={() => setVisible('disable')} className={actionButtonClass}>
-                        Disable Two-Step
-                    </Button>
+                    <InteractiveHoverButton type={'button'} onClick={() => setVisible('disable')} text={'Disable'} />
                 ) : (
-                    <Button onClick={() => setVisible('enable')} className={actionButtonClass}>
-                        Enable Two-Step
-                    </Button>
+                    <InteractiveHoverButton type={'button'} onClick={() => setVisible('enable')} text={'Enable'} />
                 )}
             </div>
         </div>

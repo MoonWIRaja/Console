@@ -12,22 +12,28 @@ const ToggleContainer = styled.div`
         ${tw`hidden`};
 
         &:checked + label {
-            ${tw`border-[#2f5e1b] bg-[#17310d] shadow-none`};
+            border-color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.18);
+            ${tw`shadow-none`};
         }
 
         &:checked + label:before {
             right: 0.125rem;
-            border-color: #2f5e1b;
-            background: #d9ff93;
+            border-color: var(--primary);
+            background: var(--primary);
         }
     }
 
     & > label {
-        ${tw`mb-0 block h-6 cursor-pointer overflow-hidden rounded-full border border-[#1f2a14] bg-[#050505] shadow-inner`};
+        ${tw`mb-0 block h-6 cursor-pointer overflow-hidden rounded-full border shadow-inner`};
+        border-color: var(--border);
+        background-color: var(--background);
         transition: all 75ms linear;
 
         &::before {
-            ${tw`absolute block h-5 w-5 rounded-full border border-[#1f2a14] bg-[#f8f6ef]`};
+            ${tw`absolute block h-5 w-5 rounded-full border`};
+            border-color: var(--border);
+            background-color: var(--foreground);
             top: 0.125rem;
             right: calc(50% + 0.125rem);
             //width: 1.25rem;

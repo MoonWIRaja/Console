@@ -3,22 +3,22 @@
 namespace Pterodactyl\Http\Controllers\Auth;
 
 use Illuminate\Support\Str;
+use Pterodactyl\Models\User;
 use Illuminate\Http\JsonResponse;
+use Pterodactyl\Facades\Activity;
+use Illuminate\Auth\AuthManager;
 use Illuminate\Contracts\Hashing\Hasher;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Events\Dispatcher;
 use Pterodactyl\Events\User\PasswordChanged;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\ResetsPasswords;
 use Pterodactyl\Http\Requests\Auth\ResetPasswordRequest;
 use Pterodactyl\Contracts\Repository\UserRepositoryInterface;
+use Pterodactyl\Services\Auth\PasswordResetPinService;
 
 class ResetPasswordController extends Controller
 {
-    use ResetsPasswords;
-
     /**
      * The URL to redirect users to after password reset.
      */
@@ -33,64 +33,54 @@ class ResetPasswordController extends Controller
         private Dispatcher $dispatcher,
         private Hasher $hasher,
         private UserRepositoryInterface $userRepository,
+        private PasswordResetPinService $passwordResetPinService,
+        private AuthManager $auth,
     ) {
     }
 
     /**
-     * Reset the given user's password.
+     * Reset the given user's password using a 6-digit PIN challenge.
      *
      * @throws DisplayException
      */
     public function __invoke(ResetPasswordRequest $request): JsonResponse
     {
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise, we will parse the error and return the response.
-        $response = $this->broker()->reset(
-            $this->credentials($request),
-            function ($user, $password) {
-                $this->resetPassword($user, $password);
-            }
-        );
-
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($response === Password::PASSWORD_RESET) {
-            return $this->sendResetResponse();
+        $details = $request->session()->get('password_reset_pin_token');
+        if (
+            !$this->passwordResetPinService->hasValidSessionData($details)
+            || empty($details['user_id'])
+        ) {
+            throw new DisplayException('The reset session has expired. Please request a new PIN.');
         }
 
-        throw new DisplayException(trans($response));
-    }
+        /** @var User|null $user */
+        $user = User::query()->find($details['user_id']);
+        if (!$user instanceof User) {
+            throw new DisplayException('The reset code provided is invalid or has expired.');
+        }
 
-    /**
-     * Reset the given user's password. If the user has two-factor authentication enabled on their
-     * account do not automatically log them in. In those cases, send the user back to the login
-     * form with a note telling them their password was changed and to log back in.
-     *
-     * @param \Illuminate\Contracts\Auth\CanResetPassword&\Pterodactyl\Models\User $user
-     * @param string $password
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
-    protected function resetPassword($user, $password)
-    {
+        if (!$this->passwordResetPinService->isPinValid($user, (string) $request->input('pin'))) {
+            throw new DisplayException('The reset code provided is invalid or has expired.');
+        }
+
         $user = $this->userRepository->update($user->id, [
-            'password' => $this->hasher->make($password),
+            'password' => $this->hasher->make((string) $request->input('password')),
             $user->getRememberTokenName() => Str::random(60),
         ]);
 
         $this->dispatcher->dispatch(new PasswordReset($user));
         PasswordChanged::dispatch($user);
 
-        // If the user is not using 2FA log them in, otherwise skip this step and force a
-        // fresh login where they'll be prompted to enter a token.
+        $this->passwordResetPinService->clearChallenge($request, $user);
+        Activity::event('auth:password-reset-pin.completed')->withRequestMetadata()->subject($user)->log();
+
         if (!$user->use_totp) {
-            $this->guard()->login($user);
+            $this->auth->guard()->login($user);
         }
 
         $this->hasTwoFactor = $user->use_totp;
+
+        return $this->sendResetResponse();
     }
 
     /**

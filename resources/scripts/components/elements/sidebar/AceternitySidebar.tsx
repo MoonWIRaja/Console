@@ -82,10 +82,10 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
                     top: 0,
                     left: 0,
                     zIndex: 20,
-                    background: '#000000',
+                    background: 'var(--card)',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid rgba(163, 255, 18, 0.2)',
+                    borderRight: '1px solid rgba(var(--primary-rgb), 0.22)',
                     fontFamily: "'Inter', sans-serif",
                     overflow: 'hidden',
                     flexShrink: 0,
@@ -116,7 +116,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: '#000000',
+                        background: 'var(--card)',
                         padding: '12px 16px',
                         fontFamily: "'Inter', sans-serif",
                         position: 'fixed',
@@ -124,16 +124,16 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid rgba(163, 255, 18, 0.2)',
+                        borderBottom: '1px solid rgba(var(--primary-rgb), 0.22)',
                     }}
                 >
-                    <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>BurHan Console</div>
+                    <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>BurHan Console</div>
                     <button
                         onClick={() => setOpen(!open)}
                         style={{
                             background: 'none',
                             border: 'none',
-                            color: '#a3ff12',
+                            color: 'var(--primary)',
                             fontSize: '20px',
                             cursor: 'pointer',
                             padding: '4px',
@@ -157,7 +157,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                             style={{
                                 position: 'fixed',
                                 inset: 0,
-                                backgroundColor: '#000000',
+                                backgroundColor: 'rgba(var(--background-rgb), 0.55)',
                                 zIndex: 1001,
                             }}
                         />
@@ -172,12 +172,12 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                 left: 0,
                                 height: '100vh',
                                 width: '256px',
-                                background: '#000000',
+                                background: 'var(--card)',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 fontFamily: "'Inter', sans-serif",
-                                borderRight: '1px solid rgba(163, 255, 18, 0.2)',
+                                borderRight: '1px solid rgba(var(--primary-rgb), 0.22)',
                             }}
                             className='sidebar-mobile-shell'
                         >
@@ -187,7 +187,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                     style={{
                                         background: 'none',
                                         border: 'none',
-                                        color: '#a3ff12',
+                                        color: 'var(--primary)',
                                         fontSize: '18px',
                                         cursor: 'pointer',
                                     }}
@@ -269,10 +269,10 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 gap: expanded ? '12px' : '0px',
                 padding: '10px 12px',
                 textDecoration: 'none',
-                color: active ? '#a3ff12' : '#d1d5db',
-                backgroundColor: active ? 'rgba(163, 255, 18, 0.1)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(163, 255, 18, 0.35)' : 'transparent'}`,
-                boxShadow: active ? '0 0 12px rgba(163, 255, 18, 0.16)' : 'none',
+                color: active ? 'var(--primary)' : 'var(--foreground)',
+                backgroundColor: active ? 'var(--primary-glow-soft)' : 'transparent',
+                border: `1px solid ${active ? 'rgba(var(--primary-rgb), 0.35)' : 'transparent'}`,
+                boxShadow: active ? '0 0 12px rgba(var(--primary-rgb), 0.2)' : 'none',
                 borderRadius: '8px',
                 margin: '2px 0',
                 transition: 'all 0.15s',
@@ -339,7 +339,7 @@ export const SidebarLabel = ({ label }: SidebarLabelProps) => {
                 fontSize: '12px',
                 fontWeight: 500,
                 letterSpacing: '0.05em',
-                color: '#7a7a7a',
+                color: 'var(--muted-foreground)',
                 textTransform: 'uppercase',
             }}
         >

@@ -7,11 +7,11 @@ import setSelectedDockerImage from '@/api/server/setSelectedDockerImage';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
-import Select from '@/components/elements/Select';
 import useWebsocketEvent from '@/plugins/useWebsocketEvent';
 import Can from '@/components/elements/Can';
 import getServerStartup from '@/api/swr/getServerStartup';
 import InputSpinner from '@/components/elements/InputSpinner';
+import Select from '@/components/ui/select';
 
 const MATCH_ERRORS = [
     'minecraft 1.17 requires running the server with java 16 or above',
@@ -86,17 +86,22 @@ const JavaVersionModalFeature = () => {
             <Can action={'startup.docker-image'}>
                 <div css={tw`mt-4`}>
                     <InputSpinner visible={!data || isValidating}>
-                        <Select disabled={!data} onChange={(e) => setSelectedVersion(e.target.value)}>
-                            {!data ? (
-                                <option disabled />
-                            ) : (
-                                Object.keys(data.dockerImages).map((key) => (
-                                    <option key={key} value={data.dockerImages[key]}>
-                                        {key}
-                                    </option>
-                                ))
-                            )}
-                        </Select>
+                        <Select
+                            title={'Choose Java Version'}
+                            disabled={!data}
+                            defaultValue={selectedVersion}
+                            onChange={(value) => setSelectedVersion(value)}
+                            data={
+                                !data
+                                    ? []
+                                    : Object.keys(data.dockerImages).map((key) => ({
+                                          id: key,
+                                          label: key,
+                                          value: data.dockerImages[key],
+                                          description: data.dockerImages[key],
+                                      }))
+                            }
+                        />
                     </InputSpinner>
                 </div>
             </Can>

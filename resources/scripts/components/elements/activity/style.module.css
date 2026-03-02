@@ -2,7 +2,7 @@
     @apply mx-2 flex space-x-1 text-gray-400 transition-colors duration-100;
 
     & svg {
-        @apply h-5 w-auto cursor-pointer px-1 py-px hover:text-[#d9ff93];
+        @apply h-5 w-auto cursor-pointer px-1 py-px hover:text-[color:var(--primary)];
     }
 }
 

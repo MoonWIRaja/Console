@@ -219,13 +219,13 @@ export default ({ server, className }: { server: Server; className?: string }) =
         >
             <Link
                 to={`/server/${server.id}`}
-                className={'shine-border group block rounded-xl border border-gray-800 bg-[#000000] p-6 no-underline'}
+                className={'shine-border group block rounded-xl border border-gray-800 bg-[color:var(--card)] p-6 no-underline'}
             >
                 <div className='flex flex-col gap-8 xl:flex-row xl:items-center'>
                     <div className='flex min-w-[240px] items-center gap-5'>
                         <div className='relative'>
-                            <div className='flex h-14 w-14 items-center justify-center rounded-lg border border-white/10 bg-black transition-colors duration-500 group-hover:border-[#a3ff12]'>
-                                <span className='material-icons-round text-2xl text-gray-400 transition-colors duration-500 group-hover:text-[#a3ff12]'>
+                            <div className='flex h-14 w-14 items-center justify-center rounded-lg border border-white/10 bg-[color:var(--card)] transition-colors duration-500 group-hover:border-[color:var(--primary)]'>
+                                <span className='material-icons-round text-2xl text-gray-400 transition-colors duration-500 group-hover:text-[color:var(--primary)]'>
                                     dns
                                 </span>
                             </div>
@@ -235,7 +235,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     style={{ backgroundColor: statusColor }}
                                 />
                                 <span
-                                    className='relative inline-flex h-4 w-4 rounded-full border-2 border-black'
+                                    className='relative inline-flex h-4 w-4 rounded-full border-2 border-[color:var(--card)]'
                                     style={{ backgroundColor: statusColor }}
                                 />
                             </div>
@@ -265,7 +265,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                 </span>
                                 <span
                                     className='text-sm font-bold'
-                                    style={{ color: alarms.cpu ? '#ef4444' : '#a3ff12' }}
+                                    style={{ color: alarms.cpu ? '#ef4444' : 'var(--primary)' }}
                                 >
                                     {stats ? `${cpuValue.toFixed(1)}%` : '--'}
                                 </span>
@@ -277,7 +277,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     }`}
                                     style={{
                                         width: `${stats ? cpuPercent : 0}%`,
-                                        backgroundColor: alarms.cpu ? '#ef4444' : '#a3ff12',
+                                        backgroundColor: alarms.cpu ? '#ef4444' : 'var(--primary)',
                                     }}
                                 />
                             </div>
@@ -291,7 +291,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                 </span>
                                 <span
                                     className='text-sm font-bold'
-                                    style={{ color: alarms.memory ? '#ef4444' : '#a3ff12' }}
+                                    style={{ color: alarms.memory ? '#ef4444' : 'var(--primary)' }}
                                 >
                                     {stats ? bytesToString(memoryValue) : '--'}
                                 </span>
@@ -303,7 +303,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     }`}
                                     style={{
                                         width: `${stats ? memoryPercent : 0}%`,
-                                        backgroundColor: alarms.memory ? '#ef4444' : '#a3ff12',
+                                        backgroundColor: alarms.memory ? '#ef4444' : 'var(--primary)',
                                     }}
                                 />
                             </div>
@@ -317,7 +317,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                 </span>
                                 <span
                                     className='text-sm font-bold'
-                                    style={{ color: alarms.disk ? '#ef4444' : '#a3ff12' }}
+                                    style={{ color: alarms.disk ? '#ef4444' : 'var(--primary)' }}
                                 >
                                     {stats ? bytesToString(diskValue) : '--'}
                                 </span>
@@ -329,7 +329,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     }`}
                                     style={{
                                         width: `${stats ? diskPercent : 0}%`,
-                                        backgroundColor: alarms.disk ? '#ef4444' : '#a3ff12',
+                                        backgroundColor: alarms.disk ? '#ef4444' : 'var(--primary)',
                                     }}
                                 />
                             </div>

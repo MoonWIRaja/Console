@@ -37,7 +37,7 @@ export default () => {
     }, []);
 
     return (
-        <ServerContentBlock title={'Databases'}>
+        <ServerContentBlock title={'Databases'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'databases'} css={tw`mb-4`} />
             {!databases.length && loading ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />

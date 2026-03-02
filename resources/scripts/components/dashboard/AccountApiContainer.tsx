@@ -43,7 +43,7 @@ export default () => {
             <FlashMessageRender byKey={'account'} />
             <div css={tw`grid grid-cols-1 gap-6 md:grid-cols-2`}>
                 <section
-                    css={tw`rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.05)] flex flex-col`}
+                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>Create API Key</h2>
                     <div css={tw`mt-2`}>
@@ -52,7 +52,7 @@ export default () => {
                 </section>
 
                 <section
-                    css={tw`rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.05)] flex flex-col`}
+                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>API Keys</h2>
                     <div css={tw`relative mt-2`}>
@@ -75,11 +75,11 @@ export default () => {
                                 <div
                                     key={key.identifier}
                                     css={[
-                                        tw`flex items-center gap-3 border-b border-[#1f2a14] px-1 py-3`,
+                                        tw`flex items-center gap-3 border-b border-[color:var(--border)] px-1 py-3`,
                                         index === keys.length - 1 && tw`border-b-0`,
                                     ]}
                                 >
-                                    <FontAwesomeIcon icon={faKey} css={tw`text-[#a3ff12]`} />
+                                    <FontAwesomeIcon icon={faKey} css={tw`text-[color:var(--primary)]`} />
                                     <div css={tw`ml-1 flex-1 overflow-hidden`}>
                                         <p css={tw`break-words text-sm font-bold text-neutral-100`}>
                                             {key.description}
@@ -91,7 +91,7 @@ export default () => {
                                     </div>
                                     <p css={tw`ml-2 hidden text-sm md:block`}>
                                         <code
-                                            css={tw`rounded-md border border-[#2f3f17] bg-[#0a1104] px-2 py-1 font-mono text-[#d9ff93]`}
+                                            css={tw`rounded-md border border-[#2f3f17] bg-[#0a1104] px-2 py-1 font-mono text-[color:var(--primary)]`}
                                         >
                                             {key.identifier}
                                         </code>

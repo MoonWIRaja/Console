@@ -3,7 +3,6 @@ import { useFlashKey } from '@/plugins/useFlash';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { ServerContext } from '@/state/server';
 import AllocationRow from '@/components/server/network/AllocationRow';
-import Button from '@/components/elements/Button';
 import createServerAllocation from '@/api/server/network/createServerAllocation';
 import tw from 'twin.macro';
 import Can from '@/components/elements/Can';
@@ -12,6 +11,7 @@ import getServerAllocations from '@/api/swr/getServerAllocations';
 import isEqual from 'react-fast-compare';
 import { useDeepCompareEffect } from '@/plugins/useDeepCompareEffect';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 const NetworkContainer = () => {
     const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ const NetworkContainer = () => {
     };
 
     return (
-        <ServerContentBlock showFlashKey={'server:network'} title={'Network'}>
+        <ServerContentBlock showFlashKey={'server:network'} title={'Network'} className={'content-container-full px-4 xl:px-6'}>
             {!data ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : (
@@ -68,9 +68,11 @@ const NetworkContainer = () => {
                                     this server.
                                 </p>
                                 {allocationLimit > data.length && (
-                                    <Button css={tw`w-full sm:w-auto`} color={'primary'} onClick={onCreateAllocation}>
-                                        Create Allocation
-                                    </Button>
+                                    <InteractiveHoverButton
+                                        className={'w-full sm:w-auto'}
+                                        text={'Create Allocation'}
+                                        onClick={onCreateAllocation}
+                                    />
                                 )}
                             </div>
                         </Can>

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useStoreState } from 'easy-peasy';
+import React, { useEffect, useRef, useState } from 'react';
+import { Actions, useStoreActions, useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import Avatar from '@/components/Avatar';
 import FlashMessageRender from '@/components/FlashMessageRender';
@@ -16,17 +16,25 @@ import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
 import Tooltip from '@/components/elements/tooltip/Tooltip';
 import { DesktopComputerIcon } from '@heroicons/react/solid';
 import PaginationFooter from '@/components/elements/table/PaginationFooter';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import updateAccountAvatar from '@/api/account/updateAccountAvatar';
+import removeAccountAvatar from '@/api/account/removeAccountAvatar';
 
 type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
 
 const cardClass =
-    'rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.06),0_20px_35px_rgba(0,0,0,0.45)]';
+    'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
 
 export default () => {
     const user = useStoreState((state: ApplicationStore) => state.user.data!);
+    const updateUserData = useStoreActions((actions: Actions<ApplicationStore>) => actions.user.updateUserData);
     const [activeTab, setActiveTab] = useState<Tab>('API');
     const [modal, setModal] = useState<ModalContent>(null);
+    const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const avatarMenuRef = useRef<HTMLDivElement>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
     const { clearAndAddHttpError } = useFlashKey('account');
     const [activityFilters, setActivityFilters] = useState<ActivityLogFilters>({
         page: 1,
@@ -46,11 +54,55 @@ export default () => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
 
+    useEffect(() => {
+        if (!avatarMenuOpen) return;
+
+        const onOutsideClick = (event: MouseEvent) => {
+            if (!avatarMenuRef.current) return;
+            if (event.target instanceof Node && !avatarMenuRef.current.contains(event.target)) {
+                setAvatarMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', onOutsideClick);
+        return () => document.removeEventListener('mousedown', onOutsideClick);
+    }, [avatarMenuOpen]);
+
+    const onAvatarUpload = async (file: File) => {
+        setAvatarUploading(true);
+        clearAndAddHttpError();
+
+        try {
+            const image = await updateAccountAvatar(file);
+            updateUserData({ image });
+            setAvatarMenuOpen(false);
+        } catch (error) {
+            clearAndAddHttpError(error);
+        } finally {
+            setAvatarUploading(false);
+        }
+    };
+
+    const onAvatarRemove = async () => {
+        setAvatarUploading(true);
+        clearAndAddHttpError();
+
+        try {
+            await removeAccountAvatar();
+            updateUserData({ image: undefined });
+            setAvatarMenuOpen(false);
+        } catch (error) {
+            clearAndAddHttpError(error);
+        } finally {
+            setAvatarUploading(false);
+        }
+    };
+
     return (
-        <div className={'account-theme h-screen overflow-y-auto bg-[#000000] px-6 py-8 font-mono text-white md:px-10'}>
+        <div className={'account-theme h-screen overflow-y-auto bg-[color:var(--card)] px-6 py-8 font-mono text-white md:px-10'}>
             <style>{`
                 .account-theme {
-                    --neon-green: #a3ff12;
+                    --neon-green: var(--primary);
                 }
 
                 .account-theme .activity-feed-shell .bg-gray-700 {
@@ -63,11 +115,11 @@ export default () => {
 
                 .account-theme .activity-feed-shell .grid {
                     min-height: 104px;
-                    border-color: rgba(163, 255, 18, 0.18) !important;
+                    border-color: rgba(var(--primary-rgb), 0.18) !important;
                 }
 
                 .account-theme .activity-feed-shell .group:hover {
-                    background-color: rgba(163, 255, 18, 0.05) !important;
+                    background-color: rgba(var(--primary-rgb), 0.05) !important;
                 }
 
                 .account-theme .activity-feed-shell .text-gray-50 {
@@ -146,13 +198,13 @@ export default () => {
                 }
 
                 .account-theme .account-tabs-shell section {
-                    background-color: #000000 !important;
-                    border: 1px solid #1f2a14 !important;
+                    background-color: var(--card) !important;
+                    border: 1px solid var(--border) !important;
                     border-radius: 0.75rem !important;
                     padding: 1.5rem !important;
                 }
 
-                .account-theme .account-tabs-shell .text-black {
+                .account-theme .account-tabs-shell .text-[color:var(--primary-foreground)] {
                     color: #f8f6ef !important;
                 }
 
@@ -164,9 +216,9 @@ export default () => {
                     color: #cbd5e1 !important;
                 }
 
-                .account-theme .account-tabs-shell .border-black,
+                .account-theme .account-tabs-shell .border-[#0C0C0C],
                 .account-theme .account-tabs-shell .border-neutral-200 {
-                    border-color: rgba(163, 255, 18, 0.25) !important;
+                    border-color: rgba(var(--primary-rgb), 0.25) !important;
                 }
 
                 .account-theme .account-tabs-shell h2 {
@@ -176,8 +228,8 @@ export default () => {
                 .account-theme .account-tabs-shell input,
                 .account-theme .account-tabs-shell textarea,
                 .account-theme .account-tabs-shell select {
-                    background-color: #000000 !important;
-                    border-color: rgba(163, 255, 18, 0.28) !important;
+                    background-color: var(--card) !important;
+                    border-color: rgba(var(--primary-rgb), 0.28) !important;
                     color: #f8f6ef !important;
                     border-radius: 8px !important;
                 }
@@ -191,7 +243,7 @@ export default () => {
                 .account-theme .account-tabs-shell textarea:focus,
                 .account-theme .account-tabs-shell select:focus {
                     border-color: var(--neon-green) !important;
-                    box-shadow: 0 0 0 1px rgba(163, 255, 18, 0.35), 0 0 0 4px rgba(163, 255, 18, 0.1) !important;
+                    box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.35), 0 0 0 4px rgba(var(--primary-rgb), 0.1) !important;
                 }
 
                 .account-theme .account-tabs-shell label {
@@ -199,9 +251,9 @@ export default () => {
                 }
 
                 .account-theme .account-tabs-shell code {
-                    background-color: #0a1104 !important;
-                    color: #d9ff93 !important;
-                    border: 1px solid rgba(163, 255, 18, 0.32) !important;
+                    background-color: var(--card) !important;
+                    color: var(--primary) !important;
+                    border: 1px solid rgba(var(--primary-rgb), 0.32) !important;
                     border-radius: 6px !important;
                 }
 
@@ -209,15 +261,15 @@ export default () => {
                 .account-theme .account-tabs-shell .Button__ButtonStyle-sc-1qu1gou-0 {
                     border-color: var(--neon-green) !important;
                     background-color: var(--neon-green) !important;
-                    color: #000000 !important;
+                    color: var(--primary-foreground) !important;
                     border-radius: 8px !important;
-                    box-shadow: 0 0 14px rgba(163, 255, 18, 0.25) !important;
+                    box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.25) !important;
                 }
 
                 .account-theme .account-tabs-shell button[type='submit']:hover,
                 .account-theme .account-tabs-shell .Button__ButtonStyle-sc-1qu1gou-0:hover {
                     filter: brightness(1.06) !important;
-                    box-shadow: 0 0 18px rgba(163, 255, 18, 0.35) !important;
+                    box-shadow: 0 0 18px rgba(var(--primary-rgb), 0.35) !important;
                 }
 
                 .account-theme .account-tabs-shell button .text-neutral-400,
@@ -244,12 +296,53 @@ export default () => {
 
             <section
                 className={
-                    'mb-6 w-full max-w-[620px] rounded-xl border border-[#1f2a14] bg-[#000000] p-4 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                    'mb-6 w-full max-w-[620px] rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                 }
             >
                 <div className={'flex flex-wrap items-center gap-4'}>
-                    <div className={'h-16 w-16 overflow-hidden rounded-lg border border-[#a3ff12]/40 bg-black'}>
-                        <Avatar.User size={64} variant={'beam'} />
+                    <div ref={avatarMenuRef} className={'relative'}>
+                        <button
+                            type={'button'}
+                            onClick={() => setAvatarMenuOpen((value) => !value)}
+                            disabled={avatarUploading}
+                            className={
+                                'h-16 w-16 overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60'
+                            }
+                        >
+                            <Avatar.User size={64} variant={'beam'} />
+                        </button>
+
+                        {avatarMenuOpen && (
+                            <div className={'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'}>
+                                <button
+                                    type={'button'}
+                                    className={'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'}
+                                    onClick={() => avatarInputRef.current?.click()}
+                                    disabled={avatarUploading}
+                                >
+                                    {avatarUploading ? 'Uploading...' : 'Change Image'}
+                                </button>
+                                <button
+                                    type={'button'}
+                                    className={'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'}
+                                    onClick={onAvatarRemove}
+                                    disabled={avatarUploading || !user.image}
+                                >
+                                    Remove Image
+                                </button>
+                                <input
+                                    ref={avatarInputRef}
+                                    type={'file'}
+                                    accept={'image/png,image/jpeg,image/jpg,image/webp,image/gif'}
+                                    className={'hidden'}
+                                    onChange={(event) => {
+                                        const file = event.currentTarget.files?.[0];
+                                        if (file) void onAvatarUpload(file);
+                                        event.currentTarget.value = '';
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div className={'min-w-0'}>
                         <div className={'flex flex-wrap items-center gap-2'}>
@@ -259,7 +352,7 @@ export default () => {
                             {user.rootAdmin && (
                                 <span
                                     className={
-                                        'rounded-lg border border-[#a3ff12]/45 bg-[#a3ff12]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#d9ff93]'
+                                        'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--primary)]'
                                     }
                                 >
                                     Administrator
@@ -278,42 +371,36 @@ export default () => {
 
                         <div
                             className={
-                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#1f2a14] pb-4'
+                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--border)] pb-4'
                             }
                         >
                             <div className={'min-w-[220px]'}>
                                 <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Email</p>
                                 <p className={'text-sm text-gray-100'}>{user.email}</p>
                             </div>
-                            <button
+                            <InteractiveHoverButton
                                 onClick={() => setModal('EMAIL')}
-                                className={
-                                    'rounded-lg border border-[#2f3f17] bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 transition hover:border-[#a3ff12] hover:text-[#a3ff12]'
-                                }
                                 type={'button'}
-                            >
-                                Edit
-                            </button>
+                                text={'Edit'}
+                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
+                            />
                         </div>
 
                         <div
                             className={
-                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#1f2a14] pb-4'
+                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--border)] pb-4'
                             }
                         >
                             <div>
                                 <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Password</p>
                                 <p className={'text-sm text-gray-100'}>********</p>
                             </div>
-                            <button
+                            <InteractiveHoverButton
                                 onClick={() => setModal('PASSWORD')}
-                                className={
-                                    'rounded-lg border border-[#2f3f17] bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 transition hover:border-[#a3ff12] hover:text-[#a3ff12]'
-                                }
                                 type={'button'}
-                            >
-                                Change
-                            </button>
+                                text={'Change'}
+                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
+                            />
                         </div>
 
                         <div className={'flex flex-wrap items-center justify-between gap-4'}>
@@ -321,21 +408,17 @@ export default () => {
                                 <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
                                     Two-Step Verification
                                 </p>
-                                <p className={`text-sm font-bold ${user.useTotp ? 'text-[#a3ff12]' : 'text-red-400'}`}>
+                                <p className={`text-sm font-bold ${user.useTotp ? 'text-[color:var(--primary)]' : 'text-red-400'}`}>
                                     {user.useTotp ? 'Currently enabled' : 'Currently disabled'}
                                 </p>
                             </div>
-                            <button
+                            <InteractiveHoverButton
                                 onClick={() => setModal('2FA')}
-                                className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition ${
-                                    user.useTotp
-                                        ? 'border border-red-600 bg-red-600 text-white hover:bg-red-500'
-                                        : 'border border-[#a3ff12] bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)] hover:brightness-110'
-                                }`}
                                 type={'button'}
-                            >
-                                {user.useTotp ? 'Disable' : 'Enable'}
-                            </button>
+                                text={user.useTotp ? 'Disable' : 'Enable'}
+                                variant={user.useTotp ? 'danger' : 'success'}
+                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
+                            />
                         </div>
                     </section>
 
@@ -385,14 +468,14 @@ export default () => {
                     </section>
                 </div>
 
-                <section className={'rounded-xl border border-[#1f2a14] bg-[#050505]'}>
-                    <div className={'grid grid-cols-2 border-b border-[#1f2a14]'}>
+                <section className={'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'}>
+                    <div className={'grid grid-cols-2 border-b border-[color:var(--border)]'}>
                         <button
                             onClick={() => setActiveTab('API')}
                             className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
                                 activeTab === 'API'
-                                    ? 'bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)]'
-                                    : 'text-gray-400 hover:text-white'
+                                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[0_0_14px_rgba(var(--primary-rgb), 0.35)]'
+                                    : 'text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]'
                             }`}
                             type={'button'}
                         >
@@ -402,8 +485,8 @@ export default () => {
                             onClick={() => setActiveTab('SSH')}
                             className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
                                 activeTab === 'SSH'
-                                    ? 'bg-[#a3ff12] text-black shadow-[0_0_14px_rgba(163,255,18,0.35)]'
-                                    : 'text-gray-400 hover:text-white'
+                                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[0_0_14px_rgba(var(--primary-rgb), 0.35)]'
+                                    : 'text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]'
                             }`}
                             type={'button'}
                         >

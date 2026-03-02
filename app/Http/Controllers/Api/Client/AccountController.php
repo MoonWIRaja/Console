@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Services\Users\UserUpdateService;
 use Pterodactyl\Transformers\Api\Client\AccountTransformer;
@@ -69,6 +70,51 @@ class AccountController extends ClientApiController
         if (method_exists($guard, 'logoutOtherDevices')) { // @phpstan-ignore function.alreadyNarrowedType
             $guard->logoutOtherDevices($request->input('password'));
         }
+
+        return new JsonResponse([], Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Upload and set a custom avatar for the authenticated user.
+     */
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
+        ]);
+
+        $user = $request->user();
+        $oldAvatar = $user->avatar;
+
+        $path = $validated['avatar']->store("avatars/{$user->uuid}", 'public');
+        $user->forceFill(['avatar' => $path])->saveOrFail();
+
+        if (!empty($oldAvatar) && Storage::disk('public')->exists($oldAvatar)) {
+            Storage::disk('public')->delete($oldAvatar);
+        }
+
+        Activity::event('user:account.avatar-updated')
+            ->property(['path' => $path])
+            ->log();
+
+        return new JsonResponse(['image' => '/storage/' . ltrim($path, '/')]);
+    }
+
+    /**
+     * Remove the authenticated user's custom avatar.
+     */
+    public function removeAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $oldAvatar = $user->avatar;
+
+        $user->forceFill(['avatar' => null])->saveOrFail();
+
+        if (!empty($oldAvatar) && Storage::disk('public')->exists($oldAvatar)) {
+            Storage::disk('public')->delete($oldAvatar);
+        }
+
+        Activity::event('user:account.avatar-removed')->log();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);
     }

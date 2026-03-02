@@ -45,7 +45,7 @@ const Wrapper = styled.div<{ $size: number }>`
 const Ring = styled.span<{ $delay?: boolean }>`
     position: absolute;
     border-radius: 50px;
-    box-shadow: inset 0 0 0 3px #a3ff12;
+    box-shadow: inset 0 0 0 3px var(--primary);
     opacity: 0.9;
     animation: ${loaderAnim} 2.5s infinite;
     ${(props) => props.$delay && 'animation-delay: -1.25s;'}

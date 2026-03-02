@@ -17,7 +17,7 @@ export const DropdownButtonRow = styled.button<{ danger?: boolean }>`
         ${(props) =>
             props.danger
                 ? tw`border-red-500 bg-[#2b1111] text-red-300`
-                : tw`border-[#2d3c1f] bg-[#050505] text-[#d9ff93]`};
+                : tw`border-[#2d3c1f] bg-[color:var(--background)] text-[color:var(--primary)]`};
     }
 `;
 
@@ -117,7 +117,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
                         this.setState({ visible: false });
                     }}
                     style={{ width: '12rem' }}
-                    css={tw`fixed z-50 rounded-lg border border-[#1f2a14] bg-[#000000] p-2 text-gray-300 shadow-xl`}
+                    css={tw`fixed z-50 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-2 text-gray-300 shadow-xl`}
                 >
                     {this.props.children}
                 </div>

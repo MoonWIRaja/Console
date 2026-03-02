@@ -12,43 +12,72 @@ interface Props {
 
 const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${tw`relative inline-flex items-center justify-center rounded-full border text-sm font-semibold tracking-wide transition-all duration-150`};
-    ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef]`};
-    ${tw`hover:border-[#a3ff12] hover:text-[#d9ff93] focus:ring-2 focus:ring-[#a3ff12] focus:ring-opacity-50 focus:ring-offset-2 focus:ring-offset-black`};
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
+
+    &:hover:not(:disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.45);
+    }
 
     ${(props) =>
         ((!props.isSecondary && !props.color) || props.color === 'primary') &&
         css<Props>`
-            ${(props) => !props.isSecondary && tw`border-[#2f5e1b] bg-[#12220b] text-[#d9ff93]`};
+            ${(props) =>
+                !props.isSecondary &&
+                css`
+                    border-color: var(--primary);
+                    background-color: var(--primary);
+                    color: var(--primary-foreground);
+                `};
 
             &:hover:not(:disabled) {
-                ${tw`border-[#a3ff12] bg-[#17310d] text-[#ecfccb]`};
+                border-color: var(--primary);
+                background-color: var(--primary);
+                color: var(--primary-foreground);
+                filter: brightness(1.06);
             }
         `};
 
     ${(props) =>
         props.color === 'grey' &&
         css`
-            ${tw`border-[#334155] bg-[#0b0f14] text-[#e2e8f0]`};
+            border-color: var(--border);
+            background-color: var(--muted);
+            color: var(--foreground);
 
             &:hover:not(:disabled) {
-                ${tw`border-[#64748b] bg-[#111827] text-white`};
+                border-color: var(--ring);
+                background-color: var(--accent);
+                color: var(--foreground);
             }
         `};
 
     ${(props) =>
         props.color === 'green' &&
         css<Props>`
-            ${tw`border-[#2f5e1b] bg-[#12220b] text-[#d9ff93]`};
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: var(--primary-foreground);
 
             &:hover:not(:disabled) {
-                ${tw`border-[#a3ff12] bg-[#17310d] text-[#ecfccb]`};
+                border-color: var(--primary);
+                background-color: var(--primary);
+                color: var(--primary-foreground);
+                filter: brightness(1.06);
             }
 
             ${(props) =>
                 props.isSecondary &&
                 css`
                     &:active:not(:disabled) {
-                        ${tw`border-[#a3ff12] bg-[#17310d]`};
+                        filter: brightness(0.95);
                     }
                 `};
         `};
@@ -79,14 +108,29 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${(props) =>
         props.isSecondary &&
         css<Props>`
-            ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef]`};
+            border-color: var(--border);
+            background-color: var(--card);
+            color: var(--foreground);
 
             &:hover:not(:disabled) {
-                ${tw`border-[#a3ff12] bg-[#050505] text-[#d9ff93]`};
+                border-color: var(--primary);
+                background-color: var(--background);
+                color: var(--primary);
                 ${(props) => props.color === 'red' && tw`border-[#ef4444] bg-[#2a0707] text-[#fee2e2]`};
-                ${(props) => props.color === 'primary' && tw`border-[#a3ff12] bg-[#12220b] text-[#d9ff93]`};
-                ${(props) => props.color === 'green' && tw`border-[#a3ff12] bg-[#12220b] text-[#d9ff93]`};
-                ${(props) => props.color === 'grey' && tw`border-[#64748b] bg-[#111827] text-white`};
+                ${(props) =>
+                    (props.color === 'primary' || props.color === 'green') &&
+                    css`
+                        border-color: var(--primary);
+                        background-color: rgba(var(--primary-rgb), 0.12);
+                        color: var(--primary);
+                    `};
+                ${(props) =>
+                    props.color === 'grey' &&
+                    css`
+                        border-color: var(--ring);
+                        background-color: var(--accent);
+                        color: var(--foreground);
+                    `};
             }
         `};
 

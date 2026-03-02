@@ -18,14 +18,6 @@ interface GlowCardProps {
     hoverGlow?: boolean;
 }
 
-const glowColorMap = {
-    blue: { base: 220, spread: 200 },
-    purple: { base: 280, spread: 300 },
-    green: { base: 83, spread: 0 },
-    red: { base: 0, spread: 200 },
-    orange: { base: 30, spread: 200 },
-};
-
 const sizeMap = {
     sm: 'w-48 h-64',
     md: 'w-64 h-80',
@@ -49,6 +41,7 @@ const GlowCard: React.FC<GlowCardProps> = ({
     activeFade = 0.05,
     hoverGlow = false,
 }) => {
+    void glowColor;
     const cardRef = useRef<HTMLDivElement>(null);
     const innerRef = useRef<HTMLDivElement>(null);
 
@@ -120,8 +113,6 @@ const GlowCard: React.FC<GlowCardProps> = ({
         return () => cancelAnimationFrame(raf);
     }, [orbit, orbitDurationMs, orbitDirection, orbitStartOffset, activeFrom, activeTo, activeFade]);
 
-    const { base, spread } = glowColorMap[glowColor];
-
     const getSizeClasses = () => {
         if (customSize) return '';
         return sizeMap[size];
@@ -129,28 +120,24 @@ const GlowCard: React.FC<GlowCardProps> = ({
 
     const getInlineStyles = (): React.CSSProperties & Record<string, string | number> => {
         const baseStyles: React.CSSProperties & Record<string, string | number> = {
-            '--base': base,
-            '--spread': spread,
             '--radius': '14',
             '--border': '2',
-            '--backdrop': 'hsl(0 0% 0% / 1)',
-            '--backup-border': 'hsl(0 0% 15% / 1)',
+            '--backdrop': 'var(--card)',
+            '--backup-border': 'var(--border)',
             '--size': '180',
             '--outer': '1',
-            '--saturation': '100',
-            '--lightness': '53',
             '--bg-spot-opacity': '0.22',
             '--border-spot-opacity': '1',
             '--border-light-opacity': '0.88',
             '--border-size': 'calc(var(--border, 2) * 1px)',
             '--spotlight-size': 'calc(var(--size, 150) * 1px)',
-            '--hue': 'calc(var(--base) + (var(--xp, 0) * var(--spread, 0)))',
             '--track-alpha': '1',
+            '--glow-rgb': 'var(--primary-rgb)',
             backgroundImage: `radial-gradient(
                 var(--spotlight-size) var(--spotlight-size) at
                 calc(var(--x, 0) * 1px)
                 calc(var(--y, 0) * 1px),
-                hsl(var(--hue, 120) calc(var(--saturation, 100) * 1%) calc(var(--lightness, 60) * 1%) / calc(var(--bg-spot-opacity, 0.16) * var(--track-alpha, 1) * var(--glow-enabled, 1))), transparent
+                rgba(var(--glow-rgb, 163, 255, 18), calc(var(--bg-spot-opacity, 0.16) * var(--track-alpha, 1) * var(--glow-enabled, 1))), transparent
             )`,
             backgroundColor: 'var(--backdrop, transparent)',
             backgroundSize: 'calc(100% + (2 * var(--border-size))) calc(100% + (2 * var(--border-size)))',
@@ -197,9 +184,9 @@ const GlowCard: React.FC<GlowCardProps> = ({
                 calc(var(--spotlight-size) * 0.78) calc(var(--spotlight-size) * 0.78) at
                 calc(var(--x, 0) * 1px)
                 calc(var(--y, 0) * 1px),
-                hsl(var(--hue, 83) calc(var(--saturation, 100) * 1%) 53% / var(--border-spot-opacity, 1)), transparent 100%
+                rgba(var(--glow-rgb, 163, 255, 18), var(--border-spot-opacity, 1)), transparent 100%
             );
-            filter: brightness(1.2) drop-shadow(0 0 14px hsl(var(--hue, 83) 100% 53% / 0.95));
+            filter: brightness(1.2) drop-shadow(0 0 14px rgba(var(--glow-rgb, 163, 255, 18), 0.95));
             opacity: calc(var(--track-alpha, 1) * var(--glow-enabled, 1));
         }
 

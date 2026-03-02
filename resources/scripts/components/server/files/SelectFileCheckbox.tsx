@@ -6,15 +6,15 @@ import Input from '@/components/elements/Input';
 
 export const FileActionCheckbox = styled(Input)`
     && {
-        ${tw`border-[#1f2a14] bg-[#000000]`};
+        ${tw`border-[color:var(--border)] bg-[color:var(--card)]`};
 
         &:not(:checked) {
-            ${tw`hover:border-[#a3ff12]`};
+            ${tw`hover:border-[color:var(--primary)]`};
         }
 
         &:focus {
             ${tw`border-[#a3ff12]`};
-            box-shadow: 0 0 0 1px rgba(163, 255, 18, 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
         }
     }
 `;

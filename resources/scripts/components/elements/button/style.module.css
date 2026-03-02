@@ -1,9 +1,19 @@
 .button {
     @apply inline-flex items-center justify-center px-4 py-2;
     @apply rounded-full border text-sm font-semibold tracking-wide transition-all duration-150;
-    @apply border-[#1f2a14] bg-[#000000] text-[#f8f6ef];
-    @apply focus:ring-[3px] focus:ring-offset-2 focus:ring-offset-black focus:ring-[#a3ff12]/45;
-    @apply hover:border-[#a3ff12] hover:text-[#d9ff93];
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.45);
+    }
+
+    &:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
 
     /* Sizing Controls */
     &.small {
@@ -15,10 +25,12 @@
     }
 
     &.secondary {
-        @apply border-[#1f2a14] bg-[#000000] text-[#f8f6ef];
+        border-color: var(--border);
+        background-color: var(--card);
+        color: var(--foreground);
 
         &:disabled {
-            @apply bg-[#000000];
+            background-color: var(--card);
         }
     }
 
@@ -36,28 +48,64 @@
 }
 
 .primary {
-    @apply border-[#2f5e1b] bg-[#12220b] text-[#d9ff93];
-    @apply hover:border-[#a3ff12] hover:bg-[#17310d] hover:text-[#ecfccb] active:bg-[#17310d] focus:ring-[#a3ff12]/50;
+    border-color: var(--primary);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+
+    &:hover {
+        border-color: var(--primary);
+        background-color: var(--primary);
+        color: var(--primary-foreground);
+        filter: brightness(1.06);
+    }
+
+    &:active {
+        filter: brightness(0.95);
+    }
 
     &.secondary {
-        @apply hover:bg-[#12220b] active:bg-[#12220b];
+        &:hover,
+        &:active {
+            border-color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.12);
+            color: var(--primary);
+            filter: none;
+        }
     }
 
     &:disabled {
-        @apply border-[#2f5e1b] bg-[#12220b] text-[#d9ff93];
+        border-color: var(--primary);
+        background-color: var(--primary);
+        color: var(--primary-foreground);
     }
 }
 
 .text {
-    @apply border-[#1f2a14] bg-[#000000] text-[#f8f6ef];
-    @apply hover:border-[#a3ff12] hover:bg-[#050505] hover:text-[#d9ff93] active:bg-[#050505] focus:ring-[#a3ff12]/45;
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
+
+    &:hover {
+        border-color: var(--primary);
+        background-color: var(--background);
+        color: var(--primary);
+    }
+
+    &:active {
+        background-color: var(--background);
+    }
 
     &.secondary {
-        @apply hover:bg-[#000000] active:bg-[#000000];
+        &:hover,
+        &:active {
+            background-color: var(--card);
+        }
     }
 
     &:disabled {
-        @apply border-[#1f2a14] bg-[#000000] text-[#f8f6ef];
+        border-color: var(--border);
+        background-color: var(--card);
+        color: var(--foreground);
     }
 }
 

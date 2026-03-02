@@ -23,7 +23,7 @@ const isDark = typeof document !== 'undefined' ? document.documentElement.classL
 
 const theme = isDark
     ? {
-          background: '#000000',
+          background: '#0C0C0C',
           cursor: 'transparent',
           black: th`colors.black`.toString(),
           red: '#E54B4B',
@@ -44,7 +44,7 @@ const theme = isDark
           selection: '#FAF089',
       }
     : {
-          background: '#000000',
+          background: '#0C0C0C',
           cursor: '#111827',
           black: '#111827',
           red: '#dc2626',
@@ -69,8 +69,11 @@ const terminalProps: ITerminalOptions = {
     disableStdin: true,
     cursorStyle: 'underline',
     allowTransparency: false,
-    fontSize: 12,
-    fontFamily: th('fontFamily.mono'),
+    fontSize: 13,
+    lineHeight: 1.28,
+    letterSpacing: 0.2,
+    // Keep terminal output readable with a true monospace stack even when app-wide font changes.
+    fontFamily: `'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace`,
     rows: 30,
     rendererType: 'dom',
     theme: theme,
@@ -273,17 +276,17 @@ export default () => {
                 </div>
             </div>
             {canSendCommands && (
-                <div className={classNames(styles.command_bar)} style={{ backgroundColor: '#000000' }}>
+                <div className={classNames(styles.command_bar)} style={{ backgroundColor: '#0C0C0C' }}>
                     <div
                         className={classNames('relative flex items-center', styles.command_shell)}
-                        style={{ backgroundColor: '#000000' }}
+                        style={{ backgroundColor: '#0C0C0C' }}
                     >
                         <input
                             className={classNames(styles.command_input)}
                             type={'text'}
                             placeholder={'Type a command...'}
                             aria-label={'Console command input.'}
-                            style={{ backgroundColor: '#000000' }}
+                            style={{ backgroundColor: '#0C0C0C' }}
                             disabled={!instance || !connected}
                             onKeyDown={handleCommandKeyDown}
                             autoCorrect={'off'}

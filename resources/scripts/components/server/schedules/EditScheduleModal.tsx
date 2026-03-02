@@ -110,7 +110,7 @@ const EditScheduleModal = ({ schedule }: Props) => {
                         The schedule system supports the use of Cronjob syntax when defining when tasks should begin
                         running. Use the fields above to specify when these tasks should begin running.
                     </p>
-                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
+                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
                         <Switch
                             name={'show_cheatsheet'}
                             description={'Show the cron cheatsheet for some examples.'}
@@ -124,14 +124,14 @@ const EditScheduleModal = ({ schedule }: Props) => {
                             </div>
                         )}
                     </div>
-                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
+                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'onlyWhenOnline'}
                             description={'Only execute this schedule when the server is in a running state.'}
                             label={'Only When Server Is Online'}
                         />
                     </div>
-                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
+                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'enabled'}
                             description={'This schedule will be executed automatically if enabled.'}

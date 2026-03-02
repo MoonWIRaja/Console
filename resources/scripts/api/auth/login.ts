@@ -4,6 +4,8 @@ export interface LoginResponse {
     complete: boolean;
     intended?: string;
     confirmationToken?: string;
+    verificationRequired?: boolean;
+    verificationToken?: string;
 }
 
 export interface LoginData {
@@ -31,6 +33,8 @@ export default ({ username, password, recaptchaData }: LoginData): Promise<Login
                     complete: response.data.data.complete,
                     intended: response.data.data.intended || undefined,
                     confirmationToken: response.data.data.confirmation_token || undefined,
+                    verificationRequired: !!response.data.data.email_verification_required,
+                    verificationToken: response.data.data.verification_token || undefined,
                 });
             })
             .catch(reject);

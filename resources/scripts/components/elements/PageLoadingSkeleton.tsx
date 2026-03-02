@@ -12,16 +12,22 @@ interface PageLoadingSkeletonProps {
 const cx = (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' ');
 
 const RowSkeleton = ({ index }: { index: number }) => (
-    <div className='rounded-lg border border-[#1f2a14] bg-[#050505]/80 p-3'>
+    <div className='rounded-lg border p-3' style={{ borderColor: 'var(--border)', backgroundColor: 'rgba(var(--card-rgb), 0.8)' }}>
         <div className='flex items-center justify-between gap-3'>
             <div className='flex min-w-0 items-center gap-3'>
-                <span className='h-3 w-3 rounded-full border border-[#2a3b18] bg-[#091102]' />
                 <span
-                    className='h-2.5 animate-pulse rounded bg-[#121212]'
-                    style={{ width: `${Math.max(18, 42 - index * 3)}%` }}
+                    className='h-3 w-3 rounded-full border'
+                    style={{
+                        borderColor: 'rgba(var(--primary-rgb), 0.35)',
+                        backgroundColor: 'rgba(var(--primary-rgb), 0.16)',
+                    }}
+                />
+                <span
+                    className='h-2.5 animate-pulse rounded'
+                    style={{ backgroundColor: 'var(--muted)', width: `${Math.max(18, 42 - index * 3)}%` }}
                 />
             </div>
-            <span className='h-2.5 w-20 animate-pulse rounded bg-[#121212]' />
+            <span className='h-2.5 w-20 animate-pulse rounded' style={{ backgroundColor: 'var(--muted)' }} />
         </div>
     </div>
 );
@@ -38,27 +44,46 @@ export const PageLoadingSkeleton: React.FC<PageLoadingSkeletonProps> = ({
     return (
         <div
             className={cx(
-                'relative isolate w-full overflow-hidden border border-[#1f2a14] bg-[#000000]',
+                'relative isolate w-full overflow-hidden border',
                 fullScreen ? 'h-screen rounded-none border-0' : 'min-h-[420px] rounded-xl',
                 className
             )}
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
         >
-            <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_-10%,rgba(163,255,18,0.16),transparent_45%)]' />
-            <div className='pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_25%)]' />
+            <div
+                className='pointer-events-none absolute inset-0'
+                style={{ background: 'radial-gradient(circle at 15% -10%, rgba(var(--primary-rgb), 0.16), transparent 45%)' }}
+            />
+            <div
+                className='pointer-events-none absolute inset-0'
+                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent 25%)' }}
+            />
 
             <div className='relative z-10 flex h-full flex-col'>
                 {showChrome && (
-                    <div className='flex items-center justify-between border-b border-[#1f2a14] bg-[#050505] px-4 py-3'>
+                    <div
+                        className='flex items-center justify-between border-b px-4 py-3'
+                        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}
+                    >
                         <div className='flex items-center gap-3'>
-                            <span className='h-2 w-2 animate-pulse rounded-full bg-[#a3ff12]' />
-                            <span className='h-2.5 w-32 animate-pulse rounded bg-[#121212]' />
+                            <span className='h-2 w-2 animate-pulse rounded-full' style={{ backgroundColor: 'var(--primary)' }} />
+                            <span className='h-2.5 w-32 animate-pulse rounded' style={{ backgroundColor: 'var(--muted)' }} />
                         </div>
-                        <span className='h-8 w-28 animate-pulse rounded-full border border-[#1f2a14] bg-[#080808]' />
+                        <span
+                            className='h-8 w-28 animate-pulse rounded-full border'
+                            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+                        />
                     </div>
                 )}
 
                 <div className='relative flex-1 overflow-hidden p-4'>
-                    <div className='pointer-events-none absolute inset-4 rounded-xl border border-[#1f2a14]/60 bg-[#000000]/35 backdrop-blur-[2px]' />
+                    <div
+                        className='pointer-events-none absolute inset-4 rounded-xl border backdrop-blur-[2px]'
+                        style={{
+                            borderColor: 'rgba(var(--primary-rgb), 0.18)',
+                            backgroundColor: 'rgba(var(--background-rgb), 0.35)',
+                        }}
+                    />
                     <div className='relative z-10 flex h-full flex-col gap-3'>
                         {Array.from({ length: safeRows }).map((_, index) => (
                             <RowSkeleton key={index} index={index} />
@@ -69,7 +94,13 @@ export const PageLoadingSkeleton: React.FC<PageLoadingSkeletonProps> = ({
 
             {showSpinner && (
                 <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center'>
-                    <div className='rounded-2xl border border-[#1f2a14] bg-black/55 p-4 backdrop-blur-md'>
+                    <div
+                        className='rounded-2xl border p-4 backdrop-blur-md'
+                        style={{
+                            borderColor: 'var(--border)',
+                            backgroundColor: 'rgba(var(--background-rgb), 0.55)',
+                        }}
+                    >
                         <LumaSpin size={56} />
                     </div>
                 </div>

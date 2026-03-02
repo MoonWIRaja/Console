@@ -15,7 +15,7 @@ describe('@/lib/helpers.ts', function () {
         it('should allow alpha channel changes', function () {
             expect(hexToRgba('#ece5a8', 0.5)).toBe('rgba(236, 229, 168, 0.5)');
             expect(hexToRgba('#ece5a8', 0.1)).toBe('rgba(236, 229, 168, 0.1)');
-            expect(hexToRgba('#000000', 0)).toBe('rgba(0, 0, 0, 0)');
+            expect(hexToRgba('#0C0C0C', 0)).toBe('rgba(12, 12, 12, 0)');
         });
 
         it('should handle invalid strings', function () {

@@ -7,7 +7,7 @@ import Field from '@/components/elements/Field';
 import { httpErrorToHuman } from '@/api/http';
 import { ApplicationStore } from '@/state';
 import tw from 'twin.macro';
-import { Button } from '@/components/elements/button/index';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     email: string;
@@ -20,8 +20,6 @@ const schema = Yup.object().shape({
 });
 
 export default () => {
-    const buttonClass =
-        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black';
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
     const updateEmail = useStoreActions((state: Actions<ApplicationStore>) => state.user.updateUserEmail);
 
@@ -58,20 +56,23 @@ export default () => {
                 <React.Fragment>
                     <SpinnerOverlay size={'large'} visible={isSubmitting} />
                     <Form css={tw`m-0 font-mono`}>
-                        <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} light />
+                        <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} />
                         <div css={tw`mt-6`}>
                             <Field
                                 id={'confirm_password'}
                                 type={'password'}
                                 name={'password'}
                                 label={'Confirm Password'}
-                                light
                             />
                         </div>
                         <div css={tw`mt-6`}>
-                            <Button className={buttonClass} disabled={isSubmitting || !isValid}>
-                                Update Email
-                            </Button>
+                            <InteractiveHoverButton
+                                type={'submit'}
+                                text={'Update Email'}
+                                className={'w-full'}
+                                variant={'success'}
+                                disabled={isSubmitting || !isValid}
+                            />
                         </div>
                     </Form>
                 </React.Fragment>

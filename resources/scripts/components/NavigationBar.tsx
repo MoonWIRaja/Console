@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
@@ -15,6 +15,8 @@ import {
     useSidebar,
 } from '@/components/elements/sidebar/AceternitySidebar';
 import { motion } from 'framer-motion';
+import Select, { TSelectData } from '@/components/ui/select';
+import { applyThemePreset, DEFAULT_THEME_ID, THEME_PRESETS } from '@/components/ui/theme-presets';
 
 interface NavigationBarProps {
     sidebarOpen?: boolean;
@@ -59,10 +61,10 @@ const SidebarLogo = () => {
                         style={{
                             fontSize: '18px',
                             fontWeight: 900,
-                            color: '#ffffff',
+                            color: 'var(--foreground)',
                             lineHeight: 1,
                             letterSpacing: '-0.02em',
-                            textShadow: '0 0 10px rgba(255,255,255,0.12)',
+                            textShadow: '0 0 10px rgba(var(--primary-rgb), 0.18)',
                             whiteSpace: 'nowrap',
                         }}
                     >
@@ -78,98 +80,252 @@ const SidebarLogo = () => {
 const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
     const { open, setOpen, animate } = useSidebar();
     const expanded = animate ? open : true;
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [themeId, setThemeId] = useState(DEFAULT_THEME_ID);
+    const footerRef = React.useRef<HTMLDivElement>(null);
     const closeSidebarOnMobile = () => {
         if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
             setOpen(false);
         }
     };
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setThemeId(window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID);
+    }, []);
+
+    useEffect(() => {
+        if (!expanded) setMenuOpen(false);
+    }, [expanded]);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+
+        const onOutside = (event: MouseEvent) => {
+            if (!footerRef.current) return;
+            if (event.target instanceof Node && !footerRef.current.contains(event.target)) {
+                setMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', onOutside);
+        return () => document.removeEventListener('mousedown', onOutside);
+    }, [menuOpen]);
+
+    const themeOptions = useMemo<TSelectData[]>(
+        () =>
+            THEME_PRESETS.map((theme) => ({
+                id: theme.id,
+                label: theme.label,
+                value: theme.id,
+                description: 'Dark Mode',
+                icon: <span className='material-icons-round text-base'>palette</span>,
+            })),
+        []
+    );
+
+    const setTheme = (nextThemeId: string) => {
+        setThemeId(nextThemeId);
+        applyThemePreset(nextThemeId, 'dark');
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('panel.theme.id', nextThemeId);
+            window.localStorage.setItem('panel.theme.mode', 'dark');
+        }
+    };
+
     return (
         <div
+            ref={footerRef}
             style={{
-                borderTop: '1px solid rgba(255,255,255,0.1)',
+                borderTop: '1px solid var(--border)',
                 padding: '16px',
-                backgroundColor: 'rgba(0,0,0,0.2)',
+                backgroundColor: 'rgba(var(--card-rgb), 0.45)',
+                position: 'relative',
             }}
         >
-            <Link to='/account' style={{ textDecoration: 'none' }} onClick={closeSidebarOnMobile}>
+            <button
+                type='button'
+                onClick={() => {
+                    if (!expanded) {
+                        setOpen(true);
+                        return;
+                    }
+                    setMenuOpen((value) => !value);
+                }}
+                style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '0',
+                    justifyContent: expanded ? 'flex-start' : 'center',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                }}
+                className='hover:bg-white/5 transition-colors'
+            >
                 <div
                     style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        backgroundColor: 'var(--background)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: expanded ? '16px' : '0',
-                        justifyContent: expanded ? 'flex-start' : 'center',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        borderRadius: '8px',
+                        justifyContent: 'center',
+                        border: '1px solid rgba(var(--primary-rgb), 0.35)',
+                        boxShadow:
+                            '0 0 0 1px rgba(var(--primary-rgb), 0.12), 0 6px 14px -6px rgba(var(--primary-rgb), 0.45)',
                     }}
-                    className='hover:bg-white/5 transition-colors'
                 >
-                    <div
+                    <Avatar.User size={36} variant={'beam'} />
+                </div>
+                {expanded && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
                         style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: 'var(--foreground)',
                             overflow: 'hidden',
-                            flexShrink: 0,
-                            backgroundColor: '#050505',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid rgba(163, 255, 18, 0.35)',
-                            boxShadow: '0 0 0 1px rgba(163, 255, 18, 0.08), 0 6px 14px -6px rgba(163, 255, 18, 0.45)',
+                            justifyContent: 'space-between',
+                            width: '100%',
                         }}
                     >
-                        <Avatar.User size={36} variant={'beam'} />
-                    </div>
-                    {expanded && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.2 }}
+                        <span>{userName}</span>
+                        <span className='material-icons-round' style={{ fontSize: '18px', color: 'var(--muted-foreground)' }}>
+                            {menuOpen ? 'expand_less' : 'expand_more'}
+                        </span>
+                    </motion.div>
+                )}
+            </button>
+
+            {expanded && menuOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                        position: 'absolute',
+                        left: '12px',
+                        right: '12px',
+                        bottom: 'calc(100% + 8px)',
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--card)',
+                        borderRadius: '12px',
+                        padding: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        boxShadow: '0 14px 34px rgba(0, 0, 0, 0.45)',
+                        zIndex: 50,
+                    }}
+                >
+                    <Link
+                        to='/account'
+                        style={{ textDecoration: 'none' }}
+                        onClick={() => {
+                            setMenuOpen(false);
+                            closeSidebarOnMobile();
+                        }}
+                    >
+                        <div
+                            className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
                             style={{
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                color: '#ffffff',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
+                                width: '100%',
+                                color: 'var(--foreground)',
                             }}
                         >
-                            {userName}
-                        </motion.div>
-                    )}
-                </div>
-            </Link>
-            {expanded && (
-                <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={onLogout}
-                    className='sidebar-link'
-                    style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '8px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#9ca3af',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                    }}
-                    type='button'
-                >
-                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
-                        logout
-                    </span>
-                    <span>LOG OUT</span>
-                </motion.button>
+                            <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: '10px' }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        height: '34px',
+                                        width: '34px',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: '999px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--background)',
+                                        color: 'var(--primary)',
+                                    }}
+                                >
+                                    <span className='material-icons-round' style={{ fontSize: '16px' }}>
+                                        person
+                                    </span>
+                                </div>
+                                <span
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    Profile
+                                </span>
+                            </div>
+                        </div>
+                    </Link>
+
+                    <Select title='Theme' data={themeOptions} defaultValue={themeId} onChange={setTheme} />
+
+                    <button
+                        onClick={onLogout}
+                        className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
+                        style={{
+                            width: '100%',
+                            color: 'var(--muted-foreground)',
+                            cursor: 'pointer',
+                            border: 'none',
+                            background: 'transparent',
+                        }}
+                        type='button'
+                    >
+                        <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: '10px' }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    height: '34px',
+                                    width: '34px',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '999px',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--background)',
+                                    color: 'var(--primary)',
+                                }}
+                            >
+                                <span className='material-icons-round' style={{ fontSize: '16px' }}>
+                                    logout
+                                </span>
+                            </div>
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                Log out
+                            </span>
+                        </div>
+                    </button>
+                </motion.div>
             )}
         </div>
     );
@@ -206,8 +362,8 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     right: -1px;
                     width: 2px;
                     border-radius: 999px;
-                    background: #1f2937;
-                    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                    background: var(--border);
+                    box-shadow: 0 0 0 rgba(12, 12, 12, 0);
                     pointer-events: none;
                 }
                 .sidebar-desktop-shell::before {
@@ -220,13 +376,13 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(220, 255, 162, 0.98) 0%,
-                        rgba(163, 255, 18, 0.92) 35%,
-                        rgba(163, 255, 18, 0.28) 60%,
-                        rgba(163, 255, 18, 0) 100%
+                        rgba(var(--primary-rgb), 0.98) 0%,
+                        rgba(var(--primary-rgb), 0.9) 35%,
+                        rgba(var(--primary-rgb), 0.32) 60%,
+                        rgba(var(--primary-rgb), 0) 100%
                     );
                     animation: sidebar-neon-flow 2.6s linear infinite;
-                    filter: drop-shadow(0 0 10px rgba(163, 255, 18, 0.85));
+                    filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.85));
                     pointer-events: none;
                 }
                 @keyframes sidebar-neon-flow {
@@ -238,9 +394,9 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     }
                 }
                 .sidebar-link:hover {
-                    color: #a3ff12 !important;
-                    background-color: rgba(163, 255, 18, 0.08) !important;
-                    border-color: rgba(163, 255, 18, 0.25) !important;
+                    color: var(--primary) !important;
+                    background-color: rgba(var(--primary-rgb), 0.08) !important;
+                    border-color: rgba(var(--primary-rgb), 0.25) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
@@ -354,8 +510,8 @@ export const ServerNavigationBar = ({
                     right: -1px;
                     width: 2px;
                     border-radius: 999px;
-                    background: #1f2937;
-                    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                    background: var(--border);
+                    box-shadow: 0 0 0 rgba(12, 12, 12, 0);
                     pointer-events: none;
                 }
                 .sidebar-desktop-shell::before {
@@ -368,13 +524,13 @@ export const ServerNavigationBar = ({
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(220, 255, 162, 0.98) 0%,
-                        rgba(163, 255, 18, 0.92) 35%,
-                        rgba(163, 255, 18, 0.28) 60%,
-                        rgba(163, 255, 18, 0) 100%
+                        rgba(var(--primary-rgb), 0.98) 0%,
+                        rgba(var(--primary-rgb), 0.9) 35%,
+                        rgba(var(--primary-rgb), 0.32) 60%,
+                        rgba(var(--primary-rgb), 0) 100%
                     );
                     animation: sidebar-neon-flow 2.6s linear infinite;
-                    filter: drop-shadow(0 0 10px rgba(163, 255, 18, 0.85));
+                    filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.85));
                     pointer-events: none;
                 }
                 @keyframes sidebar-neon-flow {
@@ -386,9 +542,9 @@ export const ServerNavigationBar = ({
                     }
                 }
                 .sidebar-link:hover {
-                    color: #a3ff12 !important;
-                    background-color: rgba(163, 255, 18, 0.08) !important;
-                    border-color: rgba(163, 255, 18, 0.25) !important;
+                    color: var(--primary) !important;
+                    background-color: rgba(var(--primary-rgb), 0.08) !important;
+                    border-color: rgba(var(--primary-rgb), 0.25) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />

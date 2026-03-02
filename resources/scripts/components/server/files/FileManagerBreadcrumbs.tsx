@@ -42,7 +42,7 @@ export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
             {renderLeft || <div css={tw`w-12`} />}/<span css={tw`px-1 text-gray-300`}>home</span>/
             <NavLink
                 to={`/server/${id}/files`}
-                css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[#d9ff93]`}
+                css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
             >
                 container
             </NavLink>
@@ -52,7 +52,7 @@ export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
                     <React.Fragment key={index}>
                         <NavLink
                             to={`/server/${id}/files#${encodePathSegments(crumb.path)}`}
-                            css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[#d9ff93]`}
+                            css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
                         >
                             {crumb.name}
                         </NavLink>

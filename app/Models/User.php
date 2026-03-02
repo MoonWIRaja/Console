@@ -38,9 +38,15 @@ use Pterodactyl\Notifications\SendPasswordReset as ResetPasswordNotification;
  * @property string $language
  * @property bool $root_admin
  * @property bool $use_totp
+ * @property bool $is_email_verified
+ * @property string|null $email_verification_pin
+ * @property \Illuminate\Support\Carbon|null $email_verification_expires_at
+ * @property string|null $password_reset_pin
+ * @property \Illuminate\Support\Carbon|null $password_reset_expires_at
  * @property string|null $totp_secret
  * @property \Illuminate\Support\Carbon|null $totp_authenticated_at
  * @property bool $gravatar
+ * @property string|null $avatar
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\ApiKey[] $apiKeys
@@ -132,7 +138,13 @@ class User extends Model implements
         'use_totp',
         'totp_secret',
         'totp_authenticated_at',
+        'is_email_verified',
+        'email_verification_pin',
+        'email_verification_expires_at',
+        'password_reset_pin',
+        'password_reset_expires_at',
         'gravatar',
+        'avatar',
         'root_admin',
     ];
 
@@ -142,14 +154,26 @@ class User extends Model implements
     protected $casts = [
         'root_admin' => 'boolean',
         'use_totp' => 'boolean',
+        'is_email_verified' => 'boolean',
         'gravatar' => 'boolean',
         'totp_authenticated_at' => 'datetime',
+        'email_verification_expires_at' => 'datetime',
+        'password_reset_expires_at' => 'datetime',
     ];
 
     /**
      * The attributes excluded from the model's JSON form.
      */
-    protected $hidden = ['password', 'remember_token', 'totp_secret', 'totp_authenticated_at'];
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'totp_secret',
+        'totp_authenticated_at',
+        'email_verification_pin',
+        'email_verification_expires_at',
+        'password_reset_pin',
+        'password_reset_expires_at',
+    ];
 
     /**
      * Default values for specific fields in the database.
@@ -159,6 +183,7 @@ class User extends Model implements
         'root_admin' => false,
         'language' => 'en',
         'use_totp' => false,
+        'is_email_verified' => true,
         'totp_secret' => null,
     ];
 
@@ -177,6 +202,12 @@ class User extends Model implements
         'language' => 'string',
         'use_totp' => 'boolean',
         'totp_secret' => 'nullable|string',
+        'is_email_verified' => 'boolean',
+        'email_verification_pin' => 'nullable|string',
+        'email_verification_expires_at' => 'nullable|date',
+        'password_reset_pin' => 'nullable|string',
+        'password_reset_expires_at' => 'nullable|date',
+        'avatar' => 'nullable|string|max:191',
     ];
 
     /**
@@ -199,8 +230,20 @@ class User extends Model implements
     public function toVueObject(): array
     {
         return Collection::make($this->toArray())->except(['id', 'external_id'])
-            ->merge(['identifier' => $this->identifier])
+            ->merge([
+                'identifier' => $this->identifier,
+                'image' => $this->getImageUrl(),
+            ])
             ->toArray();
+    }
+
+    public function getImageUrl(): string
+    {
+        if (!empty($this->avatar)) {
+            return '/storage/' . ltrim($this->avatar, '/');
+        }
+
+        return 'https://gravatar.com/avatar/' . md5(mb_strtolower($this->email));
     }
 
     /**

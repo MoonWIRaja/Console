@@ -1,16 +1,14 @@
 import React from 'react';
 import { Dialog, DialogProps } from '@/components/elements/dialog';
-import { Button } from '@/components/elements/button/index';
 import CopyOnClick from '@/components/elements/CopyOnClick';
 import { Alert } from '@/components/elements/alert';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface RecoveryTokenDialogProps extends DialogProps {
     tokens: string[];
 }
 
 export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
-    const doneButtonClass =
-        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black focus:!ring-offset-white';
     const grouped = [] as [string, string][];
     tokens.forEach((token, index) => {
         if (index % 2 === 0) {
@@ -33,15 +31,15 @@ export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
             <CopyOnClick text={tokens.join('\n')} showInNotification={false}>
                 <pre
                     className={
-                        'mt-6 border border-black bg-white text-black rounded-none p-3 font-mono text-sm leading-6'
+                        'mt-6 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 font-mono text-sm leading-6 text-[color:var(--foreground)]'
                     }
                 >
                     {grouped.map((value) => (
                         <span key={value.join('_')} className={'block'}>
                             {value[0]}
-                            <span className={'mx-2 selection:bg-black selection:text-white'}>&nbsp;</span>
+                            <span className={'mx-2 selection:bg-[color:var(--card)] selection:text-white'}>&nbsp;</span>
                             {value[1]}
-                            <span className={'selection:bg-black selection:text-white'}>&nbsp;</span>
+                            <span className={'selection:bg-[color:var(--card)] selection:text-white'}>&nbsp;</span>
                         </span>
                     ))}
                 </pre>
@@ -49,11 +47,9 @@ export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
             <Alert type={'danger'} className={'mt-3'}>
                 These codes will not be shown again.
             </Alert>
-            <Dialog.Footer>
-                <Button.Text type={'button'} onClick={onClose} className={doneButtonClass}>
-                    Done
-                </Button.Text>
-            </Dialog.Footer>
+            <div className={'mt-6 flex justify-end'}>
+                <InteractiveHoverButton type={'button'} onClick={onClose} text={'Done'} />
+            </div>
         </Dialog>
     );
 };

@@ -14,6 +14,7 @@ import getServerBackups from '@/api/swr/getServerBackups';
 import { ServerContext } from '@/state/server';
 import FormikSwitch from '@/components/elements/FormikSwitch';
 import Can from '@/components/elements/Can';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     name: string;
@@ -49,7 +50,7 @@ const ModalContent = ({ ...props }: RequiredModalProps) => {
                     </FormikFieldWrapper>
                 </div>
                 <Can action={'backup.delete'}>
-                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
+                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'isLocked'}
                             label={'Locked'}
@@ -108,9 +109,7 @@ export default () => {
                     <ModalContent appear visible={visible} onDismissed={() => setVisible(false)} />
                 </Formik>
             )}
-            <Button css={tw`w-full sm:w-auto`} onClick={() => setVisible(true)}>
-                Create backup
-            </Button>
+            <InteractiveHoverButton className={'w-full sm:w-auto'} text={'Create Backup'} onClick={() => setVisible(true)} />
         </>
     );
 };

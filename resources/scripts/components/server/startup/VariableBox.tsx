@@ -10,9 +10,9 @@ import updateStartupVariable from '@/api/server/updateStartupVariable';
 import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import getServerStartup from '@/api/swr/getServerStartup';
-import Select from '@/components/elements/Select';
 import isEqual from 'react-fast-compare';
 import { ServerContext } from '@/state/server';
+import Select from '@/components/elements/Select';
 
 interface Props {
     variable: ServerEggVariable;
@@ -94,19 +94,18 @@ const VariableBox = ({ variable }: Props) => {
                         {selectValues.length > 0 ? (
                             <>
                                 <Select
-                                    onChange={(e) => setVariableValue(e.target.value)}
-                                    name={variable.envVariable}
+                                    onChange={(e) => setVariableValue(e.currentTarget.value)}
                                     defaultValue={variable.serverValue ?? variable.defaultValue}
                                     disabled={!canEdit || !variable.isEditable}
                                 >
-                                    {selectValues.map((selectValue) => (
-                                        <option
-                                            key={selectValue.replace('in:', '')}
-                                            value={selectValue.replace('in:', '')}
-                                        >
-                                            {selectValue.replace('in:', '')}
-                                        </option>
-                                    ))}
+                                    {selectValues.map((selectValue) => {
+                                        const value = selectValue.replace('in:', '');
+                                        return (
+                                            <option key={`${variable.envVariable}_${value}`} value={value}>
+                                                {value}
+                                            </option>
+                                        );
+                                    })}
                                 </Select>
                             </>
                         ) : (

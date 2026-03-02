@@ -28,10 +28,7 @@ export default () => {
     }, [location.pathname, isMobileViewport]);
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#ffffff' }}>
-            <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-            `}</style>
+        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)' }}>
             <NavigationBar
                 sidebarOpen={isMobileViewport ? mobileSidebarOpen : undefined}
                 setSidebarOpen={isMobileViewport ? setMobileSidebarOpen : undefined}
@@ -40,9 +37,10 @@ export default () => {
             <div
                 style={{
                     flex: 1,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--background)',
+                    color: 'var(--foreground)',
                     minHeight: '100vh',
-                    fontFamily: "'Space Mono', monospace",
+                    fontFamily: "var(--font-mono, 'Space Mono', monospace)",
                 }}
             >
                 {isMobileViewport && (
@@ -55,8 +53,8 @@ export default () => {
                                 left: 0,
                                 right: 0,
                                 zIndex: 1000,
-                                backgroundColor: '#000000',
-                                borderBottom: '1px solid #1a1a1a',
+                                backgroundColor: 'var(--card)',
+                                borderBottom: '1px solid var(--border)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -64,14 +62,16 @@ export default () => {
                                 fontFamily: "'Space Mono', monospace",
                             }}
                         >
-                            <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>BurHan CONSOLE</div>
+                            <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 'bold' }}>
+                                BurHan CONSOLE
+                            </div>
                             <button
                                 type='button'
                                 onClick={() => setMobileSidebarOpen(true)}
                                 style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#a3ff12',
+                                    color: 'var(--primary)',
                                     fontSize: '20px',
                                     cursor: 'pointer',
                                     padding: '4px',

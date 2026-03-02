@@ -72,7 +72,7 @@ export default ({
                         open={open}
                         onClose={onDialogClose}
                     >
-                        <div className={'fixed inset-0 z-40 bg-[#000000]/70'} />
+                        <div className={'fixed inset-0 z-40 bg-[color:var(--card)]/70'} />
                         <div className={'fixed inset-0 overflow-y-auto z-50'}>
                             <div
                                 ref={container}
@@ -116,7 +116,7 @@ export default ({
                                                 type={'button'}
                                                 onClick={onClose}
                                                 className={
-                                                    'group !rounded-md !border !border-[#1f2a14] !bg-[#000000] !text-gray-100 hover:!border-[#a3ff12] hover:!text-[#d9ff93] focus:!ring-[#a3ff12] focus:!ring-offset-black'
+                                                    'group !rounded-md !border !border-[color:var(--border)] !bg-[color:var(--card)] !text-gray-100 hover:!border-[#a3ff12] hover:!text-[color:var(--primary)] focus:!ring-[#a3ff12] focus:!ring-offset-[#0C0C0C]'
                                                 }
                                             >
                                                 <XIcon className={styles.close_icon} />

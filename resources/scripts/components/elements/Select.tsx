@@ -6,7 +6,10 @@ interface Props {
 }
 
 const Select = styled.select<Props>`
-    ${tw`block w-full rounded border p-3 pr-8 text-sm shadow-none transition-colors duration-150 ease-linear`};
+    ${tw`block h-11 w-full rounded-[14px] border px-3 py-2 pr-9 text-sm shadow-none transition-colors duration-150 ease-linear`};
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
 
     &,
     &:hover:not(:disabled),
@@ -16,10 +19,14 @@ const Select = styled.select<Props>`
 
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-size: 1rem;
+    background-size: 0.45rem 0.45rem, 0.45rem 0.45rem;
     background-repeat: no-repeat;
-    background-position-x: calc(100% - 0.75rem);
-    background-position-y: center;
+    background-position:
+        calc(100% - 0.95rem) calc(50% - 1px),
+        calc(100% - 0.65rem) calc(50% - 1px);
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--primary) 50%),
+        linear-gradient(135deg, var(--primary) 50%, transparent 50%);
 
     &::-ms-expand {
         display: none;
@@ -28,14 +35,21 @@ const Select = styled.select<Props>`
     ${(props) =>
         !props.hideDropdownArrow &&
         css`
-            ${tw`border-[#1f2a14] bg-[#000000] text-[#f8f6ef]`};
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='%23d9ff93' d='M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z'/%3e%3c/svg%3e ");
-
             &:hover:not(:disabled),
             &:focus {
-                ${tw`border-[#a3ff12]`};
+                border-color: var(--primary);
             }
         `};
+
+    ${(props) =>
+        props.hideDropdownArrow &&
+        css`
+            background-image: none;
+        `};
+
+    &:disabled {
+        ${tw`cursor-not-allowed opacity-60`};
+    }
 `;
 
 export default Select;

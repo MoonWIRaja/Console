@@ -12,6 +12,7 @@ import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import useWebsocketEvent from '@/plugins/useWebsocketEvent';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
+import Avatar from '@/components/Avatar';
 
 export type PowerAction = 'start' | 'stop' | 'restart' | 'kill';
 
@@ -93,7 +94,7 @@ const ServerConsoleContainer = () => {
     const statusBadgeClass = classNames(
         'rounded-lg border px-2 py-0.5 text-xs font-bold',
         status === 'running'
-            ? 'border-[#a3ff12]/45 bg-[#a3ff12]/10 text-[#d9ff93]'
+            ? 'border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-[color:var(--primary)]'
             : status === 'offline' || status === null
             ? 'border-red-500/40 bg-red-500/10 text-red-400'
             : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
@@ -102,7 +103,7 @@ const ServerConsoleContainer = () => {
     return (
         <div
             className={
-                'relative flex min-h-screen w-full overflow-x-hidden bg-[#000000] text-gray-100 lg:h-screen lg:overflow-hidden'
+                'relative flex min-h-screen w-full overflow-x-hidden bg-[color:var(--card)] text-gray-100 lg:h-screen lg:overflow-hidden'
             }
             style={{
                 fontFamily:
@@ -110,8 +111,8 @@ const ServerConsoleContainer = () => {
             }}
         >
             <div className={'pointer-events-none absolute inset-0 z-0 hidden lg:flex'}>
-                <div className={'h-full w-[77%] bg-[#000000]'} />
-                <div className={'h-full w-[23%] bg-[#000000]'} />
+                <div className={'h-full w-[77%] bg-[color:var(--card)]'} />
+                <div className={'h-full w-[23%] bg-[color:var(--card)]'} />
             </div>
             <div
                 className={
@@ -144,12 +145,12 @@ const ServerConsoleContainer = () => {
                     )}
                     <div
                         className={
-                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-xl border border-[#1f2a14] bg-[#000000] shadow-none md:min-h-[500px]'
+                            'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-none md:min-h-[500px]'
                         }
                     >
                         <div
                             className={
-                                'flex items-center justify-between border-b border-[#1f2a14] bg-[#000000] px-4 py-3'
+                                'flex items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'
                             }
                         >
                             <h2
@@ -175,7 +176,7 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.06)]'
+                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06)]'
                         }
                     >
                         <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
@@ -265,15 +266,15 @@ const ServerConsoleContainer = () => {
                 >
                     <div
                         className={
-                            'flex items-center rounded-xl border border-[#1f2a14] bg-[#000000] p-4 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                            'flex items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                         }
                     >
                         <div
                             className={
-                                'mr-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[#a3ff12]/35 bg-[#000000] text-lg font-bold text-[#d9ff93] shadow-[0_0_12px_rgba(163,255,18,0.25)]'
+                                'mr-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] shadow-[0_0_12px_rgba(var(--primary-rgb), 0.25)]'
                             }
                         >
-                            {username.charAt(0).toUpperCase()}
+                            <Avatar.User size={40} />
                         </div>
                         <div className={'min-w-0'}>
                             <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
@@ -283,7 +284,7 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'rounded-xl border border-[#1f2a14] bg-[#000000] p-5 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                         }
                     >
                         <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
@@ -294,7 +295,7 @@ const ServerConsoleContainer = () => {
                                 <span className={'text-gray-400'}>IP:</span>
                                 <span
                                     className={
-                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
+                                        'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
                                     }
                                 >
                                     {allocation}
@@ -308,7 +309,7 @@ const ServerConsoleContainer = () => {
                                 <span className={'text-gray-400'}>Node:</span>
                                 <code
                                     className={
-                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                        'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
                                     }
                                 >
                                     {node}
@@ -319,7 +320,7 @@ const ServerConsoleContainer = () => {
                                 <code
                                     title={uuid}
                                     className={
-                                        'max-w-[70%] break-all rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                        'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
                                     }
                                 >
                                     {uuid.slice(0, 8)}
@@ -331,14 +332,14 @@ const ServerConsoleContainer = () => {
 
                     <div
                         className={
-                            'flex min-h-[300px] flex-1 flex-col rounded-xl border border-[#1f2a14] bg-[#000000] p-5 shadow-[0_0_0_1px_rgba(163,255,18,0.05)]'
+                            'flex min-h-[300px] flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                         }
                     >
                         <div className={'mb-4 flex items-center justify-between'}>
                             <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
                             <span
                                 className={
-                                    'rounded-md border border-[#1f2a14] bg-[#000000] px-2 py-1 text-xs font-medium text-gray-300'
+                                    'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-medium text-gray-300'
                                 }
                             >
                                 1 Online
@@ -347,7 +348,7 @@ const ServerConsoleContainer = () => {
                         <div className={'relative mb-4'}>
                             <input
                                 className={
-                                    'w-full rounded-lg border border-gray-800 bg-[#000000] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]'
+                                    'w-full rounded-lg border border-gray-800 bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
                                 }
                                 placeholder={'Filter by Name or ID...'}
                                 type={'text'}
@@ -371,7 +372,7 @@ const ServerConsoleContainer = () => {
                                 <div
                                     key={player.name}
                                     className={
-                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[#1f2a14] hover:bg-[#000000]/40'
+                                        'flex items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--card)]/40'
                                     }
                                 >
                                     <div className={'flex items-center gap-3'}>
@@ -391,7 +392,7 @@ const ServerConsoleContainer = () => {
                                     <div className={'flex gap-1'}>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-500 hover:bg-[#a3ff12]/10 hover:text-[#a3ff12]'
+                                                'rounded p-1 text-gray-500 hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
                                             }
                                             type={'button'}
                                         >
@@ -399,7 +400,7 @@ const ServerConsoleContainer = () => {
                                         </button>
                                         <button
                                             className={
-                                                'rounded p-1 text-gray-500 hover:bg-[#a3ff12]/10 hover:text-[#a3ff12]'
+                                                'rounded p-1 text-gray-500 hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
                                             }
                                             type={'button'}
                                         >

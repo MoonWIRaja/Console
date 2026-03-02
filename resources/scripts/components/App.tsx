@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import React, { lazy, useEffect } from 'react';
 import { hot } from 'react-hot-loader/root';
 import { Route, Router, Switch } from 'react-router-dom';
 import { StoreProvider } from 'easy-peasy';
@@ -15,6 +15,7 @@ import { ServerContext } from '@/state/server';
 import '@/assets/tailwind.css';
 import Spinner from '@/components/elements/Spinner';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
+import { applyThemePreset, DEFAULT_THEME_ID } from '@/components/ui/theme-presets';
 
 const DashboardRouter = lazy(() => import(/* webpackChunkName: "dashboard" */ '@/routers/DashboardRouter'));
 const ServerRouter = lazy(() => import(/* webpackChunkName: "server" */ '@/routers/ServerRouter'));
@@ -26,6 +27,7 @@ interface ExtendedWindow extends Window {
         uuid: string;
         username: string;
         email: string;
+        image?: string;
         /* eslint-disable camelcase */
         root_admin: boolean;
         use_totp: boolean;
@@ -45,6 +47,7 @@ const App = () => {
             uuid: PterodactylUser.uuid,
             username: PterodactylUser.username,
             email: PterodactylUser.email,
+            image: PterodactylUser.image,
             language: PterodactylUser.language,
             rootAdmin: PterodactylUser.root_admin,
             useTotp: PterodactylUser.use_totp,
@@ -56,6 +59,12 @@ const App = () => {
     if (!store.getState().settings.data) {
         store.getActions().settings.setSettings(SiteConfiguration!);
     }
+
+    useEffect(() => {
+        const savedTheme = window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID;
+        window.localStorage.setItem('panel.theme.mode', 'dark');
+        applyThemePreset(savedTheme, 'dark');
+    }, []);
 
     return (
         <>

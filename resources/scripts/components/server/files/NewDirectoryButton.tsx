@@ -77,13 +77,13 @@ const NewDirectoryDialog = asDialog({
                             id={'directoryName'}
                             name={'directoryName'}
                             label={'Name'}
-                            className={'!border-[#1f2a14] !bg-[#000000] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'}
+                            className={'!border-[color:var(--border)] !bg-[color:var(--card)] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'}
                         />
                         <p css={tw`mt-2 text-sm md:text-base break-all`}>
                             <span css={tw`text-gray-300`}>This directory will be created as&nbsp;</span>
-                            <Code className={'!border !border-[#1f2a14] !bg-[#050505] !text-gray-200'}>
+                            <Code className={'!border !border-[color:var(--border)] !bg-[color:var(--background)] !text-gray-200'}>
                                 /home/container/
-                                <span css={tw`text-[#d9ff93]`}>
+                                <span css={tw`text-[color:var(--primary)]`}>
                                     {join(directory, values.directoryName).replace(/^(\.\.\/|\/)+/, '')}
                                 </span>
                             </Code>
@@ -91,13 +91,13 @@ const NewDirectoryDialog = asDialog({
                     </Form>
                     <Dialog.Footer>
                         <Button.Text
-                            className={'w-full sm:w-auto !border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}
+                            className={'w-full sm:w-auto !border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}
                             onClick={close}
                         >
                             Cancel
                         </Button.Text>
                         <Button
-                            className={'w-full sm:w-auto !border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}
+                            className={'w-full sm:w-auto !border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}
                             onClick={submitForm}
                         >
                             Create

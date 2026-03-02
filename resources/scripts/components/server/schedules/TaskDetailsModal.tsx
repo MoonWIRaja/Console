@@ -13,10 +13,11 @@ import tw from 'twin.macro';
 import Label from '@/components/elements/Label';
 import { Textarea } from '@/components/elements/Input';
 import { Button } from '@/components/elements/button/index';
-import Select from '@/components/elements/Select';
+import Select from '@/components/ui/select';
 import ModalContext from '@/context/ModalContext';
 import asModal from '@/hoc/asModal';
 import FormikSwitch from '@/components/elements/FormikSwitch';
+import { Activity, Play, Power, Save } from 'lucide-react';
 
 interface Props {
     schedule: Schedule;
@@ -116,7 +117,7 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                 continueOnFailure: task?.continueOnFailure || false,
             }}
         >
-            {({ isSubmitting, values }) => (
+            {({ isSubmitting, values, setFieldValue }) => (
                 <Form css={tw`m-0`}>
                     <FlashMessageRender byKey={'schedule:task'} css={tw`mb-4`} />
                     <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>{task ? 'Edit Task' : 'Create Task'}</h2>
@@ -125,11 +126,33 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                             <Label>Action</Label>
                             <ActionListener />
                             <FormikFieldWrapper name={'action'}>
-                                <FormikField as={Select} name={'action'}>
-                                    <option value={'command'}>Send command</option>
-                                    <option value={'power'}>Send power action</option>
-                                    <option value={'backup'}>Create backup</option>
-                                </FormikField>
+                                    <Select
+                                        title={'Choose Action'}
+                                        defaultValue={values.action}
+                                        onChange={(value) => {
+                                            setFieldValue('action', value);
+                                        }}
+                                    data={[
+                                        {
+                                            id: 'action-command',
+                                            label: 'Send Command',
+                                            value: 'command',
+                                            icon: <Activity size={14} />,
+                                        },
+                                        {
+                                            id: 'action-power',
+                                            label: 'Send Power Action',
+                                            value: 'power',
+                                            icon: <Power size={14} />,
+                                        },
+                                        {
+                                            id: 'action-backup',
+                                            label: 'Create Backup',
+                                            value: 'backup',
+                                            icon: <Save size={14} />,
+                                        },
+                                    ]}
+                                />
                             </FormikFieldWrapper>
                         </div>
                         <div css={tw`flex-1 ml-6`}>
@@ -154,12 +177,39 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                             <div>
                                 <Label>Payload</Label>
                                 <FormikFieldWrapper name={'payload'}>
-                                    <FormikField as={Select} name={'payload'}>
-                                        <option value={'start'}>Start the server</option>
-                                        <option value={'restart'}>Restart the server</option>
-                                        <option value={'stop'}>Stop the server</option>
-                                        <option value={'kill'}>Terminate the server</option>
-                                    </FormikField>
+                                    <Select
+                                        title={'Power Action'}
+                                        defaultValue={values.payload}
+                                        onChange={(value) => {
+                                            setFieldValue('payload', value);
+                                        }}
+                                        data={[
+                                            {
+                                                id: 'payload-start',
+                                                label: 'Start the Server',
+                                                value: 'start',
+                                                icon: <Play size={14} />,
+                                            },
+                                            {
+                                                id: 'payload-restart',
+                                                label: 'Restart the Server',
+                                                value: 'restart',
+                                                icon: <Power size={14} />,
+                                            },
+                                            {
+                                                id: 'payload-stop',
+                                                label: 'Stop the Server',
+                                                value: 'stop',
+                                                icon: <Power size={14} />,
+                                            },
+                                            {
+                                                id: 'payload-kill',
+                                                label: 'Terminate the Server',
+                                                value: 'kill',
+                                                icon: <Power size={14} />,
+                                            },
+                                        ]}
+                                    />
                                 </FormikFieldWrapper>
                             </div>
                         ) : (
@@ -176,7 +226,7 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                             </div>
                         )}
                     </div>
-                    <div css={tw`mt-6 rounded border border-[#1f2a14] bg-[#050505] p-4 shadow-inner`}>
+                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
                         <FormikSwitch
                             name={'continueOnFailure'}
                             description={'Future tasks will be run when this task fails.'}

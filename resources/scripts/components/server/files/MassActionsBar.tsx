@@ -6,7 +6,7 @@ import useFileManagerSwr from '@/plugins/useFileManagerSwr';
 import useFlash from '@/plugins/useFlash';
 import compressFiles from '@/api/server/files/compressFiles';
 import { ServerContext } from '@/state/server';
-import deleteFiles from '@/api/server/files/deleteFiles';
+import moveToRecycleBin from '@/api/server/files/recycle-bin/moveToRecycleBin';
 import RenameFileModal from '@/components/server/files/RenameFileModal';
 import Portal from '@/components/elements/Portal';
 import { Dialog } from '@/components/elements/dialog';
@@ -46,9 +46,9 @@ const MassActionsBar = () => {
         setLoading(true);
         setShowConfirm(false);
         clearFlashes('files');
-        setLoadingMessage('Deleting files...');
+        setLoadingMessage('Moving files to recycle bin...');
 
-        deleteFiles(uuid, directory, selectedFiles)
+        moveToRecycleBin(uuid, directory, selectedFiles)
             .then(() => {
                 mutate((files) => files.filter((f) => selectedFiles.indexOf(f.name) < 0), false);
                 setSelectedFiles([]);
@@ -69,14 +69,14 @@ const MassActionsBar = () => {
                 <Dialog.Confirm
                     title={'Delete Files'}
                     open={showConfirm}
-                    confirm={'Delete'}
+                    confirm={'Move'}
                     onClose={() => setShowConfirm(false)}
                     onConfirmed={onClickConfirmDeletion}
                 >
                     <p className={'mb-2'}>
-                        Are you sure you want to delete&nbsp;
-                        <span className={'font-semibold text-[#d9ff93]'}>{selectedFiles.length} files</span>? This is a
-                        permanent action and the files cannot be recovered.
+                        Move&nbsp;
+                        <span className={'font-semibold text-[color:var(--primary)]'}>{selectedFiles.length} files</span> to recycle
+                        bin? You can recover them later.
                     </p>
                     <ul className={'space-y-1 text-sm text-gray-300'}>
                         {selectedFiles.slice(0, 15).map((file) => (
@@ -98,7 +98,7 @@ const MassActionsBar = () => {
                     <div className={'pointer-events-none fixed bottom-0 mb-6 flex justify-center w-full z-50'}>
                         <Fade timeout={75} in={selectedFiles.length > 0} unmountOnExit>
                             <div
-                                css={tw`pointer-events-auto flex items-center space-x-3 rounded-xl border border-[#1f2a14] bg-[#000000] p-3 shadow-xl`}
+                                css={tw`pointer-events-auto flex items-center space-x-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-xl`}
                             >
                                 <InteractiveHoverButton text={'Move'} onClick={() => setShowMove(true)} />
                                 <InteractiveHoverButton text={'Archive'} onClick={onClickCompress} />

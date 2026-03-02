@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Providers;
 
+use Throwable;
 use Pterodactyl\Models;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
@@ -72,7 +73,7 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function versionData(): array
     {
-        return Cache::remember('git-version', 5, function () {
+        $resolver = function () {
             if (file_exists(base_path('.git/HEAD'))) {
                 $head = explode(' ', file_get_contents(base_path('.git/HEAD')));
 
@@ -92,6 +93,13 @@ class AppServiceProvider extends ServiceProvider
                 'version' => config('app.version'),
                 'is_git' => false,
             ];
-        });
+        };
+
+        try {
+            return Cache::remember('git-version', 5, $resolver);
+        } catch (Throwable) {
+            // Avoid hard-failing auth/dashboard when file cache permissions are temporarily invalid.
+            return $resolver();
+        }
     }
 }

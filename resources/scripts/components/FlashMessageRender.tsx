@@ -90,7 +90,7 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
                 transform: visible && !exiting ? 'translateX(0)' : 'translateX(-120%)',
                 opacity: visible && !exiting ? 1 : 0,
                 transition: 'transform 0.3s ease, opacity 0.3s ease',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                boxShadow: '0 4px 12px rgba(12, 12, 12, 0.4)',
                 borderRadius: '0',
             }}
         >

@@ -30,6 +30,8 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
 
     Route::put('/email', [Client\AccountController::class, 'updateEmail'])->name('api:client.account.update-email');
     Route::put('/password', [Client\AccountController::class, 'updatePassword'])->name('api:client.account.update-password');
+    Route::post('/avatar', [Client\AccountController::class, 'updateAvatar'])->name('api:client.account.update-avatar');
+    Route::delete('/avatar', [Client\AccountController::class, 'removeAvatar'])->name('api:client.account.remove-avatar');
 
     Route::get('/activity', Client\ActivityLogController::class)->name('api:client.account.activity');
 
@@ -93,6 +95,14 @@ Route::group([
         Route::middleware([ResourceLimit::FilePull->middleware()])
             ->post('/pull', [Client\Servers\FileController::class, 'pull']);
         Route::get('/upload', Client\Servers\FileUploadController::class);
+
+        Route::group(['prefix' => '/recycle-bin'], function () {
+            Route::get('/', [Client\Servers\RecycleBinController::class, 'list']);
+            Route::post('/move', [Client\Servers\RecycleBinController::class, 'moveToRecycleBin']);
+            Route::post('/recover', [Client\Servers\RecycleBinController::class, 'recover']);
+            Route::post('/recover-all', [Client\Servers\RecycleBinController::class, 'recoverAll']);
+            Route::post('/empty', [Client\Servers\RecycleBinController::class, 'empty']);
+        });
     });
 
     Route::group(['prefix' => '/schedules'], function () {
@@ -141,6 +151,9 @@ Route::group([
     Route::group(['prefix' => '/startup'], function () {
         Route::get('/', [Client\Servers\StartupController::class, 'index']);
         Route::put('/variable', [Client\Servers\StartupController::class, 'update']);
+        Route::put('/command', [Client\Servers\StartupController::class, 'updateCommand']);
+        Route::post('/command/reset', [Client\Servers\StartupController::class, 'resetCommand']);
+        Route::put('/egg', [Client\Servers\StartupController::class, 'changeEgg']);
     });
 
     Route::group(['prefix' => '/settings'], function () {

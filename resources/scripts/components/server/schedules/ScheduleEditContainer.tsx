@@ -24,7 +24,7 @@ interface Params {
 }
 
 const CronBox = ({ title, value }: { title: string; value: string }) => (
-    <div css={tw`rounded-lg border border-[#1f2a14] bg-[#050505] p-3`}>
+    <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
         <p css={tw`text-sm text-neutral-400`}>{title}</p>
         <p css={tw`text-xl font-medium text-[#f8f6ef]`}>{value}</p>
     </div>
@@ -79,7 +79,7 @@ export default () => {
     }, []);
 
     return (
-        <PageContentBlock title={'Schedules'}>
+        <PageContentBlock title={'Schedules'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedule || isLoading ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={8} className='min-h-[360px]' />
@@ -87,18 +87,18 @@ export default () => {
                 <>
                     <ScheduleCronRow
                         cron={schedule.cron}
-                        css={tw`mb-4 rounded-lg border border-[#1f2a14] bg-[#050505] p-3 sm:hidden`}
+                        css={tw`mb-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:hidden`}
                     />
-                    <div css={tw`overflow-hidden rounded-xl border border-[#1f2a14] bg-[#000000]`}>
+                    <div css={tw`overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]`}>
                         <div
-                            css={tw`rounded-t-xl border-b border-[#1f2a14] bg-[#050505] p-3 sm:flex sm:items-center sm:p-6`}
+                            css={tw`rounded-t-xl border-b border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:flex sm:items-center sm:p-6`}
                         >
                             <div css={tw`flex-1`}>
                                 <h3 css={tw`flex items-center text-2xl text-[#f8f6ef]`}>
                                     {schedule.name}
                                     {schedule.isProcessing ? (
                                         <span
-                                            css={tw`ml-4 flex items-center rounded-full border border-[#1f2a14] bg-[#111827] px-2 py-px text-xs uppercase text-[#d9ff93]`}
+                                            css={tw`ml-4 flex items-center rounded-full border border-[color:var(--border)] bg-[#111827] px-2 py-px text-xs uppercase text-[color:var(--primary)]`}
                                         >
                                             <Spinner css={tw`w-3! h-3! mr-2`} />
                                             Processing
@@ -114,7 +114,7 @@ export default () => {
                                     ) : (
                                         <span css={tw`text-neutral-500`}>n/a</span>
                                     )}
-                                    <span css={tw`ml-4 border-l-2 border-[#1f2a14] py-px pl-4`}>
+                                    <span css={tw`ml-4 border-l-2 border-[color:var(--border)] py-px pl-4`}>
                                         Next run at:&nbsp;
                                         {schedule.nextRunAt ? (
                                             format(schedule.nextRunAt, "MMM do 'at' h:mma")
@@ -140,7 +140,7 @@ export default () => {
                             <CronBox title={'Month'} value={schedule.cron.month} />
                             <CronBox title={'Day (Week)'} value={schedule.cron.dayOfWeek} />
                         </div>
-                        <div css={tw`rounded-b-xl bg-[#000000]`}>
+                        <div css={tw`rounded-b-xl bg-[color:var(--card)]`}>
                             {schedule.tasks.length > 0
                                 ? schedule.tasks
                                       .sort((a, b) =>

@@ -9,10 +9,16 @@ use Pterodactyl\Models\User;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Illuminate\Contracts\View\View;
+use Pterodactyl\Services\Auth\EmailVerificationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class LoginController extends AbstractLoginController
 {
+    public function __construct(private EmailVerificationService $emailVerificationService)
+    {
+        parent::__construct();
+    }
+
     /**
      * Handle all incoming requests for the authentication routes and render the
      * base authentication view component. React will take over at this point and
@@ -51,6 +57,20 @@ class LoginController extends AbstractLoginController
         // can proceed to the next step in the login process.
         if (!password_verify($request->input('password'), $user->password)) {
             $this->sendFailedLoginResponse($request, $user);
+        }
+
+        if (!$user->is_email_verified) {
+            Activity::event('auth:email-verification.required')->withRequestMetadata()->subject($user)->log();
+
+            $token = $this->emailVerificationService->issueChallenge($request, $user);
+
+            return new JsonResponse([
+                'data' => [
+                    'complete' => false,
+                    'email_verification_required' => true,
+                    'verification_token' => $token,
+                ],
+            ]);
         }
 
         if (!$user->use_totp) {

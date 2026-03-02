@@ -13,7 +13,7 @@ import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import isEqual from 'react-fast-compare';
 import CopyOnClick from '@/components/elements/CopyOnClick';
 import { ip } from '@/lib/formatters';
-import { Button } from '@/components/elements/button/index';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 export default () => {
     const username = useStoreState((state) => state.user.data!.username);
@@ -23,7 +23,7 @@ export default () => {
     const sftp = ServerContext.useStoreState((state) => state.server.data!.sftpDetails, isEqual);
 
     return (
-        <ServerContentBlock title={'Settings'}>
+        <ServerContentBlock title={'Settings'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'settings'} css={tw`mb-4`} />
             <div css={tw`md:flex`}>
                 <div css={tw`w-full md:flex-1 md:mr-10`}>
@@ -43,7 +43,7 @@ export default () => {
                             </div>
                             <div css={tw`mt-6 flex items-center`}>
                                 <div css={tw`flex-1`}>
-                                    <div css={tw`border-l-4 border-[#a3ff12] bg-[#050505] p-3`}>
+                                    <div css={tw`border-l-4 border-[#a3ff12] bg-[color:var(--background)] p-3`}>
                                         <p css={tw`text-xs text-neutral-300`}>
                                             Your SFTP password is the same as the password you use to access this panel.
                                         </p>
@@ -51,7 +51,7 @@ export default () => {
                                 </div>
                                 <div css={tw`ml-4`}>
                                     <a href={`sftp://${username}.${id}@${ip(sftp.ip)}:${sftp.port}`}>
-                                        <Button.Text variant={Button.Variants.Secondary}>Launch SFTP</Button.Text>
+                                        <InteractiveHoverButton text={'Launch SFTP'} />
                                     </a>
                                 </div>
                             </div>
@@ -60,7 +60,7 @@ export default () => {
                     <TitledGreyBox title={'Debug Information'} css={tw`mb-6 md:mb-10`}>
                         <div css={tw`flex items-center justify-between text-sm`}>
                             <p>Node</p>
-                            <code css={tw`rounded border border-[#1f2a14] bg-[#050505] px-2 py-1 font-mono text-[#d9ff93]`}>
+                            <code css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}>
                                 {node}
                             </code>
                         </div>
@@ -68,7 +68,7 @@ export default () => {
                             <div css={tw`flex items-center justify-between mt-2 text-sm`}>
                                 <p>Server ID</p>
                                 <code
-                                    css={tw`rounded border border-[#1f2a14] bg-[#050505] px-2 py-1 font-mono text-[#d9ff93]`}
+                                    css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}
                                 >
                                     {uuid}
                                 </code>

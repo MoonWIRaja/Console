@@ -92,7 +92,7 @@ const EditorContainer = styled.div`
     .CodeMirror {
         height: 100% !important;
         ${tw`border-0`};
-        background: #000000;
+        background: var(--card);
         color: #e5e7eb;
         font-size: 13px;
         line-height: 1.5rem;
@@ -104,7 +104,7 @@ const EditorContainer = styled.div`
     .CodeMirror-code,
     .CodeMirror-linebackground,
     .CodeMirror-line {
-        background: #000000 !important;
+        background: var(--card) !important;
     }
 
     .CodeMirror-gutters,
@@ -123,32 +123,32 @@ const EditorContainer = styled.div`
     .cm-s-ayu-mirage .CodeMirror-foldgutter,
     .cm-s-ayu-mirage .CodeMirror-foldgutter-open,
     .cm-s-ayu-mirage .CodeMirror-foldgutter-folded {
-        background: #000000 !important;
-        background-color: #000000 !important;
-        border-right-color: #1f2a14 !important;
+        background: var(--card) !important;
+        background-color: var(--card) !important;
+        border-right-color: var(--border) !important;
     }
 
     .CodeMirror-gutters {
-        border-right: 1px solid #1f2a14 !important;
+        border-right: 1px solid var(--border) !important;
     }
 
     .CodeMirror-cursor {
-        border-left: 2px solid #a3ff12 !important;
+        border-left: 2px solid var(--primary) !important;
     }
 
     .CodeMirror-selected {
-        background: rgba(163, 255, 18, 0.18) !important;
+        background: rgba(var(--primary-rgb), 0.18) !important;
     }
 
     .CodeMirror-activeline-background {
-        background: rgba(163, 255, 18, 0.06);
+        background: rgba(var(--primary-rgb), 0.06);
     }
 
     .CodeMirror-hints {
-        ${tw`rounded-lg border border-[#1f2a14]`};
-        background: #050505 !important;
+        ${tw`rounded-lg border border-[color:var(--border)]`};
+        background: var(--card) !important;
         color: #e5e7eb;
-        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.55);
+        box-shadow: 0 16px 28px rgba(12, 12, 12, 0.55);
         z-index: 60;
     }
 
@@ -157,8 +157,8 @@ const EditorContainer = styled.div`
     }
 
     .CodeMirror-hint-active {
-        background: rgba(163, 255, 18, 0.16) !important;
-        color: #d9ff93 !important;
+        background: rgba(var(--primary-rgb), 0.16) !important;
+        color: var(--primary) !important;
     }
 
     .CodeMirror-linenumber {
@@ -167,7 +167,7 @@ const EditorContainer = styled.div`
     }
 
     .CodeMirror-foldmarker {
-        color: #d9ff93;
+        color: var(--primary);
         text-shadow: none;
         margin-left: 0.25rem;
         margin-right: 0.25rem;

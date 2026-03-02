@@ -26,7 +26,7 @@ export default () => {
             <FlashMessageRender byKey={'account'} />
             <div css={tw`grid grid-cols-1 gap-6 md:grid-cols-2`}>
                 <section
-                    css={tw`rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.05)] flex flex-col`}
+                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>Add SSH Key</h2>
                     <div css={tw`mt-2`}>
@@ -35,7 +35,7 @@ export default () => {
                 </section>
 
                 <section
-                    css={tw`rounded-xl border border-[#1f2a14] bg-[#000000] p-6 shadow-[0_0_0_1px_rgba(163,255,18,0.05)] flex flex-col`}
+                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>SSH Keys</h2>
                     <div css={tw`relative mt-2`}>
@@ -49,11 +49,11 @@ export default () => {
                                 <div
                                     key={key.fingerprint}
                                     css={[
-                                        tw`flex items-center gap-3 border-b border-[#1f2a14] px-1 py-3`,
+                                        tw`flex items-center gap-3 border-b border-[color:var(--border)] px-1 py-3`,
                                         index === data.length - 1 && tw`border-b-0`,
                                     ]}
                                 >
-                                    <FontAwesomeIcon icon={faKey} css={tw`text-[#a3ff12]`} />
+                                    <FontAwesomeIcon icon={faKey} css={tw`text-[color:var(--primary)]`} />
                                     <div css={tw`flex-1`}>
                                         <p css={tw`break-words text-sm font-bold text-neutral-100`}>{key.name}</p>
                                         <p css={tw`mt-1 truncate font-mono text-xs text-neutral-300`}>

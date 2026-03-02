@@ -2,8 +2,8 @@
     @apply mb-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-3;
 
     & button {
-        @apply w-full border border-[#1f2a14] bg-[#000000] text-[#f8f6ef] first:col-span-2 sm:first:col-span-1;
-        @apply hover:border-[#a3ff12] hover:text-[#d9ff93] focus:ring-[#a3ff12];
+        @apply w-full border border-[color:var(--border)] bg-[color:var(--card)] text-[#f8f6ef] first:col-span-2 sm:first:col-span-1;
+        @apply hover:border-[color:var(--primary)] hover:text-[color:var(--primary)] focus:ring-[color:var(--primary)];
     }
 
     @screen md {
@@ -15,9 +15,29 @@
     }
 }
 
+.search_shell {
+    @apply col-span-2 flex h-11 w-full items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-4 text-[color:var(--muted-foreground)];
+
+    & > span {
+        @apply text-base text-[color:var(--primary)];
+    }
+
+    @screen md {
+        @apply col-span-1 mr-2 w-[17rem];
+    }
+}
+
+.search_input {
+    @apply h-full w-full bg-transparent text-sm text-[color:var(--foreground)] outline-none;
+
+    &::placeholder {
+        @apply text-[color:var(--muted-foreground)];
+    }
+}
+
 .file_row {
-    @apply mb-2 flex cursor-pointer items-center rounded-xl border border-[#1f2a14] bg-[#000000] text-base no-underline;
-    @apply transition-colors duration-150 hover:border-[#2d3c1f] hover:bg-[#050505] hover:text-white;
+    @apply mb-2 flex cursor-pointer items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] text-base no-underline;
+    @apply transition-colors duration-150 hover:border-[#2d3c1f] hover:bg-[color:var(--background)] hover:text-white;
 
     & > .details {
         @apply flex flex-1 items-center overflow-hidden truncate px-6 py-4 text-gray-300 no-underline;

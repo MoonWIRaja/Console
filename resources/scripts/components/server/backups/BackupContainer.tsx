@@ -30,14 +30,14 @@ const BackupContainer = () => {
 
     if (!backups || (error && isValidating)) {
         return (
-            <ServerContentBlock title={'Backups'}>
+            <ServerContentBlock title={'Backups'} className={'content-container-full px-4 xl:px-6'}>
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             </ServerContentBlock>
         );
     }
 
     return (
-        <ServerContentBlock title={'Backups'}>
+        <ServerContentBlock title={'Backups'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'backups'} css={tw`mb-4`} />
             <Pagination data={backups} onPageSelect={setPage}>
                 {({ items }) =>

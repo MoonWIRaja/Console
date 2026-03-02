@@ -29,7 +29,10 @@ const PageContentBlock: React.FC<PageContentBlockProps> = ({
     return (
         <CSSTransition timeout={150} classNames={'fade'} appear in>
             <>
-                <ContentContainer css={fullHeight ? tw`my-0 h-full` : tw`my-4 sm:my-10`} className={className}>
+                <ContentContainer
+                    css={fullHeight ? tw`!my-0 flex h-full min-h-0 flex-1 flex-col sm:!my-0` : tw`my-4 sm:my-10`}
+                    className={className}
+                >
                     {showFlashKey && <FlashMessageRender byKey={showFlashKey} css={tw`mb-4`} />}
                     {children}
                 </ContentContainer>

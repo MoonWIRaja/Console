@@ -3,11 +3,11 @@
 }
 
 .panel {
-    @apply relative mx-auto w-full max-w-xl rounded-xl border border-[#1f2a14] bg-[#000000] text-left text-gray-100;
+    @apply relative mx-auto w-full max-w-xl rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] text-left text-gray-100;
 }
 
 .title {
-    @apply mb-2 pr-4 font-mono text-xl font-bold text-[#d9ff93];
+    @apply mb-2 pr-4 font-mono text-xl font-bold text-[color:var(--primary)];
 }
 
 .close_icon {

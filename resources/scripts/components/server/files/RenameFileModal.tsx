@@ -68,7 +68,7 @@ const RenameFileModal = ({ files, useMoveTerminology, ...props }: OwnProps) => {
                                     name={'name'}
                                     label={'File Name'}
                                     className={
-                                        '!border-[#1f2a14] !bg-[#000000] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'
+                                        '!border-[color:var(--border)] !bg-[color:var(--card)] !text-white focus:!border-[#a3ff12] focus:!ring-[#a3ff12]'
                                     }
                                     description={
                                         useMoveTerminology
@@ -79,7 +79,7 @@ const RenameFileModal = ({ files, useMoveTerminology, ...props }: OwnProps) => {
                                 />
                             </div>
                             <div css={tw`w-full sm:w-auto mt-4 sm:mt-0`}>
-                                <Button css={tw`w-full`} className={'!border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}>
+                                <Button css={tw`w-full`} className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}>
                                     {useMoveTerminology ? 'Move' : 'Rename'}
                                 </Button>
                             </div>

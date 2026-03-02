@@ -8,7 +8,7 @@ import updateAccountPassword from '@/api/account/updateAccountPassword';
 import { httpErrorToHuman } from '@/api/http';
 import { ApplicationStore } from '@/state';
 import tw from 'twin.macro';
-import { Button } from '@/components/elements/button/index';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     current: string;
@@ -29,8 +29,6 @@ const schema = Yup.object().shape({
 });
 
 export default () => {
-    const buttonClass =
-        '!bg-black !text-white !border !border-black !rounded-none hover:!bg-white hover:!text-black focus:!ring-black';
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
     const { clearFlashes, addFlash } = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes);
 
@@ -72,7 +70,6 @@ export default () => {
                                 type={'password'}
                                 name={'current'}
                                 label={'Current Password'}
-                                light
                             />
                             <div css={tw`mt-6`}>
                                 <Field
@@ -80,7 +77,6 @@ export default () => {
                                     type={'password'}
                                     name={'password'}
                                     label={'New Password'}
-                                    light
                                     description={
                                         'Your new password should be at least 8 characters in length and unique to this website.'
                                     }
@@ -92,13 +88,16 @@ export default () => {
                                     type={'password'}
                                     name={'confirmPassword'}
                                     label={'Confirm New Password'}
-                                    light
                                 />
                             </div>
                             <div css={tw`mt-6`}>
-                                <Button className={buttonClass} disabled={isSubmitting || !isValid}>
-                                    Update Password
-                                </Button>
+                                <InteractiveHoverButton
+                                    type={'submit'}
+                                    text={'Update Password'}
+                                    className={'w-full'}
+                                    variant={'success'}
+                                    disabled={isSubmitting || !isValid}
+                                />
                             </div>
                         </Form>
                     </React.Fragment>

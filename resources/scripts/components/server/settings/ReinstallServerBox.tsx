@@ -6,8 +6,8 @@ import { Actions, useStoreActions } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import { httpErrorToHuman } from '@/api/http';
 import tw from 'twin.macro';
-import { Button } from '@/components/elements/button/index';
 import { Dialog } from '@/components/elements/dialog';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -57,9 +57,11 @@ export default () => {
                 </strong>
             </p>
             <div css={tw`mt-6 text-right`}>
-                <Button.Danger variant={Button.Variants.Secondary} onClick={() => setModalVisible(true)}>
-                    Reinstall Server
-                </Button.Danger>
+                <InteractiveHoverButton
+                    text={'Reinstall Server'}
+                    variant={'danger'}
+                    onClick={() => setModalVisible(true)}
+                />
             </div>
         </TitledGreyBox>
     );

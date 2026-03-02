@@ -26,6 +26,8 @@ Route::middleware(['throttle:authentication'])->group(function () {
     // Login endpoints.
     Route::post('/login', [Auth\LoginController::class, 'login'])->middleware('recaptcha');
     Route::post('/login/checkpoint', Auth\LoginCheckpointController::class)->name('auth.login-checkpoint');
+    Route::post('/signup', [Auth\RegisterController::class, 'register'])->name('auth.post.signup');
+    Route::post('/signup/verify', [Auth\RegisterController::class, 'verify'])->name('auth.post.signup.verify');
 
     // Forgot password route. A post to this endpoint will trigger an
     // email to be sent containing a reset token.

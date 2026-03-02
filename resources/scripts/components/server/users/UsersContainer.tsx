@@ -45,14 +45,14 @@ export default () => {
 
     if (!subusers.length && (loading || !Object.keys(permissions).length)) {
         return (
-            <ServerContentBlock title={'Users'}>
+            <ServerContentBlock title={'Users'} className={'content-container-full px-4 xl:px-6'}>
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             </ServerContentBlock>
         );
     }
 
     return (
-        <ServerContentBlock title={'Users'}>
+        <ServerContentBlock title={'Users'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'users'} css={tw`mb-4`} />
             {!subusers.length ? (
                 <p css={tw`text-center text-sm text-neutral-400`}>It looks like you don&apos;t have any subusers.</p>

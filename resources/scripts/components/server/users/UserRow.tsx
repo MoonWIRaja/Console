@@ -20,7 +20,7 @@ export default ({ subuser }: Props) => {
     return (
         <GreyRowBox css={tw`mb-2`}>
             <EditSubuserModal subuser={subuser} visible={visible} onModalDismissed={() => setVisible(false)} />
-            <div css={tw`hidden h-10 w-10 overflow-hidden rounded-full border border-[#1f2a14] bg-[#050505] md:block`}>
+            <div css={tw`hidden h-10 w-10 overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--background)] md:block`}>
                 <img css={tw`w-full h-full`} src={`${subuser.image}?s=400`} />
             </div>
             <div css={tw`ml-4 flex-1 overflow-hidden`}>
@@ -50,7 +50,7 @@ export default ({ subuser }: Props) => {
                         <button
                             type={'button'}
                             aria-label={'Edit subuser'}
-                            css={tw`mx-4 block p-1 text-sm text-neutral-500 transition-colors duration-150 hover:text-[#d9ff93] md:p-2`}
+                            css={tw`mx-4 block p-1 text-sm text-neutral-500 transition-colors duration-150 hover:text-[color:var(--primary)] md:p-2`}
                             onClick={() => setVisible(true)}
                         >
                             <FontAwesomeIcon icon={faPencilAlt} />

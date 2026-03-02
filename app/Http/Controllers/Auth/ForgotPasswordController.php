@@ -2,39 +2,40 @@
 
 namespace Pterodactyl\Http\Controllers\Auth;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Password;
+use Pterodactyl\Models\User;
+use Pterodactyl\Facades\Activity;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Events\Auth\FailedPasswordReset;
-use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
+use Pterodactyl\Services\Auth\PasswordResetPinService;
+use Pterodactyl\Http\Requests\Auth\RequestPasswordResetPinRequest;
 
 class ForgotPasswordController extends Controller
 {
-    use SendsPasswordResetEmails;
-
-    /**
-     * Get the response for a failed password reset link.
-     */
-    protected function sendResetLinkFailedResponse(Request $request, $response): JsonResponse
+    public function __construct(private PasswordResetPinService $passwordResetPinService)
     {
-        // As noted in #358 we will return success even if it failed
-        // to avoid pointing out that an account does or does not
-        // exist on the system.
-        event(new FailedPasswordReset($request->ip(), $request->input('email')));
-
-        return $this->sendResetLinkResponse($request, Password::RESET_LINK_SENT);
     }
 
     /**
-     * Get the response for a successful password reset link.
-     *
-     * @param string $response
+     * Send a password reset verification PIN to a user email.
      */
-    protected function sendResetLinkResponse(Request $request, $response): JsonResponse
+    public function sendResetLinkEmail(RequestPasswordResetPinRequest $request): JsonResponse
     {
+        $email = mb_strtolower((string) $request->input('email'));
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user instanceof User) {
+            $token = $this->passwordResetPinService->issueChallenge($request, $user);
+            Activity::event('auth:password-reset-pin.requested')->withRequestMetadata()->subject($user)->log();
+        } else {
+            $token = $this->passwordResetPinService->issueAnonymousChallenge($request);
+            event(new FailedPasswordReset($request->ip(), $email));
+        }
+
         return response()->json([
-            'status' => trans($response),
+            'status' => 'If that email exists in our system, a reset PIN has been sent.',
+            'pin_required' => true,
+            'reset_token' => $token,
         ]);
     }
 }

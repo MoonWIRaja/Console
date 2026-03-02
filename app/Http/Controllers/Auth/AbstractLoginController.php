@@ -73,6 +73,7 @@ abstract class AbstractLoginController extends Controller
     protected function sendLoginResponse(User $user, Request $request): JsonResponse
     {
         $request->session()->remove('auth_confirmation_token');
+        $request->session()->remove('email_verification_token');
         $request->session()->regenerate();
 
         $this->clearLoginAttempts($request);

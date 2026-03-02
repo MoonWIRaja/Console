@@ -6,6 +6,10 @@ const ContentContainer = styled.div`
     max-width: 1200px;
     ${tw`mx-4`};
 
+    &.content-container-wide {
+        max-width: 1440px;
+    }
+
     &.content-container-full {
         max-width: 100%;
         width: 100%;

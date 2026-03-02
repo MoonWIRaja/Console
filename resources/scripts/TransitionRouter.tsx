@@ -6,10 +6,14 @@ import styled from 'styled-components/macro';
 import tw from 'twin.macro';
 
 const StyledSwitchTransition = styled(SwitchTransition)`
-    ${tw`relative`};
+    ${tw`relative flex min-h-0 flex-1 flex-col`};
+
+    & > div {
+        ${tw`flex min-h-0 flex-1 flex-col`};
+    }
 
     & section {
-        ${tw`absolute w-full top-0 left-0`};
+        ${tw`flex min-h-0 flex-1 flex-col w-full`};
     }
 `;
 

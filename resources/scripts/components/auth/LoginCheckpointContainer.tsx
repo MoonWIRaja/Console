@@ -32,17 +32,16 @@ const LoginCheckpointContainer = () => {
     const activeError = touched[activeField] ? (errors[activeField] as string | undefined) : undefined;
 
     return (
-        <div className='fixed inset-0 z-50 flex h-screen w-full overflow-hidden bg-[#000000] text-gray-100'>
+        <div className='fixed inset-0 z-50 flex h-screen w-full overflow-hidden bg-[color:var(--card)] text-gray-100'>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
                 .font-mono {
                     font-family: 'Space Mono', monospace;
                 }
             `}</style>
-            <div className='hidden h-full w-[70%] bg-[#000000] font-mono lg:block'>
+            <div className='hidden h-full w-[70%] bg-[color:var(--card)] font-mono lg:block'>
                 <span className='sr-only'>A dark neon background area.</span>
             </div>
-            <div className='w-full overflow-y-auto bg-[#000000] px-8 font-mono sm:px-12 md:px-16 lg:w-[30%] lg:px-10 xl:px-12'>
+            <div className='w-full overflow-y-auto bg-[color:var(--card)] px-8 font-mono sm:px-12 md:px-16 lg:w-[30%] lg:px-10 xl:px-12'>
                 <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
                     <div className='mb-10'>
                         <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
@@ -68,12 +67,12 @@ const LoginCheckpointContainer = () => {
                         orbitDurationMs={2800}
                         className='w-full rounded-xl [--radius:12] [--border:2] [--size:185]'
                     >
-                        <div className='rounded-xl bg-[#000000] p-8'>
+                        <div className='rounded-xl bg-[color:var(--card)] p-8'>
                             <Form className='space-y-5'>
                                 <div className='group space-y-1'>
                                     <label
                                         htmlFor={activeField}
-                                        className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[#a3ff12]'
+                                        className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[color:var(--primary)]'
                                     >
                                         {isMissingDevice ? 'Recovery Code' : 'Authentication Code'}
                                     </label>
@@ -88,7 +87,7 @@ const LoginCheckpointContainer = () => {
                                             id={activeField}
                                             autoComplete={'one-time-code'}
                                             autoFocus
-                                            className='w-full rounded-lg border border-gray-800 bg-[#000000] px-4 py-3 pr-11 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[#a3ff12] focus:ring-1 focus:ring-[#a3ff12]'
+                                            className='w-full rounded-lg border border-gray-800 bg-[color:var(--card)] px-4 py-3 pr-11 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
                                             placeholder={activePlaceholder}
                                         />
                                         <i className='fa-solid fa-shield-halved absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-500' />
@@ -103,7 +102,7 @@ const LoginCheckpointContainer = () => {
                                 <button
                                     type='submit'
                                     disabled={isSubmitting}
-                                    className='mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#a3ff12] px-4 py-3 text-sm font-bold uppercase tracking-wide text-black transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(163,255,18,0.55)] disabled:opacity-50'
+                                    className='mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-[color:var(--primary-foreground)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(var(--primary-rgb), 0.55)] disabled:opacity-50'
                                 >
                                     {isSubmitting ? 'Verifying...' : 'Continue'}
                                     <i className='fa-solid fa-arrow-right text-xs' />
@@ -121,7 +120,7 @@ const LoginCheckpointContainer = () => {
                                 setIsMissingDevice((s) => !s);
                             }}
                             disabled={isSubmitting}
-                            className='text-xs uppercase tracking-wide text-gray-500 transition-colors hover:text-[#a3ff12] disabled:opacity-50'
+                            className='text-xs uppercase tracking-wide text-gray-500 transition-colors hover:text-[color:var(--primary)] disabled:opacity-50'
                         >
                             {!isMissingDevice ? "I've Lost My Device" : 'I Have My Device'}
                         </button>
@@ -129,7 +128,7 @@ const LoginCheckpointContainer = () => {
 
                     <div className='mt-6 text-center'>
                         <Link
-                            className='text-xs text-gray-500 transition-colors hover:text-[#a3ff12]'
+                            className='text-xs text-gray-500 transition-colors hover:text-[color:var(--primary)]'
                             to={'/auth/login'}
                         >
                             Return to Login

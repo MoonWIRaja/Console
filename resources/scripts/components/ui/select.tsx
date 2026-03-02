@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDownIcon, X } from 'lucide-react';
 
 export type TSelectData = {
@@ -16,12 +16,15 @@ type SelectProps = {
     onChange?: (value: string) => void;
     defaultValue?: string;
     title?: string;
+    disabled?: boolean;
 };
 
-const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode' }: SelectProps) => {
+const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode', disabled = false }: SelectProps) => {
     const [open, setOpen] = useState(false);
+    const [openUpward, setOpenUpward] = useState(false);
     const [selected, setSelected] = useState<TSelectData | undefined>(undefined);
     const ref = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (defaultValue) {
@@ -38,6 +41,17 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode' }: Se
     useEffect(() => {
         if (!open) return;
 
+        const updatePlacement = () => {
+            if (!triggerRef.current) return;
+
+            const rect = triggerRef.current.getBoundingClientRect();
+            const approxHeight = 340;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            setOpenUpward(spaceBelow < approxHeight && spaceAbove > spaceBelow);
+        };
+
         const handleOutside = (e: MouseEvent) => {
             if (!ref.current) return;
             if (e.target instanceof Node && !ref.current.contains(e.target)) {
@@ -45,8 +59,15 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode' }: Se
             }
         };
 
+        updatePlacement();
+        window.addEventListener('resize', updatePlacement);
+        window.addEventListener('scroll', updatePlacement, true);
         document.addEventListener('mousedown', handleOutside);
-        return () => document.removeEventListener('mousedown', handleOutside);
+        return () => {
+            window.removeEventListener('resize', updatePlacement);
+            window.removeEventListener('scroll', updatePlacement, true);
+            document.removeEventListener('mousedown', handleOutside);
+        };
     }, [open]);
 
     const onSelect = (value: string) => {
@@ -61,53 +82,47 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode' }: Se
     const selectedItem = useMemo(() => selected || data[0], [selected, data]);
 
     return (
-        <MotionConfig
-            transition={{
-                type: 'spring',
-                stiffness: 320,
-                damping: 26,
-                ease: 'easeOut',
-            }}
-        >
-            <div className='w-full' ref={ref}>
-                <AnimatePresence mode='popLayout'>
-                    {!open ? (
-                        <motion.button
-                            type='button'
-                            whileTap={{ scale: 0.98 }}
-                            animate={{ borderRadius: 14 }}
-                            layout
-                            layoutId='file-editor-dropdown'
-                            onClick={() => setOpen(true)}
-                            className='w-full overflow-hidden border border-[#1f2a14] bg-[#000000] text-left shadow-sm'
-                        >
-                            <SelectItem item={selectedItem} noDescription order={selectedItem?.value} />
-                        </motion.button>
-                    ) : (
-                        <motion.div
-                            layout
-                            animate={{ borderRadius: 14 }}
-                            layoutId='file-editor-dropdown'
-                            className='w-full overflow-hidden border border-[#1f2a14] bg-[#000000] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.55)]'
-                        >
-                            <Head setOpen={setOpen} title={title} />
-                            <div className='max-h-72 w-full overflow-y-auto'>
-                                {data.map((item, index) => (
-                                    <SelectItem
-                                        order={item.value}
-                                        noDescription={false}
-                                        key={item.id}
-                                        item={item}
-                                        onChange={onSelect}
-                                        animationOrder={index}
-                                    />
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+        <div className='relative w-full min-h-[48px]' ref={ref}>
+            <div
+                ref={triggerRef}
+                onClick={() => !disabled && setOpen((v) => !v)}
+                className={[
+                    'w-full overflow-hidden rounded-[30px] border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm',
+                    disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                ].join(' ')}
+            >
+                <SelectItem item={selectedItem} noDescription order={selectedItem?.value} />
             </div>
-        </MotionConfig>
+
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: openUpward ? 6 : -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: openUpward ? 6 : -6 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className={[
+                            'absolute left-0 z-[80] w-full min-w-[220px] overflow-hidden rounded-[20px] border border-[color:var(--border)] bg-[color:var(--card)] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.45)]',
+                            openUpward ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]',
+                        ].join(' ')}
+                    >
+                        <Head setOpen={setOpen} title={title} />
+                        <div className='max-h-72 w-full overflow-y-auto'>
+                            {data.map((item, index) => (
+                                <SelectItem
+                                    order={item.value}
+                                    noDescription={false}
+                                    key={item.id}
+                                    item={item}
+                                    onChange={onSelect}
+                                    animationOrder={index}
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
 
@@ -121,11 +136,11 @@ const Head = ({ setOpen, title }: { setOpen: (open: boolean) => void; title: str
             layout
             className='flex items-center justify-between px-4 py-3'
         >
-            <strong className='text-xs font-semibold uppercase tracking-wide text-[#f8f6ef]'>{title}</strong>
+            <strong className='text-xs font-semibold uppercase tracking-wide text-[color:var(--foreground)]'>{title}</strong>
             <button
                 type='button'
                 onClick={() => setOpen(false)}
-                className='flex h-6 w-6 items-center justify-center rounded-full bg-[#0c0c0c] text-[#c9d1d9] hover:bg-[#131313]'
+                className='flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--background)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)]'
             >
                 <X size={12} />
             </button>
@@ -145,33 +160,66 @@ const SelectItem = ({ item, noDescription = true, order, onChange, animationOrde
     return (
         <motion.div
             className={[
-                'group flex cursor-pointer items-center justify-between gap-2 px-3 py-2 transition-colors',
-                'hover:bg-[rgba(163,255,18,0.12)]',
-                noDescription ? 'min-h-[2.4rem]' : 'min-h-[3rem]',
+                'group flex cursor-pointer items-center justify-between gap-2 p-4 py-2 transition-colors hover:bg-[color:var(--accent)]',
+                noDescription ? '!p-2' : '',
                 item?.disabled ? 'cursor-not-allowed opacity-50' : '',
             ].join(' ')}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2, delay: animationOrder * 0.03 }}
+            initial='hidden'
+            animate='visible'
+            exit='exit'
+            variants={animation}
+            custom={animationOrder}
             onClick={() => (!item?.disabled ? onChange?.(order || '') : null)}
         >
             <div className='flex min-w-0 items-center gap-3'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-md border border-[#1f2a14] bg-[#050505] text-[#d9ff93]'>
+                <motion.div
+                    layout
+                    layoutId={`icon-${item?.id}`}
+                    className='flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--primary)]'
+                >
                     {item?.icon}
-                </div>
-                <div className='flex min-w-0 flex-col'>
-                    <strong className='truncate text-xs font-semibold uppercase tracking-wide text-[#f8f6ef]'>
+                </motion.div>
+                <motion.div layout className='flex w-56 min-w-0 flex-col'>
+                    <motion.strong
+                        layoutId={`label-${item?.id}`}
+                        className='truncate text-xs font-semibold uppercase tracking-wide text-[color:var(--foreground)]'
+                    >
                         {item?.label}
-                    </strong>
+                    </motion.strong>
                     {!noDescription && item?.description ? (
-                        <span className='truncate text-[11px] text-[#9ca3af]'>{item.description}</span>
+                        <span className='truncate text-[11px] text-[color:var(--muted-foreground)]'>{item.description}</span>
                     ) : null}
-                </div>
+                </motion.div>
             </div>
-            {noDescription ? <ChevronDownIcon className='text-[#d9ff93]' size={16} /> : null}
+            {noDescription ? (
+                <motion.div layout className='flex items-center justify-center gap-2 pr-3'>
+                    <ChevronDownIcon className='text-[color:var(--primary)]' size={20} />
+                </motion.div>
+            ) : null}
         </motion.div>
     );
+};
+
+const animation = {
+    hidden: {
+        opacity: 0,
+        y: 10,
+    },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: (custom: number) => ({
+            delay: custom * 0.06,
+            duration: 0.24,
+        }),
+    },
+    exit: {
+        opacity: 0,
+        y: 10,
+        transition: (custom: number) => ({
+            delay: custom * 0.02,
+        }),
+    },
 };
 
 export default Select;

@@ -10,6 +10,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
 import Button from '@/components/elements/Button';
 import tw from 'twin.macro';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     databaseName: string;
@@ -106,7 +107,7 @@ export default () => {
                     </Modal>
                 )}
             </Formik>
-            <Button onClick={() => setVisible(true)}>New Database</Button>
+            <InteractiveHoverButton text={'New Database'} onClick={() => setVisible(true)} />
         </>
     );
 };

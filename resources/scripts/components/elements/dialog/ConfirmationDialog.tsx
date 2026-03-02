@@ -14,7 +14,7 @@ export default ({ confirm = 'Okay', children, onConfirmed, ...props }: Confirmat
             {typeof children !== 'string' && children}
             <Dialog.Footer>
                 <Button.Text
-                    className={'!border-[#1f2a14] !bg-[#000000] hover:!border-[#a3ff12] hover:!text-[#d9ff93]'}
+                    className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}
                     onClick={props.onClose}
                 >
                     Cancel

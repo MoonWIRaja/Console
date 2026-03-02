@@ -49,10 +49,10 @@ export default () => {
     }, [error]);
 
     return (
-        <div className='min-h-screen bg-[#000000] px-6 py-8 font-mono text-white md:px-10'>
+        <div className='min-h-screen bg-[color:var(--card)] px-6 py-8 font-mono text-white md:px-10'>
             <style>{`
                 .dashboard-theme {
-                    --neon-green: #a3ff12;
+                    --neon-green: var(--primary);
                 }
                 .shine-border {
                     border-radius: 12px;
@@ -63,10 +63,10 @@ export default () => {
                     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
                 }
                 .neon-glow-text {
-                    text-shadow: 0 0 8px rgba(163, 255, 18, 0.5);
+                    text-shadow: 0 0 8px rgba(var(--primary-rgb), 0.5);
                 }
                 .progress-neon {
-                    box-shadow: 0 0 10px rgba(163, 255, 18, 0.55);
+                    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.55);
                 }
             `}</style>
             <div className='dashboard-theme'>

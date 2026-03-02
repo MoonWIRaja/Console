@@ -24,10 +24,10 @@ const Wrapper = styled.div`
     }
 
     .switch {
-        background: rgba(0, 0, 0, 0.85);
+        background: color-mix(in srgb, var(--card) 90%, #000 10%);
         border-radius: 30px;
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.55);
+        border: 2px solid color-mix(in srgb, var(--border) 80%, #fff 20%);
+        box-shadow: inset 0 0 6px rgba(12, 12, 12, 0.55);
         height: 36px;
         position: relative;
         width: 92px;
@@ -66,10 +66,10 @@ const Wrapper = styled.div`
     }
 
     .switch-label:after {
-        background: radial-gradient(circle, #84cc16 0%, #a3ff12 100%);
+        background: radial-gradient(circle, color-mix(in srgb, var(--primary) 75%, #fff 25%) 0%, var(--primary) 100%);
         border-radius: 9999px;
-        border: 1px solid #3f6212;
-        box-shadow: 0 0 8px rgba(163, 255, 18, 0.6), inset 0 0 3px rgba(0, 0, 0, 0.2);
+        border: 1px solid color-mix(in srgb, var(--primary) 65%, #000 35%);
+        box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.6), inset 0 0 3px rgba(12, 12, 12, 0.2);
         content: '';
         height: 8px;
         position: absolute;
@@ -84,7 +84,7 @@ const Wrapper = styled.div`
         background: linear-gradient(#454545, #1f1f1f);
         border-radius: 9999px;
         border: 1px solid #171717;
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 4px rgba(12, 12, 12, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.08);
         display: block;
         height: 28px;
         left: 3px;
@@ -96,9 +96,9 @@ const Wrapper = styled.div`
 
     .switch-check:checked + .switch-label span {
         left: 47px;
-        background: linear-gradient(#84cc16, #65a30d);
-        border-color: #4d7c0f;
-        box-shadow: 0 0 10px rgba(163, 255, 18, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+        background: linear-gradient(color-mix(in srgb, var(--primary) 75%, #fff 25%), var(--primary));
+        border-color: color-mix(in srgb, var(--primary) 65%, #000 35%);
+        box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.2);
     }
 
     .switch-check:checked + .switch-label:before {
@@ -108,9 +108,9 @@ const Wrapper = styled.div`
     }
 
     .switch-check:checked + .switch-label:after {
-        background: radial-gradient(circle, #84cc16 0%, #a3ff12 100%);
-        border-color: #3f6212;
-        box-shadow: 0 0 10px rgba(163, 255, 18, 0.7), inset 0 0 4px rgba(0, 0, 0, 0.2);
+        background: radial-gradient(circle, color-mix(in srgb, var(--primary) 75%, #fff 25%) 0%, var(--primary) 100%);
+        border-color: color-mix(in srgb, var(--primary) 65%, #000 35%);
+        box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.7), inset 0 0 4px rgba(12, 12, 12, 0.2);
     }
 `;
 

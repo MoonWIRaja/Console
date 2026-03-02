@@ -11,6 +11,7 @@ import style from './style.module.css';
 import Avatar from '@/components/Avatar';
 import useLocationHash from '@/plugins/useLocationHash';
 import { getObjectKeys, isObject } from '@/lib/objects';
+import { useStoreState } from 'easy-peasy';
 
 interface Props {
     activity: ActivityLog;
@@ -41,13 +42,25 @@ function wrapProperties(value: unknown): any {
 export default ({ activity, children }: Props) => {
     const { pathTo } = useLocationHash();
     const actor = activity.relationships.actor;
+    const currentUser = useStoreState((state) => state.user.data);
+    const fallbackImage =
+        actor?.uuid && currentUser?.uuid && actor.uuid === currentUser.uuid ? currentUser.image : undefined;
+    const actorImage = actor?.image || fallbackImage;
     const properties = wrapProperties(activity.properties);
 
     return (
-        <div className={'group grid grid-cols-10 border-b border-[#1f2a14] py-4 last:rounded-b-xl last:border-0'}>
+        <div className={'group grid grid-cols-10 border-b border-[color:var(--border)] py-4 last:rounded-b-xl last:border-0'}>
             <div className={'hidden sm:flex sm:col-span-1 items-center justify-center select-none'}>
-                <div className={'flex h-10 w-10 items-center overflow-hidden rounded-full border border-[#1f2a14] bg-[#050505]'}>
-                    <Avatar name={actor?.uuid || 'system'} />
+                <div className={'flex h-10 w-10 items-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--background)]'}>
+                    {actorImage ? (
+                        <img
+                            src={actorImage}
+                            alt={actor?.username || 'User avatar'}
+                            className={'h-full w-full object-cover'}
+                        />
+                    ) : (
+                        <Avatar name={actor?.uuid || 'system'} />
+                    )}
                 </div>
             </div>
             <div className={'col-span-10 sm:col-span-9 flex'}>
@@ -59,11 +72,11 @@ export default ({ activity, children }: Props) => {
                         <span className={'text-neutral-500'}>&nbsp;&mdash;&nbsp;</span>
                         <Link
                             to={`#${pathTo({ event: activity.event })}`}
-                            className={'transition-colors duration-75 hover:text-[#d9ff93] active:text-[#a3ff12]'}
+                            className={'transition-colors duration-75 hover:text-[color:var(--primary)] active:text-[color:var(--primary)]'}
                         >
                             {activity.event}
                         </Link>
-                        <div className={classNames(style.icons, 'group-hover:text-[#d9ff93]')}>
+                        <div className={classNames(style.icons, 'group-hover:text-[color:var(--primary)]')}>
                             {activity.isApi && (
                                 <Tooltip placement={'top'} content={'Using API Key'}>
                                     <TerminalIcon />

@@ -9,11 +9,11 @@ import { object, string } from 'yup';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import { ApplicationStore } from '@/state';
 import { httpErrorToHuman } from '@/api/http';
-import { Button } from '@/components/elements/button/index';
 import tw from 'twin.macro';
 import Label from '@/components/elements/Label';
 import FormikFieldWrapper from '@/components/elements/FormikFieldWrapper';
 import { Textarea } from '@/components/elements/Input';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 interface Values {
     name: string;
@@ -35,7 +35,7 @@ const RenameServerBox = () => {
                     </FormikFieldWrapper>
                 </div>
                 <div css={tw`mt-6 text-right`}>
-                    <Button type={'submit'}>Save</Button>
+                    <InteractiveHoverButton text={'Save'} type={'submit'} />
                 </div>
             </Form>
         </TitledGreyBox>
@@ -63,7 +63,7 @@ export default () => {
             onSubmit={submit}
             initialValues={{
                 name: server.name,
-                description: server.description,
+                description: server.description ?? '',
             }}
             validationSchema={object().shape({
                 name: string().required().min(1),

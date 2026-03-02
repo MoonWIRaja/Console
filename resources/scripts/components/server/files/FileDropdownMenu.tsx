@@ -15,7 +15,7 @@ import {
 import RenameFileModal from '@/components/server/files/RenameFileModal';
 import { ServerContext } from '@/state/server';
 import { join } from 'pathe';
-import deleteFiles from '@/api/server/files/deleteFiles';
+import moveToRecycleBin from '@/api/server/files/recycle-bin/moveToRecycleBin';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import copyFile from '@/api/server/files/copyFile';
 import Can from '@/components/elements/Can';
@@ -40,7 +40,7 @@ const StyledRow = styled.div<{ $danger?: boolean }>`
     ${(props) =>
         props.$danger
             ? tw`hover:border-red-500 hover:bg-[#2b1111] hover:text-red-300`
-            : tw`hover:border-[#2d3c1f] hover:bg-[#050505] hover:text-[#d9ff93]`};
+            : tw`hover:border-[#2d3c1f] hover:bg-[color:var(--background)] hover:text-[color:var(--primary)]`};
 `;
 
 interface RowProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -80,7 +80,7 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
         // If the delete actually fails, we'll fetch the current directory contents again automatically.
         mutate((files) => files.filter((f) => f.key !== file.key), false);
 
-        deleteFiles(uuid, directory, [file.name]).catch((error) => {
+        moveToRecycleBin(uuid, directory, [file.name]).catch((error) => {
             mutate();
             clearAndAddHttpError({ key: 'files', error });
         });
@@ -135,16 +135,16 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 open={showConfirmation}
                 onClose={() => setShowConfirmation(false)}
                 title={`Delete ${file.isFile ? 'File' : 'Directory'}`}
-                confirm={'Delete'}
+                confirm={'Move'}
                 onConfirmed={doDeletion}
             >
-                You will not be able to recover the contents of&nbsp;
-                <span className={'font-semibold text-[#d9ff93]'}>{file.name}</span> once deleted.
+                <span className={'font-semibold text-[color:var(--primary)]'}>{file.name}</span> will be moved to
+                recycle bin and can be recovered later.
             </Dialog.Confirm>
             <DropdownMenu
                 ref={onClickRef}
                 renderToggle={(onClick) => (
-                    <div css={tw`px-4 py-2 text-gray-400 transition-colors duration-150 hover:text-[#d9ff93]`} onClick={onClick}>
+                    <div css={tw`px-4 py-2 text-gray-400 transition-colors duration-150 hover:text-[color:var(--primary)]`} onClick={onClick}>
                         <FontAwesomeIcon icon={faEllipsisH} />
                         {modal ? (
                             modal === 'chmod' ? (

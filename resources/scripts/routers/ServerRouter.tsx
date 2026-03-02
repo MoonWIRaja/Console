@@ -82,7 +82,10 @@ export default () => {
 
     return (
         <React.Fragment key={'server-router'}>
-            <div className='bg-[#000000] text-gray-100 font-sans h-screen overflow-hidden flex w-full relative'>
+            <div
+                className='font-sans h-screen min-h-0 overflow-hidden flex w-full relative'
+                style={{ height: '100dvh', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+            >
                 <style>{`
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
                     @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
@@ -125,8 +128,12 @@ export default () => {
                 />
 
                 <main
-                    className='server-main-content flex-1 flex flex-col overflow-hidden bg-[#000000] relative'
-                    style={{ minWidth: 0, fontFamily: "'Inter', sans-serif" }}
+                    className='server-main-content flex-1 min-h-0 flex flex-col overflow-hidden relative'
+                    style={{
+                        minWidth: 0,
+                        fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                        backgroundColor: 'var(--background)',
+                    }}
                 >
                     {isMobileViewport && (
                         <>
@@ -136,17 +143,17 @@ export default () => {
                                     position: 'sticky',
                                     top: 0,
                                     zIndex: 1000,
-                                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                    backgroundColor: 'var(--card)',
                                     backdropFilter: 'blur(16px)',
                                     WebkitBackdropFilter: 'blur(16px)',
-                                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderBottom: '1px solid var(--border)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     padding: '0 16px',
                                 }}
                             >
-                                <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 900 }}>
+                                <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>
                                     BurHan Console
                                 </div>
                                 <button
@@ -155,7 +162,7 @@ export default () => {
                                     style={{
                                         background: 'none',
                                         border: 'none',
-                                        color: '#a3ff12',
+                                        color: 'var(--primary)',
                                         fontSize: '20px',
                                         cursor: 'pointer',
                                         padding: '4px',
@@ -189,31 +196,33 @@ export default () => {
                                     <ConflictStateRenderer />
                                 </div>
                             ) : (
-                                <ErrorBoundary>
-                                    <TransitionRouter>
-                                        <Switch location={location}>
-                                            {routes.server.map(({ path, permission, component: Component }) => (
-                                                <PermissionRoute
-                                                    key={path}
-                                                    permission={permission}
-                                                    path={to(path)}
-                                                    exact
-                                                >
-                                                    <Spinner.Suspense
-                                                        fallback={
-                                                            <div className='p-6'>
-                                                                <PageLoadingSkeleton rows={9} />
-                                                            </div>
-                                                        }
+                                <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+                                    <ErrorBoundary>
+                                        <TransitionRouter>
+                                            <Switch location={location}>
+                                                {routes.server.map(({ path, permission, component: Component }) => (
+                                                    <PermissionRoute
+                                                        key={path}
+                                                        permission={permission}
+                                                        path={to(path)}
+                                                        exact
                                                     >
-                                                        <Component />
-                                                    </Spinner.Suspense>
-                                                </PermissionRoute>
-                                            ))}
-                                            <Route path={'*'} component={NotFound} />
-                                        </Switch>
-                                    </TransitionRouter>
-                                </ErrorBoundary>
+                                                        <Spinner.Suspense
+                                                            fallback={
+                                                                <div className='p-6'>
+                                                                    <PageLoadingSkeleton rows={9} />
+                                                                </div>
+                                                            }
+                                                        >
+                                                            <Component />
+                                                        </Spinner.Suspense>
+                                                    </PermissionRoute>
+                                                ))}
+                                                <Route path={'*'} component={NotFound} />
+                                            </Switch>
+                                        </TransitionRouter>
+                                    </ErrorBoundary>
+                                </div>
                             )}
                         </>
                     )}
