@@ -7,7 +7,6 @@ use Illuminate\Http\RedirectResponse;
 use Prologue\Alerts\AlertsMessageBag;
 use Illuminate\Contracts\Console\Kernel;
 use Pterodactyl\Http\Controllers\Controller;
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface;
 use Pterodactyl\Http\Requests\Admin\Settings\AdvancedSettingsFormRequest;
 
@@ -18,7 +17,6 @@ class AdvancedController extends Controller
      */
     public function __construct(
         private AlertsMessageBag $alert,
-        private ConfigRepository $config,
         private Kernel $kernel,
         private SettingsRepositoryInterface $settings,
     ) {
@@ -29,17 +27,7 @@ class AdvancedController extends Controller
      */
     public function index(): View
     {
-        $showRecaptchaWarning = false;
-        if (
-            $this->config->get('recaptcha._shipped_secret_key') === $this->config->get('recaptcha.secret_key')
-            || $this->config->get('recaptcha._shipped_website_key') === $this->config->get('recaptcha.website_key')
-        ) {
-            $showRecaptchaWarning = true;
-        }
-
-        return view('admin.settings.advanced', [
-            'showRecaptchaWarning' => $showRecaptchaWarning,
-        ]);
+        return view('admin.settings.advanced');
     }
 
     /**

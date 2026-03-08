@@ -31,6 +31,7 @@ export default () => {
 
     const id = ServerContext.useStoreState((state) => state.server.data?.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data?.uuid);
+    const serverStatus = ServerContext.useStoreState((state) => state.server.data?.status ?? null);
     const inConflictState = ServerContext.useStoreState((state) => state.server.inConflictState);
     const serverId = ServerContext.useStoreState((state) => state.server.data?.internalId);
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
@@ -79,6 +80,13 @@ export default () => {
     useEffect(() => {
         setMobileSidebarOpen(false);
     }, [location.pathname, isMobileViewport]);
+
+    const consoleRoute = `/server/${match.params.id}`;
+    const isConsoleRoute = location.pathname === consoleRoute || location.pathname === `${consoleRoute}/`;
+    const isInstallConflict =
+        serverStatus === 'installing' || serverStatus === 'install_failed' || serverStatus === 'reinstall_failed';
+    // Allow Console route during install/reinstall so users can still monitor progress.
+    const canBypassConflictState = isConsoleRoute && (rootAdmin || isInstallConflict);
 
     return (
         <React.Fragment key={'server-router'}>
@@ -190,13 +198,12 @@ export default () => {
                             <InstallListener />
                             <TransferListener />
                             <WebsocketHandler />
-                            {inConflictState &&
-                            (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
+                            {inConflictState && !canBypassConflictState ? (
                                 <div className='p-6'>
                                     <ConflictStateRenderer />
                                 </div>
                             ) : (
-                                <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+                                <div className='flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto'>
                                     <ErrorBoundary>
                                         <TransitionRouter>
                                             <Switch location={location}>

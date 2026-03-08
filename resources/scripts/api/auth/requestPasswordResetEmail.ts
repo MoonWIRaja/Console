@@ -6,9 +6,29 @@ export interface PasswordResetPinResponse {
     resetToken?: string;
 }
 
-export default (email: string, recaptchaData?: string): Promise<PasswordResetPinResponse> => {
+interface RequestData {
+    email: string;
+    captchaToken?: string | null;
+    website?: string;
+    company?: string;
+    formRenderedAt?: number;
+}
+
+export default ({
+    email,
+    captchaToken,
+    website = '',
+    company = '',
+    formRenderedAt,
+}: RequestData): Promise<PasswordResetPinResponse> => {
     return new Promise((resolve, reject) => {
-        http.post('/auth/password', { email, 'g-recaptcha-response': recaptchaData })
+        http.post('/auth/password', {
+            email,
+            website,
+            company,
+            form_rendered_at: formRenderedAt,
+            'cf-turnstile-response': captchaToken,
+        })
             .then((response) => {
                 // Support both legacy string responses and object responses.
                 if (typeof response.data === 'string') {

@@ -121,8 +121,7 @@ Route::group([
 
     Route::group(['prefix' => '/network'], function () {
         Route::get('/allocations', [Client\Servers\NetworkAllocationController::class, 'index']);
-        Route::middleware([ResourceLimit::Allocation->middleware()])
-            ->post('/allocations', [Client\Servers\NetworkAllocationController::class, 'store']);
+        Route::post('/allocations', [Client\Servers\NetworkAllocationController::class, 'store']);
         Route::post('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'update']);
         Route::post('/allocations/{allocation}/primary', [Client\Servers\NetworkAllocationController::class, 'setPrimary']);
         Route::delete('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'delete']);
@@ -154,6 +153,15 @@ Route::group([
         Route::put('/command', [Client\Servers\StartupController::class, 'updateCommand']);
         Route::post('/command/reset', [Client\Servers\StartupController::class, 'resetCommand']);
         Route::put('/egg', [Client\Servers\StartupController::class, 'changeEgg']);
+    });
+
+    Route::group(['prefix' => '/players'], function () {
+        Route::get('/', [Client\Servers\PlayerController::class, 'index']);
+        Route::get('/capabilities', [Client\Servers\PlayerController::class, 'capabilities']);
+        Route::get('/{player}', [Client\Servers\PlayerController::class, 'show']);
+        Route::get('/{player}/inventory', [Client\Servers\PlayerController::class, 'inventory']);
+        Route::get('/{player}/statistics', [Client\Servers\PlayerController::class, 'statistics']);
+        Route::post('/{player}/actions', [Client\Servers\PlayerController::class, 'action']);
     });
 
     Route::group(['prefix' => '/settings'], function () {

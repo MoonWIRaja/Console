@@ -21,6 +21,8 @@ export interface RenderDialogProps extends DialogProps {
     preventExternalClose?: boolean;
     title?: string;
     description?: string | undefined;
+    panelClassName?: string;
+    contentClassName?: string;
     children?: React.ReactNode;
 }
 

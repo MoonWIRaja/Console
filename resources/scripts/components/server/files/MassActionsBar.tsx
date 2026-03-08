@@ -12,6 +12,19 @@ import Portal from '@/components/elements/Portal';
 import { Dialog } from '@/components/elements/dialog';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
+const RECYCLE_BIN_BATCH_SIZE = 25;
+
+const splitIntoBatches = (items: string[], size: number): string[][] => {
+    if (items.length === 0 || size <= 0) return [];
+
+    const batches: string[][] = [];
+    for (let index = 0; index < items.length; index += size) {
+        batches.push(items.slice(index, index + size));
+    }
+
+    return batches;
+};
+
 const MassActionsBar = () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
 
@@ -42,22 +55,29 @@ const MassActionsBar = () => {
             .then(() => setLoading(false));
     };
 
-    const onClickConfirmDeletion = () => {
+    const onClickConfirmDeletion = async () => {
         setLoading(true);
         setShowConfirm(false);
         clearFlashes('files');
         setLoadingMessage('Moving files to recycle bin...');
 
-        moveToRecycleBin(uuid, directory, selectedFiles)
-            .then(() => {
-                mutate((files) => files.filter((f) => selectedFiles.indexOf(f.name) < 0), false);
-                setSelectedFiles([]);
-            })
-            .catch((error) => {
-                mutate();
-                clearAndAddHttpError({ key: 'files', error });
-            })
-            .then(() => setLoading(false));
+        try {
+            const fileBatches = splitIntoBatches(selectedFiles, RECYCLE_BIN_BATCH_SIZE);
+
+            for (let index = 0; index < fileBatches.length; index++) {
+                const batch = fileBatches[index];
+                setLoadingMessage(`Moving files to recycle bin... (${index + 1}/${fileBatches.length})`);
+                await moveToRecycleBin(uuid, directory, batch);
+            }
+
+            mutate((files) => files.filter((f) => selectedFiles.indexOf(f.name) < 0), false);
+            setSelectedFiles([]);
+        } catch (error) {
+            mutate();
+            clearAndAddHttpError({ key: 'files', error });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

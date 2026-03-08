@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Event;
 use Pterodactyl\Events\Auth\DirectLogin;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\Security\AuthSecurityService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 
@@ -55,10 +56,18 @@ abstract class AbstractLoginController extends Controller
      */
     protected function sendFailedLoginResponse(Request $request, ?Authenticatable $user = null, ?string $message = null)
     {
+        $identifier = app(AuthSecurityService::class)->getIdentifierFromRequest($request);
+
         $this->incrementLoginAttempts($request);
         $this->fireFailedLoginEvent($user, [
-            $this->getField($request->input('user')) => $request->input('user'),
+            $this->getField($identifier) => $identifier,
         ]);
+        app(AuthSecurityService::class)->registerFailure(
+            $request,
+            3,
+            'failed_login',
+            $identifier
+        );
 
         if ($request->route()->named('auth.login-checkpoint')) {
             throw new DisplayException($message ?? trans('auth.two_factor.checkpoint_failed'));
@@ -77,6 +86,7 @@ abstract class AbstractLoginController extends Controller
         $request->session()->regenerate();
 
         $this->clearLoginAttempts($request);
+        app(AuthSecurityService::class)->clearRisk($request, $user->email);
 
         $this->auth->guard()->login($user, true);
 

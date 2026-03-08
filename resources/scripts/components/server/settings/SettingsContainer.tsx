@@ -25,8 +25,8 @@ export default () => {
     return (
         <ServerContentBlock title={'Settings'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'settings'} css={tw`mb-4`} />
-            <div css={tw`md:flex`}>
-                <div css={tw`w-full md:flex-1 md:mr-10`}>
+            <div css={tw`xl:flex`}>
+                <div css={tw`w-full xl:flex-1 xl:mr-10`}>
                     <Can action={'file.sftp'}>
                         <TitledGreyBox title={'SFTP Details'} css={tw`mb-6 md:mb-10`}>
                             <div>
@@ -41,17 +41,17 @@ export default () => {
                                     <Input type={'text'} value={`${username}.${id}`} readOnly />
                                 </CopyOnClick>
                             </div>
-                            <div css={tw`mt-6 flex items-center`}>
-                                <div css={tw`flex-1`}>
+                            <div css={tw`mt-6 flex flex-col gap-3 sm:flex-row sm:items-center`}>
+                                <div css={tw`w-full sm:flex-1`}>
                                     <div css={tw`border-l-4 border-[#a3ff12] bg-[color:var(--background)] p-3`}>
                                         <p css={tw`text-xs text-neutral-300`}>
                                             Your SFTP password is the same as the password you use to access this panel.
                                         </p>
                                     </div>
                                 </div>
-                                <div css={tw`ml-4`}>
+                                <div css={tw`w-full sm:w-auto`}>
                                     <a href={`sftp://${username}.${id}@${ip(sftp.ip)}:${sftp.port}`}>
-                                        <InteractiveHoverButton text={'Launch SFTP'} />
+                                        <InteractiveHoverButton className={'w-full sm:w-auto'} text={'Launch SFTP'} />
                                     </a>
                                 </div>
                             </div>
@@ -76,7 +76,7 @@ export default () => {
                         </CopyOnClick>
                     </TitledGreyBox>
                 </div>
-                <div css={tw`w-full mt-6 md:flex-1 md:mt-0`}>
+                <div css={tw`w-full mt-6 xl:flex-1 xl:mt-0`}>
                     <Can action={'settings.rename'}>
                         <div css={tw`mb-6 md:mb-10`}>
                             <RenameServerBox />

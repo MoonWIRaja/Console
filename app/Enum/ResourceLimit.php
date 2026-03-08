@@ -47,7 +47,8 @@ enum ResourceLimit
             self::Database => Limit::perMinute(2),
             self::FilePull => Limit::perMinutes(10, 5),
             self::Subuser => Limit::perMinutes(15, 10),
-            self::Websocket => Limit::perMinute(5),
+            // Websocket token requests can burst during reconnect cycles.
+            self::Websocket => Limit::perMinute(30),
             default => Limit::perMinute(2),
         };
     }
@@ -58,7 +59,12 @@ enum ResourceLimit
             RateLimiter::for($case->throttleKey(), function (Request $request) use ($case) {
                 Assert::isInstanceOf($server = $request->route()->parameter('server'), Server::class);
 
-                return $case->limit()->by($server->uuid);
+                $key = $server->uuid;
+                if ($case === self::Websocket) {
+                    $key .= ':' . (optional($request->user())->uuid ?: $request->ip());
+                }
+
+                return $case->limit()->by($key);
             });
         }
     }

@@ -6,7 +6,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Response;
 use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
+use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Facades\Activity;
+use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Services\Nodes\NodeJWTService;
 use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Transformers\Api\Client\FileObjectTransformer;
@@ -25,6 +27,9 @@ use Pterodactyl\Http\Requests\Api\Client\Servers\Files\WriteFileContentRequest;
 
 class FileController extends ClientApiController
 {
+    private const MAX_DECOMPRESS_SYMLINK_RETRIES = 10;
+    private const DECOMPRESS_BAD_PATH_RESOLUTION_PATTERN = '/handling file(?: \d+)?:\s+(.+?):\s+filesystem: .*bad path resolution/i';
+
     /**
      * FileController constructor.
      */
@@ -42,9 +47,38 @@ class FileController extends ClientApiController
      */
     public function directory(ListFilesRequest $request, Server $server): array
     {
+        $directory = $request->get('directory') ?? '/';
+        $normalizedDirectory = $this->normalizePath((string) $directory);
+
+        if ($this->isHiddenBackupPath($normalizedDirectory)) {
+            return $this->fractal->collection([])
+                ->transformWith($this->getTransformer(FileObjectTransformer::class))
+                ->toArray();
+        }
+
+        if ($normalizedDirectory === '/.recycle_bin' || str_starts_with($normalizedDirectory, '/.recycle_bin/')) {
+            return $this->fractal->collection([])
+                ->transformWith($this->getTransformer(FileObjectTransformer::class))
+                ->toArray();
+        }
+
         $contents = $this->fileRepository
             ->setServer($server)
-            ->getDirectory($request->get('directory') ?? '/');
+            ->getDirectory($directory);
+
+        $hiddenEntry = $this->hiddenBackupEntryForDirectory($normalizedDirectory);
+        $contents = array_values(array_filter($contents, function (array $entry) use ($hiddenEntry): bool {
+            $name = (string) ($entry['name'] ?? '');
+            if ($name === '.recycle_bin') {
+                return false;
+            }
+
+            if (!is_null($hiddenEntry) && $name === $hiddenEntry) {
+                return false;
+            }
+
+            return true;
+        }));
 
         return $this->fractal->collection($contents)
             ->transformWith($this->getTransformer(FileObjectTransformer::class))
@@ -194,7 +228,8 @@ class FileController extends ClientApiController
     {
         set_time_limit(300);
 
-        $this->fileRepository->setServer($server)->decompressFile(
+        $this->decompressFileResolvingSymlinkConflicts(
+            $server,
             $request->input('root'),
             $request->input('file')
         );
@@ -261,5 +296,172 @@ class FileController extends ClientApiController
             ->log();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Retries an extract if Wings rejects overwriting a symlinked file inside the server root.
+     *
+     * @throws DaemonConnectionException
+     * @throws DisplayException
+     */
+    private function decompressFileResolvingSymlinkConflicts(Server $server, ?string $root, string $file): void
+    {
+        $attempts = 0;
+
+        while (true) {
+            try {
+                $this->fileRepository->setServer($server)->decompressFile($root, $file);
+
+                return;
+            } catch (DaemonConnectionException $exception) {
+                $conflictPath = $this->extractDecompressConflictPath($exception);
+                if (is_null($conflictPath)) {
+                    throw $exception;
+                }
+
+                if ($attempts >= self::MAX_DECOMPRESS_SYMLINK_RETRIES) {
+                    throw new DisplayException(
+                        sprintf(
+                            'This archive could not be extracted because it keeps conflicting with symlinked files, starting with "%s". Delete or rename those symlinks and try again.',
+                            $conflictPath
+                        ),
+                        $exception
+                    );
+                }
+
+                if (!$this->deleteDecompressConflictSymlink($server, $root, $conflictPath)) {
+                    throw new DisplayException(
+                        sprintf(
+                            'This archive could not be extracted because it tries to overwrite the symlinked file "%s". Delete or rename that file and try again.',
+                            $conflictPath
+                        ),
+                        $exception
+                    );
+                }
+
+                ++$attempts;
+            }
+        }
+    }
+
+    private function extractDecompressConflictPath(DaemonConnectionException $exception): ?string
+    {
+        $response = method_exists($exception->getPrevious(), 'getResponse')
+            ? $exception->getPrevious()->getResponse()
+            : null;
+
+        if (is_null($response)) {
+            return null;
+        }
+
+        $payload = json_decode((string) $response->getBody(), true);
+        $error = is_array($payload) ? trim((string) ($payload['error'] ?? '')) : '';
+        if ($error === '' || !str_contains(strtolower($error), 'bad path resolution')) {
+            return null;
+        }
+
+        if (!preg_match(self::DECOMPRESS_BAD_PATH_RESOLUTION_PATTERN, $error, $matches)) {
+            return null;
+        }
+
+        $path = ltrim((string) preg_replace('#^(?:\./)+#', '', trim((string) ($matches[1] ?? ''))), '/');
+        if ($path === '') {
+            return null;
+        }
+
+        foreach (explode('/', $path) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return null;
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * Deletes only the conflicting symlink itself, never the target it points to.
+     *
+     * @throws DaemonConnectionException
+     */
+    private function deleteDecompressConflictSymlink(Server $server, ?string $root, string $conflictPath): bool
+    {
+        $fullPath = $this->normalizePath(sprintf('%s/%s', $root ?? '/', ltrim($conflictPath, '/')));
+        $directory = $this->normalizePath((string) dirname($fullPath));
+        $fileName = basename($fullPath);
+        if ($fileName === '' || $fileName === '.' || $fileName === '..') {
+            return false;
+        }
+
+        $entries = $this->fileRepository->setServer($server)->getDirectory($directory);
+        foreach ($entries as $entry) {
+            if (($entry['name'] ?? null) !== $fileName) {
+                continue;
+            }
+
+            if (!(bool) ($entry['symlink'] ?? false) || (bool) ($entry['directory'] ?? false)) {
+                return false;
+            }
+
+            $this->fileRepository->setServer($server)->deleteFiles($directory, [$fileName]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $normalized = '/' . trim(str_replace('\\', '/', $path), '/');
+        $normalized = preg_replace('#/+#', '/', $normalized) ?? '/';
+
+        return $normalized === '' ? '/' : $normalized;
+    }
+
+    private function localBackupDirectory(): string
+    {
+        $configured = trim((string) config('backups.local_container_directory', '/backups'));
+        if ($configured === '' || $configured === '.') {
+            $configured = '/backups';
+        }
+
+        return $this->normalizePath($configured);
+    }
+
+    private function localContainerOnlyEnabled(): bool
+    {
+        return (bool) config('backups.local_container_only', false);
+    }
+
+    private function isHiddenBackupPath(string $path): bool
+    {
+        if (!$this->localContainerOnlyEnabled()) {
+            return false;
+        }
+
+        $backupDirectory = $this->localBackupDirectory();
+        return $path === $backupDirectory || str_starts_with($path, rtrim($backupDirectory, '/') . '/');
+    }
+
+    private function hiddenBackupEntryForDirectory(string $directory): ?string
+    {
+        if (!$this->localContainerOnlyEnabled()) {
+            return null;
+        }
+
+        $backupSegments = array_values(array_filter(explode('/', trim($this->localBackupDirectory(), '/'))));
+        $currentSegments = array_values(array_filter(explode('/', trim($directory, '/'))));
+
+        if (empty($backupSegments) || count($currentSegments) >= count($backupSegments)) {
+            return null;
+        }
+
+        foreach ($currentSegments as $index => $segment) {
+            if (!isset($backupSegments[$index]) || $backupSegments[$index] !== $segment) {
+                return null;
+            }
+        }
+
+        return $backupSegments[count($currentSegments)] ?? null;
     }
 }

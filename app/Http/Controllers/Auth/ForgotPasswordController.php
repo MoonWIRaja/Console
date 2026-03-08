@@ -9,10 +9,14 @@ use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Events\Auth\FailedPasswordReset;
 use Pterodactyl\Services\Auth\PasswordResetPinService;
 use Pterodactyl\Http\Requests\Auth\RequestPasswordResetPinRequest;
+use Pterodactyl\Services\Security\AuthSecurityService;
 
 class ForgotPasswordController extends Controller
 {
-    public function __construct(private PasswordResetPinService $passwordResetPinService)
+    public function __construct(
+        private PasswordResetPinService $passwordResetPinService,
+        private AuthSecurityService $security,
+    )
     {
     }
 
@@ -22,6 +26,7 @@ class ForgotPasswordController extends Controller
     public function sendResetLinkEmail(RequestPasswordResetPinRequest $request): JsonResponse
     {
         $email = mb_strtolower((string) $request->input('email'));
+        $identifier = $this->security->getIdentifierFromRequest($request);
         $user = User::query()->where('email', $email)->first();
 
         if ($user instanceof User) {
@@ -30,6 +35,7 @@ class ForgotPasswordController extends Controller
         } else {
             $token = $this->passwordResetPinService->issueAnonymousChallenge($request);
             event(new FailedPasswordReset($request->ip(), $email));
+            $this->security->registerFailure($request, 4, 'failed_password_reset', $identifier);
         }
 
         return response()->json([

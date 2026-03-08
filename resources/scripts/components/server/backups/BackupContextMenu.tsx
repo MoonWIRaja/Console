@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     faBoxOpen,
     faCloudDownloadAlt,
@@ -22,6 +22,7 @@ import Input from '@/components/elements/Input';
 import { restoreServerBackup } from '@/api/server/backups';
 import http, { httpErrorToHuman } from '@/api/http';
 import { Dialog } from '@/components/elements/dialog';
+import getServer from '@/api/server/getServer';
 
 interface Props {
     backup: ServerBackup;
@@ -30,11 +31,72 @@ interface Props {
 export default ({ backup }: Props) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
+    const setServer = ServerContext.useStoreActions((actions) => actions.server.setServer);
     const [modal, setModal] = useState('');
     const [loading, setLoading] = useState(false);
     const [truncate, setTruncate] = useState(false);
+    const isMounted = useRef(true);
+    const restorePollInterval = useRef<number | null>(null);
     const { clearFlashes, clearAndAddHttpError } = useFlash();
     const { mutate } = getServerBackups();
+
+    useEffect(
+        () => () => {
+            isMounted.current = false;
+            if (restorePollInterval.current !== null) {
+                window.clearInterval(restorePollInterval.current);
+                restorePollInterval.current = null;
+            }
+        },
+        []
+    );
+
+    const setLoadingSafely = (value: boolean) => {
+        if (isMounted.current) {
+            setLoading(value);
+        }
+    };
+
+    const setModalSafely = (value: string) => {
+        if (isMounted.current) {
+            setModal(value);
+        }
+    };
+
+    const clearRestorePolling = () => {
+        if (restorePollInterval.current !== null) {
+            window.clearInterval(restorePollInterval.current);
+            restorePollInterval.current = null;
+        }
+    };
+
+    const startRestoreCompletionPolling = () => {
+        clearRestorePolling();
+        const startedAt = Date.now();
+
+        restorePollInterval.current = window.setInterval(() => {
+            getServer(uuid)
+                .then(([server]) => {
+                    if (!isMounted.current) {
+                        return;
+                    }
+
+                    setServer(server);
+                    if (server.status !== 'restoring_backup') {
+                        clearRestorePolling();
+                        window.location.reload();
+                    }
+                })
+                .catch(() => {
+                    // Keep polling while restoration is in progress.
+                });
+
+            // Safety stop after 30 minutes to avoid orphaned intervals.
+            if (Date.now() - startedAt > 30 * 60 * 1000) {
+                clearRestorePolling();
+            }
+        }, 5000);
+    };
 
     const doDownload = () => {
         setLoading(true);
@@ -48,7 +110,7 @@ export default ({ backup }: Props) => {
                 console.error(error);
                 clearAndAddHttpError({ key: 'backups', error });
             })
-            .then(() => setLoading(false));
+            .then(() => setLoadingSafely(false));
     };
 
     const doDeletion = () => {
@@ -68,8 +130,8 @@ export default ({ backup }: Props) => {
             .catch((error) => {
                 console.error(error);
                 clearAndAddHttpError({ key: 'backups', error });
-                setLoading(false);
-                setModal('');
+                setLoadingSafely(false);
+                setModalSafely('');
             });
     };
 
@@ -83,12 +145,13 @@ export default ({ backup }: Props) => {
                     status: 'restoring_backup',
                 }))
             )
+            .then(() => startRestoreCompletionPolling())
             .catch((error) => {
                 console.error(error);
                 clearAndAddHttpError({ key: 'backups', error });
             })
-            .then(() => setLoading(false))
-            .then(() => setModal(''));
+            .then(() => setLoadingSafely(false))
+            .then(() => setModalSafely(''));
     };
 
     const onLockToggle = () => {
@@ -114,7 +177,7 @@ export default ({ backup }: Props) => {
                 )
             )
             .catch((error) => alert(httpErrorToHuman(error)))
-            .then(() => setModal(''));
+            .then(() => setModalSafely(''));
     };
 
     return (

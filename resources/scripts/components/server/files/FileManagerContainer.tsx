@@ -29,6 +29,19 @@ const MAX_SEARCH_DIRS = 150;
 const MAX_SEARCH_RESULTS = 500;
 const SEARCH_MAX_DURATION_MS = 8000;
 const SEARCH_REQUEST_TIMEOUT_MS = 3500;
+const HIDDEN_DIRECTORY_NAMES = new Set(['.recycle_bin']);
+
+const pathHasHiddenSegment = (path: string): boolean => {
+    return path
+        .split('/')
+        .filter((segment) => segment.length > 0)
+        .some((segment) => HIDDEN_DIRECTORY_NAMES.has(segment));
+};
+
+const isHiddenRootEntry = (entryName: string, directory: string): boolean => {
+    const normalized = directory === '' ? '/' : directory;
+    return normalized === '/' && HIDDEN_DIRECTORY_NAMES.has(entryName);
+};
 
 const sortFiles = (files: FileObject[]): FileObject[] => {
     const sortedFiles: FileObject[] = files
@@ -110,6 +123,10 @@ export default () => {
 
                     for (const entry of entries) {
                         const absolutePath = toAbsolute(currentDirectory, entry.name);
+                        if (pathHasHiddenSegment(absolutePath)) {
+                            continue;
+                        }
+
                         const relativePath = toRelative(absolutePath);
 
                         results.push({
@@ -150,11 +167,12 @@ export default () => {
 
     const filteredCurrentFiles = useMemo(() => {
         if (!files) return [];
+        const visibleFiles = files.filter((file) => !isHiddenRootEntry(file.name, directory));
         const keyword = search.trim().toLowerCase();
-        if (!keyword) return files;
+        if (!keyword) return visibleFiles;
 
-        return files.filter((file) => file.name.toLowerCase().includes(keyword));
-    }, [files, search]);
+        return visibleFiles.filter((file) => file.name.toLowerCase().includes(keyword));
+    }, [files, search, directory]);
 
     const visibleFiles = useMemo(() => {
         if (!search.trim()) return filteredCurrentFiles;
@@ -193,11 +211,11 @@ export default () => {
             <ErrorBoundary>
                 <div
                     className={
-                        'flex h-[calc(100vh-8.5rem)] min-h-[420px] flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] lg:h-[calc(100vh-9rem)]'
+                        'flex h-[calc(100dvh-8.5rem)] min-h-[420px] flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] lg:h-[calc(100dvh-9rem)]'
                     }
                 >
                     <div className={'sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'}>
-                        <div className={'flex flex-wrap-reverse items-start md:flex-nowrap'}>
+                        <div className={'flex flex-wrap-reverse items-start xl:flex-nowrap'}>
                             <FileManagerBreadcrumbs
                                 renderLeft={
                                     <FileActionCheckbox
@@ -247,15 +265,7 @@ export default () => {
                                     {search.trim() && indexing && (
                                         <p css={tw`mb-3 text-center text-sm text-gray-400`}>Searching in folders...</p>
                                     )}
-                                    {visibleFiles.length > 250 && (
-                                        <div css={tw`mb-2 rounded-lg border border-[#3d4e21] bg-[color:var(--card)] p-3`}>
-                                            <p css={tw`text-center text-sm text-[color:var(--primary)]`}>
-                                                This directory is too large to display in the browser, limiting the
-                                                output to the first 250 files.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {sortFiles(visibleFiles.slice(0, 250)).map((file) => (
+                                    {sortFiles(visibleFiles).map((file) => (
                                         <FileObjectRow key={file.key} file={file} />
                                     ))}
                                     <MassActionsBar />

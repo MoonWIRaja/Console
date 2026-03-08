@@ -6,7 +6,7 @@
         @apply hover:border-[color:var(--primary)] hover:text-[color:var(--primary)] focus:ring-[color:var(--primary)];
     }
 
-    @screen md {
+    @screen xl {
         @apply mb-0 flex flex-1 justify-end;
 
         & button {
@@ -22,7 +22,7 @@
         @apply text-base text-[color:var(--primary)];
     }
 
-    @screen md {
+    @screen xl {
         @apply col-span-1 mr-2 w-[17rem];
     }
 }

@@ -30,13 +30,7 @@ class FindAssignableAllocationService
      */
     public function handle(Server $server): Allocation
     {
-        if (!config('pterodactyl.client_features.allocations.enabled')) {
-            throw new AutoAllocationNotEnabledException();
-        }
-
-        // Attempt to find a given available allocation for a server. If one cannot be found
-        // we will fall back to attempting to create a new allocation that can be used for the
-        // server.
+        // First: try to find an unassigned allocation on the same IP as the server's primary allocation.
         /** @var Allocation|null $allocation */
         $allocation = $server->node->allocations()
             ->where('ip', $server->allocation->ip)
@@ -44,7 +38,18 @@ class FindAssignableAllocationService
             ->inRandomOrder()
             ->first();
 
-        $allocation = $allocation ?? $this->createNewAllocation($server);
+        // Second: if none on the same IP, try any unassigned allocation on the same node.
+        if (!$allocation) {
+            $allocation = $server->node->allocations()
+                ->whereNull('server_id')
+                ->inRandomOrder()
+                ->first();
+        }
+
+        // Third: if still none, try to create a new one from the configured port range.
+        if (!$allocation) {
+            $allocation = $this->createNewAllocation($server);
+        }
 
         $allocation->update(['server_id' => $server->id]);
 

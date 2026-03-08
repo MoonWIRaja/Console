@@ -286,7 +286,7 @@ const StartupContainer = () => {
             showFlashKey={'startup:image'}
             className={'content-container-full px-4 xl:px-6'}
         >
-            <div css={tw`md:flex`}>
+            <div css={tw`xl:flex`}>
                 <TitledGreyBox
                     title={
                         <div css={tw`flex items-center justify-between gap-3`}>
@@ -358,7 +358,7 @@ const StartupContainer = () => {
                             )}
                         </div>
                     }
-                    css={tw`flex-1 lg:flex-none lg:w-1/3 mt-8 md:mt-0 md:ml-10`}
+                    css={tw`flex-1 xl:flex-none xl:w-1/3 mt-8 xl:mt-0 xl:ml-10`}
                 >
                     <Dialog.Confirm
                         open={changeEggOpen}

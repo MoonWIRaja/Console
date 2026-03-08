@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDatabase, faEye, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from '@/components/elements/Modal';
@@ -30,6 +30,7 @@ export default ({ database, className }: Props) => {
     const { addError, clearFlashes } = useFlash();
     const [visible, setVisible] = useState(false);
     const [connectionVisible, setConnectionVisible] = useState(false);
+    const isDeleting = useRef(false);
 
     const appendDatabase = ServerContext.useStoreActions((actions) => actions.databases.appendDatabase);
     const removeDatabase = ServerContext.useStoreActions((actions) => actions.databases.removeDatabase);
@@ -45,6 +46,11 @@ export default ({ database, className }: Props) => {
     });
 
     const submit = (values: { confirm: string }, { setSubmitting }: FormikHelpers<{ confirm: string }>) => {
+        if (isDeleting.current) {
+            return;
+        }
+
+        isDeleting.current = true;
         clearFlashes();
         deleteServerDatabase(uuid, database.id)
             .then(() => {
@@ -52,15 +58,17 @@ export default ({ database, className }: Props) => {
                 setTimeout(() => removeDatabase(database.id), 150);
             })
             .catch((error) => {
-                console.error(error);
                 setSubmitting(false);
                 addError({ key: 'database:delete', message: httpErrorToHuman(error) });
+            })
+            .finally(() => {
+                isDeleting.current = false;
             });
     };
 
     return (
         <>
-            <Formik onSubmit={submit} initialValues={{ confirm: '' }} validationSchema={schema} isInitialValid={false}>
+            <Formik onSubmit={submit} initialValues={{ confirm: '' }} validationSchema={schema} validateOnMount>
                 {({ isSubmitting, isValid, resetForm }) => (
                     <Modal
                         visible={visible}
@@ -86,10 +94,16 @@ export default ({ database, className }: Props) => {
                                 description={'Enter the database name to confirm deletion.'}
                             />
                             <div css={tw`mt-6 text-right`}>
-                                <Button type={'button'} isSecondary css={tw`mr-2`} onClick={() => setVisible(false)}>
+                                <Button
+                                    type={'button'}
+                                    isSecondary
+                                    disabled={isSubmitting}
+                                    css={tw`mr-2`}
+                                    onClick={() => setVisible(false)}
+                                >
                                     Cancel
                                 </Button>
-                                <Button type={'submit'} color={'red'} disabled={!isValid}>
+                                <Button type={'submit'} color={'red'} disabled={isSubmitting || !isValid}>
                                     Delete Database
                                 </Button>
                             </div>

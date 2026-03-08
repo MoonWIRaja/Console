@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
 {
-    public function authorized(): bool
+    public function authorize(): bool
     {
         return true;
     }
@@ -16,6 +16,10 @@ class LoginRequest extends FormRequest
         return [
             'user' => 'required|string|min:1',
             'password' => 'required|string',
+            'website' => 'nullable|string|max:191',
+            'company' => 'nullable|string|max:191',
+            'form_rendered_at' => 'nullable|numeric',
+            'cf-turnstile-response' => 'nullable|string',
         ];
     }
 }

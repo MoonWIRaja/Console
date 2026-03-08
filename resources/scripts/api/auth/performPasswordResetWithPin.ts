@@ -5,6 +5,10 @@ interface Data {
     pin: string;
     password: string;
     passwordConfirmation: string;
+    captchaToken?: string | null;
+    website?: string;
+    company?: string;
+    formRenderedAt?: number;
 }
 
 interface PasswordResetResponse {
@@ -19,6 +23,10 @@ export default (data: Data): Promise<PasswordResetResponse> => {
             pin: data.pin,
             password: data.password,
             password_confirmation: data.passwordConfirmation,
+            website: data.website || '',
+            company: data.company || '',
+            form_rendered_at: data.formRenderedAt,
+            'cf-turnstile-response': data.captchaToken,
         })
             .then((response) =>
                 resolve({

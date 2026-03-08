@@ -19,13 +19,16 @@ class AssetComposer
      */
     public function compose(View $view): void
     {
+        $turnstileEnabled = (bool) config('turnstile.enabled', false);
+
         $view->with('asset', $this->assetHashService);
         $view->with('siteConfiguration', [
             'name' => config('app.name') ?? 'Pterodactyl',
             'locale' => config('app.locale') ?? 'en',
-            'recaptcha' => [
-                'enabled' => config('recaptcha.enabled', false),
-                'siteKey' => config('recaptcha.website_key') ?? '',
+            'captcha' => [
+                'enabled' => $turnstileEnabled,
+                'provider' => 'turnstile',
+                'siteKey' => config('turnstile.site_key') ?? '',
             ],
         ]);
     }

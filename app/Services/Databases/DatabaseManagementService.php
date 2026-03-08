@@ -4,7 +4,9 @@ namespace Pterodactyl\Services\Databases;
 
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Database;
+use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Helpers\Utilities;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Pterodactyl\Extensions\DynamicDatabaseConnection;
@@ -131,7 +133,7 @@ class DatabaseManagementService
                 // reason to prioritize this error over the initial one.
             }
 
-            throw $exception;
+            throw $this->formatManagementException($exception);
         }
     }
 
@@ -142,13 +144,17 @@ class DatabaseManagementService
      */
     public function delete(Database $database): ?bool
     {
-        $this->dynamic->set('dynamic', $database->database_host_id);
+        try {
+            $this->dynamic->set('dynamic', $database->database_host_id);
 
-        $this->repository->dropDatabase($database->database);
-        $this->repository->dropUser($database->username, $database->remote);
-        $this->repository->flush();
+            $this->repository->dropDatabase($database->database);
+            $this->repository->dropUser($database->username, $database->remote);
+            $this->repository->flush();
 
-        return $database->delete();
+            return $database->delete();
+        } catch (\Exception $exception) {
+            throw $this->formatManagementException($exception);
+        }
     }
 
     /**
@@ -173,5 +179,18 @@ class DatabaseManagementService
         $database->saveOrFail();
 
         return $database;
+    }
+
+    private function formatManagementException(\Exception $exception): \Exception
+    {
+        if ($exception instanceof QueryException && str_contains($exception->getMessage(), 'SQLSTATE[HY000] [1129]')) {
+            return new DisplayException(
+                'The configured database host is temporarily blocking the panel because of too many connection errors. ' .
+                'An administrator needs to unblock the panel IP on the database server and verify the stored database host credentials.',
+                $exception
+            );
+        }
+
+        return $exception;
     }
 }

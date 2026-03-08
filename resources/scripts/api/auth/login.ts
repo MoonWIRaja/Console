@@ -6,22 +6,38 @@ export interface LoginResponse {
     confirmationToken?: string;
     verificationRequired?: boolean;
     verificationToken?: string;
+    challengeRequired?: boolean;
+    retryAfter?: number;
+    nextAction?: 'retry' | 'checkpoint' | 'email_pin';
 }
 
 export interface LoginData {
     username: string;
     password: string;
-    recaptchaData?: string | null;
+    captchaToken?: string | null;
+    website?: string;
+    company?: string;
+    formRenderedAt?: number;
 }
 
-export default ({ username, password, recaptchaData }: LoginData): Promise<LoginResponse> => {
+export default ({
+    username,
+    password,
+    captchaToken,
+    website = '',
+    company = '',
+    formRenderedAt,
+}: LoginData): Promise<LoginResponse> => {
     return new Promise((resolve, reject) => {
         http.get('/sanctum/csrf-cookie')
             .then(() =>
                 http.post('/auth/login', {
                     user: username,
                     password,
-                    'g-recaptcha-response': recaptchaData,
+                    website,
+                    company,
+                    form_rendered_at: formRenderedAt,
+                    'cf-turnstile-response': captchaToken,
                 })
             )
             .then((response) => {
@@ -35,6 +51,9 @@ export default ({ username, password, recaptchaData }: LoginData): Promise<Login
                     confirmationToken: response.data.data.confirmation_token || undefined,
                     verificationRequired: !!response.data.data.email_verification_required,
                     verificationToken: response.data.data.verification_token || undefined,
+                    challengeRequired: !!response.data.challenge_required,
+                    retryAfter: response.data.retry_after || undefined,
+                    nextAction: response.data.next_action || undefined,
                 });
             })
             .catch(reject);

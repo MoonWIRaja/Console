@@ -8,6 +8,7 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Permission;
+use Pterodactyl\Jobs\Backups\RestoreContainerLocalBackupJob;
 use Illuminate\Auth\Access\AuthorizationException;
 use Pterodactyl\Services\Backups\DeleteBackupService;
 use Pterodactyl\Services\Backups\DownloadLinkService;
@@ -170,7 +171,11 @@ class BackupController extends ClientApiController
             throw new AuthorizationException();
         }
 
-        if ($backup->disk !== Backup::ADAPTER_AWS_S3 && $backup->disk !== Backup::ADAPTER_WINGS) {
+        if (
+            $backup->disk !== Backup::ADAPTER_AWS_S3
+            && $backup->disk !== Backup::ADAPTER_WINGS
+            && $backup->disk !== Backup::ADAPTER_CONTAINER_LOCAL
+        ) {
             throw new BadRequestHttpException('The backup requested references an unknown disk driver type and cannot be downloaded.');
         }
 
@@ -210,6 +215,20 @@ class BackupController extends ClientApiController
         $log = Activity::event('server:backup.restore')
             ->subject($backup)
             ->property(['name' => $backup->name, 'truncate' => $request->input('truncate')]);
+
+        if ($backup->disk === Backup::ADAPTER_CONTAINER_LOCAL) {
+            $log->transaction(function () use ($backup, $server, $request) {
+                $server->update(['status' => Server::STATUS_RESTORING_BACKUP]);
+
+                RestoreContainerLocalBackupJob::dispatch(
+                    $server->id,
+                    $backup->id,
+                    $request->boolean('truncate')
+                );
+            });
+
+            return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
+        }
 
         $log->transaction(function () use ($backup, $server, $request) {
             // If the backup is for an S3 file we need to generate a unique Download link for

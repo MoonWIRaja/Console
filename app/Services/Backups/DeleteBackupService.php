@@ -7,6 +7,7 @@ use Pterodactyl\Models\Backup;
 use GuzzleHttp\Exception\ClientException;
 use Illuminate\Database\ConnectionInterface;
 use Pterodactyl\Extensions\Backups\BackupManager;
+use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Repositories\Wings\DaemonBackupRepository;
 use Pterodactyl\Exceptions\Service\Backup\BackupLockedException;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
@@ -17,6 +18,8 @@ class DeleteBackupService
         private ConnectionInterface $connection,
         private BackupManager $manager,
         private DaemonBackupRepository $daemonBackupRepository,
+        private DaemonFileRepository $fileRepository,
+        private MirrorBackupToServerService $mirrorBackupToServerService,
     ) {
     }
 
@@ -37,6 +40,14 @@ class DeleteBackupService
         if ($backup->is_locked && ($backup->is_successful && !is_null($backup->completed_at))) {
             throw new BackupLockedException();
         }
+
+        if ($backup->disk === Backup::ADAPTER_CONTAINER_LOCAL) {
+            $this->deleteFromContainerLocal($backup);
+
+            return;
+        }
+
+        $this->mirrorBackupToServerService->remove($backup);
 
         if ($backup->disk === Backup::ADAPTER_AWS_S3) {
             $this->deleteFromS3($backup);
@@ -79,5 +90,44 @@ class DeleteBackupService
                 'Key' => sprintf('%s/%s.tar.gz', $backup->server->uuid, $backup->uuid),
             ]);
         });
+    }
+
+    /**
+     * Deletes a backup from the local server file system.
+     *
+     * @throws \Throwable
+     */
+    protected function deleteFromContainerLocal(Backup $backup): void
+    {
+        $this->connection->transaction(function () use ($backup) {
+            $directory = $this->localContainerDirectory();
+            $filename = sprintf('backup-%s.tar.gz', $backup->uuid);
+
+            try {
+                $this->fileRepository
+                    ->setServer($backup->server)
+                    ->deleteFiles($directory, [$filename]);
+            } catch (DaemonConnectionException $exception) {
+                $previous = $exception->getPrevious();
+                if (!$previous instanceof ClientException || $previous->getResponse()->getStatusCode() !== Response::HTTP_NOT_FOUND) {
+                    throw $exception;
+                }
+            }
+
+            $backup->delete();
+        });
+    }
+
+    protected function localContainerDirectory(): string
+    {
+        $configured = trim((string) config('backups.local_container_directory', '/backups'));
+        if ($configured === '' || $configured === '.') {
+            return '/backups';
+        }
+
+        $normalized = '/' . trim(str_replace('\\', '/', $configured), '/');
+        $normalized = preg_replace('#/+#', '/', $normalized) ?? '/backups';
+
+        return $normalized === '/' ? '/backups' : $normalized;
     }
 }

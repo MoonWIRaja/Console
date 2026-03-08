@@ -338,12 +338,32 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
 
-    const onTriggerLogout = () => {
+    const onTriggerLogout = async () => {
+        if (isLoggingOut) return;
+
         setIsLoggingOut(true);
-        http.post('/auth/logout').finally(() => {
-            // @ts-expect-error this is valid
-            window.location = '/';
-        });
+
+        try {
+            await http.get('/sanctum/csrf-cookie');
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            await http.post(
+                '/auth/logout',
+                {},
+                csrfToken
+                    ? {
+                          headers: {
+                              'X-CSRF-TOKEN': csrfToken,
+                          },
+                      }
+                    : undefined
+            );
+        } catch (error) {
+            console.error('Failed to log out cleanly.', error);
+        } finally {
+            window.location.assign('/auth/login');
+        }
     };
 
     return (
@@ -458,12 +478,32 @@ export const ServerNavigationBar = ({
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
 
-    const onTriggerLogout = () => {
+    const onTriggerLogout = async () => {
+        if (isLoggingOut) return;
+
         setIsLoggingOut(true);
-        http.post('/auth/logout').finally(() => {
-            // @ts-expect-error this is valid
-            window.location = '/';
-        });
+
+        try {
+            await http.get('/sanctum/csrf-cookie');
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            await http.post(
+                '/auth/logout',
+                {},
+                csrfToken
+                    ? {
+                          headers: {
+                              'X-CSRF-TOKEN': csrfToken,
+                          },
+                      }
+                    : undefined
+            );
+        } catch (error) {
+            console.error('Failed to log out cleanly.', error);
+        } finally {
+            window.location.assign('/auth/login');
+        }
     };
 
     // Helper to map route paths to icons (using Material Icons Round)

@@ -246,10 +246,16 @@ class StartupController extends ClientApiController
     {
         $normalized = [];
         foreach ($images as $label => $value) {
+            $normalizedValue = trim((string) $value);
+            if ($normalizedValue === '') {
+                continue;
+            }
+
             if (is_int($label)) {
-                $normalized[(string) $value] = (string) $value;
+                $normalized[$normalizedValue] = $normalizedValue;
             } else {
-                $normalized[(string) $label] = (string) $value;
+                $normalizedLabel = trim((string) $label);
+                $normalized[$normalizedLabel !== '' ? $normalizedLabel : $normalizedValue] = $normalizedValue;
             }
         }
 

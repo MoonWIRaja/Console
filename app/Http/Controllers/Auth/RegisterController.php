@@ -13,6 +13,7 @@ use Pterodactyl\Services\Auth\EmailVerificationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Pterodactyl\Http\Requests\Auth\RegisterRequest;
 use Pterodactyl\Http\Requests\Auth\VerifyEmailPinRequest;
+use Pterodactyl\Services\Security\AuthSecurityService;
 
 class RegisterController extends AbstractLoginController
 {
@@ -21,6 +22,7 @@ class RegisterController extends AbstractLoginController
     public function __construct(
         private Hasher $hasher,
         private EmailVerificationService $emailVerificationService,
+        private AuthSecurityService $security,
     ) {
         parent::__construct();
     }
@@ -65,12 +67,16 @@ class RegisterController extends AbstractLoginController
      */
     public function verify(VerifyEmailPinRequest $request): JsonResponse
     {
+        $identifier = $this->security->getIdentifierFromRequest($request);
+
         $details = $request->session()->get('email_verification_token');
         if (!$this->emailVerificationService->hasValidSessionData($details)) {
+            $this->security->registerFailure($request, 4, 'failed_signup_verify', $identifier);
             throw new DisplayException(self::TOKEN_EXPIRED_MESSAGE);
         }
 
         if (!hash_equals($request->input('verification_token') ?? '', $details['token_value'])) {
+            $this->security->registerFailure($request, 4, 'failed_signup_verify', $identifier);
             throw new DisplayException(self::TOKEN_EXPIRED_MESSAGE);
         }
 
@@ -78,6 +84,7 @@ class RegisterController extends AbstractLoginController
             /** @var User $user */
             $user = User::query()->findOrFail($details['user_id']);
         } catch (ModelNotFoundException) {
+            $this->security->registerFailure($request, 4, 'failed_signup_verify', $identifier);
             throw new DisplayException(self::TOKEN_EXPIRED_MESSAGE);
         }
 
@@ -86,6 +93,7 @@ class RegisterController extends AbstractLoginController
         }
 
         if (!$this->emailVerificationService->isPinValid($user, (string) $request->input('pin'))) {
+            $this->security->registerFailure($request, 4, 'failed_signup_verify', $identifier);
             throw new DisplayException('The verification code provided is invalid or has expired.');
         }
 

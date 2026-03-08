@@ -17,9 +17,17 @@ type SelectProps = {
     defaultValue?: string;
     title?: string;
     disabled?: boolean;
+    compact?: boolean;
 };
 
-const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode', disabled = false }: SelectProps) => {
+const Select = ({
+    data = [],
+    defaultValue,
+    onChange,
+    title = 'Choose Mode',
+    disabled = false,
+    compact = false,
+}: SelectProps) => {
     const [open, setOpen] = useState(false);
     const [openUpward, setOpenUpward] = useState(false);
     const [selected, setSelected] = useState<TSelectData | undefined>(undefined);
@@ -82,16 +90,17 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode', disa
     const selectedItem = useMemo(() => selected || data[0], [selected, data]);
 
     return (
-        <div className='relative w-full min-h-[48px]' ref={ref}>
+        <div className={['relative w-full', compact ? 'min-h-[40px]' : 'min-h-[48px]'].join(' ')} ref={ref}>
             <div
                 ref={triggerRef}
                 onClick={() => !disabled && setOpen((v) => !v)}
                 className={[
-                    'w-full overflow-hidden rounded-[30px] border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm',
+                    'w-full overflow-hidden border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm',
+                    compact ? 'rounded-xl' : 'rounded-[30px]',
                     disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
                 ].join(' ')}
             >
-                <SelectItem item={selectedItem} noDescription order={selectedItem?.value} />
+                <SelectItem item={selectedItem} noDescription order={selectedItem?.value} compact={compact} />
             </div>
 
             <AnimatePresence>
@@ -102,7 +111,8 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode', disa
                         exit={{ opacity: 0, y: openUpward ? 6 : -6 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
                         className={[
-                            'absolute left-0 z-[80] w-full min-w-[220px] overflow-hidden rounded-[20px] border border-[color:var(--border)] bg-[color:var(--card)] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.45)]',
+                            'absolute left-0 z-[80] w-full overflow-hidden border border-[color:var(--border)] bg-[color:var(--card)] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.45)]',
+                            compact ? 'min-w-[180px] rounded-xl' : 'min-w-[220px] rounded-[20px]',
                             openUpward ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]',
                         ].join(' ')}
                     >
@@ -116,6 +126,7 @@ const Select = ({ data = [], defaultValue, onChange, title = 'Choose Mode', disa
                                     item={item}
                                     onChange={onSelect}
                                     animationOrder={index}
+                                    compact={compact}
                                 />
                             ))}
                         </div>
@@ -154,13 +165,22 @@ type SelectItemProps = {
     order?: string;
     onChange?: (value: string) => void;
     animationOrder?: number;
+    compact?: boolean;
 };
 
-const SelectItem = ({ item, noDescription = true, order, onChange, animationOrder = 0 }: SelectItemProps) => {
+const SelectItem = ({
+    item,
+    noDescription = true,
+    order,
+    onChange,
+    animationOrder = 0,
+    compact = false,
+}: SelectItemProps) => {
     return (
         <motion.div
             className={[
-                'group flex cursor-pointer items-center justify-between gap-2 p-4 py-2 transition-colors hover:bg-[color:var(--accent)]',
+                'group flex cursor-pointer items-center justify-between gap-2 transition-colors hover:bg-[color:var(--accent)]',
+                compact ? 'px-2.5 py-1.5' : 'p-4 py-2',
                 noDescription ? '!p-2' : '',
                 item?.disabled ? 'cursor-not-allowed opacity-50' : '',
             ].join(' ')}
@@ -175,14 +195,20 @@ const SelectItem = ({ item, noDescription = true, order, onChange, animationOrde
                 <motion.div
                     layout
                     layoutId={`icon-${item?.id}`}
-                    className='flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--primary)]'
+                    className={[
+                        'flex shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--primary)] aspect-square',
+                        compact ? 'h-8 w-8 min-h-8 min-w-8 text-[11px]' : 'h-10 w-10 min-h-10 min-w-10',
+                    ].join(' ')}
                 >
                     {item?.icon}
                 </motion.div>
-                <motion.div layout className='flex w-56 min-w-0 flex-col'>
+                <motion.div layout className={['flex min-w-0 flex-col', compact ? 'w-40' : 'w-56'].join(' ')}>
                     <motion.strong
                         layoutId={`label-${item?.id}`}
-                        className='truncate text-xs font-semibold uppercase tracking-wide text-[color:var(--foreground)]'
+                        className={[
+                            'truncate font-semibold uppercase tracking-wide text-[color:var(--foreground)]',
+                            compact ? 'text-[11px]' : 'text-xs',
+                        ].join(' ')}
                     >
                         {item?.label}
                     </motion.strong>
@@ -193,7 +219,7 @@ const SelectItem = ({ item, noDescription = true, order, onChange, animationOrde
             </div>
             {noDescription ? (
                 <motion.div layout className='flex items-center justify-center gap-2 pr-3'>
-                    <ChevronDownIcon className='text-[color:var(--primary)]' size={20} />
+                    <ChevronDownIcon className='text-[color:var(--primary)]' size={compact ? 16 : 20} />
                 </motion.div>
             ) : null}
         </motion.div>

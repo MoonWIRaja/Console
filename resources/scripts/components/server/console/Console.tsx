@@ -68,7 +68,8 @@ const theme = isDark
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
     cursorStyle: 'underline',
-    allowTransparency: false,
+    // Theme uses rgba() for some terminal colors (e.g. brightBlack), so transparency must be enabled.
+    allowTransparency: true,
     fontSize: 13,
     lineHeight: 1.28,
     letterSpacing: 0.2,

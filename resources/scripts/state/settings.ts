@@ -3,8 +3,9 @@ import { action, Action } from 'easy-peasy';
 export interface SiteSettings {
     name: string;
     locale: string;
-    recaptcha: {
+    captcha: {
         enabled: boolean;
+        provider: 'turnstile';
         siteKey: string;
     };
 }

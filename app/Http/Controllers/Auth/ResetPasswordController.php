@@ -16,6 +16,7 @@ use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Http\Requests\Auth\ResetPasswordRequest;
 use Pterodactyl\Contracts\Repository\UserRepositoryInterface;
 use Pterodactyl\Services\Auth\PasswordResetPinService;
+use Pterodactyl\Services\Security\AuthSecurityService;
 
 class ResetPasswordController extends Controller
 {
@@ -34,6 +35,7 @@ class ResetPasswordController extends Controller
         private Hasher $hasher,
         private UserRepositoryInterface $userRepository,
         private PasswordResetPinService $passwordResetPinService,
+        private AuthSecurityService $security,
         private AuthManager $auth,
     ) {
     }
@@ -45,21 +47,25 @@ class ResetPasswordController extends Controller
      */
     public function __invoke(ResetPasswordRequest $request): JsonResponse
     {
+        $identifier = $this->security->getIdentifierFromRequest($request);
         $details = $request->session()->get('password_reset_pin_token');
         if (
             !$this->passwordResetPinService->hasValidSessionData($details)
             || empty($details['user_id'])
         ) {
+            $this->security->registerFailure($request, 4, 'failed_password_reset', $identifier);
             throw new DisplayException('The reset session has expired. Please request a new PIN.');
         }
 
         /** @var User|null $user */
         $user = User::query()->find($details['user_id']);
         if (!$user instanceof User) {
+            $this->security->registerFailure($request, 4, 'failed_password_reset', $identifier);
             throw new DisplayException('The reset code provided is invalid or has expired.');
         }
 
         if (!$this->passwordResetPinService->isPinValid($user, (string) $request->input('pin'))) {
+            $this->security->registerFailure($request, 4, 'failed_password_reset', $identifier);
             throw new DisplayException('The reset code provided is invalid or has expired.');
         }
 
@@ -72,6 +78,7 @@ class ResetPasswordController extends Controller
         PasswordChanged::dispatch($user);
 
         $this->passwordResetPinService->clearChallenge($request, $user);
+        $this->security->clearRisk($request, $user->email);
         Activity::event('auth:password-reset-pin.completed')->withRequestMetadata()->subject($user)->log();
 
         if (!$user->use_totp) {

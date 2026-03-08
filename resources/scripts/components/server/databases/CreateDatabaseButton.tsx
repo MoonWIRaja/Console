@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Modal from '@/components/elements/Modal';
 import { Form, Formik, FormikHelpers } from 'formik';
 import Field from '@/components/elements/Field';
@@ -33,10 +33,25 @@ export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const { addError, clearFlashes } = useFlash();
     const [visible, setVisible] = useState(false);
+    const isMounted = useRef(false);
+    const isCreating = useRef(false);
 
     const appendDatabase = ServerContext.useStoreActions((actions) => actions.databases.appendDatabase);
 
+    useEffect(() => {
+        isMounted.current = true;
+
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
+
     const submit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
+        if (isCreating.current) {
+            return;
+        }
+
+        isCreating.current = true;
         clearFlashes('database:create');
         createServerDatabase(uuid, {
             databaseName: values.databaseName,
@@ -44,11 +59,18 @@ export default () => {
         })
             .then((database) => {
                 appendDatabase(database);
-                setVisible(false);
+                if (isMounted.current) {
+                    setVisible(false);
+                }
             })
             .catch((error) => {
-                addError({ key: 'database:create', message: httpErrorToHuman(error) });
-                setSubmitting(false);
+                if (isMounted.current) {
+                    addError({ key: 'database:create', message: httpErrorToHuman(error) });
+                    setSubmitting(false);
+                }
+            })
+            .finally(() => {
+                isCreating.current = false;
             });
     };
 
@@ -94,12 +116,13 @@ export default () => {
                                 <Button
                                     type={'button'}
                                     isSecondary
+                                    disabled={isSubmitting}
                                     css={tw`w-full sm:w-auto sm:mr-2`}
                                     onClick={() => setVisible(false)}
                                 >
                                     Cancel
                                 </Button>
-                                <Button css={tw`w-full mt-4 sm:w-auto sm:mt-0`} type={'submit'}>
+                                <Button css={tw`w-full mt-4 sm:w-auto sm:mt-0`} type={'submit'} disabled={isSubmitting}>
                                     Create Database
                                 </Button>
                             </div>

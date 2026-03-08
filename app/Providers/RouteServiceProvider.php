@@ -53,7 +53,7 @@ class RouteServiceProvider extends ServiceProvider
                     ->scopeBindings()
                     ->group(base_path('routes/api-application.php'));
 
-                Route::middleware(['client-api', 'throttle:api.client'])
+                Route::middleware(['client-api'])
                     ->prefix('/api/client')
                     ->scopeBindings()
                     ->group(base_path('routes/api-client.php'));
@@ -76,11 +76,58 @@ class RouteServiceProvider extends ServiceProvider
         // limit of two per minute for the requester so that there is less ability to
         // trigger email spam.
         RateLimiter::for('authentication', function (Request $request) {
-            if ($request->route()->named('auth.post.forgot-password')) {
-                return Limit::perMinute(2)->by($request->ip());
+            $profile = strtolower((string) config('security.rate_profile', 'balanced'));
+            $routeName = (string) ($request->route()?->getName() ?? $request->path());
+            $key = sprintf('%s|%s', $request->ip(), $routeName);
+
+            $limits = match ($profile) {
+                'strict' => [
+                    'login_per_minute' => 8,
+                    'signup_per_10m' => 4,
+                    'reset_per_10m' => 4,
+                    'verify_per_10m' => 6,
+                ],
+                'lenient' => [
+                    'login_per_minute' => 18,
+                    'signup_per_10m' => 10,
+                    'reset_per_10m' => 10,
+                    'verify_per_10m' => 12,
+                ],
+                default => [
+                    'login_per_minute' => 12,
+                    'signup_per_10m' => 6,
+                    'reset_per_10m' => 6,
+                    'verify_per_10m' => 8,
+                ],
+            };
+
+            if ($request->route()?->named('auth.login-checkpoint') || $request->route()?->named('auth.post.login')) {
+                return [
+                    Limit::perMinute($limits['login_per_minute'])->by($key),
+                ];
             }
 
-            return Limit::perMinute(10);
+            if ($request->route()?->named('auth.post.signup') || $request->route()?->named('auth.post.forgot-password')) {
+                return [
+                    Limit::perMinutes(10, $limits['signup_per_10m'])->by($key),
+                ];
+            }
+
+            if ($request->route()?->named('auth.reset-password')) {
+                return [
+                    Limit::perMinutes(10, $limits['reset_per_10m'])->by($key),
+                ];
+            }
+
+            if ($request->route()?->named('auth.post.signup.verify')) {
+                return [
+                    Limit::perMinutes(10, $limits['verify_per_10m'])->by($key),
+                ];
+            }
+
+            return [
+                Limit::perMinute($limits['login_per_minute'])->by($key),
+            ];
         });
 
         // Configure the throttles for both the application and client APIs below.

@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\Backups\MirrorBackupToServerService;
 use Pterodactyl\Extensions\Backups\BackupManager;
 use Pterodactyl\Extensions\Filesystem\S3Filesystem;
 use Pterodactyl\Exceptions\Http\HttpForbiddenException;
@@ -20,7 +21,10 @@ class BackupStatusController extends Controller
     /**
      * BackupStatusController constructor.
      */
-    public function __construct(private BackupManager $backupManager)
+    public function __construct(
+        private BackupManager $backupManager,
+        private MirrorBackupToServerService $mirrorBackupToServerService,
+    )
     {
     }
 
@@ -76,6 +80,10 @@ class BackupStatusController extends Controller
                 $this->completeMultipartUpload($model, $adapter, $successful, $request->input('parts'));
             }
         });
+
+        if ($request->boolean('successful')) {
+            $this->mirrorBackupToServerService->mirror($model);
+        }
 
         return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
     }

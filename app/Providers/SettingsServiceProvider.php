@@ -19,9 +19,10 @@ class SettingsServiceProvider extends ServiceProvider
     protected array $keys = [
         'app:name',
         'app:locale',
-        'recaptcha:enabled',
-        'recaptcha:secret_key',
-        'recaptcha:website_key',
+        'turnstile:enabled',
+        'turnstile:secret_key',
+        'turnstile:site_key',
+        'turnstile:verify_domain',
         'pterodactyl:guzzle:timeout',
         'pterodactyl:guzzle:connect_timeout',
         'pterodactyl:console:count',

@@ -119,8 +119,23 @@ class EggController extends Controller
         // Iterate over the image data provided and convert it into a name => image
         // pairing that is used to improve the display on the front-end.
         foreach ($data as $value) {
+            if ($value === '') {
+                continue;
+            }
+
             $parts = explode('|', $value, 2);
-            $images[$parts[0]] = empty($parts[1]) ? $parts[0] : $parts[1];
+            $label = trim((string) ($parts[0] ?? ''));
+            $image = trim((string) ($parts[1] ?? ''));
+
+            if ($label === '' && $image === '') {
+                continue;
+            }
+
+            if ($label === '') {
+                $label = $image;
+            }
+
+            $images[$label] = $image === '' ? $label : $image;
         }
 
         return $images;

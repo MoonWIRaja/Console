@@ -12,9 +12,10 @@ class AdvancedSettingsFormRequest extends AdminFormRequest
     public function rules(): array
     {
         return [
-            'recaptcha:enabled' => 'required|in:true,false',
-            'recaptcha:secret_key' => 'required|string|max:191',
-            'recaptcha:website_key' => 'required|string|max:191',
+            'turnstile:enabled' => 'required|in:true,false',
+            'turnstile:secret_key' => 'nullable|required_if:turnstile:enabled,true|string|max:191',
+            'turnstile:site_key' => 'nullable|required_if:turnstile:enabled,true|string|max:191',
+            'turnstile:verify_domain' => 'required|in:true,false',
             'pterodactyl:guzzle:timeout' => 'required|integer|between:1,60',
             'pterodactyl:guzzle:connect_timeout' => 'required|integer|between:1,60',
             'pterodactyl:client_features:allocations:enabled' => 'required|in:true,false',
@@ -37,9 +38,10 @@ class AdvancedSettingsFormRequest extends AdminFormRequest
     public function attributes(): array
     {
         return [
-            'recaptcha:enabled' => 'reCAPTCHA Enabled',
-            'recaptcha:secret_key' => 'reCAPTCHA Secret Key',
-            'recaptcha:website_key' => 'reCAPTCHA Website Key',
+            'turnstile:enabled' => 'Turnstile Enabled',
+            'turnstile:secret_key' => 'Turnstile Secret Key',
+            'turnstile:site_key' => 'Turnstile Site Key',
+            'turnstile:verify_domain' => 'Turnstile Verify Domain',
             'pterodactyl:guzzle:timeout' => 'HTTP Request Timeout',
             'pterodactyl:guzzle:connect_timeout' => 'HTTP Connection Timeout',
             'pterodactyl:client_features:allocations:enabled' => 'Auto Create Allocations Enabled',

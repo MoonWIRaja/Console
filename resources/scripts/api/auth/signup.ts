@@ -7,6 +7,10 @@ export interface SignupData {
     lastName: string;
     password: string;
     passwordConfirmation: string;
+    captchaToken?: string | null;
+    website?: string;
+    company?: string;
+    formRenderedAt?: number;
 }
 
 export interface SignupResponse {
@@ -26,6 +30,10 @@ export default (data: SignupData): Promise<SignupResponse> => {
                     last_name: data.lastName,
                     password: data.password,
                     password_confirmation: data.passwordConfirmation,
+                    website: data.website || '',
+                    company: data.company || '',
+                    form_rendered_at: data.formRenderedAt,
+                    'cf-turnstile-response': data.captchaToken,
                 })
             )
             .then((response) => {
@@ -42,4 +50,3 @@ export default (data: SignupData): Promise<SignupResponse> => {
             .catch(reject);
     });
 };
-

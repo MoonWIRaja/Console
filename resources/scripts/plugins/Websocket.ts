@@ -20,7 +20,8 @@ export class Websocket extends EventEmitter {
         this.url = url;
 
         this.socket = new Sockette(`${this.url}`, {
-            timeout: 1000,
+            // WSS handshakes behind reverse proxies can exceed 1s under normal load.
+            timeout: 5000,
             maxAttempts: 20,
             onmessage: (e) => {
                 try {

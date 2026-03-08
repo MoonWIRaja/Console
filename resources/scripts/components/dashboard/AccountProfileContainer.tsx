@@ -77,7 +77,7 @@ export default () => {
             updateUserData({ image });
             setAvatarMenuOpen(false);
         } catch (error) {
-            clearAndAddHttpError(error);
+            clearAndAddHttpError(error as Error);
         } finally {
             setAvatarUploading(false);
         }
@@ -92,7 +92,7 @@ export default () => {
             updateUserData({ image: undefined });
             setAvatarMenuOpen(false);
         } catch (error) {
-            clearAndAddHttpError(error);
+            clearAndAddHttpError(error as Error);
         } finally {
             setAvatarUploading(false);
         }
