@@ -78,6 +78,19 @@ Route::group(['prefix' => 'settings'], function () {
 
 /*
 |--------------------------------------------------------------------------
+| Billing Controller Routes
+|--------------------------------------------------------------------------
+|
+| Endpoint: /admin/billing
+|
+*/
+Route::group(['prefix' => 'billing'], function () {
+    Route::get('/', [Admin\Billing\IndexController::class, 'index'])->name('admin.billing');
+    Route::any('/{path?}', [Admin\Billing\IndexController::class, 'redirect'])->where('path', '.*');
+});
+
+/*
+|--------------------------------------------------------------------------
 | User Controller Routes
 |--------------------------------------------------------------------------
 |

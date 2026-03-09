@@ -2,8 +2,6 @@
 
 namespace Pterodactyl\Http\Controllers\Auth;
 
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -79,16 +77,10 @@ class LoginController extends AbstractLoginController
 
         Activity::event('auth:checkpoint')->withRequestMetadata()->subject($user)->log();
 
-        $request->session()->put('auth_confirmation_token', [
-            'user_id' => $user->id,
-            'token_value' => $token = Str::random(64),
-            'expires_at' => CarbonImmutable::now()->addMinutes(5),
-        ]);
-
         return new JsonResponse([
             'data' => [
                 'complete' => false,
-                'confirmation_token' => $token,
+                'confirmation_token' => $this->issueTwoFactorChallenge($user, $request),
             ],
         ]);
     }

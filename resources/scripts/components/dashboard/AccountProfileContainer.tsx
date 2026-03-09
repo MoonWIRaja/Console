@@ -9,8 +9,10 @@ import UpdatePasswordForm from '@/components/dashboard/forms/UpdatePasswordForm'
 import ConfigureTwoFactorForm from '@/components/dashboard/forms/ConfigureTwoFactorForm';
 import AccountApiContainer from '@/components/dashboard/AccountApiContainer';
 import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer';
+import LinkedAccountsContainer from '@/components/dashboard/LinkedAccountsContainer';
+import DiscordCommunityCard from '@/components/dashboard/DiscordCommunityCard';
 import { ActivityLogFilters, useActivityLogs } from '@/api/account/activity';
-import { useFlashKey } from '@/plugins/useFlash';
+import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
 import Tooltip from '@/components/elements/tooltip/Tooltip';
@@ -19,6 +21,7 @@ import PaginationFooter from '@/components/elements/table/PaginationFooter';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import updateAccountAvatar from '@/api/account/updateAccountAvatar';
 import removeAccountAvatar from '@/api/account/removeAccountAvatar';
+import { useHistory, useLocation } from 'react-router-dom';
 
 type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
@@ -27,6 +30,8 @@ const cardClass =
     'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
 
 export default () => {
+    const history = useHistory();
+    const location = useLocation();
     const user = useStoreState((state: ApplicationStore) => state.user.data!);
     const updateUserData = useStoreActions((actions: Actions<ApplicationStore>) => actions.user.updateUserData);
     const [activeTab, setActiveTab] = useState<Tab>('API');
@@ -35,6 +40,7 @@ export default () => {
     const [avatarUploading, setAvatarUploading] = useState(false);
     const avatarMenuRef = useRef<HTMLDivElement>(null);
     const avatarInputRef = useRef<HTMLInputElement>(null);
+    const { addFlash, clearFlashes } = useFlash();
     const { clearAndAddHttpError } = useFlashKey('account');
     const [activityFilters, setActivityFilters] = useState<ActivityLogFilters>({
         page: 1,
@@ -53,6 +59,68 @@ export default () => {
     useEffect(() => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
+
+    useEffect(() => {
+        const search = new URLSearchParams(location.search);
+        const status = search.get('oauth_status');
+        const provider = search.get('oauth_provider');
+
+        if (!status || !provider) {
+            return;
+        }
+
+        const label = provider === 'discord' ? 'Discord' : 'Google';
+        const flashes = {
+            linked: {
+                type: 'success' as const,
+                title: 'Account Linked',
+                message: `${label} sign-in is now linked to this panel account.`,
+            },
+            conflict: {
+                type: 'error' as const,
+                title: 'Link Failed',
+                message: `That ${label} account is already linked to another panel user.`,
+            },
+            cancelled: {
+                type: 'error' as const,
+                title: 'Link Cancelled',
+                message: `${label} linking was cancelled before it completed.`,
+            },
+            disabled: {
+                type: 'error' as const,
+                title: 'Provider Disabled',
+                message: `${label} OAuth is not available right now.`,
+            },
+            failed: {
+                type: 'error' as const,
+                title: 'Link Failed',
+                message: `Unable to complete ${label} account linking right now.`,
+            },
+            invalid_state: {
+                type: 'error' as const,
+                title: 'Link Expired',
+                message: `The ${label} linking session expired. Start the linking flow again.`,
+            },
+            login_required: {
+                type: 'error' as const,
+                title: 'Login Required',
+                message: `Your session expired before ${label} could be linked. Sign in again and retry.`,
+            },
+        } as const;
+
+        const flash = flashes[status as keyof typeof flashes];
+        if (flash) {
+            clearFlashes('account');
+            addFlash({ key: 'account', ...flash });
+        }
+
+        search.delete('oauth_status');
+        search.delete('oauth_provider');
+        history.replace({
+            pathname: location.pathname,
+            search: search.toString() ? `?${search.toString()}` : '',
+        });
+    }, [location.search]);
 
     useEffect(() => {
         if (!avatarMenuOpen) return;
@@ -294,75 +362,81 @@ export default () => {
 
             <FlashMessageRender byKey={'account'} />
 
-            <section
-                className={
-                    'mb-6 w-full max-w-[620px] rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
-                }
-            >
-                <div className={'flex flex-wrap items-center gap-4'}>
-                    <div ref={avatarMenuRef} className={'relative'}>
-                        <button
-                            type={'button'}
-                            onClick={() => setAvatarMenuOpen((value) => !value)}
-                            disabled={avatarUploading}
-                            className={
-                                'h-16 w-16 overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60'
-                            }
-                        >
-                            <Avatar.User size={64} variant={'beam'} />
-                        </button>
+            <div className={'mb-6 flex w-full flex-col gap-6 xl:flex-row xl:items-stretch xl:justify-between'}>
+                <section
+                    className={
+                        'h-full min-h-[96px] w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] xl:max-w-[620px] xl:flex-none'
+                    }
+                >
+                    <div className={'flex h-full flex-wrap items-center gap-4'}>
+                        <div ref={avatarMenuRef} className={'relative'}>
+                            <button
+                                type={'button'}
+                                onClick={() => setAvatarMenuOpen((value) => !value)}
+                                disabled={avatarUploading}
+                                className={
+                                    'h-16 w-16 overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60'
+                                }
+                            >
+                                <Avatar.User size={64} variant={'beam'} />
+                            </button>
 
-                        {avatarMenuOpen && (
-                            <div className={'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'}>
-                                <button
-                                    type={'button'}
-                                    className={'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'}
-                                    onClick={() => avatarInputRef.current?.click()}
-                                    disabled={avatarUploading}
-                                >
-                                    {avatarUploading ? 'Uploading...' : 'Change Image'}
-                                </button>
-                                <button
-                                    type={'button'}
-                                    className={'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'}
-                                    onClick={onAvatarRemove}
-                                    disabled={avatarUploading || !user.image}
-                                >
-                                    Remove Image
-                                </button>
-                                <input
-                                    ref={avatarInputRef}
-                                    type={'file'}
-                                    accept={'image/png,image/jpeg,image/jpg,image/webp,image/gif'}
-                                    className={'hidden'}
-                                    onChange={(event) => {
-                                        const file = event.currentTarget.files?.[0];
-                                        if (file) void onAvatarUpload(file);
-                                        event.currentTarget.value = '';
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                    <div className={'min-w-0'}>
-                        <div className={'flex flex-wrap items-center gap-2'}>
-                            <h1 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>
-                                {user.username}
-                            </h1>
-                            {user.rootAdmin && (
-                                <span
-                                    className={
-                                        'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--primary)]'
-                                    }
-                                >
-                                    Administrator
-                                </span>
+                            {avatarMenuOpen && (
+                                <div className={'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'}>
+                                    <button
+                                        type={'button'}
+                                        className={'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'}
+                                        onClick={() => avatarInputRef.current?.click()}
+                                        disabled={avatarUploading}
+                                    >
+                                        {avatarUploading ? 'Uploading...' : 'Change Image'}
+                                    </button>
+                                    <button
+                                        type={'button'}
+                                        className={'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'}
+                                        onClick={onAvatarRemove}
+                                        disabled={avatarUploading || !user.image}
+                                    >
+                                        Remove Image
+                                    </button>
+                                    <input
+                                        ref={avatarInputRef}
+                                        type={'file'}
+                                        accept={'image/png,image/jpeg,image/jpg,image/webp,image/gif'}
+                                        className={'hidden'}
+                                        onChange={(event) => {
+                                            const file = event.currentTarget.files?.[0];
+                                            if (file) void onAvatarUpload(file);
+                                            event.currentTarget.value = '';
+                                        }}
+                                    />
+                                </div>
                             )}
                         </div>
-                        <p className={'mt-1 text-xs text-gray-400'}>{user.email}</p>
+                        <div className={'min-w-0'}>
+                            <div className={'flex flex-wrap items-center gap-2'}>
+                                <h1 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                    {user.username}
+                                </h1>
+                                {user.rootAdmin && (
+                                    <span
+                                        className={
+                                            'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--primary)]'
+                                        }
+                                    >
+                                        Administrator
+                                    </span>
+                                )}
+                            </div>
+                            <p className={'mt-1 text-xs text-gray-400'}>{user.email}</p>
+                        </div>
                     </div>
+                </section>
+
+                <div className={'w-full xl:ml-auto xl:max-w-[620px] xl:flex-none'}>
+                    <DiscordCommunityCard />
                 </div>
-            </section>
+            </div>
 
             <div className={'grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
                 <div className={'flex flex-col gap-6'}>
@@ -497,6 +571,7 @@ export default () => {
                     <div className={'account-tabs-shell min-w-0 px-4 pb-4 pt-5'}>
                         {activeTab === 'API' && <AccountApiContainer />}
                         {activeTab === 'SSH' && <AccountSSHContainer />}
+                        <LinkedAccountsContainer />
                     </div>
                 </section>
             </div>

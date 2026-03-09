@@ -12,11 +12,13 @@ import {
     SidebarBody,
     SidebarLink,
     SidebarLabel,
+    SidebarMode,
     useSidebar,
 } from '@/components/elements/sidebar/AceternitySidebar';
 import { motion } from 'framer-motion';
 import Select, { TSelectData } from '@/components/ui/select';
 import { applyThemePreset, DEFAULT_THEME_ID, THEME_PRESETS } from '@/components/ui/theme-presets';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface NavigationBarProps {
     sidebarOpen?: boolean;
@@ -27,6 +29,7 @@ interface NavigationBarProps {
 // ---------- Logo ----------
 const SidebarLogo = () => {
     const { open, animate } = useSidebar();
+    const { logo, name } = useSiteBranding();
     const expanded = animate ? open : true;
     return (
         <div
@@ -46,7 +49,7 @@ const SidebarLogo = () => {
                 }}
             >
                 <img
-                    src={'/assets/svgs/pterodactyl.svg'}
+                    src={logo}
                     alt={'System Logo'}
                     style={{
                         width: expanded ? '28px' : '22px',
@@ -68,7 +71,7 @@ const SidebarLogo = () => {
                             whiteSpace: 'nowrap',
                         }}
                     >
-                        BurHan Console
+                        {name}
                     </div>
                 )}
             </motion.div>
@@ -78,7 +81,7 @@ const SidebarLogo = () => {
 
 // ---------- UserFooter ----------
 const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
-    const { open, setOpen, animate } = useSidebar();
+    const { open, setOpen, animate, mode, setMode } = useSidebar();
     const expanded = animate ? open : true;
     const [menuOpen, setMenuOpen] = useState(false);
     const [themeId, setThemeId] = useState(DEFAULT_THEME_ID);
@@ -95,8 +98,10 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
     }, []);
 
     useEffect(() => {
-        if (!expanded) setMenuOpen(false);
-    }, [expanded]);
+        if (!expanded && mode !== 'locked-closed') {
+            setMenuOpen(false);
+        }
+    }, [expanded, mode]);
 
     useEffect(() => {
         if (!menuOpen) return;
@@ -133,6 +138,28 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         }
     };
 
+    const sidebarModeOptions: Array<{ value: SidebarMode; label: string; icon: string }> = [
+        { value: 'locked-closed', label: 'Close Lock', icon: 'keyboard_double_arrow_left' },
+        { value: 'locked-open', label: 'Open Lock', icon: 'push_pin' },
+        { value: 'auto', label: 'Unlock', icon: 'lock_open' },
+    ];
+
+    const handleSidebarModeChange = (nextMode: SidebarMode) => {
+        setMode(nextMode);
+
+        if (nextMode === 'locked-open') {
+            setOpen(true);
+            return;
+        }
+
+        if (nextMode === 'locked-closed') {
+            setOpen(false);
+            return;
+        }
+
+        setOpen(true);
+    };
+
     return (
         <div
             ref={footerRef}
@@ -146,7 +173,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
             <button
                 type='button'
                 onClick={() => {
-                    if (!expanded) {
+                    if (!expanded && mode !== 'locked-closed') {
                         setOpen(true);
                         return;
                     }
@@ -211,20 +238,21 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                 )}
             </button>
 
-            {expanded && menuOpen && (
+            {menuOpen && (
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                     style={{
                         position: 'absolute',
-                        left: '12px',
-                        right: '12px',
+                        left: expanded ? '12px' : '8px',
+                        right: expanded ? '12px' : 'auto',
                         bottom: 'calc(100% + 8px)',
                         border: '1px solid var(--border)',
                         backgroundColor: 'var(--card)',
                         borderRadius: '12px',
                         padding: '10px',
+                        width: expanded ? 'auto' : '240px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
@@ -279,6 +307,81 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                             </div>
                         </div>
                     </Link>
+
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            padding: '2px 2px 0',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color: 'var(--muted-foreground)',
+                                padding: '0 4px',
+                            }}
+                        >
+                            Sidebar
+                        </span>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                gap: '8px',
+                            }}
+                        >
+                            {sidebarModeOptions.map((option) => {
+                                const active = mode === option.value;
+
+                                return (
+                                    <button
+                                        key={option.value}
+                                        type='button'
+                                        onClick={() => handleSidebarModeChange(option.value)}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            minHeight: '64px',
+                                            padding: '10px 8px',
+                                            borderRadius: '12px',
+                                            border: `1px solid ${
+                                                active ? 'rgba(var(--primary-rgb), 0.42)' : 'rgba(var(--primary-rgb), 0.16)'
+                                            }`,
+                                            background: active ? 'rgba(var(--primary-rgb), 0.14)' : 'var(--background)',
+                                            color: active ? 'var(--primary)' : 'var(--foreground)',
+                                            boxShadow: active ? '0 0 18px rgba(var(--primary-rgb), 0.18)' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                        }}
+                                    >
+                                        <span className='material-icons-round' style={{ fontSize: '18px' }}>
+                                            {option.icon}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '10px',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.04em',
+                                                lineHeight: 1.25,
+                                                textTransform: 'uppercase',
+                                                textAlign: 'center',
+                                            }}
+                                        >
+                                            {option.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     <Select title='Theme' data={themeOptions} defaultValue={themeId} onChange={setTheme} />
 
@@ -437,6 +540,19 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                 ),
                             }}
                             active={location.pathname === '/'}
+                        />
+
+                        <SidebarLink
+                            link={{
+                                label: 'Billing',
+                                href: '/billing',
+                                icon: (
+                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                        payments
+                                    </span>
+                                ),
+                            }}
+                            active={location.pathname === '/billing'}
                         />
 
                         {rootAdmin && (

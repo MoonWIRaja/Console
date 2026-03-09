@@ -44,6 +44,7 @@ class RouteServiceProvider extends ServiceProvider
                     ->prefix('/admin')
                     ->group(base_path('routes/admin.php'));
 
+                Route::prefix('/oauth')->group(base_path('routes/oauth.php'));
                 Route::middleware('guest')->prefix('/auth')->group(base_path('routes/auth.php'));
             });
 

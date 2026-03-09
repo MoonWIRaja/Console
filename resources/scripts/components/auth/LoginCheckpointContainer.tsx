@@ -8,6 +8,7 @@ import useFlash from '@/plugins/useFlash';
 import { FlashStore } from '@/state/flashes';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface Values {
     code: string;
@@ -20,9 +21,14 @@ type Props = OwnProps & {
     clearAndAddHttpError: ActionCreator<FlashStore['clearAndAddHttpError']['payload']>;
 };
 
+const getConfirmationToken = (location: OwnProps['location']): string => {
+    return location.state?.token || new URLSearchParams(location.search).get('token') || '';
+};
+
 const LoginCheckpointContainer = () => {
     const { isSubmitting, setFieldValue, values, errors, touched, handleChange, handleBlur } =
         useFormikContext<Values>();
+    const { name } = useSiteBranding();
     const [isMissingDevice, setIsMissingDevice] = useState(false);
     const activeField: keyof Values = isMissingDevice ? 'recoveryCode' : 'code';
     const activeDescription = isMissingDevice
@@ -45,7 +51,7 @@ const LoginCheckpointContainer = () => {
                 <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
                     <div className='mb-10'>
                         <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
-                            BurHan Console
+                            {name}
                         </h1>
                     </div>
 
@@ -142,7 +148,7 @@ const LoginCheckpointContainer = () => {
 
 const EnhancedForm = withFormik<Props, Values>({
     handleSubmit: ({ code, recoveryCode }, { setSubmitting, props: { clearAndAddHttpError, location } }) => {
-        loginCheckpoint(location.state?.token || '', code, recoveryCode)
+        loginCheckpoint(getConfirmationToken(location), code, recoveryCode)
             .then((response) => {
                 if (response.complete) {
                     // @ts-expect-error this is valid
@@ -167,8 +173,9 @@ const EnhancedForm = withFormik<Props, Values>({
 
 export default ({ history, location, ...props }: OwnProps) => {
     const { clearAndAddHttpError } = useFlash();
+    const token = getConfirmationToken(location);
 
-    if (!location.state?.token) {
+    if (!token) {
         history.replace('/auth/login');
 
         return null;

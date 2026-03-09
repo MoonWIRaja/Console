@@ -25,6 +25,8 @@ return [
 
     'name' => env('APP_NAME', 'Pterodactyl'),
 
+    'logo' => env('APP_LOGO'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

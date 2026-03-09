@@ -33,7 +33,10 @@ const flashes: FlashStore = {
         if (!payload.error) {
             state.items = [];
         } else {
-            console.error(payload.error);
+            const status = payload.error?.response?.status;
+            if (typeof status !== 'number' || status >= 500) {
+                console.error(payload.error);
+            }
 
             state.items = [
                 {

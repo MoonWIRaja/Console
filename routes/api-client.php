@@ -34,6 +34,13 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::delete('/avatar', [Client\AccountController::class, 'removeAvatar'])->name('api:client.account.remove-avatar');
 
     Route::get('/activity', Client\ActivityLogController::class)->name('api:client.account.activity');
+    Route::get('/oauth', [Client\OAuthAccountController::class, 'index']);
+    Route::delete('/oauth/{provider}', [Client\OAuthAccountController::class, 'delete']);
+    Route::get('/discord/community', [Client\DiscordCommunityController::class, 'index']);
+    Route::post('/discord/community/join', [Client\DiscordCommunityController::class, 'join']);
+    Route::get('/billing/catalog', [Client\BillingController::class, 'catalog']);
+    Route::get('/billing/orders', [Client\BillingController::class, 'orders']);
+    Route::post('/billing/orders', [Client\BillingController::class, 'store']);
 
     Route::get('/api-keys', [Client\ApiKeyController::class, 'index']);
     Route::post('/api-keys', [Client\ApiKeyController::class, 'store']);

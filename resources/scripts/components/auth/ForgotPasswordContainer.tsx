@@ -11,6 +11,7 @@ import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface RequestValues {
     email: string;
@@ -38,6 +39,7 @@ export default () => {
     const [resetToken, setResetToken] = useState('');
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
+    const { name } = useSiteBranding();
 
     const { clearFlashes, addFlash } = useFlash();
     const captcha = useStoreState((state) => state.settings.data!.captcha);
@@ -143,7 +145,7 @@ export default () => {
                 <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
                     <div className='mb-10'>
                         <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
-                            BurHan Console
+                            {name}
                         </h1>
                     </div>
 

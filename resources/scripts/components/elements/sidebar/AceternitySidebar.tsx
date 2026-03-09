@@ -1,21 +1,28 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 // ============================================================
 // Aceternity-style Sidebar (ported for React 16 + framer-motion v6)
 // Collapsible on hover, mobile responsive, dark neon theme
 // ============================================================
 
+export type SidebarMode = 'auto' | 'locked-open' | 'locked-closed';
+
 interface SidebarContextType {
     open: boolean;
     setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    mode: SidebarMode;
+    setMode: React.Dispatch<React.SetStateAction<SidebarMode>>;
     animate: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextType>({
     open: false,
     setOpen: () => undefined,
+    mode: 'auto',
+    setMode: () => undefined,
     animate: true,
 });
 
@@ -36,10 +43,35 @@ export const SidebarProvider = ({
     animate = true,
 }: SidebarProviderProps) => {
     const [openState, setOpenState] = useState(false);
+    const [mode, setMode] = useState<SidebarMode>('auto');
     const open = openProp !== undefined ? openProp : openState;
     const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
-    return <SidebarContext.Provider value={{ open, setOpen, animate }}>{children}</SidebarContext.Provider>;
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const storedMode = window.localStorage.getItem('ui.sidebar.mode');
+        if (storedMode === 'locked-open' || storedMode === 'locked-closed' || storedMode === 'auto') {
+            setMode(storedMode);
+            return;
+        }
+
+        const legacyLocked = window.localStorage.getItem('ui.sidebar.locked') === 'true';
+        setMode(legacyLocked ? 'locked-open' : 'auto');
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        window.localStorage.setItem('ui.sidebar.mode', mode);
+        window.localStorage.setItem('ui.sidebar.locked', mode === 'locked-open' ? 'true' : 'false');
+    }, [mode]);
+
+    return <SidebarContext.Provider value={{ open, setOpen, mode, setMode, animate }}>{children}</SidebarContext.Provider>;
 };
 
 // ---------- Sidebar ----------
@@ -67,13 +99,23 @@ interface SidebarBodyProps {
 
 // ---------- DesktopSidebar ----------
 function DesktopSidebar({ children, className }: SidebarBodyProps) {
-    const { open, setOpen, animate: shouldAnimate } = useSidebar();
+    const { open, setOpen, mode, animate: shouldAnimate } = useSidebar();
+    const isAuto = mode === 'auto';
+
+    useEffect(() => {
+        if (mode === 'locked-open' && !open) {
+            setOpen(true);
+        }
+        if (mode === 'locked-closed' && open) {
+            setOpen(false);
+        }
+    }, [mode, open, setOpen]);
 
     return (
         <>
             <motion.div
-                onMouseEnter={() => setOpen(true)}
-                onMouseLeave={() => setOpen(false)}
+                onMouseEnter={() => isAuto && setOpen(true)}
+                onMouseLeave={() => isAuto && setOpen(false)}
                 animate={{ width: shouldAnimate ? (open ? '256px' : '72px') : '256px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 style={{
@@ -87,7 +129,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
                     flexDirection: 'column',
                     borderRight: '1px solid rgba(var(--primary-rgb), 0.22)',
                     fontFamily: "'Inter', sans-serif",
-                    overflow: 'hidden',
+                    overflow: 'visible',
                     flexShrink: 0,
                 }}
                 className={`sidebar-desktop-shell ${className || ''}`}
@@ -107,6 +149,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
 // ---------- MobileSidebar ----------
 function MobileSidebar({ children, className, showMobileHeader = true }: SidebarBodyProps) {
     const { open, setOpen } = useSidebar();
+    const { name } = useSiteBranding();
 
     return (
         <div className={className || ''}>
@@ -127,7 +170,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         borderBottom: '1px solid rgba(var(--primary-rgb), 0.22)',
                     }}
                 >
-                    <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>BurHan Console</div>
+                    <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>{name}</div>
                     <button
                         onClick={() => setOpen(!open)}
                         style={{

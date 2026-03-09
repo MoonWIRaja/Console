@@ -3,6 +3,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import AccountProfileContainer from '@/components/dashboard/AccountProfileContainer';
+import BillingContainer from '@/components/billing/BillingContainer';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import { useLocation } from 'react-router';
@@ -93,6 +94,9 @@ export default () => {
                             </Route>
                             <Route path={'/account'} exact>
                                 <AccountProfileContainer />
+                            </Route>
+                            <Route path={'/billing'} exact>
+                                <BillingContainer />
                             </Route>
                             {/* Redirect old routes to /account to prevent broken links in case users saved them */}
                             <Route path={'/account/api'} exact>

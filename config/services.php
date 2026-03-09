@@ -33,4 +33,21 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+
+    'google' => [
+        'enabled' => env('GOOGLE_OAUTH_ENABLED', false),
+        'client_id' => env('GOOGLE_OAUTH_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_OAUTH_CLIENT_SECRET'),
+    ],
+
+    'discord' => [
+        'enabled' => env('DISCORD_OAUTH_ENABLED', false),
+        'client_id' => env('DISCORD_OAUTH_CLIENT_ID'),
+        'client_secret' => env('DISCORD_OAUTH_CLIENT_SECRET'),
+        'community_enabled' => env('DISCORD_COMMUNITY_ENABLED', false),
+        'invite_url' => env('DISCORD_COMMUNITY_INVITE_URL'),
+        'guild_id' => env('DISCORD_COMMUNITY_GUILD_ID'),
+        'role_id' => env('DISCORD_COMMUNITY_ROLE_ID'),
+        'bot_token' => env('DISCORD_COMMUNITY_BOT_TOKEN'),
+    ],
 ];

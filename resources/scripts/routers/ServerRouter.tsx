@@ -21,10 +21,12 @@ import ConflictStateRenderer from '@/components/server/ConflictStateRenderer';
 import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
     const location = useLocation();
+    const { name } = useSiteBranding();
 
     const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
     const [error, setError] = useState('');
@@ -162,7 +164,7 @@ export default () => {
                                 }}
                             >
                                 <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>
-                                    BurHan Console
+                                    {name}
                                 </div>
                                 <button
                                     type='button'

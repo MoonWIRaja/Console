@@ -161,12 +161,17 @@ class Handler extends ExceptionHandler
         $errors = Collection::make($exception->errors())->map(function ($errors, $field) use ($codes, $exception) {
             $response = [];
             foreach ($errors as $key => $error) {
+                $rule = Arr::get(
+                    $codes,
+                    str_replace('.', '_', $field) . '.' . $key,
+                    ''
+                );
+
                 $meta = [
                     'source_field' => $field,
-                    'rule' => str_replace(self::PTERODACTYL_RULE_STRING, 'p_', Arr::get(
-                        $codes,
-                        str_replace('.', '_', $field) . '.' . $key
-                    )),
+                    'rule' => is_string($rule)
+                        ? str_replace(self::PTERODACTYL_RULE_STRING, 'p_', $rule)
+                        : '',
                 ];
 
                 $converted = $this->convertExceptionToArray($exception)['errors'][0];

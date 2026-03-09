@@ -2,12 +2,14 @@
 
 namespace Pterodactyl\Http\Controllers\Auth;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\User;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Container\Container;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Event;
 use Pterodactyl\Events\Auth\DirectLogin;
 use Pterodactyl\Exceptions\DisplayException;
@@ -81,6 +83,22 @@ abstract class AbstractLoginController extends Controller
      */
     protected function sendLoginResponse(User $user, Request $request): JsonResponse
     {
+        $this->completeLogin($user, $request);
+
+        return new JsonResponse([
+            'data' => [
+                'complete' => true,
+                'intended' => $this->redirectPath(),
+                'user' => $user->toVueObject(),
+            ],
+        ]);
+    }
+
+    /**
+     * Finalize the login session for a user.
+     */
+    protected function completeLogin(User $user, Request $request): void
+    {
         $request->session()->remove('auth_confirmation_token');
         $request->session()->remove('email_verification_token');
         $request->session()->regenerate();
@@ -91,14 +109,20 @@ abstract class AbstractLoginController extends Controller
         $this->auth->guard()->login($user, true);
 
         Event::dispatch(new DirectLogin($user, true));
+    }
 
-        return new JsonResponse([
-            'data' => [
-                'complete' => true,
-                'intended' => $this->redirectPath(),
-                'user' => $user->toVueObject(),
-            ],
+    /**
+     * Issue a temporary challenge token for accounts protected by TOTP.
+     */
+    protected function issueTwoFactorChallenge(User $user, Request $request): string
+    {
+        $request->session()->put('auth_confirmation_token', [
+            'user_id' => $user->id,
+            'token_value' => $token = Str::random(64),
+            'expires_at' => CarbonImmutable::now()->addMinutes(5),
         ]);
+
+        return $token;
     }
 
     /**

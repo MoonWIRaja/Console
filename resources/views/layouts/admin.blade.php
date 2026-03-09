@@ -1,3 +1,4 @@
+@php($panelLogo = config('app.logo') ? asset(config('app.logo')) : asset('assets/svgs/pterodactyl.svg'))
 <!DOCTYPE html>
 <html>
     <head>
@@ -8,14 +9,7 @@
         <meta name="_token" content="{{ csrf_token() }}">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
-        <link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
-        <link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
-        <link rel="manifest" href="/favicons/manifest.json">
-        <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#bc6e3c">
-        <link rel="shortcut icon" href="/favicons/favicon.ico">
-        <meta name="msapplication-config" content="/favicons/browserconfig.xml">
-        <meta name="theme-color" content="#0e4688">
+        @include('partials.branding.favicon')
 
         @include('layouts.scripts')
 
@@ -45,9 +39,9 @@
             {{-- Logo --}}
             <div style="padding: 24px 24px 16px; overflow: hidden; white-space: nowrap;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <img src="/assets/svgs/pterodactyl.svg" alt="System Logo" class="sidebar-logo-img" style="object-fit: contain; filter: brightness(1.15); flex-shrink: 0;">
+                    <img src="{{ $panelLogo }}" alt="System Logo" class="sidebar-logo-img" style="object-fit: contain; filter: brightness(1.15); flex-shrink: 0;">
                     <div class="sidebar-text" style="font-size: 18px; font-weight: 900; color: var(--admin-foreground); line-height: 1; letter-spacing: -0.02em; text-shadow: 0 0 10px rgba(var(--admin-primary-rgb), 0.18); white-space: nowrap;">
-                        BurHan Console
+                        {{ config('app.name', 'Pterodactyl') }}
                     </div>
                 </div>
             </div>
@@ -129,6 +123,17 @@
                         <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Users</span>
                     </div>
                 </a>
+
+                @if(Auth::user()->root_admin)
+                    <a href="{{ route('admin.billing') }}" style="text-decoration: none;">
+                        <div class="sidebar-link {{ ! starts_with(Route::currentRouteName(), 'admin.billing') ?: 'active' }}">
+                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                <span class="material-icons-round" style="font-size: 20px;">payments</span>
+                            </div>
+                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Billing</span>
+                        </div>
+                    </a>
+                @endif
 
                 <div class="sidebar-label sidebar-text">SERVICE MANAGEMENT</div>
 

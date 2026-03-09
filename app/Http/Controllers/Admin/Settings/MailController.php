@@ -2,9 +2,9 @@
 
 namespace Pterodactyl\Http\Controllers\Admin\Settings;
 
-use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Contracts\Console\Kernel;
 use Pterodactyl\Notifications\MailTested;
 use Illuminate\Support\Facades\Notification;
@@ -30,14 +30,11 @@ class MailController extends Controller
     }
 
     /**
-     * Render UI for editing mail settings. This UI should only display if
-     * the server is configured to send mail using SMTP.
+     * Redirect mail settings requests to the combined settings page.
      */
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        return view('admin.settings.mail', [
-            'disabled' => $this->config->get('mail.default') !== 'smtp',
-        ]);
+        return redirect()->route('admin.settings');
     }
 
     /**

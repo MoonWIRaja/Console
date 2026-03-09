@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, RouteComponentProps } from 'react-router-dom';
 import login from '@/api/auth/login';
 import signup from '@/api/auth/signup';
@@ -10,6 +10,7 @@ import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface LoginValues {
     username: string;
@@ -39,7 +40,7 @@ type AuthMode = 'login' | 'signup' | 'verify';
 
 const honeypotFieldClass = 'pointer-events-none absolute left-[-10000px] top-[-10000px] h-0 w-0 overflow-hidden opacity-0';
 
-const LoginContainer = ({ history }: RouteComponentProps) => {
+const LoginContainer = ({ history, location }: RouteComponentProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
     const [showSignupConfirmationPassword, setShowSignupConfirmationPassword] = useState(false);
@@ -48,15 +49,85 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
     const [verificationIdentity, setVerificationIdentity] = useState('');
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
+    const { name } = useSiteBranding();
 
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const captcha = useStoreState((state) => state.settings.data!.captcha);
+    const oauth = useStoreState((state) => state.settings.data?.oauth);
 
     const captchaEnabled = !!captcha?.enabled && captcha?.provider === 'turnstile' && !!captcha?.siteKey;
+    const availableOAuthProviders = useMemo(
+        () =>
+            [
+                oauth?.google?.enabled
+                    ? { provider: 'google' as const, label: oauth.google.label, icon: 'fab fa-google' }
+                    : null,
+                oauth?.discord?.enabled
+                    ? { provider: 'discord' as const, label: oauth.discord.label, icon: 'fab fa-discord' }
+                    : null,
+            ].filter((provider): provider is NonNullable<typeof provider> => !!provider),
+        [oauth]
+    );
 
     useEffect(() => {
         clearFlashes();
     }, []);
+
+    useEffect(() => {
+        const search = new URLSearchParams(location.search);
+        const status = search.get('oauth_status');
+        const provider = search.get('oauth_provider');
+
+        if (!status || !provider) {
+            return;
+        }
+
+        const label = provider === 'discord' ? 'Discord' : 'Google';
+        const flashes = {
+            cancelled: {
+                type: 'error' as const,
+                title: 'Sign-in Cancelled',
+                message: `${label} sign-in was cancelled before it completed.`,
+            },
+            disabled: {
+                type: 'error' as const,
+                title: 'Provider Disabled',
+                message: `${label} OAuth is not available right now.`,
+            },
+            email_verification_required: {
+                type: 'error' as const,
+                title: 'Email Verification Required',
+                message: 'Verify your panel account email before using OAuth login.',
+            },
+            failed: {
+                type: 'error' as const,
+                title: 'Sign-in Failed',
+                message: `Unable to complete ${label} sign-in right now.`,
+            },
+            invalid_state: {
+                type: 'error' as const,
+                title: 'Session Expired',
+                message: `The ${label} OAuth session expired. Start the sign-in flow again.`,
+            },
+            not_linked: {
+                type: 'error' as const,
+                title: 'Account Not Linked',
+                message: `Link your ${label} account in Account Settings before using ${label} login.`,
+            },
+        } as const;
+
+        const flash = flashes[status as keyof typeof flashes];
+        if (flash) {
+            addFlash(flash);
+        }
+
+        search.delete('oauth_status');
+        search.delete('oauth_provider');
+        history.replace({
+            pathname: location.pathname,
+            search: search.toString() ? `?${search.toString()}` : '',
+        });
+    }, [location.search]);
 
     const switchMode = (next: 'login' | 'signup') => {
         clearFlashes();
@@ -239,7 +310,7 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                         <div className='rounded-xl bg-[color:var(--background)] p-8'>
                             <div className='mb-6 border-b border-[color:var(--border)] pb-5 text-center'>
                                 <h1 className='text-4xl font-bold leading-tight tracking-tight text-[color:var(--foreground)] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
-                                    BurHan Console
+                                    {name}
                                 </h1>
                             </div>
 
@@ -599,7 +670,7 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                                 </Formik>
                             )}
 
-                            {mode !== 'verify' && (
+                            {mode !== 'verify' && availableOAuthProviders.length > 0 && (
                                 <>
                                     <div className='relative my-8'>
                                         <div className='absolute inset-0 flex items-center'>
@@ -613,20 +684,31 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                                     </div>
 
                                     <div className='space-y-3'>
-                                        <button
-                                            type='button'
-                                            className='group flex w-full items-center justify-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-2.5 text-sm font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--ring)]'
-                                        >
-                                            <i className='fab fa-google text-base text-[color:var(--foreground)] transition-colors group-hover:text-[color:var(--foreground)]' />
-                                            <span>Continue with Google</span>
-                                        </button>
-                                        <button
-                                            type='button'
-                                            className='group flex w-full items-center justify-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-2.5 text-sm font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--ring)]'
-                                        >
-                                            <i className='fab fa-discord text-base text-[#5865F2]' />
-                                            <span className='transition-colors group-hover:text-[color:var(--primary)]'>Continue with Discord</span>
-                                        </button>
+                                        {availableOAuthProviders.map((provider) => (
+                                            <button
+                                                key={provider.provider}
+                                                type='button'
+                                                onClick={() => window.location.assign(`/oauth/${provider.provider}/redirect?intent=login`)}
+                                                className='group flex w-full items-center justify-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-2.5 text-sm font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--ring)]'
+                                            >
+                                                <i
+                                                    className={`${provider.icon} text-base ${
+                                                        provider.provider === 'discord'
+                                                            ? 'text-[#5865F2]'
+                                                            : 'text-[color:var(--foreground)] transition-colors group-hover:text-[color:var(--foreground)]'
+                                                    }`}
+                                                />
+                                                <span
+                                                    className={
+                                                        provider.provider === 'discord'
+                                                            ? 'transition-colors group-hover:text-[color:var(--primary)]'
+                                                            : ''
+                                                    }
+                                                >
+                                                    Continue with {provider.label}
+                                                </span>
+                                            </button>
+                                        ))}
                                     </div>
                                 </>
                             )}

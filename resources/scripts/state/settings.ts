@@ -2,11 +2,22 @@ import { action, Action } from 'easy-peasy';
 
 export interface SiteSettings {
     name: string;
+    logo: string;
     locale: string;
     captcha: {
         enabled: boolean;
         provider: 'turnstile';
         siteKey: string;
+    };
+    oauth: {
+        google: {
+            label: string;
+            enabled: boolean;
+        };
+        discord: {
+            label: string;
+            enabled: boolean;
+        };
     };
 }
 

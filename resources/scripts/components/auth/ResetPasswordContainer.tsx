@@ -1,14 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 export default () => {
+    const { name } = useSiteBranding();
+
     return (
         <div className='fixed inset-0 z-50 flex h-screen w-full overflow-hidden bg-[color:var(--card)] text-gray-100'>
             <div className='hidden h-full w-[70%] bg-[color:var(--card)] lg:block' />
             <div className='w-full overflow-y-auto bg-[color:var(--card)] px-8 sm:px-12 md:px-16 lg:w-[30%] lg:px-10 xl:px-12'>
                 <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
                     <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
-                        BurHan Console
+                        {name}
                     </h1>
                     <div className='mt-8 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6'>
                         <h2 className='text-sm font-bold uppercase tracking-wider text-gray-200'>Link Not Supported</h2>

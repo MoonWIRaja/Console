@@ -1,65 +1,42 @@
-import Sockette from 'sockette';
 import { EventEmitter } from 'events';
 
-export class Websocket extends EventEmitter {
-    // The socket instance being tracked.
-    private socket: Sockette | null = null;
+type PendingClose = {
+    code?: number;
+    reason?: string;
+};
 
-    // The URL being connected to for the socket.
+const NORMAL_CLOSE_CODES = new Set([1000, 1001, 1005]);
+const NON_RECONNECT_CODES = new Set([4400, 4409]);
+
+export class Websocket extends EventEmitter {
+    private socket: WebSocket | null = null;
+
     private url: string | null = null;
 
-    // The authentication token passed along with every request to the Daemon.
-    // By default this token expires every 15 minutes and must therefore be
-    // refreshed at a pretty continuous interval. The socket server will respond
-    // with "token expiring" and "token expired" events when approaching 3 minutes
-    // and 0 minutes to expiry.
     private token = '';
 
-    // Connects to the websocket instance and sets the token for the initial request.
+    private manuallyClosed = false;
+
+    private reconnectAttempts = 0;
+
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    private pendingClose: PendingClose | null = null;
+
+    private readonly reconnectDelay = 5000;
+
+    private readonly maxReconnectAttempts = 20;
+
     connect(url: string): this {
         this.url = url;
-
-        this.socket = new Sockette(`${this.url}`, {
-            // WSS handshakes behind reverse proxies can exceed 1s under normal load.
-            timeout: 5000,
-            maxAttempts: 20,
-            onmessage: (e) => {
-                try {
-                    const { event, args } = JSON.parse(e.data);
-                    args ? this.emit(event, ...args) : this.emit(event);
-                } catch (ex) {
-                    console.warn('Failed to parse incoming websocket message.', ex);
-                }
-            },
-            onopen: () => {
-                this.emit('SOCKET_OPEN');
-                this.authenticate();
-            },
-            onreconnect: (evt) => {
-                // We return code 4409 from Wings when a server is suspended. We've
-                // gone ahead and reserved 4400 as well here for future expansion without
-                // having to loop back around.
-                //
-                // If either of those codes is returned go ahead and abort here. Unfortunately
-                // the underlying sockette logic always calls reconnect for any code that isn't
-                // 1000/1001/1003, which is painful but we can just stop the flow here.
-                // @ts-expect-error code is actually present here.
-                if (evt.code === 4409 || evt.code === 4400) {
-                    this.close(1000);
-                } else {
-                    this.emit('SOCKET_RECONNECT');
-                }
-            },
-            onclose: () => this.emit('SOCKET_CLOSE'),
-            onerror: (error) => this.emit('SOCKET_ERROR', error),
-            onmaximum: () => this.emit('SOCKET_CONNECT_ERROR'),
-        });
+        this.manuallyClosed = false;
+        this.pendingClose = null;
+        this.clearReconnectTimer();
+        this.open();
 
         return this;
     }
 
-    // Sets the authentication token to use when sending commands back and forth
-    // between the websocket instance.
     setToken(token: string, isUpdate = false): this {
         this.token = token;
 
@@ -71,7 +48,7 @@ export class Websocket extends EventEmitter {
     }
 
     authenticate() {
-        if (this.url && this.token) {
+        if (this.token) {
             this.send('auth', this.token);
         }
     }
@@ -79,18 +56,151 @@ export class Websocket extends EventEmitter {
     close(code?: number, reason?: string) {
         this.url = null;
         this.token = '';
-        this.socket?.close(code, reason);
+        this.manuallyClosed = true;
+        this.clearReconnectTimer();
+
+        if (!this.socket) {
+            return;
+        }
+
+        if (this.socket.readyState === WebSocket.CONNECTING) {
+            // Avoid Chrome's "closed before the connection is established" noise.
+            this.pendingClose = { code: code ?? 1000, reason };
+            return;
+        }
+
+        this.pendingClose = null;
+
+        if (this.socket.readyState === WebSocket.OPEN) {
+            const socket = this.socket;
+            this.socket = null;
+            socket.close(code ?? 1000, reason);
+            return;
+        }
+
+        if (this.socket.readyState === WebSocket.CLOSED) {
+            this.socket = null;
+        }
     }
 
     open() {
-        this.socket?.open();
+        if (!this.url || this.manuallyClosed) {
+            return;
+        }
+
+        const socket = new WebSocket(this.url);
+        this.socket = socket;
+
+        socket.onmessage = (event) => {
+            if (this.socket !== socket || this.manuallyClosed) {
+                return;
+            }
+
+            try {
+                const { event: eventName, args } = JSON.parse(event.data);
+                args ? this.emit(eventName, ...args) : this.emit(eventName);
+            } catch (error) {
+                console.warn('Failed to parse incoming websocket message.', error);
+            }
+        };
+
+        socket.onopen = () => {
+            if (this.socket !== socket) {
+                return;
+            }
+
+            if (this.pendingClose) {
+                const { code, reason } = this.pendingClose;
+                this.pendingClose = null;
+                this.socket = null;
+                socket.close(code ?? 1000, reason);
+
+                return;
+            }
+
+            if (this.manuallyClosed) {
+                this.socket = null;
+                socket.close(1000);
+
+                return;
+            }
+
+            this.reconnectAttempts = 0;
+            this.emit('SOCKET_OPEN');
+            this.authenticate();
+        };
+
+        socket.onclose = (event) => {
+            if (this.socket === socket) {
+                this.socket = null;
+            }
+
+            if (this.manuallyClosed) {
+                return;
+            }
+
+            if (!NORMAL_CLOSE_CODES.has(event.code) && !NON_RECONNECT_CODES.has(event.code)) {
+                this.scheduleReconnect(event);
+            }
+
+            this.emit('SOCKET_CLOSE');
+        };
+
+        socket.onerror = (error) => {
+            if (this.socket !== socket || this.manuallyClosed) {
+                return;
+            }
+
+            this.emit('SOCKET_ERROR', error);
+        };
     }
 
     reconnect() {
-        this.socket?.reconnect();
+        if (this.manuallyClosed) {
+            return;
+        }
+
+        this.scheduleReconnect();
     }
 
     send(event: string, payload?: string | string[]) {
-        this.socket?.json({ event, args: Array.isArray(payload) ? payload : [payload] });
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        this.socket.send(JSON.stringify({ event, args: Array.isArray(payload) ? payload : [payload] }));
+    }
+
+    private scheduleReconnect(event?: Event | CloseEvent) {
+        if (this.manuallyClosed || this.reconnectTimer || !this.url) {
+            return;
+        }
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.emit('SOCKET_CONNECT_ERROR', event);
+
+            return;
+        }
+
+        this.reconnectAttempts += 1;
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+
+            if (this.manuallyClosed || !this.url) {
+                return;
+            }
+
+            this.emit('SOCKET_RECONNECT', event);
+            this.open();
+        }, this.reconnectDelay);
+    }
+
+    private clearReconnectTimer() {
+        if (!this.reconnectTimer) {
+            return;
+        }
+
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
     }
 }

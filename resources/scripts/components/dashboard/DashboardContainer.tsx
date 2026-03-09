@@ -112,20 +112,6 @@ export default () => {
                         }
                     </Pagination>
                 )}
-
-                <div className='mt-10 text-center'>
-                    <p className='text-[10px] text-gray-600'>
-                        <a
-                            rel={'noopener nofollow noreferrer'}
-                            href={'https://pterodactyl.io'}
-                            target={'_blank'}
-                            className='text-gray-600 no-underline hover:text-gray-500'
-                        >
-                            Pterodactyl&reg;
-                        </a>
-                        &nbsp;&copy; 2015 - {new Date().getFullYear()}
-                    </p>
-                </div>
             </div>
         </div>
     );

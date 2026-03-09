@@ -18,6 +18,7 @@ class SettingsServiceProvider extends ServiceProvider
      */
     protected array $keys = [
         'app:name',
+        'app:logo',
         'app:locale',
         'turnstile:enabled',
         'turnstile:secret_key',
@@ -31,6 +32,17 @@ class SettingsServiceProvider extends ServiceProvider
         'pterodactyl:client_features:allocations:enabled',
         'pterodactyl:client_features:allocations:range_start',
         'pterodactyl:client_features:allocations:range_end',
+        'services:google:enabled',
+        'services:google:client_id',
+        'services:google:client_secret',
+        'services:discord:enabled',
+        'services:discord:client_id',
+        'services:discord:client_secret',
+        'services:discord:community_enabled',
+        'services:discord:invite_url',
+        'services:discord:guild_id',
+        'services:discord:role_id',
+        'services:discord:bot_token',
     ];
 
     /**
@@ -53,6 +65,9 @@ class SettingsServiceProvider extends ServiceProvider
      */
     protected static array $encrypted = [
         'mail:mailers:smtp:password',
+        'services:google:client_secret',
+        'services:discord:client_secret',
+        'services:discord:bot_token',
     ];
 
     /**
