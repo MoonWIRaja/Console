@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import ServerConsole from '@/components/server/console/ServerConsoleContainer';
 import DatabasesContainer from '@/components/server/databases/DatabasesContainer';
 import ScheduleContainer from '@/components/server/schedules/ScheduleContainer';
@@ -13,14 +13,9 @@ import AccountApiContainer from '@/components/dashboard/AccountApiContainer';
 import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer';
 import ActivityLogContainer from '@/components/dashboard/activity/ActivityLogContainer';
 import ServerActivityLogContainer from '@/components/server/ServerActivityLogContainer';
-
-// Each of the router files is already code split out appropriately — so
-// all of the items above will only be loaded in when that router is loaded.
-//
-// These specific lazy loaded routes are to avoid loading in heavy screens
-// for the server dashboard when they're only needed for specific instances.
-const FileEditContainer = lazy(() => import('@/components/server/files/FileEditContainer'));
-const ScheduleEditContainer = lazy(() => import('@/components/server/schedules/ScheduleEditContainer'));
+import FileEditContainer from '@/components/server/files/FileEditContainer';
+import DatabaseDashboardContainer from '@/components/server/databases/DatabaseDashboardContainer';
+import ScheduleEditContainer from '@/components/server/schedules/ScheduleEditContainer';
 
 interface RouteDefinition {
     path: string;
@@ -91,6 +86,13 @@ export default {
             permission: 'database.*',
             name: 'Databases',
             component: DatabasesContainer,
+            exact: true,
+        },
+        {
+            path: '/databases/:databaseId',
+            permission: 'database.*',
+            name: undefined,
+            component: DatabaseDashboardContainer,
         },
         {
             path: '/schedules',

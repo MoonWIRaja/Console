@@ -34,7 +34,7 @@ const SidebarLogo = () => {
     return (
         <div
             style={{
-                padding: '24px 24px 16px',
+                padding: '16px 14px 12px',
                 overflow: 'hidden',
                 whiteSpace: 'nowrap',
             }}
@@ -46,14 +46,24 @@ const SidebarLogo = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background:
+                        'linear-gradient(165deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015) 44%), rgba(4, 8, 14, 0.75)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                    justifyContent: expanded ? 'flex-start' : 'center',
+                    padding: expanded ? '12px 14px' : '10px',
                 }}
             >
                 <img
                     src={logo}
                     alt={'System Logo'}
                     style={{
-                        width: expanded ? '28px' : '22px',
-                        height: expanded ? '28px' : '22px',
+                        width: expanded ? '42px' : '30px',
+                        height: expanded ? '42px' : '30px',
                         objectFit: 'contain',
                         filter: 'brightness(1.15)',
                         flexShrink: 0,
@@ -62,13 +72,19 @@ const SidebarLogo = () => {
                 {expanded && (
                     <div
                         style={{
-                            fontSize: '18px',
+                            flex: 1,
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            fontSize: '14px',
                             fontWeight: 900,
                             color: 'var(--foreground)',
                             lineHeight: 1,
-                            letterSpacing: '-0.02em',
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase',
                             textShadow: '0 0 10px rgba(var(--primary-rgb), 0.18)',
                             whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                         }}
                     >
                         {name}
@@ -164,9 +180,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         <div
             ref={footerRef}
             style={{
-                borderTop: '1px solid var(--border)',
-                padding: '16px',
-                backgroundColor: 'rgba(var(--card-rgb), 0.45)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '14px 12px 12px',
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012))',
                 position: 'relative',
             }}
         >
@@ -188,11 +204,11 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                     justifyContent: expanded ? 'flex-start' : 'center',
                     cursor: 'pointer',
                     padding: '4px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     border: 'none',
                     background: 'transparent',
                 }}
-                className='hover:bg-white/5 transition-colors'
+                className='transition-colors hover:bg-white/5'
             >
                 <div
                     style={{
@@ -231,7 +247,10 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         }}
                     >
                         <span>{userName}</span>
-                        <span className='material-icons-round' style={{ fontSize: '18px', color: 'var(--muted-foreground)' }}>
+                        <span
+                            className='material-icons-round'
+                            style={{ fontSize: '18px', color: 'var(--muted-foreground)' }}
+                        >
                             {menuOpen ? 'expand_less' : 'expand_more'}
                         </span>
                     </motion.div>
@@ -248,15 +267,16 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         left: expanded ? '12px' : '8px',
                         right: expanded ? '12px' : 'auto',
                         bottom: 'calc(100% + 8px)',
-                        border: '1px solid var(--border)',
-                        backgroundColor: 'var(--card)',
-                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        background:
+                            'linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 36%), rgba(7, 10, 15, 0.98)',
+                        borderRadius: '16px',
                         padding: '10px',
                         width: expanded ? 'auto' : '240px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
-                        boxShadow: '0 14px 34px rgba(0, 0, 0, 0.45)',
+                        boxShadow: '0 22px 46px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
                         zIndex: 50,
                     }}
                 >
@@ -284,9 +304,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         borderRadius: '999px',
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--background)',
-                                        color: 'var(--primary)',
+                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                        background: 'rgba(255, 255, 255, 0.03)',
+                                        color: 'rgba(248, 246, 239, 0.86)',
                                     }}
                                 >
                                     <span className='material-icons-round' style={{ fontSize: '16px' }}>
@@ -322,7 +342,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                 fontWeight: 700,
                                 letterSpacing: '0.08em',
                                 textTransform: 'uppercase',
-                                color: 'var(--muted-foreground)',
+                                color: 'rgba(248, 246, 239, 0.56)',
                                 padding: '0 4px',
                             }}
                         >
@@ -353,11 +373,15 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                             padding: '10px 8px',
                                             borderRadius: '12px',
                                             border: `1px solid ${
-                                                active ? 'rgba(var(--primary-rgb), 0.42)' : 'rgba(var(--primary-rgb), 0.16)'
+                                                active ? 'rgba(var(--primary-rgb), 0.34)' : 'rgba(255, 255, 255, 0.08)'
                                             }`,
-                                            background: active ? 'rgba(var(--primary-rgb), 0.14)' : 'var(--background)',
-                                            color: active ? 'var(--primary)' : 'var(--foreground)',
-                                            boxShadow: active ? '0 0 18px rgba(var(--primary-rgb), 0.18)' : 'none',
+                                            background: active
+                                                ? 'linear-gradient(90deg, rgba(var(--primary-rgb), 0.26), rgba(var(--primary-rgb), 0.12))'
+                                                : 'rgba(255, 255, 255, 0.025)',
+                                            color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                                            boxShadow: active
+                                                ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 18px rgba(var(--primary-rgb), 0.18)'
+                                                : 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
                                             cursor: 'pointer',
                                             transition: 'all 0.15s ease',
                                         }}
@@ -406,9 +430,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     borderRadius: '999px',
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--background)',
-                                    color: 'var(--primary)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    color: 'rgba(248, 246, 239, 0.86)',
                                 }}
                             >
                                 <span className='material-icons-round' style={{ fontSize: '16px' }}>
@@ -485,27 +509,32 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     right: -1px;
                     width: 2px;
                     border-radius: 999px;
-                    background: var(--border);
-                    box-shadow: 0 0 0 rgba(12, 12, 12, 0);
+                    background: linear-gradient(
+                        180deg,
+                        rgba(255, 255, 255, 0.28) 0%,
+                        rgba(255, 255, 255, 0.08) 46%,
+                        rgba(255, 255, 255, 0.25) 100%
+                    );
+                    box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.11);
                     pointer-events: none;
                 }
                 .sidebar-desktop-shell::before {
                     content: '';
                     position: absolute;
                     top: 10px;
-                    right: -4px;
-                    width: 8px;
-                    height: 42px;
+                    right: -5px;
+                    width: 10px;
+                    height: 54px;
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(var(--primary-rgb), 0.98) 0%,
-                        rgba(var(--primary-rgb), 0.9) 35%,
-                        rgba(var(--primary-rgb), 0.32) 60%,
+                        rgba(var(--primary-rgb), 1) 0%,
+                        rgba(var(--primary-rgb), 0.92) 34%,
+                        rgba(var(--primary-rgb), 0.35) 60%,
                         rgba(var(--primary-rgb), 0) 100%
                     );
-                    animation: sidebar-neon-flow 2.6s linear infinite;
-                    filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.85));
+                    animation: sidebar-neon-flow 3.2s linear infinite;
+                    filter: drop-shadow(0 0 12px rgba(var(--primary-rgb), 0.9));
                     pointer-events: none;
                 }
                 @keyframes sidebar-neon-flow {
@@ -513,13 +542,17 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                         transform: translateY(0);
                     }
                     to {
-                        transform: translateY(calc(100vh - 62px));
+                        transform: translateY(calc(100vh - 76px));
                     }
                 }
                 .sidebar-link:hover {
-                    color: var(--primary) !important;
-                    background-color: rgba(var(--primary-rgb), 0.08) !important;
-                    border-color: rgba(var(--primary-rgb), 0.25) !important;
+                    color: #eff7dc !important;
+                    background: linear-gradient(
+                        90deg,
+                        rgba(var(--primary-rgb), 0.22),
+                        rgba(var(--primary-rgb), 0.08)
+                    ) !important;
+                    border-color: rgba(var(--primary-rgb), 0.3) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
@@ -666,27 +699,32 @@ export const ServerNavigationBar = ({
                     right: -1px;
                     width: 2px;
                     border-radius: 999px;
-                    background: var(--border);
-                    box-shadow: 0 0 0 rgba(12, 12, 12, 0);
+                    background: linear-gradient(
+                        180deg,
+                        rgba(255, 255, 255, 0.28) 0%,
+                        rgba(255, 255, 255, 0.08) 46%,
+                        rgba(255, 255, 255, 0.25) 100%
+                    );
+                    box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.11);
                     pointer-events: none;
                 }
                 .sidebar-desktop-shell::before {
                     content: '';
                     position: absolute;
                     top: 10px;
-                    right: -4px;
-                    width: 8px;
-                    height: 42px;
+                    right: -5px;
+                    width: 10px;
+                    height: 54px;
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(var(--primary-rgb), 0.98) 0%,
-                        rgba(var(--primary-rgb), 0.9) 35%,
-                        rgba(var(--primary-rgb), 0.32) 60%,
+                        rgba(var(--primary-rgb), 1) 0%,
+                        rgba(var(--primary-rgb), 0.92) 34%,
+                        rgba(var(--primary-rgb), 0.35) 60%,
                         rgba(var(--primary-rgb), 0) 100%
                     );
-                    animation: sidebar-neon-flow 2.6s linear infinite;
-                    filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.85));
+                    animation: sidebar-neon-flow 3.2s linear infinite;
+                    filter: drop-shadow(0 0 12px rgba(var(--primary-rgb), 0.9));
                     pointer-events: none;
                 }
                 @keyframes sidebar-neon-flow {
@@ -694,13 +732,17 @@ export const ServerNavigationBar = ({
                         transform: translateY(0);
                     }
                     to {
-                        transform: translateY(calc(100vh - 62px));
+                        transform: translateY(calc(100vh - 76px));
                     }
                 }
                 .sidebar-link:hover {
-                    color: var(--primary) !important;
-                    background-color: rgba(var(--primary-rgb), 0.08) !important;
-                    border-color: rgba(var(--primary-rgb), 0.25) !important;
+                    color: #eff7dc !important;
+                    background: linear-gradient(
+                        90deg,
+                        rgba(var(--primary-rgb), 0.22),
+                        rgba(var(--primary-rgb), 0.08)
+                    ) !important;
+                    border-color: rgba(var(--primary-rgb), 0.3) !important;
                 }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />

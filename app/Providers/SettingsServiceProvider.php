@@ -43,6 +43,21 @@ class SettingsServiceProvider extends ServiceProvider
         'services:discord:guild_id',
         'services:discord:role_id',
         'services:discord:bot_token',
+        'billing:currency',
+        'billing:invoice_lead_days',
+        'billing:suspend_grace_hours',
+        'billing:delete_grace_hours',
+        'billing:fiuu:enabled',
+        'billing:fiuu:sandbox',
+        'billing:fiuu:merchant_id',
+        'billing:fiuu:verify_key',
+        'billing:fiuu:secret_key',
+        'billing:fiuu:return_url',
+        'billing:fiuu:callback_url',
+        'billing:fiuu:requery_url',
+        'billing:fiuu:recurring_url',
+        'billing:fiuu:refund_url',
+        'billing:fiuu:enabled_methods',
     ];
 
     /**
@@ -68,6 +83,8 @@ class SettingsServiceProvider extends ServiceProvider
         'services:google:client_secret',
         'services:discord:client_secret',
         'services:discord:bot_token',
+        'billing:fiuu:verify_key',
+        'billing:fiuu:secret_key',
     ];
 
     /**
@@ -92,7 +109,9 @@ class SettingsServiceProvider extends ServiceProvider
         }
 
         foreach ($this->keys as $key) {
-            $value = array_get($values, 'settings::' . $key, $config->get(str_replace(':', '.', $key)));
+            $configKey = str_replace(':', '.', $key);
+            $defaultValue = $config->get($configKey);
+            $value = array_get($values, 'settings::' . $key, $defaultValue);
             if (in_array($key, self::$encrypted)) {
                 try {
                     $value = $encrypter->decrypt($value);
@@ -100,25 +119,36 @@ class SettingsServiceProvider extends ServiceProvider
                 }
             }
 
-            switch (strtolower($value)) {
-                case 'true':
-                case '(true)':
-                    $value = true;
-                    break;
-                case 'false':
-                case '(false)':
-                    $value = false;
-                    break;
-                case 'empty':
-                case '(empty)':
-                    $value = '';
-                    break;
-                case 'null':
-                case '(null)':
-                    $value = null;
+            if (is_string($value)) {
+                switch (strtolower($value)) {
+                    case 'true':
+                    case '(true)':
+                        $value = true;
+                        break;
+                    case 'false':
+                    case '(false)':
+                        $value = false;
+                        break;
+                    case 'empty':
+                    case '(empty)':
+                        $value = '';
+                        break;
+                    case 'null':
+                    case '(null)':
+                        $value = null;
+                }
             }
 
-            $config->set(str_replace(':', '.', $key), $value);
+            if (is_array($defaultValue) && is_string($value)) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $value = $decoded;
+                } else {
+                    $value = array_values(array_filter(array_map('trim', explode(',', $value))));
+                }
+            }
+
+            $config->set($configKey, $value);
         }
     }
 

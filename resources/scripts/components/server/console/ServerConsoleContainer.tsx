@@ -1648,37 +1648,87 @@ const renderMinecraftSlot = (
                 </div>
             </Dialog>
 
-            <div
-                className={
-                    'relative flex min-h-screen w-full overflow-x-hidden bg-[color:var(--card)] text-gray-100 lg:h-screen lg:overflow-hidden'
+            <style>{`
+                .server-console-shell {
+                    position: relative;
+                    display: flex;
+                    height: 100%;
+                    min-height: 0;
+                    flex-direction: column;
+                    overflow: hidden;
+                    background: transparent;
                 }
+
+                .server-console-layout {
+                    position: relative;
+                    z-index: 10;
+                    display: flex;
+                    height: 100%;
+                    min-height: 0;
+                    width: 100%;
+                    min-width: 0;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+
+                .server-console-main,
+                .server-console-side {
+                    min-height: 0;
+                }
+
+                @media (min-width: 1280px) {
+                    .server-console-layout {
+                        flex-direction: row;
+                    }
+                }
+
+                .server-console-shell::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    background:
+                        radial-gradient(500px 180px at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 68%),
+                        radial-gradient(460px 190px at 92% 0%, rgba(102, 141, 255, 0.18), transparent 70%),
+                        linear-gradient(
+                            180deg,
+                            rgba(255, 255, 255, 0.015) 0%,
+                            rgba(255, 255, 255, 0.005) 22%,
+                            transparent 60%
+                        );
+                    opacity: 0.9;
+                }
+
+                .server-console-panel {
+                    border-radius: 1rem;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background:
+                        linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 44%),
+                        rgba(5, 8, 14, 0.82);
+                    box-shadow:
+                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                        0 26px 40px -34px rgba(0, 0, 0, 0.9),
+                        0 0 36px rgba(var(--primary-rgb), 0.08);
+                }
+
+                .server-console-panel-head {
+                    background:
+                        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+                        rgba(5, 8, 14, 0.62);
+                }
+            `}</style>
+
+            <div
+                className={'server-console-shell w-full overflow-x-hidden text-gray-100'}
                 style={{
                     fontFamily:
                         "'Space Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                 }}
             >
-                <div className={'pointer-events-none absolute inset-0 z-0 hidden lg:flex'}>
-                    <div className={'h-full w-[77%] bg-[color:var(--card)]'} />
-                    <div className={'h-full w-[23%] bg-[color:var(--card)]'} />
-                </div>
-                <div
-                    className={
-                        'pointer-events-none absolute -left-[10%] -top-[10%] hidden h-[40%] w-[40%] rounded-full bg-blue-400/10 blur-[100px]'
-                    }
-                />
-                <div
-                    className={
-                        'pointer-events-none absolute -bottom-[10%] -right-[10%] hidden h-[40%] w-[40%] rounded-full bg-purple-400/10 blur-[100px]'
-                    }
-                />
-                <div
-                    className={
-                        'relative z-10 flex min-h-screen w-full min-w-0 flex-col overflow-x-hidden overflow-y-visible lg:h-full lg:overflow-hidden xl:flex-row'
-                    }
-                >
+                <div className={'server-console-layout'}>
                     <div
                         className={
-                            'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[77%] xl:flex-none'
+                            'server-console-main flex min-h-0 w-full min-w-0 flex-1 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[77%] xl:flex-none'
                         }
                     >
                         {(isNodeUnderMaintenance || isInstalling || isTransferring) && (
@@ -1692,12 +1742,12 @@ const renderMinecraftSlot = (
                         )}
                         <div
                             className={
-                                'flex min-h-[420px] min-w-0 flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-none md:min-h-[500px]'
+                                'server-console-panel flex min-h-0 min-w-0 flex-1 flex-col shadow-none'
                             }
                         >
                             <div
                                 className={
-                                    'flex items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'
+                                    'server-console-panel-head flex items-center justify-between border-b border-[color:var(--border)] px-4 py-3'
                                 }
                             >
                                 <h2 className={'flex items-center text-sm font-bold uppercase tracking-wide text-[#f8f6ef]'}>
@@ -1721,7 +1771,7 @@ const renderMinecraftSlot = (
 
                         <div
                             className={
-                                'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06)]'
+                                'server-console-panel p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.06)]'
                             }
                         >
                             <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
@@ -1806,12 +1856,12 @@ const renderMinecraftSlot = (
 
                     <aside
                         className={
-                            'flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-visible p-4 md:p-6 lg:overflow-y-auto xl:w-[23%] xl:flex-none xl:pl-0'
+                            'server-console-side flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[23%] xl:flex-none xl:pl-0'
                         }
                     >
                         <div
                             className={
-                                'flex items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
+                                'server-console-panel flex items-center p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
                             }
                         >
                             <div
@@ -1829,7 +1879,7 @@ const renderMinecraftSlot = (
 
                         <div
                             className={
-                                'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
+                                'server-console-panel p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
                             }
                         >
                             <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
@@ -1877,7 +1927,7 @@ const renderMinecraftSlot = (
 
                         <div
                             className={
-                                'flex min-h-[300px] flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
+                                'server-console-panel flex min-h-0 flex-1 flex-col p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
                             }
                         >
                             <div className={'mb-4 flex flex-col gap-3'}>
@@ -1917,7 +1967,7 @@ const renderMinecraftSlot = (
                                 </span>
                             </div>
 
-                            <div className={'space-y-3 overflow-y-auto pr-1'}>
+                            <div className={'space-y-3 overflow-hidden pr-1'}>
                                 {playersLoading && (
                                     <div className={'py-8'}>
                                         <Spinner size={'small'} centered />

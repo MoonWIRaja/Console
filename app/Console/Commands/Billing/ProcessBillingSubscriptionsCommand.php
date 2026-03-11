@@ -1,0 +1,423 @@
+<?php
+
+namespace Pterodactyl\Console\Commands\Billing;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Carbon\CarbonImmutable;
+use Pterodactyl\Models\BillingInvoice;
+use Pterodactyl\Models\BillingSubscription;
+use Pterodactyl\Notifications\BillingPaymentActionRequired;
+use Pterodactyl\Notifications\BillingRenewalReminder;
+use Pterodactyl\Notifications\BillingSubscriptionSuspended;
+use Pterodactyl\Notifications\BillingSubscriptionDeletionScheduled;
+use Pterodactyl\Services\Billing\BillingInvoiceService;
+use Pterodactyl\Services\Billing\BillingPaymentService;
+use Pterodactyl\Services\Servers\SuspensionService;
+use Pterodactyl\Services\Servers\ServerDeletionService;
+
+class ProcessBillingSubscriptionsCommand extends Command
+{
+    protected $signature = 'billing:process-subscriptions';
+
+    protected $description = 'Send renewal reminders and process overdue billing subscription suspensions and deletions.';
+
+    public function __construct(
+        private BillingInvoiceService $invoiceService,
+        private BillingPaymentService $paymentService,
+        private SuspensionService $suspensionService,
+        private ServerDeletionService $serverDeletionService,
+    ) {
+        parent::__construct();
+    }
+
+    public function handle(): int
+    {
+        $now = CarbonImmutable::now();
+
+        $this->deleteOrphanedSubscriptions($now);
+        $this->issueRenewalInvoices($now);
+        $this->sendRenewalReminders($now);
+        $this->attemptAutomaticRenewals($now);
+        $this->markPastDueSubscriptions($now);
+        $this->suspendOverdueSubscriptions($now);
+        $this->deleteExpiredSubscriptions($now);
+
+        return self::SUCCESS;
+    }
+
+    private function deleteOrphanedSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->whereIn('status', BillingSubscription::RESOURCE_RESERVATION_STATUSES)
+            ->whereNull('server_id')
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    try {
+                        $subscription->forceFill([
+                            'status' => BillingSubscription::STATUS_DELETED,
+                            'deletion_scheduled_at' => null,
+                            'deleted_at' => $subscription->deleted_at ?? $now,
+                        ])->saveOrFail();
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to delete orphaned billing subscription.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function issueRenewalInvoices(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with('user')
+            ->whereIn('status', [
+                BillingSubscription::STATUS_ACTIVE,
+                BillingSubscription::STATUS_PAST_DUE,
+            ])
+            ->whereNotNull('server_id')
+            ->where(function ($query) use ($now) {
+                $query->where('next_invoice_at', '<=', $now)
+                    ->orWhere(function ($subQuery) use ($now) {
+                        $subQuery->whereNull('next_invoice_at')
+                            ->where('renews_at', '<=', $now);
+                    });
+            })
+            ->chunkById(100, function ($subscriptions) {
+                foreach ($subscriptions as $subscription) {
+                    try {
+                        $invoice = $this->invoiceService->createRenewalInvoice($subscription);
+
+                        $subscription->forceFill([
+                            'next_invoice_at' => null,
+                        ])->saveOrFail();
+
+                        $this->seedReminderState($invoice);
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to create billing renewal invoice.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function sendRenewalReminders(CarbonImmutable $now): void
+    {
+        $offsets = collect(config('billing.renewal_reminder_offsets', [7, 3, 1]))
+            ->map(fn ($offset) => (int) $offset)
+            ->filter(fn ($offset) => $offset > 0)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
+
+        BillingInvoice::query()
+            ->with(['subscription.user'])
+            ->where('type', BillingInvoice::TYPE_RENEWAL)
+            ->whereIn('status', [
+                BillingInvoice::STATUS_OPEN,
+                BillingInvoice::STATUS_DRAFT,
+                BillingInvoice::STATUS_FAILED,
+                BillingInvoice::STATUS_PROCESSING,
+            ])
+            ->whereNotNull('due_at')
+            ->where('due_at', '>', $now)
+            ->chunkById(100, function ($invoices) use ($now, $offsets) {
+                foreach ($invoices as $invoice) {
+                    if (!$invoice->subscription?->user) {
+                        continue;
+                    }
+
+                    try {
+                        foreach ($offsets as $offset) {
+                            if (!$this->shouldSendReminderOffset($invoice, $offset, $now)) {
+                                continue;
+                            }
+
+                            $invoice->subscription->user->notify(new BillingRenewalReminder($invoice, $offset));
+                            $invoice->subscription->forceFill([
+                                'renewal_reminder_sent_at' => $now,
+                            ])->saveOrFail();
+                            $invoice = $this->markReminderOffsetSent($invoice, $offset, $now);
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to send billing renewal reminder.', [
+                            'invoice_id' => $invoice->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function attemptAutomaticRenewals(CarbonImmutable $now): void
+    {
+        BillingInvoice::query()
+            ->with(['subscription.user'])
+            ->where('type', BillingInvoice::TYPE_RENEWAL)
+            ->whereIn('status', [
+                BillingInvoice::STATUS_OPEN,
+                BillingInvoice::STATUS_DRAFT,
+                BillingInvoice::STATUS_FAILED,
+            ])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', $now)
+            ->chunkById(100, function ($invoices) use ($now) {
+                foreach ($invoices as $invoice) {
+                    $subscription = $invoice->subscription;
+                    if (!$subscription || !$subscription->auto_renew || !$subscription->user) {
+                        continue;
+                    }
+
+                    $state = $this->invoiceState($invoice);
+                    if (!empty($state['auto_renew_attempted_at'])) {
+                        continue;
+                    }
+
+                    try {
+                        $invoice = $this->mergeInvoiceState($invoice, [
+                            'auto_renew_attempted_at' => $now->toIso8601String(),
+                        ]);
+
+                        $this->paymentService->chargeRecurringInvoice($invoice);
+                    } catch (\Throwable $exception) {
+                        $reason = $exception->getMessage();
+
+                        try {
+                            $invoice = $this->invoiceService->markFailed($invoice, $reason);
+                            $invoice->subscription?->user?->notify(new BillingPaymentActionRequired($invoice, $reason));
+                            $this->mergeInvoiceState($invoice, [
+                                'auto_renew_failed_notified_at' => $now->toIso8601String(),
+                            ]);
+                        } catch (\Throwable $notificationException) {
+                            Log::warning('Failed to persist auto-renew fallback state.', [
+                                'invoice_id' => $invoice->id,
+                                'error' => $notificationException->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+            });
+    }
+
+    private function markPastDueSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with(['user', 'server'])
+            ->whereIn('status', [
+                BillingSubscription::STATUS_ACTIVE,
+                BillingSubscription::STATUS_PAST_DUE,
+            ])
+            ->whereNotNull('server_id')
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    $invoice = $this->currentOverdueInvoice($subscription, $now);
+                    if (!$invoice) {
+                        continue;
+                    }
+
+                    try {
+                        $graceSuspendAt = CarbonImmutable::instance($invoice->due_at)->addHours((int) config('billing.suspend_grace_hours', 24));
+                        $graceDeleteAt = CarbonImmutable::instance($invoice->due_at)->addHours((int) config('billing.delete_grace_hours', 72));
+                        $shouldIncrementFailures = $subscription->status !== BillingSubscription::STATUS_PAST_DUE
+                            && $subscription->status !== BillingSubscription::STATUS_SUSPENDED;
+
+                        $subscription->forceFill([
+                            'status' => BillingSubscription::STATUS_PAST_DUE,
+                            'failed_payment_count' => $shouldIncrementFailures
+                                ? ((int) $subscription->failed_payment_count + 1)
+                                : $subscription->failed_payment_count,
+                            'grace_suspend_at' => $subscription->grace_suspend_at ?? $graceSuspendAt,
+                            'grace_delete_at' => $subscription->grace_delete_at ?? $graceDeleteAt,
+                            'deletion_scheduled_at' => $subscription->deletion_scheduled_at ?? $graceDeleteAt,
+                        ])->saveOrFail();
+
+                        $state = $this->invoiceState($invoice);
+                        if (empty($state['deletion_warning_sent_at'])) {
+                            $subscription->user?->notify(new BillingSubscriptionDeletionScheduled($subscription));
+                            $this->mergeInvoiceState($invoice, [
+                                'deletion_warning_sent_at' => $now->toIso8601String(),
+                            ]);
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to mark subscription as past due.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function suspendOverdueSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with(['server', 'user'])
+            ->whereIn('status', [
+                BillingSubscription::STATUS_ACTIVE,
+                BillingSubscription::STATUS_PAST_DUE,
+            ])
+            ->whereNotNull('grace_suspend_at')
+            ->where('grace_suspend_at', '<=', $now)
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    $invoice = $this->currentOverdueInvoice($subscription, $now);
+                    if (!$invoice) {
+                        continue;
+                    }
+
+                    try {
+                        if (!$subscription->server) {
+                            $subscription->forceFill([
+                                'status' => BillingSubscription::STATUS_DELETED,
+                                'server_id' => null,
+                                'deleted_at' => $now,
+                            ])->saveOrFail();
+
+                            continue;
+                        }
+
+                        if (!$subscription->server->isSuspended()) {
+                            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_SUSPEND);
+                        }
+
+                        $subscription->forceFill([
+                            'status' => BillingSubscription::STATUS_SUSPENDED,
+                            'suspended_at' => $subscription->suspended_at ?? $now,
+                        ])->saveOrFail();
+
+                        $state = $this->invoiceState($invoice);
+                        if (empty($state['suspension_sent_at'])) {
+                            $subscription->user?->notify(new BillingSubscriptionSuspended($subscription));
+                            $this->mergeInvoiceState($invoice, [
+                                'suspension_sent_at' => $now->toIso8601String(),
+                            ]);
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to suspend overdue billing subscription.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function deleteExpiredSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with('server')
+            ->whereIn('status', [
+                BillingSubscription::STATUS_PAST_DUE,
+                BillingSubscription::STATUS_SUSPENDED,
+            ])
+            ->whereNotNull('grace_delete_at')
+            ->where('grace_delete_at', '<=', $now)
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    $invoice = $this->currentOverdueInvoice($subscription, $now);
+                    if (!$invoice) {
+                        continue;
+                    }
+
+                    try {
+                        if ($subscription->server) {
+                            $this->serverDeletionService->withForce()->handle($subscription->server);
+                        }
+
+                        $subscription->forceFill([
+                            'status' => BillingSubscription::STATUS_DELETED,
+                            'server_id' => null,
+                            'deleted_at' => $now,
+                            'deletion_scheduled_at' => null,
+                        ])->saveOrFail();
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to delete expired billing subscription.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function currentOverdueInvoice(BillingSubscription $subscription, CarbonImmutable $now): ?BillingInvoice
+    {
+        return $subscription->invoices()
+            ->where('type', BillingInvoice::TYPE_RENEWAL)
+            ->whereIn('status', [
+                BillingInvoice::STATUS_OPEN,
+                BillingInvoice::STATUS_DRAFT,
+                BillingInvoice::STATUS_FAILED,
+                BillingInvoice::STATUS_PROCESSING,
+            ])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', $now)
+            ->latest('id')
+            ->first();
+    }
+
+    private function shouldSendReminderOffset(BillingInvoice $invoice, int $offset, CarbonImmutable $now): bool
+    {
+        $dueAt = $invoice->due_at ? CarbonImmutable::instance($invoice->due_at) : null;
+        if (!$dueAt) {
+            return false;
+        }
+
+        $state = $this->invoiceState($invoice);
+        $sentOffsets = $state['sent_offsets'] ?? [];
+        if (in_array($offset, $sentOffsets, true)) {
+            return false;
+        }
+
+        $windowStart = $dueAt->subDays($offset);
+        $windowEnd = $windowStart->addDay();
+
+        return $now->greaterThanOrEqualTo($windowStart) && $now->lessThan($windowEnd);
+    }
+
+    private function markReminderOffsetSent(BillingInvoice $invoice, int $offset, CarbonImmutable $now): BillingInvoice
+    {
+        $state = $this->invoiceState($invoice);
+        $sentOffsets = collect($state['sent_offsets'] ?? [])
+            ->push($offset)
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
+
+        return $this->mergeInvoiceState($invoice, [
+            'sent_offsets' => $sentOffsets,
+            'last_reminder_sent_at' => $now->toIso8601String(),
+        ]);
+    }
+
+    private function seedReminderState(BillingInvoice $invoice): BillingInvoice
+    {
+        $state = $this->invoiceState($invoice);
+        if (!array_key_exists('sent_offsets', $state)) {
+            return $this->mergeInvoiceState($invoice, ['sent_offsets' => []]);
+        }
+
+        return $invoice;
+    }
+
+    private function invoiceState(BillingInvoice $invoice): array
+    {
+        return is_array($invoice->reminder_state) ? $invoice->reminder_state : [];
+    }
+
+    private function mergeInvoiceState(BillingInvoice $invoice, array $changes): BillingInvoice
+    {
+        $invoice->forceFill([
+            'reminder_state' => array_merge($this->invoiceState($invoice), $changes),
+        ])->saveOrFail();
+
+        return $invoice->fresh();
+    }
+}

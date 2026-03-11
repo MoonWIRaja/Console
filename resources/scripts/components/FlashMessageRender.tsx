@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useStoreState, useStoreActions } from 'easy-peasy';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Actions, useStoreActions, useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
+import { FlashMessage } from '@/state/flashes';
 
 type Props = Readonly<{
     byKey?: string;
@@ -44,6 +45,9 @@ const getIcon = (type: string) => {
             return '•';
     }
 };
+
+const getFlashSignature = ({ key, type, title, message }: Pick<FlashMessage, 'key' | 'type' | 'title' | 'message'>) =>
+    `${key || 'global'}:${type}:${title || ''}:${message}`;
 
 const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
     const [visible, setVisible] = useState(false);
@@ -147,23 +151,35 @@ const FlashMessageRender = ({ byKey, className }: Props) => {
     const flashes = useStoreState((state: ApplicationStore) =>
         state.flashes.items.filter((flash) => (byKey ? flash.key === byKey : true))
     );
+    const removeFlash = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes.removeFlash);
 
-    const clearFlashes = useStoreActions((actions: ApplicationStore) => actions.flashes.clearFlashes);
+    const visibleFlashes = useMemo(() => {
+        const seen = new Set<string>();
 
-    const [dismissed, setDismissed] = useState<string[]>([]);
+        return flashes
+            .map((flash, index) => ({
+                ...flash,
+                id: flash.id ?? `flash-${flash.type}-${index}`,
+            }))
+            .reduceRight<Array<FlashMessage & { id: string }>>((items, flash) => {
+                const signature = getFlashSignature(flash);
 
-    const handleDismiss = (id: string) => {
-        setDismissed((prev) => [...prev, id]);
-    };
+                if (seen.has(signature)) {
+                    return items;
+                }
 
-    const visibleFlashes = flashes.filter(
-        (flash) => !dismissed.includes(flash.id || flash.type + flash.message)
-    );
+                seen.add(signature);
+                items.unshift(flash);
+
+                return items;
+            }, []);
+    }, [flashes]);
 
     if (!visibleFlashes.length) return null;
 
     return (
         <div
+            className={className}
             style={{
                 position: 'fixed',
                 bottom: '20px',
@@ -176,12 +192,12 @@ const FlashMessageRender = ({ byKey, className }: Props) => {
         >
             {visibleFlashes.map((flash) => (
                 <ToastItem
-                    key={flash.id || flash.type + flash.message}
-                    id={flash.id || flash.type + flash.message}
+                    key={flash.id}
+                    id={flash.id}
                     type={flash.type}
                     title={flash.title}
                     message={flash.message}
-                    onDismiss={handleDismiss}
+                    onDismiss={removeFlash}
                 />
             ))}
         </div>

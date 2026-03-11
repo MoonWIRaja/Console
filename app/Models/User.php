@@ -14,6 +14,7 @@ use Pterodactyl\Models\Traits\HasAccessTokens;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Pterodactyl\Traits\Helpers\AvailableLanguages;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 use Pterodactyl\Models\Traits\HasRealtimeIdentifier;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -60,6 +61,8 @@ use Pterodactyl\Notifications\SendPasswordReset as ResetPasswordNotification;
  * @property int|null $servers_count
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\UserOAuthAccount[] $oauthAccounts
  * @property int|null $oauth_accounts_count
+ * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\BillingSubscription[] $billingSubscriptions
+ * @property int|null $billing_subscriptions_count
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\UserSSHKey[] $sshKeys
  * @property int|null $ssh_keys_count
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\ApiKey[] $tokens
@@ -320,6 +323,38 @@ class User extends Model implements
     public function oauthAccounts(): HasMany
     {
         return $this->hasMany(UserOAuthAccount::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\BillingSubscription, $this>
+     */
+    public function billingSubscriptions(): HasMany
+    {
+        return $this->hasMany(BillingSubscription::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\BillingOrder, $this>
+     */
+    public function billingOrders(): HasMany
+    {
+        return $this->hasMany(BillingOrder::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\BillingInvoice, $this>
+     */
+    public function billingInvoices(): HasMany
+    {
+        return $this->hasMany(BillingInvoice::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\Pterodactyl\Models\BillingProfile, $this>
+     */
+    public function billingProfile(): HasOne
+    {
+        return $this->hasOne(BillingProfile::class);
     }
 
     /**

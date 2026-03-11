@@ -100,11 +100,13 @@ const EditorContainer = styled.div`
 
     .CodeMirror-scroll,
     .CodeMirror-sizer,
-    .CodeMirror-lines,
-    .CodeMirror-code,
-    .CodeMirror-linebackground,
-    .CodeMirror-line {
+    .CodeMirror-lines {
         background: var(--card) !important;
+    }
+
+    .CodeMirror-code,
+    .CodeMirror-line {
+        background: transparent !important;
     }
 
     .CodeMirror-gutters,
@@ -180,6 +182,7 @@ export interface Props {
     mode: string;
     filename?: string;
     onModeChanged: (mode: string) => void;
+    onContentChanged?: (content: string) => void;
     fetchContent: (callback: () => Promise<string>) => void;
     onContentSaved: () => void;
 }
@@ -212,7 +215,222 @@ const findModeByFilename = (filename: string) => {
     return undefined;
 };
 
-export default ({ style, initialContent, filename, mode, fetchContent, onContentSaved, onModeChanged }: Props) => {
+const COMPLETION_TRIGGER = /[A-Za-z0-9_.$:@/-]/;
+const COMPLETION_WORD = /[$A-Za-z_./:@-][\w$./:@-]*$/;
+const DOCUMENT_WORD = /[$A-Za-z_][\w$./:@-]*/g;
+const COMPLETION_SCAN_RADIUS = 250;
+const COMPLETION_ITEM_LIMIT = 80;
+const COMPLETION_CLOSE_CHARACTERS = new RegExp('[\\s(){};>,\\[\\]]');
+
+const renderHintItem =
+    (source: string) => (element: HTMLElement, _self: unknown, data: { displayText?: string; text?: string }) => {
+        const label = data.displayText || data.text || '';
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'space-between';
+        wrapper.style.gap = '0.75rem';
+
+        const value = document.createElement('span');
+        value.textContent = label;
+        value.style.overflow = 'hidden';
+        value.style.textOverflow = 'ellipsis';
+        value.style.whiteSpace = 'nowrap';
+
+        const meta = document.createElement('span');
+        meta.textContent = source;
+        meta.style.flexShrink = '0';
+        meta.style.fontSize = '10px';
+        meta.style.letterSpacing = '0.08em';
+        meta.style.opacity = '0.68';
+        meta.style.textTransform = 'uppercase';
+
+        wrapper.appendChild(value);
+        wrapper.appendChild(meta);
+        element.appendChild(wrapper);
+    };
+
+const getCompletionPrefix = (tokenText: string, offset: number) => {
+    const fragment = tokenText.slice(0, offset);
+    return fragment.match(COMPLETION_WORD)?.[0] || '';
+};
+
+const getCompletionScore = (candidate: string, prefix: string) => {
+    if (!prefix) {
+        return 0;
+    }
+
+    const lowerCandidate = candidate.toLowerCase();
+    const lowerPrefix = prefix.toLowerCase();
+
+    if (candidate === prefix) {
+        return 0;
+    }
+
+    if (candidate.startsWith(prefix)) {
+        return 1;
+    }
+
+    if (lowerCandidate.startsWith(lowerPrefix)) {
+        return 2;
+    }
+
+    if (lowerCandidate.includes(lowerPrefix)) {
+        return 3;
+    }
+
+    return Number.POSITIVE_INFINITY;
+};
+
+const collectDocumentWords = (editor: CodeMirror.Editor, cursor: CodeMirror.Position) => {
+    const words = new Set<string>();
+    const startLine = Math.max(0, cursor.line - COMPLETION_SCAN_RADIUS);
+    const endLine = Math.min(editor.lineCount() - 1, cursor.line + COMPLETION_SCAN_RADIUS);
+
+    for (let line = startLine; line <= endLine; line++) {
+        const matches = editor.getLine(line).match(DOCUMENT_WORD) || [];
+
+        matches.forEach((word) => {
+            if (word.length > 1) {
+                words.add(word);
+            }
+        });
+    }
+
+    return [...words];
+};
+
+const createWordHints = (
+    words: string[],
+    prefix: string,
+    from: CodeMirror.Position,
+    to: CodeMirror.Position,
+    source: string
+) =>
+    words
+        .filter((word) => getCompletionScore(word, prefix) !== Number.POSITIVE_INFINITY)
+        .sort((left, right) => {
+            const scoreDelta = getCompletionScore(left, prefix) - getCompletionScore(right, prefix);
+            if (scoreDelta !== 0) {
+                return scoreDelta;
+            }
+
+            return left.localeCompare(right);
+        })
+        .map((word) => ({
+            text: word,
+            displayText: word,
+            from,
+            to,
+            render: renderHintItem(source),
+        }));
+
+const normalizeHelperHints = (
+    result:
+        | {
+              list?: Array<
+                  | string
+                  | {
+                        text?: string;
+                        displayText?: string;
+                        from?: CodeMirror.Position;
+                        to?: CodeMirror.Position;
+                        render?: unknown;
+                    }
+              >;
+          }
+        | null
+        | undefined,
+    fallbackFrom: CodeMirror.Position,
+    fallbackTo: CodeMirror.Position
+) =>
+    (result?.list || []).map((entry) => {
+        if (typeof entry === 'string') {
+            return {
+                text: entry,
+                displayText: entry,
+                from: fallbackFrom,
+                to: fallbackTo,
+                render: renderHintItem('Mode'),
+            };
+        }
+
+        const text = entry.text || entry.displayText;
+        if (!text) {
+            return null;
+        }
+
+        return {
+            ...entry,
+            text,
+            displayText: entry.displayText || text,
+            from: entry.from || fallbackFrom,
+            to: entry.to || fallbackTo,
+            render: typeof entry.render === 'function' ? entry.render : renderHintItem('Mode'),
+        };
+    });
+
+const buildSmartHints = (editor: CodeMirror.Editor, options?: Record<string, unknown>) => {
+    const cursor = editor.getCursor();
+    const token = editor.getTokenAt(cursor);
+    const tokenOffset = Math.max(0, cursor.ch - token.start);
+    const prefix = getCompletionPrefix(token.string || '', tokenOffset);
+    const from = CodeMirror.Pos(cursor.line, cursor.ch - prefix.length);
+    const to = cursor;
+    const helperApi = CodeMirror as typeof CodeMirror & {
+        hint?: {
+            auto?: {
+                resolve?: (
+                    cm: CodeMirror.Editor,
+                    pos: CodeMirror.Position
+                ) => ((cm: CodeMirror.Editor, options?: unknown) => { list?: unknown[] } | undefined) | undefined;
+            };
+        };
+    };
+    const resolvedHelper = helperApi.hint?.auto?.resolve?.(editor, cursor);
+    const modeHints = normalizeHelperHints(resolvedHelper?.(editor, options), from, to).filter(Boolean) as Array<{
+        text: string;
+        displayText: string;
+        from: CodeMirror.Position;
+        to: CodeMirror.Position;
+        render: (element: HTMLElement) => void;
+    }>;
+    const keywordHints = createWordHints(
+        (editor.getHelper(cursor, 'hintWords') as string[] | undefined) || [],
+        prefix,
+        from,
+        to,
+        'Keyword'
+    );
+    const documentHints = createWordHints(collectDocumentWords(editor, cursor), prefix, from, to, 'File');
+    const seen = new Set<string>();
+    const list = [...modeHints, ...keywordHints, ...documentHints].filter((entry) => {
+        const key = entry.text.toLowerCase();
+        if (seen.has(key)) {
+            return false;
+        }
+
+        seen.add(key);
+        return true;
+    });
+
+    return {
+        list: list.slice(0, COMPLETION_ITEM_LIMIT),
+        from,
+        to,
+    };
+};
+
+export default ({
+    style,
+    initialContent,
+    filename,
+    mode,
+    fetchContent,
+    onContentSaved,
+    onModeChanged,
+    onContentChanged,
+}: Props) => {
     const [editor, setEditor] = useState<CodeMirror.Editor>();
 
     const ref = useCallback((node) => {
@@ -234,10 +452,11 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
             readOnly: false,
             showCursorWhenSelecting: false,
             autofocus: false,
-            spellcheck: true,
+            spellcheck: false,
             autocorrect: false,
             autocapitalize: false,
             lint: false,
+            resetSelectionOnContextMenu: false,
             // @ts-expect-error this property is actually used, the d.ts file for CodeMirror is incorrect.
             autoCloseBrackets: true,
             matchBrackets: true,
@@ -247,8 +466,10 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
                 'Cmd-Space': 'autocomplete',
             },
             hintOptions: {
+                hint: buildSmartHints,
                 completeSingle: false,
                 alignWithWord: true,
+                closeCharacters: COMPLETION_CLOSE_CHARACTERS,
             },
         });
 
@@ -282,12 +503,11 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
             return;
         }
 
-        editor.addKeyMap({
+        const saveKeymap = {
             'Ctrl-S': () => onContentSaved(),
             'Cmd-S': () => onContentSaved(),
-        });
-
-        editor.on('inputRead', (cm, change) => {
+        };
+        const handleInputRead = (cm: CodeMirror.Editor, change: CodeMirror.EditorChange) => {
             if (!change.text || !change.text.length) {
                 return;
             }
@@ -297,17 +517,32 @@ export default ({ style, initialContent, filename, mode, fetchContent, onContent
                 return;
             }
 
-            if (!/[A-Za-z0-9_.\-]/.test(typed)) {
+            if (!COMPLETION_TRIGGER.test(typed)) {
                 return;
             }
 
             if (!cm.state.completionActive) {
-                cm.showHint({ completeSingle: false });
+                cm.showHint({
+                    hint: buildSmartHints,
+                    completeSingle: false,
+                    closeCharacters: COMPLETION_CLOSE_CHARACTERS,
+                });
             }
-        });
+        };
+        const handleChange = (cm: CodeMirror.Editor) => onContentChanged?.(cm.getValue());
+
+        editor.addKeyMap(saveKeymap);
+        editor.on('inputRead', handleInputRead);
+        editor.on('change', handleChange);
 
         fetchContent(() => Promise.resolve(editor.getValue()));
-    }, [editor, fetchContent, onContentSaved]);
+
+        return () => {
+            editor.removeKeyMap(saveKeymap);
+            editor.off('inputRead', handleInputRead);
+            editor.off('change', handleChange);
+        };
+    }, [editor, fetchContent, onContentChanged, onContentSaved]);
 
     return (
         <EditorContainer style={style}>

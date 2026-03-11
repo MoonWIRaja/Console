@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import requestPasswordResetEmail from '@/api/auth/requestPasswordResetEmail';
 import performPasswordResetWithPin from '@/api/auth/performPasswordResetWithPin';
@@ -12,6 +11,16 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import useSiteBranding from '@/hooks/useSiteBranding';
+import {
+    authErrorClass,
+    authFieldLabelClass,
+    authInputClass,
+    authInputWithSuffixClass,
+    authPrimaryButtonClass,
+    authSecondaryButtonClass,
+    burhanAuthThemeStyles,
+    honeypotFieldClass,
+} from '@/components/auth/authTheme';
 
 interface RequestValues {
     email: string;
@@ -31,9 +40,7 @@ interface ResetValues {
 
 type ResetMode = 'request' | 'verify';
 
-const honeypotFieldClass = 'pointer-events-none absolute left-[-10000px] top-[-10000px] h-0 w-0 overflow-hidden opacity-0';
-
-export default () => {
+const ForgotPasswordContainer = () => {
     const [mode, setMode] = useState<ResetMode>('request');
     const [email, setEmail] = useState('');
     const [resetToken, setResetToken] = useState('');
@@ -47,7 +54,7 @@ export default () => {
 
     useEffect(() => {
         clearFlashes();
-    }, []);
+    }, [clearFlashes]);
 
     const handleSecurityError = (error: any) => {
         if (error?.response?.data?.challenge_required) {
@@ -93,10 +100,7 @@ export default () => {
             .finally(() => setSubmitting(false));
     };
 
-    const handleReset = (
-        values: ResetValues,
-        { setSubmitting }: FormikHelpers<ResetValues>
-    ) => {
+    const handleReset = (values: ResetValues, { setSubmitting }: FormikHelpers<ResetValues>) => {
         clearFlashes();
 
         if (captchaEnabled && requireCaptcha && !captchaToken) {
@@ -132,42 +136,46 @@ export default () => {
     };
 
     return (
-        <div className='fixed inset-0 z-50 flex h-screen w-full overflow-hidden bg-[color:var(--card)] text-gray-100'>
-            <style>{`
-                .font-mono {
-                    font-family: 'Space Mono', monospace;
-                }
-            `}</style>
-            <div className='hidden h-full w-[70%] bg-[color:var(--card)] font-mono lg:block'>
-                <span className='sr-only'>A dark neon background area.</span>
+        <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
+            <style>{burhanAuthThemeStyles}</style>
+            <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
+                <span className='sr-only'>Dark neon background area.</span>
             </div>
-            <div className='w-full overflow-y-auto bg-[color:var(--card)] px-8 font-mono sm:px-12 md:px-16 lg:w-[30%] lg:px-10 xl:px-12'>
-                <div className='mx-auto flex h-full w-full max-w-md flex-col justify-center py-12'>
-                    <div className='mb-10'>
-                        <h1 className='text-4xl font-bold leading-tight tracking-tight text-[#f8f6ef] [text-shadow:0_0_14px_rgba(248,246,239,0.32)]'>
-                            {name}
-                        </h1>
-                    </div>
-
-                    <div className='mb-6'>
-                        <h2 className='text-sm font-bold uppercase tracking-wider text-gray-200'>RESET PASSWORD</h2>
-                        <p className='mt-2 text-xs text-gray-400'>
-                            {mode === 'request'
-                                ? 'Enter your account email to receive a 6-digit PIN.'
-                                : `Enter the PIN sent to ${email} and set a new password.`}
-                        </p>
-                    </div>
-
-                    <FlashMessageRender className='mb-4 px-1' />
+            <div
+                className={`burhan-auth-rail h-full w-full overflow-y-auto px-6 py-5 sm:px-10 sm:py-6 md:px-14 lg:w-[30%] lg:px-8 lg:py-4 xl:px-10 ${
+                    mode === 'verify' ? 'lg:overflow-y-auto' : 'lg:overflow-y-hidden'
+                }`}
+            >
+                <div
+                    className={`burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col py-0 ${
+                        mode === 'verify' ? 'justify-start' : 'justify-center'
+                    }`}
+                >
+                    <FlashMessageRender className='burhan-auth-flash mb-4 px-1' />
 
                     <GlowCard
                         glowColor='green'
                         customSize
                         orbit
                         orbitDurationMs={2800}
-                        className='w-full rounded-xl [--radius:12] [--border:2] [--size:185]'
+                        className={`burhan-auth-glow w-full ${mode === 'verify' ? '' : 'max-h-full'}`}
                     >
-                        <div className='rounded-xl bg-[color:var(--card)] p-8'>
+                        <div className='burhan-auth-card'>
+                            <div className='burhan-auth-brand-panel'>
+                                <h1 className='burhan-auth-title'>{name}</h1>
+                            </div>
+
+                            <div className='mb-4 rounded-[1.35rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3'>
+                                <h2 className='text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(248,246,239,0.72)]'>
+                                    Reset Password
+                                </h2>
+                                <p className='mt-2 text-sm leading-7 text-[rgba(151,160,171,0.94)]'>
+                                    {mode === 'request'
+                                        ? 'Enter your account email to receive a 6-digit PIN.'
+                                        : `Enter the PIN sent to ${email} and set your new password.`}
+                                </p>
+                            </div>
+
                             {mode === 'request' ? (
                                 <Formik
                                     onSubmit={handleRequest}
@@ -183,21 +191,44 @@ export default () => {
                                             .required('A valid email address must be provided to continue.'),
                                     })}
                                 >
-                                    {({ isSubmitting, values, errors, touched, handleChange, handleBlur }: FormikProps<RequestValues>) => (
-                                        <Form className='space-y-5'>
+                                    {({
+                                        isSubmitting,
+                                        values,
+                                        errors,
+                                        touched,
+                                        handleChange,
+                                        handleBlur,
+                                    }: FormikProps<RequestValues>) => (
+                                        <Form className='burhan-auth-form relative'>
                                             <div className={honeypotFieldClass} aria-hidden='true'>
                                                 <label htmlFor='reset-website'>Website</label>
-                                                <input id='reset-website' name='website' type='text' value={values.website} onChange={handleChange} tabIndex={-1} autoComplete='off' />
+                                                <input
+                                                    id='reset-website'
+                                                    name='website'
+                                                    type='text'
+                                                    value={values.website}
+                                                    onChange={handleChange}
+                                                    tabIndex={-1}
+                                                    autoComplete='off'
+                                                />
                                                 <label htmlFor='reset-company'>Company</label>
-                                                <input id='reset-company' name='company' type='text' value={values.company} onChange={handleChange} tabIndex={-1} autoComplete='off' />
+                                                <input
+                                                    id='reset-company'
+                                                    name='company'
+                                                    type='text'
+                                                    value={values.company}
+                                                    onChange={handleChange}
+                                                    tabIndex={-1}
+                                                    autoComplete='off'
+                                                />
                                             </div>
                                             <input type='hidden' name='formRenderedAt' value={values.formRenderedAt} />
 
-                                            <div className='group space-y-1'>
-                                                <label htmlFor='email' className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[color:var(--primary)]'>
+                                            <div>
+                                                <label htmlFor='email' className={authFieldLabelClass}>
                                                     Email Address
                                                 </label>
-                                                <div className='relative'>
+                                                <div className='burhan-auth-input-wrap'>
                                                     <input
                                                         name='email'
                                                         type='email'
@@ -207,20 +238,23 @@ export default () => {
                                                         disabled={isSubmitting}
                                                         id='email'
                                                         autoComplete='email'
-                                                        className='w-full rounded-lg border border-gray-800 bg-[color:var(--card)] px-4 py-3 pr-11 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
-                                                        placeholder='Enter your email'
+                                                        className={authInputWithSuffixClass}
+                                                        placeholder='your@email.com'
                                                     />
-                                                    <i className='fa-solid fa-envelope absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-500' />
+                                                    <span className='burhan-auth-field-token'>Email</span>
                                                 </div>
-                                                {errors.email && touched.email && <div className='text-[10px] font-bold text-red-400'>{errors.email}</div>}
+                                                {errors.email && touched.email && (
+                                                    <div className={authErrorClass}>{errors.email}</div>
+                                                )}
                                             </div>
+
                                             <button
                                                 type='submit'
                                                 disabled={isSubmitting}
-                                                className='mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-[color:var(--primary-foreground)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.55)] disabled:opacity-50'
+                                                className={authPrimaryButtonClass}
                                             >
                                                 {isSubmitting ? 'Sending...' : 'Send PIN'}
-                                                <i className='fa-solid fa-arrow-right text-xs' />
+                                                <i className='fa-solid fa-arrow-right-long text-sm' />
                                             </button>
 
                                             {captchaEnabled && requireCaptcha && (
@@ -250,22 +284,49 @@ export default () => {
                                     }}
                                     validationSchema={object().shape({
                                         pin: string().matches(/^[0-9]{6}$/, 'PIN must be 6 digits.').required('PIN is required.'),
-                                        password: string().required('A new password is required.').min(8, 'Your new password should be at least 8 characters in length.'),
-                                        passwordConfirmation: string().oneOf([yupRef('password')], 'Your new password does not match.').required('Your new password does not match.'),
+                                        password: string()
+                                            .required('A new password is required.')
+                                            .min(8, 'Your new password should be at least 8 characters in length.'),
+                                        passwordConfirmation: string()
+                                            .oneOf([yupRef('password')], 'Your new password does not match.')
+                                            .required('Your new password does not match.'),
                                     })}
                                 >
-                                    {({ isSubmitting, values, errors, touched, handleChange, handleBlur }: FormikProps<ResetValues>) => (
-                                        <Form className='space-y-5'>
+                                    {({
+                                        isSubmitting,
+                                        values,
+                                        errors,
+                                        touched,
+                                        handleChange,
+                                        handleBlur,
+                                    }: FormikProps<ResetValues>) => (
+                                        <Form className='burhan-auth-form relative'>
                                             <div className={honeypotFieldClass} aria-hidden='true'>
                                                 <label htmlFor='verify-website'>Website</label>
-                                                <input id='verify-website' name='website' type='text' value={values.website} onChange={handleChange} tabIndex={-1} autoComplete='off' />
+                                                <input
+                                                    id='verify-website'
+                                                    name='website'
+                                                    type='text'
+                                                    value={values.website}
+                                                    onChange={handleChange}
+                                                    tabIndex={-1}
+                                                    autoComplete='off'
+                                                />
                                                 <label htmlFor='verify-company'>Company</label>
-                                                <input id='verify-company' name='company' type='text' value={values.company} onChange={handleChange} tabIndex={-1} autoComplete='off' />
+                                                <input
+                                                    id='verify-company'
+                                                    name='company'
+                                                    type='text'
+                                                    value={values.company}
+                                                    onChange={handleChange}
+                                                    tabIndex={-1}
+                                                    autoComplete='off'
+                                                />
                                             </div>
                                             <input type='hidden' name='formRenderedAt' value={values.formRenderedAt} />
 
-                                            <div className='group space-y-1'>
-                                                <label htmlFor='pin' className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[color:var(--primary)]'>
+                                            <div>
+                                                <label htmlFor='pin' className={authFieldLabelClass}>
                                                     Verification PIN
                                                 </label>
                                                 <input
@@ -278,13 +339,16 @@ export default () => {
                                                     onBlur={handleBlur}
                                                     disabled={isSubmitting}
                                                     id='pin'
-                                                    className='w-full rounded-lg border border-gray-800 bg-[color:var(--card)] px-4 py-3 text-center tracking-[0.35em] text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                    className={`${authInputClass} is-centered`}
                                                     placeholder='000000'
                                                 />
-                                                {errors.pin && touched.pin && <div className='text-[10px] font-bold text-red-400'>{errors.pin}</div>}
+                                                {errors.pin && touched.pin && (
+                                                    <div className={authErrorClass}>{errors.pin}</div>
+                                                )}
                                             </div>
-                                            <div className='group space-y-1'>
-                                                <label htmlFor='password' className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[color:var(--primary)]'>
+
+                                            <div>
+                                                <label htmlFor='password' className={authFieldLabelClass}>
                                                     New Password
                                                 </label>
                                                 <input
@@ -295,12 +359,15 @@ export default () => {
                                                     onBlur={handleBlur}
                                                     disabled={isSubmitting}
                                                     id='password'
-                                                    className='w-full rounded-lg border border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                    className={authInputClass}
                                                 />
-                                                {errors.password && touched.password && <div className='text-[10px] font-bold text-red-400'>{errors.password}</div>}
+                                                {errors.password && touched.password && (
+                                                    <div className={authErrorClass}>{errors.password}</div>
+                                                )}
                                             </div>
-                                            <div className='group space-y-1'>
-                                                <label htmlFor='passwordConfirmation' className='block text-xs uppercase text-gray-400 transition-colors group-focus-within:text-[color:var(--primary)]'>
+
+                                            <div>
+                                                <label htmlFor='passwordConfirmation' className={authFieldLabelClass}>
                                                     Confirm Password
                                                 </label>
                                                 <input
@@ -311,20 +378,22 @@ export default () => {
                                                     onBlur={handleBlur}
                                                     disabled={isSubmitting}
                                                     id='passwordConfirmation'
-                                                    className='w-full rounded-lg border border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-gray-100 outline-none transition-all placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                    className={authInputClass}
                                                 />
                                                 {errors.passwordConfirmation && touched.passwordConfirmation && (
-                                                    <div className='text-[10px] font-bold text-red-400'>{errors.passwordConfirmation}</div>
+                                                    <div className={authErrorClass}>{errors.passwordConfirmation}</div>
                                                 )}
                                             </div>
+
                                             <button
                                                 type='submit'
                                                 disabled={isSubmitting}
-                                                className='mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-[color:var(--primary-foreground)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.55)] disabled:opacity-50'
+                                                className={authPrimaryButtonClass}
                                             >
                                                 {isSubmitting ? 'Resetting...' : 'Reset Password'}
-                                                <i className='fa-solid fa-check text-xs' />
+                                                <i className='fa-solid fa-check text-sm' />
                                             </button>
+
                                             <button
                                                 type='button'
                                                 disabled={isSubmitting}
@@ -333,7 +402,7 @@ export default () => {
                                                     setResetToken('');
                                                     setCaptchaToken('');
                                                 }}
-                                                className='w-full rounded-lg border border-gray-700 py-3 text-sm font-medium text-white/80 transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
+                                                className={authSecondaryButtonClass}
                                             >
                                                 Back
                                             </button>
@@ -356,8 +425,8 @@ export default () => {
                         </div>
                     </GlowCard>
 
-                    <div className='mt-8 text-center'>
-                        <Link className='text-xs text-gray-500 transition-colors hover:text-[color:var(--primary)]' to={'/auth/login'}>
+                    <div className='mt-6 text-center'>
+                        <Link className='burhan-auth-meta-link' to={'/auth/login'}>
                             Return to Login
                         </Link>
                     </div>
@@ -366,3 +435,5 @@ export default () => {
         </div>
     );
 };
+
+export default ForgotPasswordContainer;

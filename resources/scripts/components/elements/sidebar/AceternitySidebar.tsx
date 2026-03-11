@@ -71,7 +71,9 @@ export const SidebarProvider = ({
         window.localStorage.setItem('ui.sidebar.locked', mode === 'locked-open' ? 'true' : 'false');
     }, [mode]);
 
-    return <SidebarContext.Provider value={{ open, setOpen, mode, setMode, animate }}>{children}</SidebarContext.Provider>;
+    return (
+        <SidebarContext.Provider value={{ open, setOpen, mode, setMode, animate }}>{children}</SidebarContext.Provider>
+    );
 };
 
 // ---------- Sidebar ----------
@@ -116,7 +118,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
             <motion.div
                 onMouseEnter={() => isAuto && setOpen(true)}
                 onMouseLeave={() => isAuto && setOpen(false)}
-                animate={{ width: shouldAnimate ? (open ? '256px' : '72px') : '256px' }}
+                animate={{ width: shouldAnimate ? (open ? '288px' : '72px') : '288px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 style={{
                     height: '100vh',
@@ -124,13 +126,16 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
                     top: 0,
                     left: 0,
                     zIndex: 20,
-                    background: 'var(--card)',
+                    background:
+                        'radial-gradient(circle at 16% -2%, rgba(var(--primary-rgb), 0.18), transparent 36%), radial-gradient(circle at 106% 92%, rgba(84, 140, 255, 0.17), transparent 40%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid rgba(var(--primary-rgb), 0.22)',
-                    fontFamily: "'Inter', sans-serif",
+                    borderRight: '1px solid rgba(255, 255, 255, 0.09)',
+                    fontFamily: "var(--font-sans, 'Inter', sans-serif)",
                     overflow: 'visible',
                     flexShrink: 0,
+                    boxShadow:
+                        'inset 1px 0 0 rgba(255, 255, 255, 0.04), inset -1px 0 0 rgba(255, 255, 255, 0.03), 0 20px 48px rgba(0, 0, 0, 0.42)',
                 }}
                 className={`sidebar-desktop-shell ${className || ''}`}
             >
@@ -138,7 +143,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
             </motion.div>
             {/* Spacer to push content right */}
             <motion.div
-                animate={{ width: shouldAnimate ? (open ? '256px' : '72px') : '256px' }}
+                animate={{ width: shouldAnimate ? (open ? '288px' : '72px') : '288px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className='flex-shrink-0'
             />
@@ -159,15 +164,16 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'var(--card)',
+                        background: 'linear-gradient(180deg, rgba(9, 12, 18, 0.97), rgba(4, 6, 10, 0.99))',
                         padding: '12px 16px',
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: "var(--font-sans, 'Inter', sans-serif)",
                         position: 'fixed',
                         top: 0,
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid rgba(var(--primary-rgb), 0.22)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.09)',
+                        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)',
                     }}
                 >
                     <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>{name}</div>
@@ -214,13 +220,15 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                                 top: 0,
                                 left: 0,
                                 height: '100vh',
-                                width: '256px',
-                                background: 'var(--card)',
+                                width: '288px',
+                                background:
+                                    'radial-gradient(circle at 16% -2%, rgba(var(--primary-rgb), 0.18), transparent 36%), radial-gradient(circle at 106% 92%, rgba(84, 140, 255, 0.17), transparent 40%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                fontFamily: "'Inter', sans-serif",
-                                borderRight: '1px solid rgba(var(--primary-rgb), 0.22)',
+                                fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                                borderRight: '1px solid rgba(255, 255, 255, 0.09)',
+                                boxShadow: '0 24px 52px rgba(0, 0, 0, 0.45)',
                             }}
                             className='sidebar-mobile-shell'
                         >
@@ -309,23 +317,43 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
             style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: expanded ? 'flex-start' : 'center',
                 gap: expanded ? '12px' : '0px',
-                padding: '10px 12px',
+                padding: expanded ? '11px 12px' : '10px',
                 textDecoration: 'none',
-                color: active ? 'var(--primary)' : 'var(--foreground)',
-                backgroundColor: active ? 'var(--primary-glow-soft)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(var(--primary-rgb), 0.35)' : 'transparent'}`,
-                boxShadow: active ? '0 0 12px rgba(var(--primary-rgb), 0.2)' : 'none',
-                borderRadius: '8px',
-                margin: '2px 0',
-                transition: 'all 0.15s',
+                color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                background: active
+                    ? 'linear-gradient(100deg, rgba(var(--primary-rgb), 0.32), rgba(var(--primary-rgb), 0.12))'
+                    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.015))',
+                border: `1px solid ${active ? 'rgba(var(--primary-rgb), 0.34)' : 'rgba(255, 255, 255, 0.07)'}`,
+                boxShadow: active
+                    ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 24px rgba(var(--primary-rgb), 0.12), 0 0 20px rgba(var(--primary-rgb), 0.14)'
+                    : 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                borderRadius: '14px',
+                margin: '4px 0',
+                transition: 'all 0.2s ease',
                 cursor: 'pointer',
                 overflow: 'hidden',
                 whiteSpace: 'nowrap',
             }}
             className={`sidebar-link ${className || ''}`}
         >
-            <div style={{ flexShrink: 0, width: '20px', display: 'flex', justifyContent: 'center' }}>{link.icon}</div>
+            <div
+                style={{
+                    flexShrink: 0,
+                    width: expanded ? '28px' : '34px',
+                    height: expanded ? '28px' : '34px',
+                    borderRadius: expanded ? '10px' : '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: active ? 'rgba(var(--primary-rgb), 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                    color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                    boxShadow: active ? '0 0 16px rgba(var(--primary-rgb), 0.2)' : 'none',
+                }}
+            >
+                {link.icon}
+            </div>
             <motion.span
                 animate={{
                     display: shouldAnimate ? (open ? 'inline-block' : 'none') : 'inline-block',
@@ -333,8 +361,10 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                    fontSize: '14px',
-                    fontWeight: 500,
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
                     whiteSpace: 'nowrap',
                 }}
             >
@@ -378,11 +408,11 @@ export const SidebarLabel = ({ label }: SidebarLabelProps) => {
             }}
             transition={{ duration: 0.2 }}
             style={{
-                padding: '16px 12px 8px',
-                fontSize: '12px',
-                fontWeight: 500,
-                letterSpacing: '0.05em',
-                color: 'var(--muted-foreground)',
+                padding: '16px 14px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                letterSpacing: '0.18em',
+                color: 'rgba(248, 246, 239, 0.5)',
                 textTransform: 'uppercase',
             }}
         >

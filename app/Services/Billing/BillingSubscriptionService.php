@@ -1,0 +1,291 @@
+<?php
+
+namespace Pterodactyl\Services\Billing;
+
+use Carbon\CarbonImmutable;
+use Pterodactyl\Models\Server;
+use Pterodactyl\Models\BillingOrder;
+use Pterodactyl\Models\BillingSubscription;
+use Pterodactyl\Exceptions\DisplayException;
+use Pterodactyl\Services\Servers\SuspensionService;
+use Pterodactyl\Services\Servers\BuildModificationService;
+
+class BillingSubscriptionService
+{
+    public function __construct(
+        private BillingCatalogService $catalogService,
+        private SuspensionService $suspensionService,
+        private BuildModificationService $buildModificationService,
+    ) {
+    }
+
+    public function createFromProvisionedOrder(BillingOrder $order): BillingSubscription
+    {
+        $order->loadMissing('invoice.payments');
+
+        $now = CarbonImmutable::now();
+        $renewsAt = $now->addMonthsNoOverflow(1);
+        $gatewayReferences = $this->extractGatewayReferencesFromOrder($order);
+
+        return BillingSubscription::query()->updateOrCreate(
+            ['billing_order_id' => $order->id],
+            [
+                'user_id' => $order->user_id,
+                'server_id' => $order->server_id,
+                'billing_node_config_id' => $order->billing_node_config_id,
+                'billing_game_profile_id' => $order->billing_game_profile_id,
+                'status' => BillingSubscription::STATUS_ACTIVE,
+                'auto_renew' => false,
+                'gateway_provider' => config('billing.gateway.default', 'fiuu'),
+                'gateway_customer_reference' => $gatewayReferences['customer_reference'],
+                'gateway_token_reference' => $gatewayReferences['token_reference'],
+                'server_name' => $order->server_name,
+                'node_name' => $order->node_name,
+                'game_name' => $order->game_name,
+                'cpu_cores' => $order->cpu_cores,
+                'memory_gb' => $order->memory_gb,
+                'disk_gb' => $order->disk_gb,
+                'price_per_vcore' => $order->price_per_vcore,
+                'price_per_gb_ram' => $order->price_per_gb_ram,
+                'price_per_10gb_disk' => $order->price_per_10gb_disk,
+                'recurring_total' => $order->total,
+                'renewal_period_months' => 1,
+                'renews_at' => $renewsAt,
+                'next_invoice_at' => $renewsAt->subDays((int) config('billing.invoice_lead_days', 7)),
+                'grace_suspend_at' => null,
+                'grace_delete_at' => null,
+                'last_paid_invoice_id' => $order->billing_invoice_id,
+                'failed_payment_count' => 0,
+                'renewal_reminder_sent_at' => null,
+                'renewed_at' => null,
+                'upgraded_at' => null,
+                'suspended_at' => null,
+                'deletion_scheduled_at' => null,
+                'deleted_at' => null,
+            ]
+        );
+    }
+
+    public function renew(BillingSubscription $subscription): BillingSubscription
+    {
+        $subscription->loadMissing('nodeConfig', 'server');
+
+        if ($subscription->status === BillingSubscription::STATUS_DELETED) {
+            throw new DisplayException('This billing subscription has already been deleted and cannot be renewed.');
+        }
+
+        if (!$subscription->hasAttachedServer() || !$subscription->server) {
+            throw new DisplayException('This billing subscription no longer has a server attached to it.');
+        }
+
+        if (!$subscription->isRenewWindowOpen()) {
+            throw new DisplayException(sprintf(
+                'This subscription can only be renewed within %d days of the billing deadline.',
+                BillingSubscription::RENEWAL_WINDOW_DAYS
+            ));
+        }
+
+        $pricing = $this->catalogService->calculatePricing(
+            $subscription->nodeConfig,
+            $subscription->cpu_cores,
+            $subscription->memory_gb,
+            $subscription->disk_gb
+        );
+
+        $base = $subscription->renews_at && $subscription->renews_at->isFuture()
+            ? CarbonImmutable::instance($subscription->renews_at)
+            : CarbonImmutable::now();
+
+        $subscription->forceFill([
+            'status' => BillingSubscription::STATUS_ACTIVE,
+            'price_per_vcore' => $subscription->nodeConfig->price_per_vcore,
+            'price_per_gb_ram' => $subscription->nodeConfig->price_per_gb_ram,
+            'price_per_10gb_disk' => $subscription->nodeConfig->price_per_10gb_disk,
+            'recurring_total' => $pricing['total'],
+            'renews_at' => $base->addMonthsNoOverflow(max($subscription->renewal_period_months, 1)),
+            'renewal_reminder_sent_at' => null,
+            'renewed_at' => CarbonImmutable::now(),
+            'suspended_at' => null,
+            'deletion_scheduled_at' => null,
+        ])->saveOrFail();
+
+        if ($subscription->server && $subscription->server->isSuspended()) {
+            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+        }
+
+        return $subscription->fresh(['server', 'nodeConfig']);
+    }
+
+    public function upgrade(BillingSubscription $subscription, array $data): BillingSubscription
+    {
+        $subscription->loadMissing('nodeConfig.node', 'gameProfile.egg.nest', 'server');
+
+        if ($subscription->status !== BillingSubscription::STATUS_ACTIVE) {
+            throw new DisplayException('Only active billing subscriptions can be upgraded.');
+        }
+
+        if (!$subscription->server) {
+            throw new DisplayException('This billing subscription no longer has a server attached to it.');
+        }
+
+        $cpuCores = (int) $data['cpu_cores'];
+        $memoryGb = (int) $data['memory_gb'];
+        $diskGb = (int) $data['disk_gb'];
+
+        if ($cpuCores < $subscription->cpu_cores || $memoryGb < $subscription->memory_gb || $diskGb < $subscription->disk_gb) {
+            throw new DisplayException('Downgrades are not allowed. Only equal or higher resource values can be submitted.');
+        }
+
+        $limits = $this->catalogService->getSubscriptionUpgradeLimits($subscription);
+
+        if ($cpuCores < 1 || $cpuCores > $limits['max_cpu']) {
+            throw new DisplayException(sprintf('vCore must stay between 1 and %d.', $limits['max_cpu']));
+        }
+
+        if ($memoryGb < 1 || $memoryGb > $limits['max_memory_gb']) {
+            throw new DisplayException(sprintf('RAM must stay between 1 GB and %d GB.', $limits['max_memory_gb']));
+        }
+
+        if ($diskGb < BillingCatalogService::DISK_STEP_GB || $diskGb > $limits['max_disk_gb']) {
+            throw new DisplayException(sprintf(
+                'Storage must stay between %d GB and %d GB.',
+                BillingCatalogService::DISK_STEP_GB,
+                $limits['max_disk_gb']
+            ));
+        }
+
+        if ($diskGb % BillingCatalogService::DISK_STEP_GB !== 0) {
+            throw new DisplayException(sprintf('Storage must use %d GB steps.', BillingCatalogService::DISK_STEP_GB));
+        }
+
+        /** @var Server $server */
+        $server = $subscription->server;
+        $this->buildModificationService->handle($server, [
+            'memory' => $memoryGb * 1024,
+            'swap' => $server->swap,
+            'io' => $server->io,
+            'cpu' => $cpuCores * 100,
+            'disk' => $diskGb * 1024,
+            'allocation_id' => $server->allocation_id,
+            'oom_disabled' => $server->oom_disabled,
+            'allocation_limit' => $server->allocation_limit,
+            'database_limit' => $server->database_limit,
+            'backup_limit' => $server->backup_limit,
+        ]);
+
+        $pricing = $this->catalogService->calculatePricing($subscription->nodeConfig, $cpuCores, $memoryGb, $diskGb);
+
+        $subscription->forceFill([
+            'cpu_cores' => $cpuCores,
+            'memory_gb' => $memoryGb,
+            'disk_gb' => $diskGb,
+            'price_per_vcore' => $subscription->nodeConfig->price_per_vcore,
+            'price_per_gb_ram' => $subscription->nodeConfig->price_per_gb_ram,
+            'price_per_10gb_disk' => $subscription->nodeConfig->price_per_10gb_disk,
+            'recurring_total' => $pricing['total'],
+            'upgraded_at' => CarbonImmutable::now(),
+        ])->saveOrFail();
+
+        return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+    }
+
+    public function toggleAutoRenew(BillingSubscription $subscription, bool $enabled): BillingSubscription
+    {
+        $subscription->forceFill([
+            'auto_renew' => $enabled,
+        ])->saveOrFail();
+
+        return $subscription->fresh();
+    }
+
+    public function applyPaidRenewal(BillingSubscription $subscription): BillingSubscription
+    {
+        $subscription->loadMissing('server');
+
+        if ($subscription->server && $subscription->server->isSuspended()) {
+            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+        }
+
+        $subscription->forceFill([
+            'status' => BillingSubscription::STATUS_ACTIVE,
+            'suspended_at' => null,
+            'deletion_scheduled_at' => null,
+            'grace_suspend_at' => null,
+            'grace_delete_at' => null,
+            'next_invoice_at' => $subscription->renews_at
+                ? CarbonImmutable::instance($subscription->renews_at)->subDays((int) config('billing.invoice_lead_days', 7))
+                : null,
+        ])->saveOrFail();
+
+        return $subscription->fresh(['server', 'nodeConfig']);
+    }
+
+    public function applyPaidUpgrade(BillingSubscription $subscription, BillingOrder $order): BillingSubscription
+    {
+        $subscription->loadMissing('nodeConfig.node', 'gameProfile.egg.nest', 'server');
+
+        if (!$subscription->server) {
+            throw new DisplayException('This billing subscription no longer has a server attached to it.');
+        }
+
+        /** @var Server $server */
+        $server = $subscription->server;
+        $this->buildModificationService->handle($server, [
+            'memory' => $order->memory_gb * 1024,
+            'swap' => $server->swap,
+            'io' => $server->io,
+            'cpu' => $order->cpu_cores * 100,
+            'disk' => $order->disk_gb * 1024,
+            'allocation_id' => $server->allocation_id,
+            'oom_disabled' => $server->oom_disabled,
+            'allocation_limit' => $server->allocation_limit,
+            'database_limit' => $server->database_limit,
+            'backup_limit' => $server->backup_limit,
+        ]);
+
+        $pricing = $this->catalogService->calculatePricing(
+            $subscription->nodeConfig,
+            $order->cpu_cores,
+            $order->memory_gb,
+            $order->disk_gb
+        );
+
+        $subscription->forceFill([
+            'cpu_cores' => $order->cpu_cores,
+            'memory_gb' => $order->memory_gb,
+            'disk_gb' => $order->disk_gb,
+            'price_per_vcore' => $subscription->nodeConfig->price_per_vcore,
+            'price_per_gb_ram' => $subscription->nodeConfig->price_per_gb_ram,
+            'price_per_10gb_disk' => $subscription->nodeConfig->price_per_10gb_disk,
+            'recurring_total' => $pricing['total'],
+            'upgraded_at' => CarbonImmutable::now(),
+        ])->saveOrFail();
+
+        return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+    }
+
+    private function extractGatewayReferencesFromOrder(BillingOrder $order): array
+    {
+        $raw = $order->invoice?->payments?->sortByDesc('id')->first()?->raw_gateway_response ?? [];
+        $callback = is_array($raw['callback'] ?? null) ? $raw['callback'] : [];
+        $requery = is_array($raw['requery'] ?? null) ? $raw['requery'] : [];
+
+        return [
+            'token_reference' => $callback['token_reference']
+                ?? $callback['token']
+                ?? $callback['token_id']
+                ?? $callback['cc_token']
+                ?? $requery['token_reference']
+                ?? $requery['token']
+                ?? $requery['token_id']
+                ?? null,
+            'customer_reference' => $callback['customer_reference']
+                ?? $callback['customer_id']
+                ?? $callback['cust_ref']
+                ?? $requery['customer_reference']
+                ?? $requery['customer_id']
+                ?? $requery['cust_ref']
+                ?? null,
+        ];
+    }
+}

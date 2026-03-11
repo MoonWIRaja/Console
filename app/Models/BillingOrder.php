@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -10,16 +11,30 @@ class BillingOrder extends Model
     /** @use HasFactory<\Database\Factories\BillingOrderFactory> */
     use HasFactory;
 
+    public const TYPE_NEW_SERVER = 'new_server';
+    public const TYPE_RENEWAL = 'renewal';
+    public const TYPE_UPGRADE = 'upgrade';
+    public const TYPE_MANUAL = 'manual';
+
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_AWAITING_PAYMENT = 'awaiting_payment';
+    public const STATUS_PAID = 'paid';
+    public const STATUS_QUEUED_PROVISION = 'queued_provision';
     public const STATUS_PENDING = 'pending';
     public const STATUS_PROVISIONING = 'provisioning';
     public const STATUS_PROVISIONED = 'provisioned';
+    public const STATUS_PROVISION_FAILED = 'provision_failed';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_REFUNDED = 'refunded';
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_FAILED = 'failed';
 
     public const ACTIVE_RESERVATION_STATUSES = [
+        self::STATUS_AWAITING_PAYMENT,
         self::STATUS_PENDING,
+        self::STATUS_PAID,
+        self::STATUS_QUEUED_PROVISION,
         self::STATUS_PROVISIONING,
-        self::STATUS_PROVISIONED,
     ];
 
     protected $table = 'billing_orders';
@@ -28,10 +43,12 @@ class BillingOrder extends Model
         'user_id',
         'billing_node_config_id',
         'billing_game_profile_id',
+        'billing_invoice_id',
         'node_id',
         'egg_id',
         'server_id',
         'approved_by',
+        'order_type',
         'status',
         'server_name',
         'node_name',
@@ -49,6 +66,7 @@ class BillingOrder extends Model
         'docker_image',
         'startup',
         'environment',
+        'billing_profile_snapshot',
         'allocation_limit',
         'database_limit',
         'backup_limit',
@@ -59,6 +77,10 @@ class BillingOrder extends Model
         'order_notes',
         'admin_notes',
         'approved_at',
+        'payment_verified_at',
+        'provision_attempted_at',
+        'provision_failure_code',
+        'provision_failure_message',
         'rejected_at',
         'provisioned_at',
         'failed_at',
@@ -68,6 +90,7 @@ class BillingOrder extends Model
         'user_id' => 'integer',
         'billing_node_config_id' => 'integer',
         'billing_game_profile_id' => 'integer',
+        'billing_invoice_id' => 'integer',
         'node_id' => 'integer',
         'egg_id' => 'integer',
         'server_id' => 'integer',
@@ -83,6 +106,7 @@ class BillingOrder extends Model
         'disk_total' => 'decimal:2',
         'total' => 'decimal:2',
         'environment' => 'array',
+        'billing_profile_snapshot' => 'array',
         'allocation_limit' => 'integer',
         'database_limit' => 'integer',
         'backup_limit' => 'integer',
@@ -91,6 +115,8 @@ class BillingOrder extends Model
         'oom_disabled' => 'boolean',
         'start_on_completion' => 'boolean',
         'approved_at' => 'datetime',
+        'payment_verified_at' => 'datetime',
+        'provision_attempted_at' => 'datetime',
         'rejected_at' => 'datetime',
         'provisioned_at' => 'datetime',
         'failed_at' => 'datetime',
@@ -141,6 +167,11 @@ class BillingOrder extends Model
         return $this->belongsTo(BillingGameProfile::class, 'billing_game_profile_id');
     }
 
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(BillingInvoice::class, 'billing_invoice_id');
+    }
+
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Node, $this>
      */
@@ -171,5 +202,10 @@ class BillingOrder extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(BillingInvoice::class, 'billing_order_id');
     }
 }

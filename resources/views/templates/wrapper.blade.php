@@ -39,6 +39,14 @@
             @yield('below-container')
         @show
         @section('scripts')
+            <script>
+                if (window.location.hash.includes('figmacapture=')) {
+                    const captureScript = document.createElement('script');
+                    captureScript.src = 'https://mcp.figma.com/mcp/html-to-design/capture.js';
+                    captureScript.async = true;
+                    document.head.appendChild(captureScript);
+                }
+            </script>
             {!! $asset->js('main.js') !!}
         @show
     </body>

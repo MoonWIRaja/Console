@@ -33,7 +33,8 @@ enum ResourceLimit
     /**
      * Returns a middleware that will throttle the specific resource by server. This
      * throttle applies to any user making changes to that resource on the specific
-     * server, it is NOT per-user.
+     * server. Some resources may additionally scope the limiter per-user to avoid
+     * one user's actions blocking all other valid requests on the same server.
      */
     public function middleware(): string
     {
@@ -44,7 +45,7 @@ enum ResourceLimit
     {
         return match($this) {
             self::Backup => Limit::perMinutes(15, 3),
-            self::Database => Limit::perMinute(2),
+            self::Database => Limit::perMinute(10),
             self::FilePull => Limit::perMinutes(10, 5),
             self::Subuser => Limit::perMinutes(15, 10),
             // Websocket token requests can burst during reconnect cycles.
@@ -60,11 +61,13 @@ enum ResourceLimit
                 Assert::isInstanceOf($server = $request->route()->parameter('server'), Server::class);
 
                 $key = $server->uuid;
-                if ($case === self::Websocket) {
-                    $key .= ':' . (optional($request->user())->uuid ?: $request->ip());
+
+                if ($case === self::Database || $case === self::Websocket) {
+                    $userKey = $request->user()?->getAuthIdentifier();
+                    $key .= ':' . (is_scalar($userKey) ? (string) $userKey : $request->ip());
                 }
 
-                return $case->limit()->by($key);
+                return $case->limit()->by((string) $key);
             });
         }
     }

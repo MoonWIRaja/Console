@@ -2,10 +2,13 @@
 
 namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Database;
 use Pterodactyl\Facades\Activity;
+use Pterodactyl\Exceptions\Handler;
+use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Services\Databases\DatabasePasswordService;
 use Pterodactyl\Transformers\Api\Client\DatabaseTransformer;
 use Pterodactyl\Services\Databases\DatabaseManagementService;
@@ -46,17 +49,25 @@ class DatabaseController extends ClientApiController
      * @throws \Pterodactyl\Exceptions\Service\Database\TooManyDatabasesException
      * @throws \Pterodactyl\Exceptions\Service\Database\DatabaseClientFeatureNotEnabledException
      */
-    public function store(StoreDatabaseRequest $request, Server $server): array
+    public function store(StoreDatabaseRequest $request, Server $server): array|JsonResponse
     {
-        $database = Activity::event('server:database.create')->transaction(function ($log) use ($request, $server) {
-            $server->databases()->lockForUpdate();
+        try {
+            $database = Activity::event('server:database.create')->transaction(function ($log) use ($request, $server) {
+                $server->databases()->lockForUpdate();
 
-            $database = $this->deployDatabaseService->handle($server, $request->validated());
+                $database = $this->deployDatabaseService->handle($server, $request->validated());
 
-            $log->subject($database)->property('name', $database->database);
+                $log->subject($database)->property('name', $database->database);
 
-            return $database;
-        });
+                return $database;
+            });
+        } catch (DisplayException $exception) {
+            return response()->json(
+                Handler::toArray($exception),
+                $exception->getStatusCode(),
+                $exception->getHeaders()
+            );
+        }
 
         return $this->fractal->item($database)
             ->parseIncludes(['password'])

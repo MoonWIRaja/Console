@@ -8,6 +8,7 @@ use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Allocation;
 use Pterodactyl\Models\EggVariable;
 use Pterodactyl\Models\BillingOrder;
+use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Models\BillingNodeConfig;
 use Pterodactyl\Models\BillingGameProfile;
 
@@ -18,31 +19,51 @@ class BillingCatalogService
     /**
      * Return a normalized availability snapshot for a billing-enabled node.
      */
-    public function getAvailability(BillingNodeConfig $config): array
+    public function getAvailability(BillingNodeConfig $config, ?BillingSubscription $excludingSubscription = null): array
     {
         $config->loadMissing('node', 'gameProfiles.egg.nest', 'gameProfiles.egg.variables');
 
-        $reserved = BillingOrder::query()
+        $reservedOrders = BillingOrder::query()
             ->where('billing_node_config_id', $config->id)
             ->whereIn('status', BillingOrder::ACTIVE_RESERVATION_STATUSES)
             ->selectRaw('COALESCE(SUM(memory_gb), 0) as memory_gb')
             ->selectRaw('COALESCE(SUM(disk_gb), 0) as disk_gb')
             ->first();
 
-        $nodeResources = $this->getNodeResourceAvailability($config->node);
+        $reservedSubscriptions = BillingSubscription::query()
+            ->where('billing_node_config_id', $config->id)
+            ->whereNotNull('server_id')
+            ->whereIn('status', BillingSubscription::RESOURCE_RESERVATION_STATUSES)
+            ->when($excludingSubscription, fn ($query) => $query->where('id', '!=', $excludingSubscription->id))
+            ->selectRaw('COALESCE(SUM(memory_gb), 0) as memory_gb')
+            ->selectRaw('COALESCE(SUM(disk_gb), 0) as disk_gb')
+            ->first();
+
+        $nodeResources = $this->getNodeResourceAvailability($config->node, $excludingSubscription?->server);
         $freeAllocations = Allocation::query()
             ->where('node_id', $config->node_id)
             ->whereNull('server_id')
             ->count();
 
-        $billingMemoryRemaining = max($config->memory_stock_gb - (int) $reserved->memory_gb, 0);
-        $billingDiskRemaining = max($config->disk_stock_gb - (int) $reserved->disk_gb, 0);
+        $reservedMemory = (int) $reservedOrders->memory_gb + (int) $reservedSubscriptions->memory_gb;
+        $reservedDisk = (int) $reservedOrders->disk_gb + (int) $reservedSubscriptions->disk_gb;
+
+        $billingMemoryRemaining = max($config->memory_stock_gb - $reservedMemory, 0);
+        $billingDiskRemaining = max($config->disk_stock_gb - $reservedDisk, 0);
+        $sellableMemoryRemaining = min($billingMemoryRemaining, $nodeResources['memory_remaining_gb']);
         $sellableDiskRemaining = $this->normalizeDiskStep(min($billingDiskRemaining, $nodeResources['disk_remaining_gb']));
+
+        // Billing treats RAM and storage as a paired stock pool: if either one is exhausted,
+        // the node should be considered sold out for new orders.
+        if ($sellableMemoryRemaining < 1 || $sellableDiskRemaining < self::DISK_STEP_GB) {
+            $sellableMemoryRemaining = 0;
+            $sellableDiskRemaining = 0;
+        }
 
         return [
             'free_allocations' => $freeAllocations,
             'cpu_remaining' => max($config->cpu_stock, 0),
-            'memory_remaining_gb' => min($billingMemoryRemaining, $nodeResources['memory_remaining_gb']),
+            'memory_remaining_gb' => $sellableMemoryRemaining,
             'disk_remaining_gb' => $sellableDiskRemaining,
             'billing_cpu_remaining' => max($config->cpu_stock, 0),
             'billing_memory_remaining_gb' => $billingMemoryRemaining,
@@ -53,7 +74,7 @@ class BillingCatalogService
             'is_available' => $config->enabled
                 && $freeAllocations > 0
                 && $config->cpu_stock > 0
-                && min($billingMemoryRemaining, $nodeResources['memory_remaining_gb']) > 0
+                && $sellableMemoryRemaining > 0
                 && $sellableDiskRemaining >= self::DISK_STEP_GB
                 && $config->gameProfiles->where('enabled', true)->isNotEmpty(),
         ];
@@ -78,6 +99,15 @@ class BillingCatalogService
                     'display_name' => $config->display_name,
                     'description' => $config->description,
                     'show_remaining_capacity' => $config->show_remaining_capacity,
+                    'defaults' => [
+                        'allocation_limit' => $config->default_allocation_limit,
+                        'database_limit' => $config->default_database_limit,
+                        'backup_limit' => $config->default_backup_limit,
+                        'swap_mb' => $config->default_swap,
+                        'io_weight' => $config->default_io,
+                        'oom_disabled' => $config->default_oom_disabled,
+                        'start_on_completion' => $config->start_on_completion,
+                    ],
                     'pricing' => [
                         'per_vcore' => (float) $config->price_per_vcore,
                         'per_gb_ram' => (float) $config->price_per_gb_ram,
@@ -148,6 +178,21 @@ class BillingCatalogService
         ];
     }
 
+    public function getSubscriptionUpgradeLimits(BillingSubscription $subscription): array
+    {
+        $subscription->loadMissing('nodeConfig.node', 'server');
+
+        $availability = $this->getAvailability($subscription->nodeConfig, $subscription);
+
+        return [
+            'max_cpu' => max($subscription->nodeConfig->cpu_stock, 0),
+            'max_memory_gb' => max(min($availability['billing_memory_remaining_gb'], $availability['node_memory_remaining_gb']), 0),
+            'max_disk_gb' => $this->normalizeDiskStep(max(min($availability['billing_disk_remaining_gb'], $availability['node_disk_remaining_gb']), 0)),
+            'disk_step_gb' => self::DISK_STEP_GB,
+            'free_allocations' => $availability['free_allocations'],
+        ];
+    }
+
     /**
      * Return the first available allocation on a node, or null if one does not exist.
      */
@@ -179,7 +224,7 @@ class BillingCatalogService
     /**
      * Return actual node-level remaining RAM and disk capacity in GB.
      */
-    private function getNodeResourceAvailability(Node $node): array
+    private function getNodeResourceAvailability(Node $node, ?Server $excludingServer = null): array
     {
         $usage = Server::query()
             ->where('node_id', $node->id)
@@ -187,12 +232,19 @@ class BillingCatalogService
             ->selectRaw('COALESCE(SUM(disk), 0) as used_disk')
             ->first();
 
+        $usedMemory = (int) $usage->used_memory;
+        $usedDisk = (int) $usage->used_disk;
+        if ($excludingServer && $excludingServer->node_id === $node->id) {
+            $usedMemory = max($usedMemory - (int) $excludingServer->memory, 0);
+            $usedDisk = max($usedDisk - (int) $excludingServer->disk, 0);
+        }
+
         $memoryLimitMb = (int) round($node->memory * (1 + ($node->memory_overallocate / 100)));
         $diskLimitMb = (int) round($node->disk * (1 + ($node->disk_overallocate / 100)));
 
         return [
-            'memory_remaining_gb' => max((int) floor(max($memoryLimitMb - (int) $usage->used_memory, 0) / 1024), 0),
-            'disk_remaining_gb' => max((int) floor(max($diskLimitMb - (int) $usage->used_disk, 0) / 1024), 0),
+            'memory_remaining_gb' => max((int) floor(max($memoryLimitMb - $usedMemory, 0) / 1024), 0),
+            'disk_remaining_gb' => max((int) floor(max($diskLimitMb - $usedDisk, 0) / 1024), 0),
         ];
     }
 

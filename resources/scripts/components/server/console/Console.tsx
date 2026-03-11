@@ -15,6 +15,7 @@ import { debounce } from 'debounce';
 import { usePersistedState } from '@/plugins/usePersistedState';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
+import useSiteBranding from '@/hooks/useSiteBranding';
 
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
@@ -83,7 +84,6 @@ const terminalProps: ITerminalOptions = {
 };
 
 export default () => {
-    const TERMINAL_PRELUDE = '\u001b[1m\u001b[33mcontainer@pterodactyl~ \u001b[0m';
     const ref = useRef<HTMLDivElement>(null);
     const terminal = useMemo(() => new Terminal({ ...terminalProps }), []);
     const fitAddon = new FitAddon();
@@ -96,6 +96,7 @@ export default () => {
     const [canSendCommands] = usePermissions(['control.console']);
     const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
+    const { name: siteName } = useSiteBranding();
     const [history, setHistory] = usePersistedState<string[]>(`${serverId}:command_history`, []);
     const [historyIndex, setHistoryIndex] = useState(-1);
     // SearchBarAddon has hardcoded z-index: 999 :(
@@ -108,25 +109,48 @@ export default () => {
         fitAddon.fit();
     }, [terminal, fitAddon]);
 
-    const handleConsoleOutput = (line: string, prelude = false) =>
-        terminal.writeln((prelude ? TERMINAL_PRELUDE : '') + line.replace(/(?:\r\n|\r|\n)$/im, '') + '\u001b[0m');
+    const terminalPrelude = useMemo(
+        () => `\u001b[1m\u001b[33mcontainer@${siteName}~ \u001b[0m`,
+        [siteName]
+    );
 
-    const handleTransferStatus = (status: string) => {
+    const brandDaemonLine = useCallback(
+        (line: string) => line.replace(/\[Pterodactyl Daemon\]:/g, `[${siteName} Daemon]:`),
+        [siteName]
+    );
+
+    const handleConsoleOutput = useCallback(
+        (line: string, prelude = false) =>
+            terminal.writeln(
+                (prelude ? terminalPrelude : '') +
+                    brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '') +
+                    '\u001b[0m'
+            ),
+        [terminal, terminalPrelude, brandDaemonLine]
+    );
+
+    const handleTransferStatus = useCallback((status: string) => {
         switch (status) {
             // Sent by either the source or target node if a failure occurs.
             case 'failure':
-                terminal.writeln(TERMINAL_PRELUDE + 'Transfer has failed.\u001b[0m');
+                terminal.writeln(terminalPrelude + 'Transfer has failed.\u001b[0m');
                 return;
         }
-    };
+    }, [terminal, terminalPrelude]);
 
-    const handleDaemonErrorOutput = (line: string) =>
+    const handleDaemonErrorOutput = useCallback((line: string) =>
         terminal.writeln(
-            TERMINAL_PRELUDE + '\u001b[1m\u001b[41m' + line.replace(/(?:\r\n|\r|\n)$/im, '') + '\u001b[0m'
-        );
+            terminalPrelude +
+                '\u001b[1m\u001b[41m' +
+                brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '') +
+                '\u001b[0m'
+        ), [terminal, terminalPrelude, brandDaemonLine]
+    );
 
-    const handlePowerChangeEvent = (state: string) =>
-        terminal.writeln(TERMINAL_PRELUDE + 'Server marked as ' + state + '...\u001b[0m');
+    const handlePowerChangeEvent = useCallback(
+        (state: string) => terminal.writeln(terminalPrelude + 'Server marked as ' + state + '...\u001b[0m'),
+        [terminal, terminalPrelude]
+    );
 
     const handleCommandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'ArrowUp') {
@@ -191,7 +215,7 @@ export default () => {
                 return true;
             });
         }
-    }, [terminal, connected]);
+    }, [terminal, connected, fitTerminal]);
 
     useEventListener('resize', debounce(fitTerminal, 100));
 
@@ -264,7 +288,16 @@ export default () => {
                 });
             }
         };
-    }, [connected, instance]);
+    }, [
+        connected,
+        instance,
+        isTransferring,
+        terminal,
+        handleConsoleOutput,
+        handleDaemonErrorOutput,
+        handlePowerChangeEvent,
+        handleTransferStatus,
+    ]);
 
     return (
         <div className={classNames(styles.terminal, 'relative')}>

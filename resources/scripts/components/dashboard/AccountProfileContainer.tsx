@@ -12,6 +12,12 @@ import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer'
 import LinkedAccountsContainer from '@/components/dashboard/LinkedAccountsContainer';
 import DiscordCommunityCard from '@/components/dashboard/DiscordCommunityCard';
 import { ActivityLogFilters, useActivityLogs } from '@/api/account/activity';
+import {
+    BillingProfile,
+    updateBillingProfile,
+    useBillingProfile,
+    useBillingSubscriptions,
+} from '@/api/account/billing';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
@@ -28,6 +34,22 @@ type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
 
 const cardClass =
     'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
+const billingInputClass =
+    'w-full rounded-xl border border-[color:var(--border)] bg-[rgba(5,8,14,0.72)] px-3 py-2 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)] focus:shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.35)]';
+const emptyBillingProfile: BillingProfile = {
+    legalName: '',
+    companyName: null,
+    email: '',
+    phone: null,
+    addressLine1: null,
+    addressLine2: null,
+    city: null,
+    state: null,
+    postcode: null,
+    countryCode: 'MY',
+    taxId: null,
+    isBusiness: false,
+};
 
 export default () => {
     const history = useHistory();
@@ -55,10 +77,24 @@ export default () => {
         revalidateOnMount: true,
         revalidateOnFocus: false,
     });
+    const {
+        data: billingProfile,
+        mutate: mutateBillingProfile,
+        isValidating: billingProfileLoading,
+    } = useBillingProfile();
+    const { data: billingSubscriptions } = useBillingSubscriptions();
+    const [billingForm, setBillingForm] = useState<BillingProfile>(emptyBillingProfile);
+    const [billingSaving, setBillingSaving] = useState(false);
 
     useEffect(() => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
+
+    useEffect(() => {
+        if (billingProfile) {
+            setBillingForm(billingProfile);
+        }
+    }, [billingProfile]);
 
     useEffect(() => {
         const search = new URLSearchParams(location.search);
@@ -166,9 +202,100 @@ export default () => {
         }
     };
 
+    const setBillingField = <K extends keyof BillingProfile>(field: K, value: BillingProfile[K]) => {
+        setBillingForm((state) => ({ ...state, [field]: value }));
+    };
+
+    const onBillingProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setBillingSaving(true);
+        clearAndAddHttpError();
+
+        try {
+            const payload: BillingProfile = {
+                ...billingForm,
+                countryCode: billingForm.countryCode.trim().toUpperCase() || 'MY',
+                companyName: billingForm.companyName?.trim() || null,
+                phone: billingForm.phone?.trim() || null,
+                addressLine1: billingForm.addressLine1?.trim() || null,
+                addressLine2: billingForm.addressLine2?.trim() || null,
+                city: billingForm.city?.trim() || null,
+                state: billingForm.state?.trim() || null,
+                postcode: billingForm.postcode?.trim() || null,
+                taxId: billingForm.taxId?.trim() || null,
+            };
+            const updated = await updateBillingProfile(payload);
+
+            await mutateBillingProfile(updated, false);
+            clearFlashes('account');
+            addFlash({
+                key: 'account',
+                type: 'success',
+                title: 'Billing Profile Updated',
+                message: 'Invoice identity and billing address have been saved.',
+            });
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setBillingSaving(false);
+        }
+    };
+
+    const billingSubscriptionCount = billingSubscriptions?.length ?? 0;
+    const autoRenewEnabledCount = billingSubscriptions?.filter((subscription) => subscription.autoRenew).length ?? 0;
+
     return (
-        <div className={'account-theme h-screen overflow-y-auto bg-[color:var(--card)] px-6 py-8 font-mono text-white md:px-10'}>
+        <div className={'account-theme account-auth-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
             <style>{`
+                .account-auth-shell {
+                    position: relative;
+                    overflow: hidden;
+                    background:
+                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
+                        radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
+                        linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1));
+                    font-family: var(--font-sans, 'Inter', sans-serif);
+                }
+
+                .account-auth-shell::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    background:
+                        repeating-linear-gradient(
+                            90deg,
+                            rgba(255, 255, 255, 0.014) 0,
+                            rgba(255, 255, 255, 0.014) 1px,
+                            transparent 1px,
+                            transparent 40px
+                        );
+                    opacity: 0.2;
+                }
+
+                .account-auth-shell::after {
+                    content: '';
+                    position: absolute;
+                    left: 50%;
+                    top: -18%;
+                    width: min(1120px, 96vw);
+                    height: 110%;
+                    transform: translateX(-50%);
+                    pointer-events: none;
+                    border-radius: 999px;
+                    background: radial-gradient(
+                        ellipse at center,
+                        rgba(112, 168, 255, 0.08) 0%,
+                        rgba(112, 168, 255, 0.03) 42%,
+                        transparent 72%
+                    );
+                }
+
+                .account-theme > * {
+                    position: relative;
+                    z-index: 2;
+                }
+
                 .account-theme {
                     --neon-green: var(--primary);
                 }
@@ -361,7 +488,6 @@ export default () => {
             </Dialog>
 
             <FlashMessageRender byKey={'account'} />
-
             <div className={'mb-6 flex w-full flex-col gap-6 xl:flex-row xl:items-stretch xl:justify-between'}>
                 <section
                     className={
@@ -382,10 +508,16 @@ export default () => {
                             </button>
 
                             {avatarMenuOpen && (
-                                <div className={'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'}>
+                                <div
+                                    className={
+                                        'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'
+                                    }
+                                >
                                     <button
                                         type={'button'}
-                                        className={'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'}
+                                        className={
+                                            'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'
+                                        }
                                         onClick={() => avatarInputRef.current?.click()}
                                         disabled={avatarUploading}
                                     >
@@ -393,7 +525,9 @@ export default () => {
                                     </button>
                                     <button
                                         type={'button'}
-                                        className={'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'}
+                                        className={
+                                            'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'
+                                        }
                                         onClick={onAvatarRemove}
                                         disabled={avatarUploading || !user.image}
                                     >
@@ -482,7 +616,11 @@ export default () => {
                                 <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
                                     Two-Step Verification
                                 </p>
-                                <p className={`text-sm font-bold ${user.useTotp ? 'text-[color:var(--primary)]' : 'text-red-400'}`}>
+                                <p
+                                    className={`text-sm font-bold ${
+                                        user.useTotp ? 'text-[color:var(--primary)]' : 'text-red-400'
+                                    }`}
+                                >
                                     {user.useTotp ? 'Currently enabled' : 'Currently disabled'}
                                 </p>
                             </div>
@@ -494,6 +632,210 @@ export default () => {
                                 className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
                             />
                         </div>
+                    </section>
+
+                    <section className={cardClass}>
+                        <div className={'mb-5 flex flex-wrap items-start justify-between gap-4'}>
+                            <div>
+                                <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Billing Profile</h2>
+                                <p className={'mt-1 text-xs text-gray-400'}>
+                                    Saved here once, then copied into each invoice snapshot before checkout.
+                                </p>
+                            </div>
+                            <div className={'flex flex-wrap gap-2'}>
+                                <span
+                                    className={
+                                        'rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300'
+                                    }
+                                >
+                                    {autoRenewEnabledCount}/{billingSubscriptionCount} Auto Renew
+                                </span>
+                                <span
+                                    className={
+                                        'rounded-xl border border-[color:var(--border)] bg-[rgba(var(--primary-rgb),0.08)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--primary)]'
+                                    }
+                                >
+                                    {billingForm.countryCode || 'MY'} Billing Country
+                                </span>
+                            </div>
+                        </div>
+
+                        {!billingProfile && billingProfileLoading ? (
+                            <Spinner centered />
+                        ) : (
+                            <form className={'space-y-5'} onSubmit={onBillingProfileSubmit}>
+                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Legal Name
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.legalName}
+                                            onChange={(event) => setBillingField('legalName', event.currentTarget.value)}
+                                            maxLength={191}
+                                            required
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Company Name
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.companyName ?? ''}
+                                            onChange={(event) =>
+                                                setBillingField('companyName', event.currentTarget.value || null)
+                                            }
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Invoice Email
+                                        </span>
+                                        <input
+                                            type={'email'}
+                                            className={billingInputClass}
+                                            value={billingForm.email}
+                                            onChange={(event) => setBillingField('email', event.currentTarget.value)}
+                                            maxLength={191}
+                                            required
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Phone
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.phone ?? ''}
+                                            onChange={(event) => setBillingField('phone', event.currentTarget.value || null)}
+                                            maxLength={32}
+                                        />
+                                    </label>
+                                </div>
+
+                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
+                                    <label className={'block md:col-span-2'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Address Line 1
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.addressLine1 ?? ''}
+                                            onChange={(event) =>
+                                                setBillingField('addressLine1', event.currentTarget.value || null)
+                                            }
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label className={'block md:col-span-2'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Address Line 2
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.addressLine2 ?? ''}
+                                            onChange={(event) =>
+                                                setBillingField('addressLine2', event.currentTarget.value || null)
+                                            }
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            City
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.city ?? ''}
+                                            onChange={(event) => setBillingField('city', event.currentTarget.value || null)}
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            State
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.state ?? ''}
+                                            onChange={(event) => setBillingField('state', event.currentTarget.value || null)}
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Postcode
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.postcode ?? ''}
+                                            onChange={(event) =>
+                                                setBillingField('postcode', event.currentTarget.value || null)
+                                            }
+                                            maxLength={32}
+                                        />
+                                    </label>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Country Code
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.countryCode}
+                                            onChange={(event) =>
+                                                setBillingField('countryCode', event.currentTarget.value.toUpperCase())
+                                            }
+                                            maxLength={2}
+                                            required
+                                        />
+                                    </label>
+                                </div>
+
+                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]'}>
+                                    <label className={'block'}>
+                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+                                            Tax ID
+                                        </span>
+                                        <input
+                                            className={billingInputClass}
+                                            value={billingForm.taxId ?? ''}
+                                            onChange={(event) => setBillingField('taxId', event.currentTarget.value || null)}
+                                            maxLength={191}
+                                        />
+                                    </label>
+                                    <label
+                                        className={
+                                            'flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-gray-200'
+                                        }
+                                    >
+                                        <input
+                                            type={'checkbox'}
+                                            className={'h-4 w-4 rounded border-[color:var(--border)] bg-transparent'}
+                                            checked={billingForm.isBusiness}
+                                            onChange={(event) =>
+                                                setBillingField('isBusiness', event.currentTarget.checked)
+                                            }
+                                        />
+                                        <span>Business billing entity</span>
+                                    </label>
+                                </div>
+
+                                <div className={'flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--border)] pt-4'}>
+                                    <p className={'max-w-[38rem] text-xs leading-6 text-gray-400'}>
+                                        These values are copied into each invoice so future changes do not rewrite your old billing records.
+                                    </p>
+                                    <InteractiveHoverButton
+                                        type={'submit'}
+                                        text={billingSaving ? 'Saving...' : 'Save Billing Profile'}
+                                        className={'!h-10 !min-w-[12rem] !px-5 !text-[10px]'}
+                                        disabled={billingSaving}
+                                    />
+                                </div>
+                            </form>
+                        )}
                     </section>
 
                     <section className={cardClass}>

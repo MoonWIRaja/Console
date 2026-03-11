@@ -193,4 +193,21 @@ return [
     'features' => [
         'new_server_identifiers' => (bool) env('PTERODACTYL_USE_SERVER_IDENTIFIERS', false),
     ],
+
+    'databases' => [
+        'internal_host_overrides' => (static function (): array {
+            $entries = array_filter(array_map('trim', explode(',', (string) env('PTERODACTYL_DATABASE_INTERNAL_HOST_OVERRIDES', ''))));
+            $overrides = [];
+
+            foreach ($entries as $entry) {
+                [$host, $override] = array_pad(array_map('trim', explode('=', $entry, 2)), 2, null);
+
+                if ($host !== null && $host !== '' && $override !== null && $override !== '') {
+                    $overrides[strtolower($host)] = $override;
+                }
+            }
+
+            return $overrides;
+        })(),
+    ],
 ];

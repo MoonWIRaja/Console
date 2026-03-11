@@ -38,9 +38,21 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::delete('/oauth/{provider}', [Client\OAuthAccountController::class, 'delete']);
     Route::get('/discord/community', [Client\DiscordCommunityController::class, 'index']);
     Route::post('/discord/community/join', [Client\DiscordCommunityController::class, 'join']);
+    Route::get('/billing/profile', [Client\BillingController::class, 'profile']);
+    Route::put('/billing/profile', [Client\BillingController::class, 'updateProfile']);
     Route::get('/billing/catalog', [Client\BillingController::class, 'catalog']);
+    Route::post('/billing/orders/quote', [Client\BillingController::class, 'quote']);
     Route::get('/billing/orders', [Client\BillingController::class, 'orders']);
+    Route::get('/billing/invoices', [Client\BillingController::class, 'invoices']);
+    Route::get('/billing/invoices/{billingInvoice}', [Client\BillingController::class, 'showInvoice']);
+    Route::post('/billing/invoices/{billingInvoice}/checkout', [Client\BillingController::class, 'checkout']);
+    Route::post('/billing/invoices/{billingInvoice}/retry-payment', [Client\BillingController::class, 'retryPayment']);
+    Route::get('/billing/subscriptions', [Client\BillingController::class, 'subscriptions']);
     Route::post('/billing/orders', [Client\BillingController::class, 'store']);
+    Route::post('/billing/subscriptions/{billingSubscription}/renew', [Client\BillingController::class, 'renew']);
+    Route::post('/billing/subscriptions/{billingSubscription}/upgrade/quote', [Client\BillingController::class, 'upgradeQuote']);
+    Route::post('/billing/subscriptions/{billingSubscription}/upgrade', [Client\BillingController::class, 'upgrade']);
+    Route::patch('/billing/subscriptions/{billingSubscription}/auto-renew', [Client\BillingController::class, 'toggleAutoRenew']);
 
     Route::get('/api-keys', [Client\ApiKeyController::class, 'index']);
     Route::post('/api-keys', [Client\ApiKeyController::class, 'store']);
@@ -83,6 +95,12 @@ Route::group([
         Route::get('/', [Client\Servers\DatabaseController::class, 'index']);
         Route::middleware([ResourceLimit::Database->middleware()])
             ->post('/', [Client\Servers\DatabaseController::class, 'store']);
+        Route::get('/{database}/tables', [Client\Servers\DatabaseWorkspaceController::class, 'tables']);
+        Route::get('/{database}/rows', [Client\Servers\DatabaseWorkspaceController::class, 'rows']);
+        Route::get('/{database}/health', [Client\Servers\DatabaseWorkspaceController::class, 'health']);
+        Route::post('/{database}/query', [Client\Servers\DatabaseWorkspaceController::class, 'query']);
+        Route::post('/{database}/import', [Client\Servers\DatabaseWorkspaceController::class, 'import']);
+        Route::get('/{database}/export', [Client\Servers\DatabaseWorkspaceController::class, 'export']);
         Route::post('/{database}/rotate-password', [Client\Servers\DatabaseController::class, 'rotatePassword']);
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });

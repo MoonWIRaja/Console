@@ -217,17 +217,12 @@ export default ({ server, className }: { server: Server; className?: string }) =
             hoverGlow
             className={`w-full rounded-xl [--radius:12] [--border:2] [--size:185] ${className || ''}`}
         >
-            <Link
-                to={`/server/${server.id}`}
-                className={'shine-border group block rounded-xl border border-gray-800 bg-[color:var(--card)] p-6 no-underline'}
-            >
+            <Link to={`/server/${server.id}`} className={'dashboard-server-row group block p-6 no-underline'}>
                 <div className='flex flex-col gap-8 xl:flex-row xl:items-center'>
                     <div className='flex min-w-[240px] items-center gap-5'>
                         <div className='relative'>
-                            <div className='flex h-14 w-14 items-center justify-center rounded-lg border border-white/10 bg-[color:var(--card)] transition-colors duration-500 group-hover:border-[color:var(--primary)]'>
-                                <span className='material-icons-round text-2xl text-gray-400 transition-colors duration-500 group-hover:text-[color:var(--primary)]'>
-                                    dns
-                                </span>
+                            <div className='dashboard-server-iconbox'>
+                                <span className='material-icons-round dashboard-server-icon text-2xl'>dns</span>
                             </div>
                             <div className='absolute -right-1 -top-1 flex h-4 w-4'>
                                 <span
@@ -241,18 +236,18 @@ export default ({ server, className }: { server: Server; className?: string }) =
                             </div>
                         </div>
                         <div className='min-w-0'>
-                            <h3 className='truncate font-mono text-lg font-bold tracking-tight text-white'>
-                                {server.name}
-                            </h3>
+                            <h3 className='dashboard-server-name truncate'>{server.name}</h3>
                             <div className='mt-1 flex flex-wrap items-center gap-2'>
                                 <span
-                                    className='neon-glow-text text-[10px] font-bold uppercase italic tracking-widest'
+                                    className='dashboard-neon-glow-text text-[10px] font-bold uppercase italic tracking-widest'
                                     style={{ color: statusColor }}
                                 >
                                     {statusLabel}
                                 </span>
-                                <span className='text-[10px] text-gray-500'>•</span>
-                                <span className='truncate text-[10px] text-gray-500'>{allocationLabel}</span>
+                                <span className='text-[10px] text-[rgba(174,183,194,0.62)]'>•</span>
+                                <span className='truncate text-[10px] text-[rgba(174,183,194,0.74)]'>
+                                    {allocationLabel}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -260,7 +255,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                     <div className='flex-1 grid-cols-1 gap-6 font-mono md:grid md:grid-cols-3'>
                         <div className='space-y-2'>
                             <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-gray-500'>
+                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
                                     CPU LOAD
                                 </span>
                                 <span
@@ -270,10 +265,10 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     {stats ? `${cpuValue.toFixed(1)}%` : '--'}
                                 </span>
                             </div>
-                            <div className='h-1 w-full overflow-hidden rounded-full bg-white/5'>
+                            <div className='dashboard-progress-track'>
                                 <div
                                     className={`h-full transition-all duration-700 ${
-                                        alarms.cpu ? '' : 'progress-neon'
+                                        alarms.cpu ? '' : 'dashboard-progress-neon'
                                     }`}
                                     style={{
                                         width: `${stats ? cpuPercent : 0}%`,
@@ -286,7 +281,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
 
                         <div className='space-y-2'>
                             <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-gray-500'>
+                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
                                     MEMORY
                                 </span>
                                 <span
@@ -296,10 +291,10 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     {stats ? bytesToString(memoryValue) : '--'}
                                 </span>
                             </div>
-                            <div className='h-1 w-full overflow-hidden rounded-full bg-white/5'>
+                            <div className='dashboard-progress-track'>
                                 <div
                                     className={`h-full transition-all duration-700 ${
-                                        alarms.memory ? '' : 'progress-neon'
+                                        alarms.memory ? '' : 'dashboard-progress-neon'
                                     }`}
                                     style={{
                                         width: `${stats ? memoryPercent : 0}%`,
@@ -312,7 +307,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
 
                         <div className='space-y-2'>
                             <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-gray-500'>
+                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
                                     STORAGE
                                 </span>
                                 <span
@@ -322,10 +317,10 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                     {stats ? bytesToString(diskValue) : '--'}
                                 </span>
                             </div>
-                            <div className='h-1 w-full overflow-hidden rounded-full bg-white/5'>
+                            <div className='dashboard-progress-track'>
                                 <div
                                     className={`h-full transition-all duration-700 ${
-                                        alarms.disk ? '' : 'progress-neon'
+                                        alarms.disk ? '' : 'dashboard-progress-neon'
                                     }`}
                                     style={{
                                         width: `${stats ? diskPercent : 0}%`,

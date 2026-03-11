@@ -46,6 +46,10 @@ const GlowCard: React.FC<GlowCardProps> = ({
     const innerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
         const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
         const smoothstep = (edge0: number, edge1: number, x: number) => {
             const t = clamp01((x - edge0) / Math.max(0.0001, edge1 - edge0));
@@ -65,17 +69,31 @@ const GlowCard: React.FC<GlowCardProps> = ({
         };
 
         if (!orbit) {
+            if (
+                typeof document?.addEventListener !== 'function' ||
+                typeof document?.removeEventListener !== 'function'
+            ) {
+                return;
+            }
+
             const syncPointer = (e: PointerEvent) => {
                 const { clientX: x, clientY: y } = e;
                 if (!cardRef.current) return;
-                cardRef.current.style.setProperty('--x', x.toFixed(2));
-                cardRef.current.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
-                cardRef.current.style.setProperty('--y', y.toFixed(2));
-                cardRef.current.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
+                const rect = cardRef.current.getBoundingClientRect();
+                const localX = x - rect.left;
+                const localY = y - rect.top;
+                cardRef.current.style.setProperty('--x', localX.toFixed(2));
+                cardRef.current.style.setProperty('--xp', (localX / Math.max(1, rect.width)).toFixed(2));
+                cardRef.current.style.setProperty('--y', localY.toFixed(2));
+                cardRef.current.style.setProperty('--yp', (localY / Math.max(1, rect.height)).toFixed(2));
             };
 
             document.addEventListener('pointermove', syncPointer);
             return () => document.removeEventListener('pointermove', syncPointer);
+        }
+
+        if (typeof requestAnimationFrame !== 'function' || typeof cancelAnimationFrame !== 'function') {
+            return;
         }
 
         let frame = 0;
@@ -88,8 +106,8 @@ const GlowCard: React.FC<GlowCardProps> = ({
                 const rect = node.getBoundingClientRect();
                 const phase = ((frame % orbitDurationMs) / orbitDurationMs + orbitStartOffset) % 1;
                 const t = phase * Math.PI * 2 * orbitDirection;
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
+                const cx = rect.width / 2;
+                const cy = rect.height / 2;
                 const rx = Math.max(16, rect.width / 2 + 2);
                 const ry = Math.max(16, rect.height / 2 + 2);
                 const x = cx + Math.cos(t) * rx;
@@ -99,9 +117,9 @@ const GlowCard: React.FC<GlowCardProps> = ({
                 const alpha = visible ? smoothstep(0, activeFade, edgeDist) : 0;
 
                 node.style.setProperty('--x', x.toFixed(2));
-                node.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
+                node.style.setProperty('--xp', (x / Math.max(1, rect.width)).toFixed(2));
                 node.style.setProperty('--y', y.toFixed(2));
-                node.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
+                node.style.setProperty('--yp', (y / Math.max(1, rect.height)).toFixed(2));
                 node.style.setProperty('--track-alpha', alpha.toFixed(3));
             }
 
@@ -142,7 +160,6 @@ const GlowCard: React.FC<GlowCardProps> = ({
             backgroundColor: 'var(--backdrop, transparent)',
             backgroundSize: 'calc(100% + (2 * var(--border-size))) calc(100% + (2 * var(--border-size)))',
             backgroundPosition: '50% 50%',
-            backgroundAttachment: 'fixed',
             border: 'var(--border-size) solid var(--backup-border)',
             position: 'relative',
             touchAction: 'none',
@@ -167,7 +184,6 @@ const GlowCard: React.FC<GlowCardProps> = ({
             inset: calc(var(--border-size) * -1);
             border: var(--border-size) solid transparent;
             border-radius: calc(var(--radius) * 1px);
-            background-attachment: fixed;
             background-size: calc(100% + (2 * var(--border-size))) calc(100% + (2 * var(--border-size)));
             background-repeat: no-repeat;
             background-position: 50% 50%;

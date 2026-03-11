@@ -44,12 +44,22 @@ export default createGlobalStyle`
         --radius: 0.75rem;
     }
 
+    html,
+    body,
+    #app {
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+    }
+
     body {
         ${tw`font-sans`};
+        margin: 0;
         background-color: var(--background);
         color: var(--foreground);
         font-family: var(--font-sans);
         letter-spacing: 0.015em;
+        overflow-x: hidden;
     }
 
     h1, h2, h3, h4, h5, h6 {

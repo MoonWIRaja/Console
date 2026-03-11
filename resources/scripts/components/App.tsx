@@ -1,4 +1,4 @@
-import React, { lazy, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { hot } from 'react-hot-loader/root';
 import { Route, Router, Switch } from 'react-router-dom';
 import { StoreProvider } from 'easy-peasy';
@@ -16,10 +16,9 @@ import '@/assets/tailwind.css';
 import Spinner from '@/components/elements/Spinner';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 import { applyThemePreset, DEFAULT_THEME_ID } from '@/components/ui/theme-presets';
-
-const DashboardRouter = lazy(() => import(/* webpackChunkName: "dashboard" */ '@/routers/DashboardRouter'));
-const ServerRouter = lazy(() => import(/* webpackChunkName: "server" */ '@/routers/ServerRouter'));
-const AuthenticationRouter = lazy(() => import(/* webpackChunkName: "auth" */ '@/routers/AuthenticationRouter'));
+import AuthenticationRouter from '@/routers/AuthenticationRouter';
+import DashboardRouter from '@/routers/DashboardRouter';
+import ServerRouter from '@/routers/ServerRouter';
 
 interface ExtendedWindow extends Window {
     SiteConfiguration?: SiteSettings;
@@ -71,7 +70,7 @@ const App = () => {
             <GlobalStylesheet />
             <StoreProvider store={store}>
                 <ProgressBar />
-                <div css={tw`mx-auto w-auto`}>
+                <div css={tw`w-full min-h-screen`}>
                     <Router history={history}>
                         <Switch>
                             <Route path={'/auth'}>

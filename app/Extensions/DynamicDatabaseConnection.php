@@ -6,6 +6,7 @@ use Pterodactyl\Models\DatabaseHost;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Config\Repository as ConfigRepository;
 use Pterodactyl\Contracts\Repository\DatabaseHostRepositoryInterface;
+use Pterodactyl\Services\Databases\InternalHostResolver;
 
 class DynamicDatabaseConnection
 {
@@ -20,6 +21,7 @@ class DynamicDatabaseConnection
         protected ConfigRepository $config,
         protected Encrypter $encrypter,
         protected DatabaseHostRepositoryInterface $repository,
+        protected InternalHostResolver $hostResolver,
     ) {
     }
 
@@ -36,7 +38,7 @@ class DynamicDatabaseConnection
 
         $this->config->set('database.connections.' . $connection, [
             'driver' => self::DB_DRIVER,
-            'host' => $host->host,
+            'host' => $this->hostResolver->forDatabaseHost($host),
             'port' => $host->port,
             'database' => $database,
             'username' => $host->username,

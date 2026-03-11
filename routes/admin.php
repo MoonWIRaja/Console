@@ -86,6 +86,31 @@ Route::group(['prefix' => 'settings'], function () {
 */
 Route::group(['prefix' => 'billing'], function () {
     Route::get('/', [Admin\Billing\IndexController::class, 'index'])->name('admin.billing');
+    Route::get('/gateway', [Admin\Billing\GatewayController::class, 'index'])->name('admin.billing.gateway');
+    Route::patch('/gateway', [Admin\Billing\GatewayController::class, 'update'])->name('admin.billing.gateway.update');
+    Route::get('/invoices', [Admin\Billing\InvoiceController::class, 'index'])->name('admin.billing.invoices');
+    Route::get('/invoices/{billingInvoice:id}', [Admin\Billing\InvoiceController::class, 'view'])->name('admin.billing.invoices.view');
+    Route::get('/payments', [Admin\Billing\PaymentController::class, 'index'])->name('admin.billing.payments');
+    Route::get('/payments/{billingPayment:id}', [Admin\Billing\PaymentController::class, 'view'])->name('admin.billing.payments.view');
+    Route::post('/payments/{billingPayment:id}/refund', [Admin\Billing\PaymentController::class, 'refund'])->name('admin.billing.payments.refund');
+    Route::get('/refunds', [Admin\Billing\RefundController::class, 'index'])->name('admin.billing.refunds');
+    Route::get('/subscriptions', [Admin\Billing\SubscriptionController::class, 'index'])->name('admin.billing.subscriptions');
+    Route::get('/reconciliation', [Admin\Billing\ReconciliationController::class, 'index'])->name('admin.billing.reconciliation');
+    Route::get('/webhook-events', [Admin\Billing\WebhookEventController::class, 'index'])->name('admin.billing.webhook-events');
+    Route::post('/webhook-events/{billingGatewayEvent:id}/replay', [Admin\Billing\WebhookEventController::class, 'replay'])->name('admin.billing.webhook-events.replay');
+    Route::get('/provision-failures', [Admin\Billing\ProvisionFailureController::class, 'index'])->name('admin.billing.provision-failures');
+    Route::post('/orders/{billingOrder:id}/retry-provision', [Admin\Billing\ProvisionFailureController::class, 'retry'])->name('admin.billing.orders.retry-provision');
+    Route::get('/tax-rules', [Admin\Billing\TaxRuleController::class, 'index'])->name('admin.billing.tax-rules');
+    Route::post('/tax-rules', [Admin\Billing\TaxRuleController::class, 'store'])->name('admin.billing.tax-rules.store');
+    Route::patch('/tax-rules/{billingTaxRule:id}', [Admin\Billing\TaxRuleController::class, 'update'])->name('admin.billing.tax-rules.update');
+    Route::get('/nodes/{node:id}', [Admin\Billing\NodeController::class, 'view'])->name('admin.billing.nodes.view');
+    Route::patch('/nodes/{node:id}', [Admin\Billing\NodeController::class, 'update'])->name('admin.billing.nodes.update');
+    Route::post('/nodes/{node:id}/games', [Admin\Billing\NodeController::class, 'storeGameProfile'])->name('admin.billing.nodes.games.store');
+    Route::patch('/nodes/{node:id}/games/{billingGameProfile:id}', [Admin\Billing\NodeController::class, 'updateGameProfile'])->name('admin.billing.nodes.games.update');
+    Route::delete('/nodes/{node:id}/games/{billingGameProfile:id}', [Admin\Billing\NodeController::class, 'deleteGameProfile'])->name('admin.billing.nodes.games.delete');
+    Route::get('/orders/{billingOrder:id}', [Admin\Billing\OrderController::class, 'view'])->name('admin.billing.orders.view');
+    Route::post('/orders/{billingOrder:id}/approve', [Admin\Billing\OrderController::class, 'approve'])->name('admin.billing.orders.approve');
+    Route::post('/orders/{billingOrder:id}/reject', [Admin\Billing\OrderController::class, 'reject'])->name('admin.billing.orders.reject');
     Route::any('/{path?}', [Admin\Billing\IndexController::class, 'redirect'])->where('path', '.*');
 });
 

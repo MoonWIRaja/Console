@@ -18,11 +18,14 @@
         <div class="col-xs-12">
             <div class="callout callout-info">
                 <p>
-                    Remaining sellable stock right now:
-                    <strong>{{ $availability['cpu_remaining'] }} vCore</strong>,
+                    Billing availability right now:
+                    <strong>max {{ $availability['cpu_remaining'] }} vCore per order</strong>,
                     <strong>{{ $availability['memory_remaining_gb'] }} GB RAM</strong>,
                     <strong>{{ $availability['disk_remaining_gb'] }} GB Storage</strong>,
                     <strong>{{ $availability['free_allocations'] }} free allocation(s)</strong>.
+                </p>
+                <p class="text-muted" style="margin: 8px 0 0;">
+                    vCore is treated as a per-order limit only. RAM and Storage are the live sellable stock for billing. If either RAM or Storage hits zero, the node is treated as sold out.
                 </p>
             </div>
         </div>
@@ -67,8 +70,9 @@
                         <hr>
                         <div class="row">
                             <div class="form-group col-md-4">
-                                <label class="control-label">Sellable vCore Stock</label>
+                                <label class="control-label">Maximum vCore Per Order</label>
                                 <input type="number" min="0" name="cpu_stock" class="form-control" value="{{ old('cpu_stock', $config->cpu_stock) }}">
+                                <p class="text-muted small">This value does not decrease after orders. It only controls the maximum selectable vCore per order.</p>
                             </div>
                             <div class="form-group col-md-4">
                                 <label class="control-label">Sellable RAM Stock (GB)</label>

@@ -2,7 +2,9 @@
 
 namespace Pterodactyl\Observers;
 
+use Carbon\CarbonImmutable;
 use Pterodactyl\Events;
+use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Models\Server;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 
@@ -31,6 +33,16 @@ class ServerObserver
      */
     public function deleting(Server $server): void
     {
+        BillingSubscription::query()
+            ->where('server_id', $server->id)
+            ->whereIn('status', BillingSubscription::RESOURCE_RESERVATION_STATUSES)
+            ->update([
+                'status' => BillingSubscription::STATUS_DELETED,
+                'deletion_scheduled_at' => null,
+                'deleted_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
+            ]);
+
         event(new Events\Server\Deleting($server));
     }
 

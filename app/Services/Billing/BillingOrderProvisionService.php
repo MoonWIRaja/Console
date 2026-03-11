@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Pterodactyl\Models\Egg;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\BillingOrder;
+use Pterodactyl\Notifications\BillingProvisioningFailed;
 use Pterodactyl\Services\Servers\ServerCreationService;
 
 class BillingOrderProvisionService
@@ -15,6 +16,7 @@ class BillingOrderProvisionService
     public function __construct(
         private BillingCatalogService $catalogService,
         private ServerCreationService $serverCreationService,
+        private BillingSubscriptionService $subscriptionService,
     ) {
     }
 
@@ -23,19 +25,24 @@ class BillingOrderProvisionService
      *
      * @throws \Throwable
      */
-    public function handle(BillingOrder $order, User $admin): BillingOrder
+    public function handle(BillingOrder $order, ?User $admin = null): BillingOrder
     {
-        $order->loadMissing('nodeConfig', 'user');
+        $order->loadMissing('nodeConfig', 'user', 'invoice');
 
-        if ($order->status !== BillingOrder::STATUS_PENDING) {
-            throw new \RuntimeException('Only pending billing orders can be approved.');
+        if ($order->order_type !== BillingOrder::TYPE_NEW_SERVER) {
+            throw new \RuntimeException('Only new server billing orders can be provisioned.');
+        }
+
+        if (!in_array($order->status, [
+            BillingOrder::STATUS_PENDING,
+            BillingOrder::STATUS_PAID,
+            BillingOrder::STATUS_QUEUED_PROVISION,
+            BillingOrder::STATUS_PROVISION_FAILED,
+        ], true)) {
+            throw new \RuntimeException('Only paid or manually approved billing orders can be provisioned.');
         }
 
         $availability = $this->catalogService->getAvailability($order->nodeConfig);
-        if ($availability['cpu_remaining'] < $order->cpu_cores) {
-            throw new \RuntimeException('There is no longer enough vCore stock available for this order.');
-        }
-
         if ($availability['memory_remaining_gb'] < $order->memory_gb) {
             throw new \RuntimeException('There is no longer enough RAM available for this order.');
         }
@@ -51,8 +58,11 @@ class BillingOrderProvisionService
 
         $order->forceFill([
             'status' => BillingOrder::STATUS_PROVISIONING,
-            'approved_by' => $admin->id,
-            'approved_at' => CarbonImmutable::now(),
+            'approved_by' => $admin?->id,
+            'approved_at' => $order->approved_at ?? CarbonImmutable::now(),
+            'provision_attempted_at' => CarbonImmutable::now(),
+            'provision_failure_code' => null,
+            'provision_failure_message' => null,
         ])->saveOrFail();
 
         try {
@@ -92,6 +102,8 @@ class BillingOrderProvisionService
             'provisioned_at' => CarbonImmutable::now(),
         ])->saveOrFail();
 
+        $this->subscriptionService->createFromProvisionedOrder($order);
+
         return $order->fresh(['server', 'user']);
     }
 
@@ -120,13 +132,17 @@ class BillingOrderProvisionService
     private function markFailed(BillingOrder $order, string $message): void
     {
         $order->forceFill([
-            'status' => BillingOrder::STATUS_FAILED,
+            'status' => BillingOrder::STATUS_PROVISION_FAILED,
             'failed_at' => CarbonImmutable::now(),
+            'provision_failure_code' => 'provision_failed',
+            'provision_failure_message' => $message,
             'admin_notes' => trim(implode("\n\n", array_filter([
                 $order->admin_notes,
                 $message,
             ]))),
         ])->saveOrFail();
+
+        $order->user?->notify(new BillingProvisioningFailed($order->fresh('user')));
     }
 
     private function resolveDockerImage(Egg $egg, ?string $override): string

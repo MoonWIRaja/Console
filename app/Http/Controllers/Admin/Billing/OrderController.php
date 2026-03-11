@@ -22,7 +22,7 @@ class OrderController extends Controller
     public function view(BillingOrder $billingOrder): View
     {
         return view('admin.billing.order', [
-            'order' => $billingOrder->load(['user', 'node', 'server', 'approver', 'gameProfile.egg']),
+            'order' => $billingOrder->load(['user', 'node', 'server', 'approver', 'gameProfile.egg', 'invoice.payments.refunds']),
         ]);
     }
 

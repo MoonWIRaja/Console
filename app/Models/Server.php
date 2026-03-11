@@ -66,6 +66,7 @@ use Pterodactyl\Exceptions\Http\Server\ServerStateConflictException;
  * @property int|null $schedules_count
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\Subuser[] $subusers
  * @property int|null $subusers_count
+ * @property \Pterodactyl\Models\BillingSubscription|null $billingSubscription
  * @property ServerTransfer|null $transfer
  * @property User $user
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\EggVariable[] $variables
@@ -318,6 +319,14 @@ class Server extends Model implements Identifiable
     public function schedules(): HasMany
     {
         return $this->hasMany(Schedule::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\Pterodactyl\Models\BillingSubscription, $this>
+     */
+    public function billingSubscription(): HasOne
+    {
+        return $this->hasOne(BillingSubscription::class);
     }
 
     /**

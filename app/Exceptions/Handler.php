@@ -86,6 +86,7 @@ class Handler extends ExceptionHandler
         $this->reportable(function (TransportException $ex) {
             $ex = $this->generateCleanedExceptionStack($ex);
         });
+
     }
 
     private function generateCleanedExceptionStack(\Throwable $exception): string
