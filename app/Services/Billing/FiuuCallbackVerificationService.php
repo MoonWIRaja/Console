@@ -6,22 +6,40 @@ class FiuuCallbackVerificationService
 {
     public function normalize(array $payload): array
     {
-        $amount = $this->normalizeAmount(
+        $rawAmount = (string) (
             $payload['Amount']
             ?? $payload['amount']
             ?? $payload['amt']
             ?? 0
         );
+        $rawCurrency = strtoupper(trim((string) (
+            $payload['Currency']
+            ?? $payload['currency']
+            ?? config('billing.currency', 'MYR')
+        )));
+        $domain = trim((string) (
+            $payload['domain']
+            ?? $payload['Domain']
+            ?? $payload['MerchantID']
+            ?? $payload['merchant_id']
+            ?? config('billing.fiuu.merchant_id', '')
+        ));
 
         return [
             'reference' => (string) ($payload['RefNo'] ?? $payload['reference'] ?? $payload['orderid'] ?? ''),
-            'transaction_id' => (string) ($payload['TranID'] ?? $payload['transaction_id'] ?? $payload['txn_id'] ?? ''),
-            'status' => (string) ($payload['Status'] ?? $payload['status'] ?? $payload['StatCode'] ?? ''),
-            'amount' => $amount,
-            'currency' => strtoupper((string) ($payload['Currency'] ?? $payload['currency'] ?? config('billing.currency', 'MYR'))),
+            'orderid' => (string) ($payload['orderid'] ?? $payload['RefNo'] ?? $payload['reference'] ?? ''),
+            'transaction_id' => (string) ($payload['TranID'] ?? $payload['tranID'] ?? $payload['transaction_id'] ?? $payload['txn_id'] ?? ''),
+            'status' => (string) ($payload['Status'] ?? $payload['status'] ?? $payload['StatCode'] ?? $payload['statcode'] ?? ''),
+            'amount' => $this->normalizeAmount($rawAmount),
+            'raw_amount' => trim($rawAmount),
+            'currency' => $this->normalizeCurrency($rawCurrency),
+            'raw_currency' => $rawCurrency,
             'payment_method' => (string) ($payload['channel'] ?? $payload['payment_method'] ?? ''),
             'signature' => (string) ($payload['skey'] ?? $payload['signature'] ?? $payload['vcode'] ?? ''),
-            'merchant_id' => (string) ($payload['MerchantID'] ?? $payload['merchant_id'] ?? config('billing.fiuu.merchant_id', '')),
+            'merchant_id' => (string) ($payload['MerchantID'] ?? $payload['merchantID'] ?? $payload['merchant_id'] ?? config('billing.fiuu.merchant_id', '')),
+            'domain' => $domain,
+            'paydate' => trim((string) ($payload['paydate'] ?? $payload['PayDate'] ?? '')),
+            'appcode' => array_key_exists('appcode', $payload) ? (string) ($payload['appcode'] ?? '') : (string) ($payload['AppCode'] ?? ''),
             'raw' => $payload,
         ];
     }
@@ -36,29 +54,50 @@ class FiuuCallbackVerificationService
     public function verifySignature(array $normalized): bool
     {
         $provided = strtolower(trim((string) ($normalized['signature'] ?? '')));
-        $verifyKey = strtolower(trim((string) config('billing.fiuu.verify_key', '')));
+        $secretKey = trim((string) config('billing.fiuu.secret_key', ''));
 
-        if ($verifyKey === '' || $provided === '') {
-            return true;
+        if ($secretKey === '' || $provided === '') {
+            return false;
         }
 
         $transactionId = (string) ($normalized['transaction_id'] ?? '');
-        $reference = (string) ($normalized['reference'] ?? '');
+        $references = array_unique(array_filter([
+            (string) ($normalized['orderid'] ?? ''),
+            (string) ($normalized['reference'] ?? ''),
+        ]));
         $status = (string) ($normalized['status'] ?? '');
-        $merchantId = (string) ($normalized['merchant_id'] ?? config('billing.fiuu.merchant_id', ''));
-        $amount = $this->normalizeAmount($normalized['amount'] ?? 0);
-        $currency = (string) ($normalized['currency'] ?? config('billing.currency', 'MYR'));
-
-        $candidates = array_filter([
-            md5($transactionId . $reference . $status . $merchantId . $amount . $currency . $verifyKey),
-            md5($transactionId . $reference . $status . $merchantId . $amount . $currency),
-            md5($transactionId . $reference . $status . $amount . $currency . $verifyKey),
-            md5($amount . $merchantId . $reference . $verifyKey),
+        $domains = array_unique(array_filter([
+            trim((string) ($normalized['domain'] ?? '')),
+            trim((string) ($normalized['merchant_id'] ?? '')),
+            trim((string) config('billing.fiuu.merchant_id', '')),
+        ]));
+        $amounts = array_unique(array_filter([
+            trim((string) ($normalized['raw_amount'] ?? '')),
+            $this->normalizeAmount($normalized['amount'] ?? 0),
+        ]));
+        $currencies = array_unique(array_filter([
+            strtoupper(trim((string) ($normalized['raw_currency'] ?? ''))),
+            strtoupper(trim((string) ($normalized['currency'] ?? config('billing.currency', 'MYR')))),
+        ]));
+        $paydate = trim((string) ($normalized['paydate'] ?? ''));
+        $appcodes = array_unique([
+            (string) ($normalized['appcode'] ?? ''),
+            '',
         ]);
 
-        foreach ($candidates as $candidate) {
-            if (hash_equals($candidate, $provided)) {
-                return true;
+        foreach ($domains as $domain) {
+            foreach ($references as $reference) {
+                foreach ($amounts as $amount) {
+                    foreach ($currencies as $currency) {
+                        $key = md5($transactionId . $reference . $status . $domain . $amount . $currency);
+                        foreach ($appcodes as $appcode) {
+                            $candidate = md5($paydate . $domain . $key . $appcode . $secretKey);
+                            if (hash_equals($candidate, $provided)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -68,5 +107,15 @@ class FiuuCallbackVerificationService
     private function normalizeAmount(mixed $amount): string
     {
         return number_format((float) str_replace(',', '', (string) $amount), 2, '.', '');
+    }
+
+    private function normalizeCurrency(string $currency): string
+    {
+        $currency = strtoupper(trim($currency));
+
+        return match ($currency) {
+            'RM' => 'MYR',
+            default => $currency !== '' ? $currency : strtoupper((string) config('billing.currency', 'MYR')),
+        };
     }
 }

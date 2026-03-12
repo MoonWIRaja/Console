@@ -19,13 +19,7 @@ class BillingPaymentAttemptService
             'provider' => $provider,
             'attempt_number' => $attemptNumber,
             'status' => BillingPaymentAttempt::STATUS_INITIATED,
-            'checkout_reference' => strtoupper(sprintf(
-                '%s-%d-%d-%s',
-                $provider,
-                $invoice->id,
-                $attemptNumber,
-                Str::random(8)
-            )),
+            'checkout_reference' => $this->generateCheckoutReference($provider, $invoice->id, $attemptNumber),
             'raw_request_payload' => $requestPayload ?: null,
         ]);
     }
@@ -75,5 +69,13 @@ class BillingPaymentAttemptService
         ])->saveOrFail();
 
         return $attempt->fresh();
+    }
+
+    private function generateCheckoutReference(string $provider, int $invoiceId, int $attemptNumber): string
+    {
+        $prefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $provider) ?: 'PAY');
+        $reference = sprintf('%s%d%d%s', $prefix, $invoiceId, $attemptNumber, strtoupper(Str::random(8)));
+
+        return substr($reference, 0, 40);
     }
 }

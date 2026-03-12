@@ -8,6 +8,7 @@ use Pterodactyl\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Arr;
 use Pterodactyl\Models\BillingRefund;
+use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingPayment;
@@ -42,6 +43,10 @@ class BillingPaymentService
             throw new DisplayException('This invoice has already been paid.');
         }
 
+        if ((float) $invoice->grand_total <= 0) {
+            throw new DisplayException('This invoice does not require online payment.');
+        }
+
         if (!in_array($invoice->status, [
             BillingInvoice::STATUS_DRAFT,
             BillingInvoice::STATUS_OPEN,
@@ -72,6 +77,39 @@ class BillingPaymentService
     public function retryCheckout(BillingInvoice $invoice): array
     {
         return $this->startCheckout($invoice);
+    }
+
+    public function settleZeroAmountInvoice(BillingInvoice $invoice, ?string $reason = null): BillingPayment
+    {
+        $invoice->loadMissing('order', 'subscription');
+
+        if ((float) $invoice->grand_total > 0) {
+            throw new DisplayException('Only zero-amount invoices can be settled without payment.');
+        }
+
+        if ($invoice->status === BillingInvoice::STATUS_PAID) {
+            $existingPayment = $invoice->payments()->latest('id')->first();
+            if ($existingPayment) {
+                return $existingPayment;
+            }
+        }
+
+        return DB::transaction(function () use ($invoice, $reason) {
+            return $this->recordVerifiedPayment($invoice, null, [
+                'provider' => 'system',
+                'provider_transaction_id' => null,
+                'provider_order_id' => $invoice->invoice_number,
+                'provider_payment_method' => 'no_charge',
+                'provider_status' => 'no_charge',
+                'amount' => 0.0,
+                'currency' => $invoice->currency,
+                'raw_response' => [
+                    'type' => 'no_charge_invoice',
+                    'reason' => $reason ?? 'Invoice total is zero and was settled internally.',
+                ],
+                'gateway_context' => [],
+            ]);
+        });
     }
 
     public function chargeRecurringInvoice(BillingInvoice $invoice): array
@@ -123,7 +161,7 @@ class BillingPaymentService
             ]);
         });
 
-        $payment->invoice->user?->notify(new BillingPaymentReceipt($payment->invoice->fresh(['subscription', 'order']), $payment));
+        $this->sendPaymentReceiptOnce($payment);
 
         return [
             'processed' => true,
@@ -141,8 +179,8 @@ class BillingPaymentService
             'provider' => FiuuCheckoutService::PROVIDER,
             'reference' => $normalized['reference'],
             'transaction_id' => $normalized['transaction_id'],
-            'status' => $normalized['status'],
-            'amount' => $normalized['amount'],
+            'status' => $normalized['transaction_id'] ? null : $normalized['status'],
+            'amount' => $normalized['transaction_id'] ? null : $normalized['amount'],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
         $event = BillingGatewayEvent::query()->firstOrCreate(
@@ -187,36 +225,50 @@ class BillingPaymentService
 
         $attempt = $this->attemptService->markCallbackReceived($attempt, $payload);
         $invoice = $attempt->invoice;
-        $signatureVerified = $this->callbackVerificationService->verifySignature($normalized);
+        $existingPayment = $this->findExistingSuccessfulPayment($invoice, $normalized, $attempt);
 
-        if (!$signatureVerified) {
-            $this->attemptService->markVerifiedFailed($attempt, 'Callback signature verification failed.', $payload);
-            $invoice->forceFill(['status' => BillingInvoice::STATUS_PROCESSING])->saveOrFail();
+        if ($existingPayment) {
+            $this->attemptService->markVerifiedPaid(
+                $attempt,
+                $existingPayment,
+                Arr::wrap($payload)
+            );
+
             $event->forceFill([
-                'status' => BillingGatewayEvent::STATUS_FAILED,
-                'processing_error' => 'Callback signature verification failed.',
+                'status' => BillingGatewayEvent::STATUS_PROCESSED,
+                'processed_at' => CarbonImmutable::now(),
+                'processing_error' => null,
             ])->saveOrFail();
 
             return [
-                'processed' => false,
-                'message' => 'Callback signature verification failed.',
+                'processed' => true,
+                'message' => 'Payment had already been verified earlier.',
                 'event' => $event,
-                'invoice' => $invoice,
+                'payment' => $existingPayment->fresh(['invoice']),
+                'invoice' => $invoice->fresh(['order', 'subscription']),
             ];
         }
 
+        $signatureVerified = $this->callbackVerificationService->verifySignature($normalized);
         $requery = $this->statusRequeryService->requery($attempt, $normalized);
         if (!$requery['verified'] || !$requery['is_paid']) {
+            $reasons = [];
+            if (!$signatureVerified) {
+                $reasons[] = 'Callback signature verification failed.';
+            }
+            $reasons[] = $requery['reason'] ?? 'Fiuu status requery did not confirm payment.';
+            $failureReason = implode(' ', array_filter($reasons));
+
             $attempt = $this->attemptService->markVerifiedFailed(
                 $attempt,
-                $requery['reason'] ?? 'Fiuu status requery did not confirm payment.',
+                $failureReason,
                 $payload
             );
 
             $invoice->forceFill(['status' => BillingInvoice::STATUS_PROCESSING])->saveOrFail();
             $event->forceFill([
                 'status' => BillingGatewayEvent::STATUS_FAILED,
-                'processing_error' => $requery['reason'] ?? 'Payment requery failed.',
+                'processing_error' => $failureReason,
             ])->saveOrFail();
 
             return [
@@ -228,17 +280,27 @@ class BillingPaymentService
             ];
         }
 
-        $payment = DB::transaction(function () use ($attempt, $invoice, $normalized, $requery, $payload) {
+        if (!$signatureVerified) {
+            Log::warning('Fiuu callback signature verification failed, but the official requery endpoint confirmed the payment. Continuing with verified payment flow.', [
+                'invoice_id' => $invoice->id,
+                'attempt_id' => $attempt->id,
+                'reference' => $normalized['reference'] ?? null,
+                'transaction_id' => $normalized['transaction_id'] ?? null,
+            ]);
+        }
+
+        $payment = DB::transaction(function () use ($attempt, $invoice, $normalized, $requery, $payload, $signatureVerified) {
             return $this->recordVerifiedPayment($invoice, $attempt, [
                 'provider_transaction_id' => $normalized['transaction_id'] ?: null,
                 'provider_order_id' => $attempt->checkout_reference,
                 'provider_payment_method' => $normalized['payment_method'] ?: null,
                 'provider_status' => $requery['provider_status'],
-                'amount' => (float) $normalized['amount'],
-                'currency' => $normalized['currency'],
+                'amount' => (float) ($requery['amount'] ?? $normalized['amount']),
+                'currency' => $requery['currency'] ?? $normalized['currency'],
                 'raw_response' => [
                     'callback' => $payload,
                     'requery' => $requery['response'],
+                    'signature_verified' => $signatureVerified,
                 ],
                 'gateway_context' => $normalized['raw'] ?? [],
             ]);
@@ -250,7 +312,7 @@ class BillingPaymentService
             'processing_error' => null,
         ])->saveOrFail();
 
-        $payment->invoice->user?->notify(new BillingPaymentReceipt($payment->invoice->fresh(['subscription', 'order']), $payment));
+        $this->sendPaymentReceiptOnce($payment);
 
         return [
             'processed' => true,
@@ -263,12 +325,25 @@ class BillingPaymentService
 
     public function refundPayment(BillingPayment $payment, float $amount, ?string $reason = null, ?User $requestedBy = null): BillingRefund
     {
+        $payment->loadMissing('invoice.user');
+
         if ($amount <= 0) {
             throw new DisplayException('Refund amount must be greater than zero.');
         }
 
-        if ($amount > (float) $payment->amount) {
-            throw new DisplayException('Refund amount cannot exceed the original payment amount.');
+        $completedRefundTotal = $this->getCompletedRefundTotal($payment);
+        $remainingRefundable = round(max((float) $payment->amount - $completedRefundTotal, 0), 2);
+
+        if ($remainingRefundable <= 0) {
+            throw new DisplayException('This payment has already been fully refunded.');
+        }
+
+        if ($amount > $remainingRefundable) {
+            throw new DisplayException(sprintf(
+                'Refund amount cannot exceed the remaining refundable balance of %.2f %s.',
+                $remainingRefundable,
+                $payment->currency
+            ));
         }
 
         return DB::transaction(function () use ($payment, $amount, $reason, $requestedBy) {
@@ -291,76 +366,114 @@ class BillingPaymentService
                 'raw_response' => $response['response'] ?: ['raw_body' => $response['raw_body']],
             ])->saveOrFail();
 
+            $payment->refresh();
+            $completedRefundTotal = $this->getCompletedRefundTotal($payment);
+
             $payment->forceFill([
-                'status' => $response['successful']
-                    ? ($amount >= (float) $payment->amount ? BillingPayment::STATUS_REFUNDED : BillingPayment::STATUS_REFUND_PENDING)
-                    : BillingPayment::STATUS_REFUND_FAILED,
+                'status' => $this->determineRefundPaymentStatus($payment, $completedRefundTotal, (bool) $response['successful']),
             ])->saveOrFail();
 
-            $this->invoiceService->applyRefundStatus($payment->invoice->fresh());
+            $invoice = $this->invoiceService->applyRefundStatus(
+                $payment->invoice->fresh(['order', 'subscription.server'])
+            );
 
             if ($response['successful']) {
-                $payment->invoice->user?->notify(new BillingRefundCompleted($refund->fresh(['payment.invoice', 'payment'])));
+                $invoice = $this->handleSuccessfulRefundOutcome($invoice);
+                $payment->invoice->user?->notify(
+                    new BillingRefundCompleted($refund->fresh(['payment.invoice.subscription.server', 'payment.invoice.order', 'payment']))
+                );
             }
 
             return $refund->fresh(['payment', 'requestedBy']);
         });
     }
 
-    private function recordVerifiedPayment(BillingInvoice $invoice, BillingPaymentAttempt $attempt, array $payload): BillingPayment
+    private function recordVerifiedPayment(BillingInvoice $invoice, ?BillingPaymentAttempt $attempt, array $payload): BillingPayment
     {
         $payment = BillingPayment::query()
             ->where('invoice_id', $invoice->id)
             ->when(!empty($payload['provider_transaction_id']), fn ($query) => $query->where('provider_transaction_id', $payload['provider_transaction_id']))
             ->first();
+        $rawGatewayResponse = $this->mergeGatewayResponses(
+            $payment?->raw_gateway_response,
+            $payload['raw_response'] ?? null
+        );
 
         if (!$payment) {
             $payment = BillingPayment::query()->create([
                 'invoice_id' => $invoice->id,
-                'provider' => FiuuCheckoutService::PROVIDER,
+                'provider' => $payload['provider'] ?? FiuuCheckoutService::PROVIDER,
                 'payment_number' => $this->numberService->nextPaymentNumber(),
                 'provider_transaction_id' => $payload['provider_transaction_id'] ?: null,
-                'provider_order_id' => $payload['provider_order_id'] ?: $attempt->checkout_reference,
+                'provider_order_id' => $payload['provider_order_id'] ?: ($attempt?->checkout_reference ?? $invoice->invoice_number),
                 'provider_payment_method' => $payload['provider_payment_method'] ?: null,
                 'provider_status' => $payload['provider_status'],
                 'amount' => round((float) $payload['amount'], 2),
                 'currency' => $payload['currency'],
                 'status' => BillingPayment::STATUS_VERIFIED_PAID,
                 'paid_at' => CarbonImmutable::now(),
-                'raw_gateway_response' => $payload['raw_response'] ?? null,
+                'raw_gateway_response' => $rawGatewayResponse,
             ]);
         } else {
             $payment->forceFill([
+                'provider' => $payload['provider'] ?? $payment->provider,
                 'provider_transaction_id' => $payload['provider_transaction_id'] ?: $payment->provider_transaction_id,
-                'provider_order_id' => $payload['provider_order_id'] ?: $payment->provider_order_id,
+                'provider_order_id' => $payload['provider_order_id'] ?: $payment->provider_order_id ?: ($attempt?->checkout_reference ?? $invoice->invoice_number),
                 'provider_payment_method' => $payload['provider_payment_method'] ?: $payment->provider_payment_method,
                 'provider_status' => $payload['provider_status'],
                 'amount' => round((float) $payload['amount'], 2),
                 'currency' => $payload['currency'],
                 'status' => BillingPayment::STATUS_VERIFIED_PAID,
                 'paid_at' => $payment->paid_at ?? CarbonImmutable::now(),
-                'raw_gateway_response' => $payload['raw_response'] ?? $payment->raw_gateway_response,
+                'raw_gateway_response' => $rawGatewayResponse,
             ])->saveOrFail();
         }
 
-        $this->attemptService->markVerifiedPaid($attempt, $payment, Arr::wrap($payload['raw_response'] ?? []));
+        if ($attempt) {
+            $this->attemptService->markVerifiedPaid($attempt, $payment, Arr::wrap($payload['raw_response'] ?? []));
+        }
         $this->invoiceService->markPaid($invoice, $payment);
         $this->syncSubscriptionGatewayReferences($invoice->fresh(['subscription']), $payload['gateway_context'] ?? []);
 
         if ($invoice->order && $invoice->type === BillingInvoice::TYPE_NEW_SERVER) {
-            $invoice->order->forceFill([
-                'status' => BillingOrder::STATUS_QUEUED_PROVISION,
-            ])->saveOrFail();
+            $invoice->order->loadMissing('server');
 
-            BillingProvisionAfterPaymentJob::dispatch($invoice->order->id);
+            if ($invoice->order->server_id && $invoice->order->server) {
+                $invoice->order->forceFill([
+                    'status' => BillingOrder::STATUS_PROVISIONED,
+                    'provisioned_at' => $invoice->order->provisioned_at ?? CarbonImmutable::now(),
+                    'provision_failure_code' => null,
+                    'provision_failure_message' => null,
+                ])->saveOrFail();
+            } else {
+                $invoice->order->forceFill([
+                    'status' => BillingOrder::STATUS_QUEUED_PROVISION,
+                ])->saveOrFail();
+
+                BillingProvisionAfterPaymentJob::dispatch($invoice->order->id);
+            }
         }
 
         if ($invoice->type === BillingInvoice::TYPE_UPGRADE && $invoice->subscription && $invoice->order) {
             $this->subscriptionService->applyPaidUpgrade($invoice->subscription->fresh(), $invoice->order->fresh());
+            $invoice->order->forceFill([
+                'status' => BillingOrder::STATUS_PROVISIONED,
+                'provisioned_at' => $invoice->order->provisioned_at ?? CarbonImmutable::now(),
+                'provision_failure_code' => null,
+                'provision_failure_message' => null,
+            ])->saveOrFail();
         }
 
         if ($invoice->type === BillingInvoice::TYPE_RENEWAL && $invoice->subscription) {
             $this->subscriptionService->applyPaidRenewal($invoice->subscription->fresh());
+            if ($invoice->order) {
+                $invoice->order->forceFill([
+                    'status' => BillingOrder::STATUS_PROVISIONED,
+                    'provisioned_at' => $invoice->order->provisioned_at ?? CarbonImmutable::now(),
+                    'provision_failure_code' => null,
+                    'provision_failure_message' => null,
+                ])->saveOrFail();
+            }
         }
 
         return $payment->fresh(['invoice']);
@@ -392,5 +505,137 @@ class BillingPaymentService
             'gateway_token_reference' => $tokenReference ?: $invoice->subscription->gateway_token_reference,
             'gateway_customer_reference' => $customerReference ?: $invoice->subscription->gateway_customer_reference,
         ])->saveOrFail();
+    }
+
+    private function findExistingSuccessfulPayment(
+        BillingInvoice $invoice,
+        array $normalized,
+        BillingPaymentAttempt $attempt
+    ): ?BillingPayment {
+        return BillingPayment::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('status', BillingPayment::STATUS_VERIFIED_PAID)
+            ->where(function ($query) use ($normalized, $attempt, $invoice) {
+                if (!empty($normalized['transaction_id'])) {
+                    $query->where('provider_transaction_id', $normalized['transaction_id']);
+
+                    return;
+                }
+
+                $query->where('provider_order_id', $attempt->checkout_reference ?? $invoice->invoice_number);
+            })
+            ->first();
+    }
+
+    private function mergeGatewayResponses(mixed $existing, mixed $incoming): ?array
+    {
+        $existing = is_array($existing) ? $existing : [];
+        $incoming = is_array($incoming) ? $incoming : [];
+
+        $merged = array_replace_recursive($existing, $incoming);
+
+        return $merged === [] ? null : $merged;
+    }
+
+    private function sendPaymentReceiptOnce(BillingPayment $payment): void
+    {
+        $payment->loadMissing('invoice.user', 'invoice.subscription', 'invoice.order');
+
+        if ($this->hasPaymentReceiptBeenSent($payment)) {
+            return;
+        }
+
+        $payment->invoice->user?->notify(
+            new BillingPaymentReceipt($payment->invoice->fresh(['subscription', 'order']), $payment)
+        );
+
+        $payload = is_array($payment->raw_gateway_response) ? $payment->raw_gateway_response : [];
+        $payload['receipt_notified_at'] = CarbonImmutable::now()->toIso8601String();
+
+        $payment->forceFill([
+            'raw_gateway_response' => $payload,
+        ])->saveOrFail();
+    }
+
+    private function hasPaymentReceiptBeenSent(BillingPayment $payment): bool
+    {
+        return filled(data_get($payment->raw_gateway_response, 'receipt_notified_at'));
+    }
+
+    private function getCompletedRefundTotal(BillingPayment $payment): float
+    {
+        return round((float) $payment->refunds()
+            ->where('status', BillingRefund::STATUS_COMPLETED)
+            ->sum('amount'), 2);
+    }
+
+    private function determineRefundPaymentStatus(BillingPayment $payment, float $completedRefundTotal, bool $lastAttemptSuccessful): string
+    {
+        if ($completedRefundTotal >= (float) $payment->amount) {
+            return BillingPayment::STATUS_REFUNDED;
+        }
+
+        if ($completedRefundTotal > 0) {
+            return BillingPayment::STATUS_REFUND_PENDING;
+        }
+
+        return $lastAttemptSuccessful
+            ? BillingPayment::STATUS_REFUND_PENDING
+            : BillingPayment::STATUS_REFUND_FAILED;
+    }
+
+    private function handleSuccessfulRefundOutcome(BillingInvoice $invoice): BillingInvoice
+    {
+        $invoice->loadMissing('order', 'subscription.server');
+        $subscription = $invoice->subscription ?: $this->resolveSubscriptionForInvoice($invoice);
+
+        if ($invoice->status !== BillingInvoice::STATUS_REFUNDED) {
+            return $invoice;
+        }
+
+        if ($invoice->order) {
+            $invoice->order->forceFill([
+                'status' => BillingOrder::STATUS_REFUNDED,
+            ])->saveOrFail();
+        }
+
+        if (!$subscription) {
+            return $invoice->fresh(['order', 'subscription.server']);
+        }
+
+        if (in_array($invoice->type, [BillingInvoice::TYPE_NEW_SERVER, BillingInvoice::TYPE_RENEWAL], true)) {
+            $this->subscriptionService->scheduleTerminationAfterRefund($subscription->fresh());
+        }
+
+        if ($invoice->type === BillingInvoice::TYPE_UPGRADE) {
+            $this->subscriptionService->revertLatestUpgradeAfterRefund($subscription->fresh());
+        }
+
+        return $invoice->fresh(['order', 'subscription.server']);
+    }
+
+    private function resolveSubscriptionForInvoice(BillingInvoice $invoice): ?BillingSubscription
+    {
+        if ($invoice->subscription) {
+            return $invoice->subscription;
+        }
+
+        if ($invoice->order?->id) {
+            $subscription = BillingSubscription::query()
+                ->where('billing_order_id', $invoice->order->id)
+                ->first();
+            if ($subscription) {
+                return $subscription;
+            }
+        }
+
+        if ($invoice->order?->server_id) {
+            return BillingSubscription::query()
+                ->where('server_id', $invoice->order->server_id)
+                ->latest('id')
+                ->first();
+        }
+
+        return null;
     }
 }

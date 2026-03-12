@@ -25,7 +25,12 @@
                     <strong>{{ $availability['free_allocations'] }} free allocation(s)</strong>.
                 </p>
                 <p class="text-muted" style="margin: 8px 0 0;">
-                    vCore is treated as a per-order limit only. RAM and Storage are the live sellable stock for billing. If either RAM or Storage hits zero, the node is treated as sold out.
+                    vCore is treated as a per-order limit only. RAM and Storage are the live sellable stock for billing.
+                    Current breakdown: <strong>{{ $availability['billing_memory_remaining_gb'] }} GB billing RAM</strong> vs
+                    <strong>{{ $availability['node_memory_remaining_gb'] }} GB physical node RAM</strong>,
+                    and <strong>{{ $availability['billing_disk_remaining_gb'] }} GB billing disk</strong> vs
+                    <strong>{{ $availability['node_disk_remaining_gb'] }} GB physical node disk</strong>.
+                    The sellable value always follows the lower side.
                 </p>
             </div>
         </div>

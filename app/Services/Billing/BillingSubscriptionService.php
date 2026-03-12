@@ -5,6 +5,7 @@ namespace Pterodactyl\Services\Billing;
 use Carbon\CarbonImmutable;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\BillingOrder;
+use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Services\Servers\SuspensionService;
@@ -191,6 +192,10 @@ class BillingSubscriptionService
 
     public function toggleAutoRenew(BillingSubscription $subscription, bool $enabled): BillingSubscription
     {
+        if ($enabled && blank($subscription->gateway_token_reference)) {
+            throw new DisplayException('Auto-renew needs a stored recurring payment token. Complete a supported tokenized card payment first, then enable auto-renew.');
+        }
+
         $subscription->forceFill([
             'auto_renew' => $enabled,
         ])->saveOrFail();
@@ -264,6 +269,81 @@ class BillingSubscriptionService
         return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
     }
 
+    public function scheduleTerminationAfterRefund(BillingSubscription $subscription, ?CarbonImmutable $now = null): BillingSubscription
+    {
+        $now ??= CarbonImmutable::now();
+
+        $suspendAt = $subscription->grace_suspend_at
+            ? CarbonImmutable::instance($subscription->grace_suspend_at)
+            : $now->addHours((int) config('billing.refund_suspend_hours', 5));
+        $deleteAt = $subscription->grace_delete_at
+            ? CarbonImmutable::instance($subscription->grace_delete_at)
+            : $suspendAt->addHours((int) config('billing.refund_delete_after_suspend_hours', 24));
+
+        $subscription->forceFill([
+            'status' => BillingSubscription::STATUS_CANCELLED,
+            'auto_renew' => false,
+            'next_invoice_at' => null,
+            'grace_suspend_at' => $suspendAt,
+            'grace_delete_at' => $deleteAt,
+            'deletion_scheduled_at' => $deleteAt,
+        ])->saveOrFail();
+
+        return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+    }
+
+    public function revertLatestUpgradeAfterRefund(BillingSubscription $subscription): BillingSubscription
+    {
+        $subscription->loadMissing('server');
+
+        if (!$subscription->server) {
+            throw new DisplayException('This billing subscription no longer has a server attached to it.');
+        }
+
+        $effectiveOrder = $this->resolveLatestEffectiveResourceOrder($subscription);
+        if (!$effectiveOrder) {
+            throw new DisplayException('No previous paid resource state could be found for this server.');
+        }
+
+        if (
+            $subscription->cpu_cores === $effectiveOrder->cpu_cores
+            && $subscription->memory_gb === $effectiveOrder->memory_gb
+            && $subscription->disk_gb === $effectiveOrder->disk_gb
+            && round((float) $subscription->recurring_total, 2) === round((float) $effectiveOrder->total, 2)
+        ) {
+            return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+        }
+
+        /** @var Server $server */
+        $server = $subscription->server;
+        $this->buildModificationService->handle($server, [
+            'memory' => $effectiveOrder->memory_gb * 1024,
+            'swap' => $server->swap,
+            'io' => $server->io,
+            'cpu' => $effectiveOrder->cpu_cores * 100,
+            'disk' => $effectiveOrder->disk_gb * 1024,
+            'allocation_id' => $server->allocation_id,
+            'oom_disabled' => $server->oom_disabled,
+            'allocation_limit' => $server->allocation_limit,
+            'database_limit' => $server->database_limit,
+            'backup_limit' => $server->backup_limit,
+        ]);
+
+        $subscription->forceFill([
+            'cpu_cores' => $effectiveOrder->cpu_cores,
+            'memory_gb' => $effectiveOrder->memory_gb,
+            'disk_gb' => $effectiveOrder->disk_gb,
+            'price_per_vcore' => $effectiveOrder->price_per_vcore,
+            'price_per_gb_ram' => $effectiveOrder->price_per_gb_ram,
+            'price_per_10gb_disk' => $effectiveOrder->price_per_10gb_disk,
+            'recurring_total' => $effectiveOrder->total,
+            'last_paid_invoice_id' => $effectiveOrder->billing_invoice_id,
+            'upgraded_at' => CarbonImmutable::now(),
+        ])->saveOrFail();
+
+        return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+    }
+
     private function extractGatewayReferencesFromOrder(BillingOrder $order): array
     {
         $raw = $order->invoice?->payments?->sortByDesc('id')->first()?->raw_gateway_response ?? [];
@@ -287,5 +367,26 @@ class BillingSubscriptionService
                 ?? $requery['cust_ref']
                 ?? null,
         ];
+    }
+
+    private function resolveLatestEffectiveResourceOrder(BillingSubscription $subscription): ?BillingOrder
+    {
+        return BillingOrder::query()
+            ->where('user_id', $subscription->user_id)
+            ->where('server_id', $subscription->server_id)
+            ->whereIn('order_type', [
+                BillingOrder::TYPE_NEW_SERVER,
+                BillingOrder::TYPE_UPGRADE,
+            ])
+            ->whereHas('invoice', function ($query) {
+                $query->whereIn('status', [
+                    BillingInvoice::STATUS_PAID,
+                    BillingInvoice::STATUS_PARTIALLY_REFUNDED,
+                ]);
+            })
+            ->orderByDesc('payment_verified_at')
+            ->orderByDesc('provisioned_at')
+            ->orderByDesc('id')
+            ->first();
     }
 }

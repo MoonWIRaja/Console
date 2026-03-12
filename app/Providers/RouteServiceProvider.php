@@ -8,6 +8,7 @@ use Pterodactyl\Enum\ResourceLimit;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Pterodactyl\Http\Controllers\Billing\FiuuGatewayController;
 use Pterodactyl\Http\Middleware\TrimStrings;
 use Pterodactyl\Http\Middleware\AdminAuthenticate;
 use Pterodactyl\Http\Middleware\RequireTwoFactorAuthentication;
@@ -36,6 +37,12 @@ class RouteServiceProvider extends ServiceProvider
         Route::model('database', Database::class);
 
         $this->routes(function () {
+            Route::post('/billing/gateways/fiuu/callback', [FiuuGatewayController::class, 'callback'])
+                ->name('billing.gateway.fiuu.callback');
+
+            Route::match(['GET', 'POST'], '/billing/gateways/fiuu/return', [FiuuGatewayController::class, 'return'])
+                ->name('billing.gateway.fiuu.return');
+
             Route::middleware('web')->group(function () {
                 Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
                     ->group(base_path('routes/base.php'));

@@ -2,11 +2,14 @@
 
 namespace Pterodactyl\Http\Controllers\Admin\Billing;
 
+use Throwable;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Providers\SettingsServiceProvider;
 use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface;
 use Pterodactyl\Http\Requests\Admin\Billing\BillingGatewaySettingsRequest;
 
@@ -15,6 +18,7 @@ class GatewayController extends Controller
     public function __construct(
         private AlertsMessageBag $alert,
         private Kernel $kernel,
+        private Encrypter $encrypter,
         private SettingsRepositoryInterface $settings,
     ) {
     }
@@ -35,10 +39,22 @@ class GatewayController extends Controller
                 $stored = is_null($value) ? null : (string) $value;
             }
 
+            if (in_array($key, SettingsServiceProvider::getEncryptedKeys(), true) && !empty($stored)) {
+                $stored = $this->encrypter->encrypt($stored);
+            }
+
             $this->settings->set('settings::' . $key, $stored);
         }
 
-        $this->kernel->call('queue:restart');
+        try {
+            $this->kernel->call('queue:restart');
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->alert->warning('Billing gateway settings were saved, but queue restart could not be triggered automatically.')->flash();
+
+            return redirect()->route('admin.billing.gateway');
+        }
+
         $this->alert->success('Billing gateway settings have been updated.')->flash();
 
         return redirect()->route('admin.billing.gateway');

@@ -26,6 +26,9 @@ class BillingCatalogService
         $reservedOrders = BillingOrder::query()
             ->where('billing_node_config_id', $config->id)
             ->whereIn('status', BillingOrder::ACTIVE_RESERVATION_STATUSES)
+            ->where('order_type', BillingOrder::TYPE_NEW_SERVER)
+            ->whereNull('server_id')
+            ->whereNull('provisioned_at')
             ->selectRaw('COALESCE(SUM(memory_gb), 0) as memory_gb')
             ->selectRaw('COALESCE(SUM(disk_gb), 0) as disk_gb')
             ->first();

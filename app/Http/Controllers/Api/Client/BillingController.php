@@ -98,13 +98,7 @@ class BillingController extends ClientApiController
     {
         $order = $this->invoiceService->createNewOrderInvoice($request->user(), $request->validated());
         $payload = $this->transformOrder($order);
-
-        try {
-            $checkout = $this->paymentService->startCheckout($order->invoice);
-            $payload['checkout'] = $this->transformCheckout($checkout);
-        } catch (DisplayException $exception) {
-            $payload['checkout_error'] = $exception->getMessage();
-        }
+        $this->appendInvoicePaymentState($order->invoice, $payload, 'No payment was required for this order.');
 
         return ['data' => $payload];
     }
@@ -157,12 +151,7 @@ class BillingController extends ClientApiController
         $invoice = $this->invoiceService->createRenewalInvoice($subscription);
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
-
-        try {
-            $payload['checkout'] = $this->transformCheckout($this->paymentService->startCheckout($invoice));
-        } catch (DisplayException $exception) {
-            $payload['checkout_error'] = $exception->getMessage();
-        }
+        $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this renewal.');
 
         return [
             'data' => $payload,
@@ -184,12 +173,7 @@ class BillingController extends ClientApiController
         $invoice = $this->invoiceService->createUpgradeInvoice($subscription, $request->validated());
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
-
-        try {
-            $payload['checkout'] = $this->transformCheckout($this->paymentService->startCheckout($invoice));
-        } catch (DisplayException $exception) {
-            $payload['checkout_error'] = $exception->getMessage();
-        }
+        $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this upgrade.');
 
         return [
             'data' => $payload,
@@ -235,6 +219,23 @@ class BillingController extends ClientApiController
         ];
     }
 
+    private function appendInvoicePaymentState(BillingInvoice $invoice, array &$payload, string $zeroAmountReason): void
+    {
+        if ((float) $invoice->grand_total <= 0) {
+            $this->paymentService->settleZeroAmountInvoice($invoice, $zeroAmountReason);
+            $payload['invoice'] = $this->transformInvoice($invoice->fresh(['items', 'payments.refunds', 'subscription', 'order']));
+            $payload['auto_settled'] = true;
+
+            return;
+        }
+
+        try {
+            $payload['checkout'] = $this->transformCheckout($this->paymentService->startCheckout($invoice));
+        } catch (DisplayException $exception) {
+            $payload['checkout_error'] = $exception->getMessage();
+        }
+    }
+
     private function transformSubscription(BillingSubscription $subscription): array
     {
         $subscription->loadMissing('server', 'nodeConfig', 'gameProfile.egg.nest');
@@ -277,6 +278,10 @@ class BillingController extends ClientApiController
             'recurring_total' => (float) $subscription->recurring_total,
             'auto_renew' => $subscription->auto_renew,
             'gateway_provider' => $subscription->gateway_provider,
+            'auto_renew_available' => !blank($subscription->gateway_token_reference),
+            'auto_renew_unavailable_reason' => blank($subscription->gateway_token_reference)
+                ? 'Auto-renew requires a tokenized card payment. QR and online banking payments usually do not create a reusable token.'
+                : null,
             'renews_at' => optional($subscription->renews_at)->toIso8601String(),
             'next_invoice_at' => optional($subscription->next_invoice_at)->toIso8601String(),
             'grace_suspend_at' => optional($subscription->grace_suspend_at)->toIso8601String(),

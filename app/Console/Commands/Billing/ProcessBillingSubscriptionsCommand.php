@@ -5,7 +5,10 @@ namespace Pterodactyl\Console\Commands\Billing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Carbon\CarbonImmutable;
+use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingInvoice;
+use Pterodactyl\Models\BillingRefund;
+use Pterodactyl\Models\BillingPayment;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Notifications\BillingPaymentActionRequired;
 use Pterodactyl\Notifications\BillingRenewalReminder;
@@ -13,6 +16,8 @@ use Pterodactyl\Notifications\BillingSubscriptionSuspended;
 use Pterodactyl\Notifications\BillingSubscriptionDeletionScheduled;
 use Pterodactyl\Services\Billing\BillingInvoiceService;
 use Pterodactyl\Services\Billing\BillingPaymentService;
+use Pterodactyl\Services\Billing\BillingSubscriptionService;
+use Pterodactyl\Services\Billing\BillingWebhookReplayService;
 use Pterodactyl\Services\Servers\SuspensionService;
 use Pterodactyl\Services\Servers\ServerDeletionService;
 
@@ -25,6 +30,8 @@ class ProcessBillingSubscriptionsCommand extends Command
     public function __construct(
         private BillingInvoiceService $invoiceService,
         private BillingPaymentService $paymentService,
+        private BillingSubscriptionService $subscriptionService,
+        private BillingWebhookReplayService $webhookReplayService,
         private SuspensionService $suspensionService,
         private ServerDeletionService $serverDeletionService,
     ) {
@@ -35,15 +42,205 @@ class ProcessBillingSubscriptionsCommand extends Command
     {
         $now = CarbonImmutable::now();
 
+        $this->replayPendingGatewayEvents();
+        $this->reconcileRefundPaymentStates();
+        $this->reconcileRefundedSubscriptionEffects($now);
+        $this->reconcileCompletedOrders($now);
+        $this->expireOverdueInvoices($now);
         $this->deleteOrphanedSubscriptions($now);
         $this->issueRenewalInvoices($now);
         $this->sendRenewalReminders($now);
         $this->attemptAutomaticRenewals($now);
+        $this->suspendRefundCancelledSubscriptions($now);
+        $this->deleteRefundCancelledSubscriptions($now);
         $this->markPastDueSubscriptions($now);
         $this->suspendOverdueSubscriptions($now);
         $this->deleteExpiredSubscriptions($now);
 
         return self::SUCCESS;
+    }
+
+    private function replayPendingGatewayEvents(): void
+    {
+        try {
+            $this->webhookReplayService->replayPending();
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to replay pending billing gateway events.', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function reconcileRefundedSubscriptionEffects(CarbonImmutable $now): void
+    {
+        BillingInvoice::query()
+            ->with(['subscription.server', 'order'])
+            ->where('status', BillingInvoice::STATUS_REFUNDED)
+            ->whereIn('type', [
+                BillingInvoice::TYPE_NEW_SERVER,
+                BillingInvoice::TYPE_RENEWAL,
+                BillingInvoice::TYPE_UPGRADE,
+            ])
+            ->chunkById(100, function ($invoices) use ($now) {
+                foreach ($invoices as $invoice) {
+                    $subscription = $invoice->subscription ?: $this->resolveSubscriptionForRefundedInvoice($invoice);
+                    if (!$subscription) {
+                        continue;
+                    }
+
+                    try {
+                        if (in_array($invoice->type, [
+                            BillingInvoice::TYPE_NEW_SERVER,
+                            BillingInvoice::TYPE_RENEWAL,
+                        ], true) && $subscription->status !== BillingSubscription::STATUS_DELETED) {
+                            $this->subscriptionService->scheduleTerminationAfterRefund($subscription, $now);
+                        }
+
+                        if ($invoice->type === BillingInvoice::TYPE_UPGRADE && !in_array($subscription->status, [
+                            BillingSubscription::STATUS_CANCELLED,
+                            BillingSubscription::STATUS_DELETED,
+                        ], true)) {
+                            $this->subscriptionService->revertLatestUpgradeAfterRefund($subscription);
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to reconcile refunded billing subscription state.', [
+                            'invoice_id' => $invoice->id,
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function reconcileRefundPaymentStates(): void
+    {
+        BillingPayment::query()
+            ->with(['refunds', 'invoice'])
+            ->whereHas('refunds', fn ($query) => $query->where('status', BillingRefund::STATUS_COMPLETED))
+            ->chunkById(100, function ($payments) {
+                foreach ($payments as $payment) {
+                    try {
+                        $completedRefundTotal = round((float) $payment->refunds
+                            ->where('status', BillingRefund::STATUS_COMPLETED)
+                            ->sum('amount'), 2);
+
+                        $targetStatus = $completedRefundTotal >= (float) $payment->amount
+                            ? BillingPayment::STATUS_REFUNDED
+                            : BillingPayment::STATUS_REFUND_PENDING;
+
+                        if ($payment->status !== $targetStatus) {
+                            $payment->forceFill([
+                                'status' => $targetStatus,
+                            ])->saveOrFail();
+                        }
+
+                        if ($payment->invoice) {
+                            $this->invoiceService->applyRefundStatus($payment->invoice);
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to reconcile refunded billing payment state.', [
+                            'payment_id' => $payment->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function resolveSubscriptionForRefundedInvoice(BillingInvoice $invoice): ?BillingSubscription
+    {
+        if ($invoice->subscription) {
+            return $invoice->subscription;
+        }
+
+        if ($invoice->order?->id) {
+            $subscription = BillingSubscription::query()
+                ->where('billing_order_id', $invoice->order->id)
+                ->first();
+            if ($subscription) {
+                return $subscription;
+            }
+        }
+
+        if ($invoice->order?->server_id) {
+            return BillingSubscription::query()
+                ->where('server_id', $invoice->order->server_id)
+                ->latest('id')
+                ->first();
+        }
+
+        return null;
+    }
+
+    private function reconcileCompletedOrders(CarbonImmutable $now): void
+    {
+        BillingOrder::query()
+            ->with(['server', 'invoice'])
+            ->where('order_type', BillingOrder::TYPE_NEW_SERVER)
+            ->whereIn('status', [
+                BillingOrder::STATUS_PAID,
+                BillingOrder::STATUS_QUEUED_PROVISION,
+                BillingOrder::STATUS_PROVISIONING,
+            ])
+            ->whereNotNull('server_id')
+            ->chunkById(100, function ($orders) use ($now) {
+                foreach ($orders as $order) {
+                    if (!$order->server) {
+                        continue;
+                    }
+
+                    try {
+                        $order->forceFill([
+                            'status' => BillingOrder::STATUS_PROVISIONED,
+                            'provisioned_at' => $order->provisioned_at ?? $now,
+                            'provision_failure_code' => null,
+                            'provision_failure_message' => null,
+                        ])->saveOrFail();
+
+                        $this->subscriptionService->createFromProvisionedOrder($order->fresh(['invoice.payments']));
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to reconcile provisioned billing order state.', [
+                            'order_id' => $order->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function expireOverdueInvoices(CarbonImmutable $now): void
+    {
+        BillingInvoice::query()
+            ->with('order')
+            ->whereIn('type', [
+                BillingInvoice::TYPE_NEW_SERVER,
+                BillingInvoice::TYPE_UPGRADE,
+                BillingInvoice::TYPE_MANUAL,
+            ])
+            ->whereIn('status', [
+                BillingInvoice::STATUS_OPEN,
+                BillingInvoice::STATUS_DRAFT,
+                BillingInvoice::STATUS_FAILED,
+                BillingInvoice::STATUS_PROCESSING,
+            ])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', $now)
+            ->chunkById(100, function ($invoices) {
+                foreach ($invoices as $invoice) {
+                    try {
+                        $this->invoiceService->markExpired(
+                            $invoice,
+                            'Invoice expired before payment confirmation was completed.'
+                        );
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to expire overdue billing invoice.', [
+                            'invoice_id' => $invoice->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
     }
 
     private function deleteOrphanedSubscriptions(CarbonImmutable $now): void
@@ -88,7 +285,7 @@ class ProcessBillingSubscriptionsCommand extends Command
             ->chunkById(100, function ($subscriptions) {
                 foreach ($subscriptions as $subscription) {
                     try {
-                        $invoice = $this->invoiceService->createRenewalInvoice($subscription);
+                        $invoice = $this->invoiceService->createRenewalInvoice($subscription, false);
 
                         $subscription->forceFill([
                             'next_invoice_at' => null,
@@ -199,6 +396,76 @@ class ProcessBillingSubscriptionsCommand extends Command
                                 'error' => $notificationException->getMessage(),
                             ]);
                         }
+                    }
+                }
+            });
+    }
+
+    private function suspendRefundCancelledSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with('server')
+            ->where('status', BillingSubscription::STATUS_CANCELLED)
+            ->whereNotNull('server_id')
+            ->whereNotNull('grace_suspend_at')
+            ->where('grace_suspend_at', '<=', $now)
+            ->whereNull('suspended_at')
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    try {
+                        if (!$subscription->server) {
+                            $subscription->forceFill([
+                                'status' => BillingSubscription::STATUS_DELETED,
+                                'server_id' => null,
+                                'deleted_at' => $now,
+                                'deletion_scheduled_at' => null,
+                            ])->saveOrFail();
+
+                            continue;
+                        }
+
+                        if (!$subscription->server->isSuspended()) {
+                            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_SUSPEND);
+                        }
+
+                        $subscription->forceFill([
+                            'suspended_at' => $subscription->suspended_at ?? $now,
+                        ])->saveOrFail();
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to suspend refunded billing subscription pending deletion.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
+    }
+
+    private function deleteRefundCancelledSubscriptions(CarbonImmutable $now): void
+    {
+        BillingSubscription::query()
+            ->with('server')
+            ->where('status', BillingSubscription::STATUS_CANCELLED)
+            ->whereNotNull('grace_delete_at')
+            ->where('grace_delete_at', '<=', $now)
+            ->chunkById(100, function ($subscriptions) use ($now) {
+                foreach ($subscriptions as $subscription) {
+                    try {
+                        if ($subscription->server) {
+                            $this->serverDeletionService->withForce()->handle($subscription->server);
+                        }
+
+                        $subscription->forceFill([
+                            'status' => BillingSubscription::STATUS_DELETED,
+                            'server_id' => null,
+                            'deleted_at' => $now,
+                            'deletion_scheduled_at' => null,
+                        ])->saveOrFail();
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to delete refunded billing subscription after grace period.', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $exception->getMessage(),
+                        ]);
                     }
                 }
             });

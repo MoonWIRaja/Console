@@ -124,11 +124,17 @@
                                     <td>{{ $availability['cpu_remaining'] }} vCore</td>
                                     <td>
                                         {{ $availability['memory_remaining_gb'] }} GB
-                                        <small class="text-muted">/ {{ $availability['node_memory_remaining_gb'] }} GB node</small>
+                                        <small class="text-muted">
+                                            / {{ $availability['node_memory_remaining_gb'] }} GB node
+                                            · {{ $availability['billing_memory_remaining_gb'] }} GB billing
+                                        </small>
                                     </td>
                                     <td>
                                         {{ $availability['disk_remaining_gb'] }} GB
-                                        <small class="text-muted">/ {{ $availability['node_disk_remaining_gb'] }} GB node</small>
+                                        <small class="text-muted">
+                                            / {{ $availability['node_disk_remaining_gb'] }} GB node
+                                            · {{ $availability['billing_disk_remaining_gb'] }} GB billing
+                                        </small>
                                     </td>
                                     <td>{{ $config->gameProfiles->where('enabled', true)->count() }}</td>
                                     <td>{{ $config->orders()->where('status', \Pterodactyl\Models\BillingOrder::STATUS_PENDING)->count() }}</td>

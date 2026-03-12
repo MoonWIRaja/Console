@@ -94,6 +94,11 @@ class BillingSubscription extends Model
         'deleted_at' => 'datetime',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'id';
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

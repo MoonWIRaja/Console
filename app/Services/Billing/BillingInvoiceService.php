@@ -10,6 +10,7 @@ use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingProfile;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingPayment;
+use Pterodactyl\Models\BillingRefund;
 use Pterodactyl\Models\BillingInvoiceItem;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Exceptions\DisplayException;
@@ -79,6 +80,7 @@ class BillingInvoiceService
                 subscription: null,
                 notes: 'Initial server order invoice.',
                 dueAt: CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
+                notifyUser: false,
             );
 
             $order->forceFill([
@@ -89,7 +91,7 @@ class BillingInvoiceService
         });
     }
 
-    public function createRenewalInvoice(BillingSubscription $subscription): BillingInvoice
+    public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false): BillingInvoice
     {
         $subscription->loadMissing('user', 'nodeConfig', 'lastPaidInvoice');
 
@@ -107,7 +109,7 @@ class BillingInvoiceService
             return $openInvoice;
         }
 
-        return DB::transaction(function () use ($subscription) {
+        return DB::transaction(function () use ($subscription, $notifyUser) {
             $profile = $this->profileService->getOrCreateForUser($subscription->user);
             $snapshot = $this->profileService->snapshot($profile);
             $subtotal = (float) $subscription->recurring_total;
@@ -163,6 +165,7 @@ class BillingInvoiceService
                 dueAt: $subscription->renews_at
                     ? CarbonImmutable::instance($subscription->renews_at)
                     : CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
+                notifyUser: $notifyUser,
             );
 
             $order->forceFill(['billing_invoice_id' => $invoice->id])->saveOrFail();
@@ -220,10 +223,13 @@ class BillingInvoiceService
         $currentMonthly = round((float) $subscription->recurring_total, 2);
         $newMonthly = round((float) $newPricing['total'], 2);
         $periodMonths = max((int) $subscription->renewal_period_months, 1);
-        $cycleEnd = $subscription->renews_at ? CarbonImmutable::instance($subscription->renews_at) : CarbonImmutable::now();
+        $now = CarbonImmutable::now();
+        $cycleEnd = $subscription->renews_at ? CarbonImmutable::instance($subscription->renews_at) : $now;
         $cycleStart = $cycleEnd->subMonthsNoOverflow($periodMonths);
-        $remainingCycleSeconds = max($cycleEnd->diffInSeconds(CarbonImmutable::now(), false), 0);
-        $totalCycleSeconds = max($cycleEnd->diffInSeconds($cycleStart, false), 1);
+        $remainingCycleSeconds = $cycleEnd->isFuture()
+            ? max($now->diffInSeconds($cycleEnd, false), 0)
+            : 0;
+        $totalCycleSeconds = max($cycleStart->diffInSeconds($cycleEnd, false), 1);
         $proratedAmount = round(max(($newMonthly - $currentMonthly) * ($remainingCycleSeconds / $totalCycleSeconds), 0), 2);
 
         $profile = $this->profileService->getOrCreateForUser($subscription->user);
@@ -315,6 +321,7 @@ class BillingInvoiceService
                 subscription: $subscription,
                 notes: 'Subscription upgrade invoice.',
                 dueAt: CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
+                notifyUser: false,
             );
 
             $order->forceFill(['billing_invoice_id' => $invoice->id])->saveOrFail();
@@ -374,15 +381,56 @@ class BillingInvoiceService
         return $invoice->fresh(['order']);
     }
 
+    public function markExpired(BillingInvoice $invoice, ?string $notes = null): BillingInvoice
+    {
+        return DB::transaction(function () use ($invoice, $notes) {
+            $invoice->forceFill([
+                'status' => BillingInvoice::STATUS_EXPIRED,
+                'notes' => trim(implode("\n\n", array_filter([$invoice->notes, $notes]))),
+            ])->saveOrFail();
+
+            if ($invoice->order && in_array($invoice->order->status, BillingOrder::ACTIVE_RESERVATION_STATUSES, true)) {
+                $invoice->order->forceFill([
+                    'status' => BillingOrder::STATUS_CANCELLED,
+                    'admin_notes' => trim(implode("\n\n", array_filter([
+                        $invoice->order->admin_notes,
+                        'Order reservation was released because the linked invoice expired before payment completed.',
+                    ]))),
+                ])->saveOrFail();
+            }
+
+            return $invoice->fresh(['order']);
+        });
+    }
+
     public function applyRefundStatus(BillingInvoice $invoice): BillingInvoice
     {
         $refundTotal = round((float) $invoice->payments()
             ->with('refunds')
             ->get()
-            ->flatMap(fn (BillingPayment $payment) => $payment->refunds)
+            ->flatMap(fn (BillingPayment $payment) => $payment->refunds->where('status', BillingRefund::STATUS_COMPLETED))
             ->sum('amount'), 2);
 
         if ($refundTotal <= 0) {
+            if (in_array($invoice->status, [
+                BillingInvoice::STATUS_REFUNDED,
+                BillingInvoice::STATUS_PARTIALLY_REFUNDED,
+            ], true)) {
+                $hasSuccessfulPayment = $invoice->payments()
+                    ->whereIn('status', [
+                        BillingPayment::STATUS_VERIFIED_PAID,
+                        BillingPayment::STATUS_REFUND_PENDING,
+                        BillingPayment::STATUS_REFUNDED,
+                    ])
+                    ->exists();
+
+                $invoice->forceFill([
+                    'status' => $hasSuccessfulPayment
+                        ? BillingInvoice::STATUS_PAID
+                        : BillingInvoice::STATUS_OPEN,
+                ])->saveOrFail();
+            }
+
             return $invoice->fresh();
         }
 
@@ -392,7 +440,7 @@ class BillingInvoiceService
 
         $invoice->forceFill(['status' => $status])->saveOrFail();
 
-        if ($invoice->order && $status === BillingInvoice::STATUS_REFUNDED && !$invoice->order->server_id) {
+        if ($invoice->order && $status === BillingInvoice::STATUS_REFUNDED) {
             $invoice->order->forceFill(['status' => BillingOrder::STATUS_REFUNDED])->saveOrFail();
         }
 
@@ -411,6 +459,7 @@ class BillingInvoiceService
         ?BillingSubscription $subscription = null,
         ?string $notes = null,
         ?CarbonImmutable $dueAt = null,
+        bool $notifyUser = false,
     ): BillingInvoice {
         $invoice = BillingInvoice::query()->create([
             'invoice_number' => $this->numberService->nextInvoiceNumber(),
@@ -456,7 +505,9 @@ class BillingInvoiceService
             ]);
         }
 
-        $user->notify(new BillingInvoiceIssued($invoice->fresh(['items', 'order', 'subscription'])));
+        if ($notifyUser) {
+            $user->notify(new BillingInvoiceIssued($invoice->fresh(['items', 'order', 'subscription'])));
+        }
 
         return $invoice;
     }

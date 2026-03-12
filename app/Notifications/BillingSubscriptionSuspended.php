@@ -7,15 +7,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Pterodactyl\Models\BillingSubscription;
+use Pterodactyl\Notifications\Concerns\FormatsBillingMailMessage;
 
 class BillingSubscriptionSuspended extends Notification implements ShouldQueue
 {
     use Queueable;
-
-    public bool $afterCommit = true;
+    use FormatsBillingMailMessage;
 
     public function __construct(private BillingSubscription $subscription)
     {
+        $this->afterCommit();
     }
 
     public function via(): array
@@ -25,14 +26,12 @@ class BillingSubscriptionSuspended extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $deleteAt = $this->subscription->grace_delete_at?->copy()->setTimezone(config('app.timezone'))->format('F j, Y g:i A');
-
-        return (new MailMessage())
-            ->subject(sprintf('Server Suspended for %s', $this->subscription->server_name))
-            ->greeting('Hello ' . $notifiable->username . '.')
-            ->line('Your server has been suspended because the billing invoice was not paid in time.')
+        return $this->makeBillingMail(
+            $notifiable,
+            sprintf('Server Suspended: %s', $this->subscription->server_name),
+            'The billing deadline passed and the server is now suspended.'
+        )
             ->line('Server: ' . $this->subscription->server_name)
-            ->line('Deletion schedule: ' . ($deleteAt ?? 'Not scheduled'))
-            ->action('Open Billing', url('/billing'));
+            ->line('Deletion schedule: ' . $this->formatBillingDate($this->subscription->grace_delete_at, 'Not scheduled'));
     }
 }

@@ -28,6 +28,7 @@ import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button
 import updateAccountAvatar from '@/api/account/updateAccountAvatar';
 import removeAccountAvatar from '@/api/account/removeAccountAvatar';
 import { useHistory, useLocation } from 'react-router-dom';
+import { emptyBillingProfile } from '@/components/billing/billingProfileUtils';
 
 type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
@@ -36,20 +37,6 @@ const cardClass =
     'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
 const billingInputClass =
     'w-full rounded-xl border border-[color:var(--border)] bg-[rgba(5,8,14,0.72)] px-3 py-2 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)] focus:shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.35)]';
-const emptyBillingProfile: BillingProfile = {
-    legalName: '',
-    companyName: null,
-    email: '',
-    phone: null,
-    addressLine1: null,
-    addressLine2: null,
-    city: null,
-    state: null,
-    postcode: null,
-    countryCode: 'MY',
-    taxId: null,
-    isBusiness: false,
-};
 
 export default () => {
     const history = useHistory();
@@ -205,6 +192,13 @@ export default () => {
     const setBillingField = <K extends keyof BillingProfile>(field: K, value: BillingProfile[K]) => {
         setBillingForm((state) => ({ ...state, [field]: value }));
     };
+
+    const renderBillingLabel = (label: string, required = false) => (
+        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+            {label}
+            {required && <span className={'ml-1 text-[color:var(--primary)]'}>*</span>}
+        </span>
+    );
 
     const onBillingProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -641,6 +635,9 @@ export default () => {
                                 <p className={'mt-1 text-xs text-gray-400'}>
                                     Saved here once, then copied into each invoice snapshot before checkout.
                                 </p>
+                                <p className={'mt-2 text-[11px] text-[color:var(--primary)]'}>
+                                    Fields marked with * are required before any invoice checkout can start.
+                                </p>
                             </div>
                             <div className={'flex flex-wrap gap-2'}>
                                 <span
@@ -666,9 +663,7 @@ export default () => {
                             <form className={'space-y-5'} onSubmit={onBillingProfileSubmit}>
                                 <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Legal Name
-                                        </span>
+                                        {renderBillingLabel('Legal Name', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.legalName}
@@ -678,9 +673,7 @@ export default () => {
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Company Name
-                                        </span>
+                                        {renderBillingLabel('Company Name')}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.companyName ?? ''}
@@ -691,9 +684,7 @@ export default () => {
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Invoice Email
-                                        </span>
+                                        {renderBillingLabel('Invoice Email', true)}
                                         <input
                                             type={'email'}
                                             className={billingInputClass}
@@ -704,23 +695,20 @@ export default () => {
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Phone
-                                        </span>
+                                        {renderBillingLabel('Phone', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.phone ?? ''}
                                             onChange={(event) => setBillingField('phone', event.currentTarget.value || null)}
                                             maxLength={32}
+                                            required
                                         />
                                     </label>
                                 </div>
 
                                 <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
                                     <label className={'block md:col-span-2'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Address Line 1
-                                        </span>
+                                        {renderBillingLabel('Address Line 1', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.addressLine1 ?? ''}
@@ -728,12 +716,11 @@ export default () => {
                                                 setBillingField('addressLine1', event.currentTarget.value || null)
                                             }
                                             maxLength={191}
+                                            required
                                         />
                                     </label>
                                     <label className={'block md:col-span-2'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Address Line 2
-                                        </span>
+                                        {renderBillingLabel('Address Line 2')}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.addressLine2 ?? ''}
@@ -744,20 +731,17 @@ export default () => {
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            City
-                                        </span>
+                                        {renderBillingLabel('City', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.city ?? ''}
                                             onChange={(event) => setBillingField('city', event.currentTarget.value || null)}
                                             maxLength={191}
+                                            required
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            State
-                                        </span>
+                                        {renderBillingLabel('State')}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.state ?? ''}
@@ -766,9 +750,7 @@ export default () => {
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Postcode
-                                        </span>
+                                        {renderBillingLabel('Postcode', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.postcode ?? ''}
@@ -776,12 +758,11 @@ export default () => {
                                                 setBillingField('postcode', event.currentTarget.value || null)
                                             }
                                             maxLength={32}
+                                            required
                                         />
                                     </label>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Country Code
-                                        </span>
+                                        {renderBillingLabel('Country Code', true)}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.countryCode}
@@ -796,9 +777,7 @@ export default () => {
 
                                 <div className={'grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]'}>
                                     <label className={'block'}>
-                                        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-                                            Tax ID
-                                        </span>
+                                        {renderBillingLabel('Tax ID')}
                                         <input
                                             className={billingInputClass}
                                             value={billingForm.taxId ?? ''}

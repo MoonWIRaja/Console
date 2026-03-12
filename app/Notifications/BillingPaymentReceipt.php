@@ -8,15 +8,16 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingPayment;
+use Pterodactyl\Notifications\Concerns\FormatsBillingMailMessage;
 
 class BillingPaymentReceipt extends Notification implements ShouldQueue
 {
     use Queueable;
-
-    public bool $afterCommit = true;
+    use FormatsBillingMailMessage;
 
     public function __construct(private BillingInvoice $invoice, private BillingPayment $payment)
     {
+        $this->afterCommit();
     }
 
     public function via(): array
@@ -26,16 +27,14 @@ class BillingPaymentReceipt extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $paidAt = $this->payment->paid_at?->copy()->setTimezone(config('app.timezone'))->format('F j, Y g:i A');
-
-        return (new MailMessage())
-            ->subject(sprintf('Payment Received for %s', $this->invoice->invoice_number))
-            ->greeting('Hello ' . $notifiable->username . '.')
-            ->line('We have verified your payment successfully.')
+        return $this->makeBillingMail(
+            $notifiable,
+            sprintf('Payment Confirmed: %s', $this->invoice->invoice_number),
+            'We verified your billing payment successfully.'
+        )
             ->line('Invoice: ' . $this->invoice->invoice_number)
             ->line('Payment: ' . $this->payment->payment_number)
-            ->line('Amount paid: ' . $this->payment->currency . ' ' . number_format((float) $this->payment->amount, 2))
-            ->line('Paid at: ' . ($paidAt ?? 'Just now'))
-            ->action('Open Billing', url('/billing'));
+            ->line('Amount paid: ' . $this->formatBillingAmount($this->payment->currency, (float) $this->payment->amount))
+            ->line('Paid at: ' . $this->formatBillingDate($this->payment->paid_at, 'Just now'));
     }
 }

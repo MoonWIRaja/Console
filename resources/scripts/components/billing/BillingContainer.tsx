@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
+import { useStoreState } from 'easy-peasy';
+import { ApplicationStore } from '@/state';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
+import { Dialog } from '@/components/elements/dialog';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
     BillingCheckout,
     BillingInvoice,
     BillingNodeCatalog,
+    BillingProfile,
     createBillingOrder,
+    retryBillingInvoicePayment,
+    toggleBillingSubscriptionAutoRenew,
+    updateBillingProfile,
     useBillingCatalog,
     useBillingInvoices,
     useBillingOrders,
+    useBillingProfile,
     useBillingSubscriptions,
     renewBillingSubscription,
     upgradeBillingSubscription,
@@ -19,11 +27,28 @@ import {
 import BillingVariableBox from '@/components/billing/BillingVariableBox';
 import BillingResourceSlider from '@/components/billing/BillingResourceSlider';
 import BillingSubscriptionCard from '@/components/billing/BillingSubscriptionCard';
+import {
+    billingProfileFieldLabels,
+    emptyBillingProfile,
+    getMissingBillingProfileFields,
+    normalizeBillingProfile,
+} from '@/components/billing/billingProfileUtils';
 
 type NestOption = {
     id: number;
     name: string;
 };
+
+type UpgradePayload = {
+    cpuCores: number;
+    memoryGb: number;
+    diskGb: number;
+};
+
+type PendingBillingAction =
+    | { type: 'create' }
+    | { type: 'renew'; subscriptionId: number }
+    | { type: 'upgrade'; subscriptionId: number; payload: UpgradePayload };
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
     style: 'currency',
@@ -61,6 +86,12 @@ const getNestOptions = (node: BillingNodeCatalog | null): NestOption[] => {
 
 const getOrderStatusLabel = (status: string): string =>
     status.replace(/_/g, ' ').replace(/\b\w/g, (value) => value.toUpperCase());
+
+const billingModalInputClass =
+    'w-full rounded-xl border border-[color:var(--border)] bg-[rgba(5,8,14,0.72)] px-3 py-2 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)] focus:shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.35)]';
+
+const formatMissingBillingFields = (fields: Array<keyof BillingProfile>): string =>
+    fields.map((field) => billingProfileFieldLabels[field]).join(', ');
 
 const getOrderStatusClasses = (status: string): string => {
     if (status === 'provisioned') {
@@ -103,12 +134,23 @@ const getInvoiceStatusClasses = (status: string): string => {
 };
 
 const launchHostedCheckout = (checkout: BillingCheckout | null): boolean => {
-    if (!checkout || typeof document === 'undefined') {
+    if (!checkout || typeof document === 'undefined' || typeof window === 'undefined') {
         return false;
     }
 
+    const method = (checkout.method || 'POST').toUpperCase();
+    if (method === 'GET') {
+        const url = new URL(checkout.url, window.location.origin);
+        Object.entries(checkout.payload || {}).forEach(([key, value]) => {
+            url.searchParams.set(key, value);
+        });
+        window.location.assign(url.toString());
+
+        return true;
+    }
+
     const form = document.createElement('form');
-    form.method = checkout.method || 'POST';
+    form.method = method;
     form.action = checkout.url;
     form.style.display = 'none';
 
@@ -149,6 +191,12 @@ export default () => {
         isValidating: invoicesLoading,
         mutate: mutateInvoices,
     } = useBillingInvoices();
+    const {
+        data: billingProfile,
+        isValidating: billingProfileLoading,
+        mutate: mutateBillingProfile,
+    } = useBillingProfile();
+    const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
 
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
     const [selectedNestId, setSelectedNestId] = useState<number | null>(null);
@@ -161,6 +209,12 @@ export default () => {
     const [submitting, setSubmitting] = useState(false);
     const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<number | null>(null);
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
+    const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
+    const [retryingInvoiceId, setRetryingInvoiceId] = useState<number | null>(null);
+    const [billingModalOpen, setBillingModalOpen] = useState(false);
+    const [billingModalSaving, setBillingModalSaving] = useState(false);
+    const [billingModalForm, setBillingModalForm] = useState<BillingProfile>(emptyBillingProfile);
+    const [pendingBillingAction, setPendingBillingAction] = useState<PendingBillingAction | null>(null);
 
     useEffect(() => {
         clearFlashes();
@@ -189,6 +243,12 @@ export default () => {
             clearAndAddHttpError(invoicesError);
         }
     }, [invoicesError, clearAndAddHttpError]);
+
+    useEffect(() => {
+        if (billingProfile) {
+            setBillingModalForm(billingProfile);
+        }
+    }, [billingProfile]);
 
     useEffect(() => {
         if (!catalog || catalog.length < 1) {
@@ -305,6 +365,232 @@ export default () => {
         return null;
     })();
 
+    const getCurrentBillingProfile = (): BillingProfile => normalizeBillingProfile(billingProfile || emptyBillingProfile);
+
+    const setBillingModalField = <K extends keyof BillingProfile>(field: K, value: BillingProfile[K]) => {
+        setBillingModalForm((state) => ({ ...state, [field]: value }));
+    };
+
+    const closeBillingModal = () => {
+        setBillingModalOpen(false);
+        setPendingBillingAction(null);
+    };
+
+    const requireCompleteBillingProfile = (action: PendingBillingAction): boolean => {
+        if (billingProfileLoading && !billingProfile) {
+            addError('Billing profile is still loading. Please wait a moment and try again.', 'Billing');
+            return true;
+        }
+
+        const profile = getCurrentBillingProfile();
+        const missingFields = getMissingBillingProfileFields(profile);
+        if (missingFields.length < 1) {
+            return false;
+        }
+
+        clearFlashes();
+        addError(`Complete your billing profile first: ${formatMissingBillingFields(missingFields)}.`, 'Billing');
+        setBillingModalForm(profile);
+        setPendingBillingAction(action);
+        setBillingModalOpen(true);
+
+        return true;
+    };
+
+    const performCreateInvoice = async () => {
+        if (!selectedNode || !selectedGame) {
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+            const response = await createBillingOrder({
+                billingNodeConfigId: selectedNode.id,
+                billingGameProfileId: selectedGame.id,
+                serverName: serverName.trim(),
+                cpuCores,
+                memoryGb,
+                diskGb,
+                variables,
+            });
+
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: response.autoSettled
+                    ? 'Provisioning Started'
+                    : response.checkout
+                    ? 'Invoice Created'
+                    : 'Order Created',
+                message: response.autoSettled
+                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} required no payment and was settled automatically. Provisioning has started.`
+                    : response.checkout
+                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} has been created. Redirecting to checkout now.`
+                    : response.checkoutError
+                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is not ready yet: ${response.checkoutError}`
+                    : `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created successfully. Complete payment to continue provisioning.`,
+            });
+
+            void mutateCatalog();
+            void mutateOrders();
+            void mutateInvoices();
+
+            if (launchHostedCheckout(response.checkout)) {
+                return;
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const performRenewSubscription = async (subscriptionId: number) => {
+        clearFlashes();
+        setRenewingSubscriptionId(subscriptionId);
+
+        try {
+            const response = await renewBillingSubscription(subscriptionId);
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: response.autoSettled
+                    ? 'Renewal Applied'
+                    : response.checkout
+                    ? 'Renewal Invoice Created'
+                    : 'Renewal Pending Payment',
+                message: response.autoSettled
+                    ? `${response.subscription.serverName} renewal required no payment and was applied immediately.`
+                    : response.checkout
+                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
+                    : response.checkoutError
+                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
+                    : `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Complete payment to renew the server.`,
+            });
+
+            void mutateSubscriptions();
+            void mutateInvoices();
+
+            if (launchHostedCheckout(response.checkout)) {
+                return;
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setRenewingSubscriptionId(null);
+        }
+    };
+
+    const performUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
+        clearFlashes();
+        setUpgradingSubscriptionId(subscriptionId);
+        const currentSubscription = subscriptions?.find((item) => item.id === subscriptionId) || null;
+
+        try {
+            const response = await upgradeBillingSubscription({
+                id: subscriptionId,
+                cpuCores: payload.cpuCores,
+                memoryGb: payload.memoryGb,
+                diskGb: payload.diskGb,
+            });
+            const additionalCharge = Number(
+                Math.max(response.subscription.recurringTotal - (currentSubscription?.recurringTotal ?? 0), 0).toFixed(2)
+            );
+
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: response.autoSettled
+                    ? 'Upgrade Applied'
+                    : response.checkout
+                    ? 'Upgrade Invoice Created'
+                    : 'Upgrade Pending Payment',
+                message: response.autoSettled
+                    ? `${response.subscription.serverName} upgrade required no payment and was applied immediately.`
+                    : response.checkout
+                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
+                    : response.checkoutError
+                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
+                    : `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Prorated amount due now: ${formatMoney(
+                          additionalCharge
+                      )}.`,
+            });
+
+            void mutateSubscriptions();
+            void mutateCatalog();
+            void mutateInvoices();
+
+            if (launchHostedCheckout(response.checkout)) {
+                return;
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setUpgradingSubscriptionId(null);
+        }
+    };
+
+    const onToggleAutoRenew = async (subscriptionId: number, enabled: boolean) => {
+        clearFlashes();
+        setTogglingSubscriptionId(subscriptionId);
+
+        try {
+            const subscription = await toggleBillingSubscriptionAutoRenew(subscriptionId, enabled);
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: enabled ? 'Auto Renew Enabled' : 'Auto Renew Disabled',
+                message: enabled
+                    ? `${subscription.serverName} will now try automatic renewal when a stored payment token is available.`
+                    : `${subscription.serverName} will no longer attempt automatic renewal.`,
+            });
+
+            void mutateSubscriptions();
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setTogglingSubscriptionId(null);
+        }
+    };
+
+    const onRetryInvoicePayment = async (invoiceId: number) => {
+        clearFlashes();
+        setRetryingInvoiceId(invoiceId);
+
+        try {
+            const checkout = await retryBillingInvoicePayment(invoiceId);
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: 'Retrying Payment',
+                message: 'Redirecting back to the hosted Fiuu checkout now.',
+            });
+
+            if (launchHostedCheckout(checkout)) {
+                return;
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setRetryingInvoiceId(null);
+        }
+    };
+
+    const runPendingBillingAction = async (action: PendingBillingAction) => {
+        switch (action.type) {
+            case 'create':
+                await performCreateInvoice();
+                break;
+            case 'renew':
+                await performRenewSubscription(action.subscriptionId);
+                break;
+            case 'upgrade':
+                await performUpgradeSubscription(action.subscriptionId, action.payload);
+                break;
+        }
+    };
+
     const submit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         clearFlashes();
@@ -329,119 +615,67 @@ export default () => {
             return;
         }
 
-        setSubmitting(true);
-
-        try {
-            const response = await createBillingOrder({
-                billingNodeConfigId: selectedNode.id,
-                billingGameProfileId: selectedGame.id,
-                serverName: serverName.trim(),
-                cpuCores,
-                memoryGb,
-                diskGb,
-                variables,
-            });
-
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: response.checkout ? 'Invoice Created' : 'Order Created',
-                message: response.checkout
-                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} has been created. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is not ready yet: ${response.checkoutError}`
-                    : `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created successfully. Complete payment to continue provisioning.`,
-            });
-
-            void mutateCatalog();
-            void mutateOrders();
-            void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setSubmitting(false);
+        if (requireCompleteBillingProfile({ type: 'create' })) {
+            return;
         }
+
+        await performCreateInvoice();
     };
 
     const onRenewSubscription = async (subscriptionId: number) => {
+        if (requireCompleteBillingProfile({ type: 'renew', subscriptionId })) {
+            return;
+        }
+
+        await performRenewSubscription(subscriptionId);
+    };
+
+    const onUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
+        if (requireCompleteBillingProfile({ type: 'upgrade', subscriptionId, payload })) {
+            return;
+        }
+
+        await performUpgradeSubscription(subscriptionId, payload);
+    };
+
+    const onBillingModalSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         clearFlashes();
-        setRenewingSubscriptionId(subscriptionId);
+
+        const payload = normalizeBillingProfile(billingModalForm);
+        const missingFields = getMissingBillingProfileFields(payload);
+        if (missingFields.length > 0) {
+            addError(`Fill all required billing fields first: ${formatMissingBillingFields(missingFields)}.`, 'Billing');
+            return;
+        }
+
+        setBillingModalSaving(true);
 
         try {
-            const response = await renewBillingSubscription(subscriptionId);
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: response.checkout ? 'Renewal Invoice Created' : 'Renewal Pending Payment',
-                message: response.checkout
-                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
-                    : `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Complete payment to renew the server.`,
-            });
+            const updated = await updateBillingProfile(payload);
+            await mutateBillingProfile(updated, false);
+            setBillingModalForm(updated);
 
-            void mutateSubscriptions();
-            void mutateInvoices();
+            const nextAction = pendingBillingAction;
+            setBillingModalOpen(false);
+            setPendingBillingAction(null);
 
-            if (launchHostedCheckout(response.checkout)) {
-                return;
+            if (nextAction) {
+                await runPendingBillingAction(nextAction);
             }
         } catch (error) {
             clearAndAddHttpError(error as Error);
         } finally {
-            setRenewingSubscriptionId(null);
+            setBillingModalSaving(false);
         }
     };
 
-    const onUpgradeSubscription = async (
-        subscriptionId: number,
-        payload: { cpuCores: number; memoryGb: number; diskGb: number }
-    ) => {
-        clearFlashes();
-        setUpgradingSubscriptionId(subscriptionId);
-        const currentSubscription = subscriptions?.find((item) => item.id === subscriptionId) || null;
-
-        try {
-            const response = await upgradeBillingSubscription({
-                id: subscriptionId,
-                cpuCores: payload.cpuCores,
-                memoryGb: payload.memoryGb,
-                diskGb: payload.diskGb,
-            });
-            const additionalCharge = Number(
-                Math.max(response.subscription.recurringTotal - (currentSubscription?.recurringTotal ?? 0), 0).toFixed(2)
-            );
-
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: response.checkout ? 'Upgrade Invoice Created' : 'Upgrade Pending Payment',
-                message: response.checkout
-                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
-                    : `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Prorated amount due now: ${formatMoney(
-                          additionalCharge
-                      )}.`,
-            });
-
-            void mutateSubscriptions();
-            void mutateCatalog();
-            void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setUpgradingSubscriptionId(null);
-        }
-    };
+    const renderBillingModalLabel = (label: string, required = false) => (
+        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
+            {label}
+            {required && <span className={'ml-1 text-[color:var(--primary)]'}>*</span>}
+        </span>
+    );
 
     if (!catalog && catalogLoading) {
         return (
@@ -832,6 +1066,182 @@ export default () => {
             `}</style>
             <div className={'billing-wrap'}>
                 <FlashMessageRender byKey={'billing'} />
+                <Dialog
+                    open={billingModalOpen}
+                    onClose={closeBillingModal}
+                    title={'Complete Billing Profile'}
+                    description={'Fill the required billing details below before checkout can continue.'}
+                    panelClassName={
+                        '!max-w-3xl !rounded-[1.5rem] !border !border-[color:var(--border)] !bg-[color:var(--card)] !shadow-[0_24px_48px_rgba(0,0,0,0.55)]'
+                    }
+                    contentClassName={'max-h-[75vh] overflow-y-auto'}
+                    preventExternalClose={billingModalSaving}
+                    hideCloseIcon={billingModalSaving}
+                >
+                    <form className={'space-y-5 pt-4'} onSubmit={onBillingModalSubmit}>
+                        <div
+                            className={
+                                'rounded-xl border border-[rgba(var(--primary-rgb),0.22)] bg-[rgba(var(--primary-rgb),0.08)] px-4 py-3 text-xs leading-6 text-[rgba(248,246,239,0.82)]'
+                            }
+                        >
+                            Fields marked with <span className={'font-black text-[color:var(--primary)]'}>*</span> are
+                            required before any invoice can be created or sent to Fiuu checkout.
+                        </div>
+
+                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Legal Name', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.legalName}
+                                    onChange={(event) => setBillingModalField('legalName', event.currentTarget.value)}
+                                    maxLength={191}
+                                    required
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Company Name')}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.companyName ?? ''}
+                                    onChange={(event) =>
+                                        setBillingModalField('companyName', event.currentTarget.value || null)
+                                    }
+                                    maxLength={191}
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Invoice Email', true)}
+                                <input
+                                    type={'email'}
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.email}
+                                    onChange={(event) => setBillingModalField('email', event.currentTarget.value)}
+                                    maxLength={191}
+                                    required
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Phone', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.phone ?? ''}
+                                    onChange={(event) => setBillingModalField('phone', event.currentTarget.value || null)}
+                                    maxLength={32}
+                                    required
+                                />
+                            </label>
+                        </div>
+
+                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
+                            <label className={'block md:col-span-2'}>
+                                {renderBillingModalLabel('Address Line 1', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.addressLine1 ?? ''}
+                                    onChange={(event) =>
+                                        setBillingModalField('addressLine1', event.currentTarget.value || null)
+                                    }
+                                    maxLength={191}
+                                    required
+                                />
+                            </label>
+                            <label className={'block md:col-span-2'}>
+                                {renderBillingModalLabel('Address Line 2')}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.addressLine2 ?? ''}
+                                    onChange={(event) =>
+                                        setBillingModalField('addressLine2', event.currentTarget.value || null)
+                                    }
+                                    maxLength={191}
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('City', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.city ?? ''}
+                                    onChange={(event) => setBillingModalField('city', event.currentTarget.value || null)}
+                                    maxLength={191}
+                                    required
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('State')}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.state ?? ''}
+                                    onChange={(event) => setBillingModalField('state', event.currentTarget.value || null)}
+                                    maxLength={191}
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Postcode', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.postcode ?? ''}
+                                    onChange={(event) =>
+                                        setBillingModalField('postcode', event.currentTarget.value || null)
+                                    }
+                                    maxLength={32}
+                                    required
+                                />
+                            </label>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Country Code', true)}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.countryCode}
+                                    onChange={(event) =>
+                                        setBillingModalField('countryCode', event.currentTarget.value.toUpperCase())
+                                    }
+                                    maxLength={2}
+                                    required
+                                />
+                            </label>
+                        </div>
+
+                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]'}>
+                            <label className={'block'}>
+                                {renderBillingModalLabel('Tax ID')}
+                                <input
+                                    className={billingModalInputClass}
+                                    value={billingModalForm.taxId ?? ''}
+                                    onChange={(event) => setBillingModalField('taxId', event.currentTarget.value || null)}
+                                    maxLength={191}
+                                />
+                            </label>
+                            <label
+                                className={
+                                    'flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-gray-200'
+                                }
+                            >
+                                <input
+                                    type={'checkbox'}
+                                    className={'h-4 w-4 rounded border-[color:var(--border)] bg-transparent'}
+                                    checked={billingModalForm.isBusiness}
+                                    onChange={(event) => setBillingModalField('isBusiness', event.currentTarget.checked)}
+                                />
+                                <span>Business billing entity</span>
+                            </label>
+                        </div>
+
+                        <div className={'flex flex-wrap items-center justify-end gap-3 border-t border-[color:var(--border)] pt-5'}>
+                            <button
+                                type={'button'}
+                                className={'billing-ghost-btn min-w-[10rem]'}
+                                onClick={closeBillingModal}
+                                disabled={billingModalSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button type={'submit'} className={'billing-primary-btn min-w-[13rem]'} disabled={billingModalSaving}>
+                                {billingModalSaving ? 'Saving...' : 'Save & Continue'}
+                            </button>
+                        </div>
+                    </form>
+                </Dialog>
 
                 <div className={'billing-hero'}>
                     <div className={'billing-hero-pill-row'}>
@@ -1313,8 +1723,10 @@ export default () => {
                                     subscription={subscription}
                                     renewing={renewingSubscriptionId === subscription.id}
                                     upgrading={upgradingSubscriptionId === subscription.id}
+                                    togglingAutoRenew={togglingSubscriptionId === subscription.id}
                                     onRenew={(current) => void onRenewSubscription(current.id)}
                                     onUpgrade={(current, payload) => void onUpgradeSubscription(current.id, payload)}
+                                    onToggleAutoRenew={(current, enabled) => void onToggleAutoRenew(current.id, enabled)}
                                 />
                             ))}
                         </div>
@@ -1340,6 +1752,14 @@ export default () => {
                         <div className={'grid gap-4 xl:grid-cols-2'}>
                             {invoices.slice(0, 8).map((invoice: BillingInvoice) => (
                                 <article key={invoice.id} className={'billing-order-card'}>
+                                    {(() => {
+                                        const latestPayment = invoice.payments[0] || null;
+                                        const latestRefund = latestPayment?.refunds[0] || null;
+                                        const canRetryPayment =
+                                            !invoice.paidAt && ['open', 'draft', 'failed', 'processing'].includes(invoice.status);
+
+                                        return (
+                                            <>
                                     <div className={'flex flex-wrap items-start justify-between gap-3'}>
                                         <div>
                                             <p
@@ -1384,7 +1804,48 @@ export default () => {
                                                 {invoice.paidAt ? invoice.paidAt.toLocaleString() : 'Not paid yet'}
                                             </span>
                                         </div>
+                                        {latestPayment && (
+                                            <div className={'flex items-center justify-between gap-3'}>
+                                                <span>Payment Method</span>
+                                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                                    {latestPayment.providerPaymentMethod || latestPayment.provider || 'Recorded'}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {latestRefund && (
+                                            <div className={'flex items-center justify-between gap-3'}>
+                                                <span>Latest Refund</span>
+                                                <span className={'font-semibold text-amber-200'}>
+                                                    {latestRefund.refundNumber} • {getOrderStatusLabel(latestRefund.status)}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
+                                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
+                                        {canRetryPayment && (
+                                            <button
+                                                type={'button'}
+                                                onClick={() => void onRetryInvoicePayment(invoice.id)}
+                                                disabled={retryingInvoiceId === invoice.id}
+                                                className={'billing-primary-btn'}
+                                            >
+                                                {retryingInvoiceId === invoice.id ? 'Redirecting...' : 'Retry Payment'}
+                                            </button>
+                                        )}
+                                        {latestPayment && rootAdmin && (
+                                            <a href={`/admin/billing/payments/${latestPayment.id}`} className={'billing-secondary-btn'}>
+                                                Open Refund Tools
+                                            </a>
+                                        )}
+                                        {latestPayment && !rootAdmin && (
+                                            <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                                                Refunds are reviewed from billing admin after payment verification.
+                                            </p>
+                                        )}
+                                    </div>
+                                            </>
+                                        );
+                                    })()}
                                 </article>
                             ))}
                         </div>

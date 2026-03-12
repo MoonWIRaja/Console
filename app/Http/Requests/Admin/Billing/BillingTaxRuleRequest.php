@@ -23,9 +23,12 @@ class BillingTaxRuleRequest extends AdminFormRequest
         ];
     }
 
-    public function normalize(): array
+    public function normalize(?array $only = null): array
     {
         $data = $this->validated();
+        if (!is_null($only)) {
+            $data = array_intersect_key($data, array_flip($only));
+        }
 
         return [
             'name' => trim((string) $data['name']),

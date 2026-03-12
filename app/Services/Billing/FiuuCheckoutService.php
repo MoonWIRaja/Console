@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Services\Billing;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingPaymentAttempt;
@@ -27,47 +28,163 @@ class FiuuCheckoutService
             throw new DisplayException('Fiuu Merchant ID has not been configured.');
         }
 
-        $method = trim((string) collect(config('billing.fiuu.enabled_methods', []))->first());
+        $sandbox = (bool) config('billing.fiuu.sandbox');
+        $normalizedMerchantId = strtoupper(trim($merchantId));
+
+        if ($sandbox && !str_starts_with($normalizedMerchantId, 'SB_')) {
+            throw new DisplayException('Fiuu sandbox mode is enabled, but the configured Merchant ID is not a sandbox Merchant ID. Use an ID beginning with "SB_" or disable sandbox mode.');
+        }
+
+        if (!$sandbox && str_starts_with($normalizedMerchantId, 'SB_')) {
+            throw new DisplayException('Fiuu production mode cannot use a sandbox Merchant ID. Disable sandbox mode only when a live Merchant ID is configured.');
+        }
+
+        $method = $this->resolveCheckoutChannel();
         $baseUrl = rtrim((string) (
-            config('billing.fiuu.sandbox')
+            $sandbox
                 ? config('billing.fiuu.checkout_urls.sandbox')
                 : config('billing.fiuu.checkout_urls.production')
         ), '/');
 
-        $url = $baseUrl . '/' . $merchantId;
-        if ($method !== '') {
-            $url .= '/' . $method;
-        }
+        $merchantUrl = $baseUrl . '/' . $merchantId;
+        $this->assertCheckoutUrlIsReachable($merchantUrl, $sandbox, $merchantId);
 
         $snapshot = $invoice->billing_profile_snapshot ?? [];
         $amount = number_format((float) $invoice->grand_total, 2, '.', '');
         $reference = $attempt->checkout_reference;
         $verifyKey = (string) config('billing.fiuu.verify_key', '');
+        $extendedVcode = (bool) config('billing.fiuu.extended_vcode', false);
+        $billName = trim((string) ($snapshot['legal_name'] ?: $invoice->user?->name ?: ''));
+        $billEmail = trim((string) ($snapshot['email'] ?: $invoice->user?->email ?: ''));
+        $billMobile = preg_replace('/[^\d+]/', '', (string) ($snapshot['phone'] ?: ''));
+
+        if ($billName === '') {
+            throw new DisplayException('Billing profile is missing a full name. Update your billing details in /account before starting checkout.');
+        }
+
+        if ($billEmail === '') {
+            throw new DisplayException('Billing profile is missing an email address. Update your billing details in /account before starting checkout.');
+        }
+
+        if ($billMobile === '') {
+            throw new DisplayException('Billing profile is missing a phone number. Update your billing details in /account before starting checkout.');
+        }
 
         $payload = [
-            'MerchantID' => $merchantId,
-            'RefNo' => $reference,
-            'Amount' => $amount,
-            'Currency' => $invoice->currency,
-            'ProdDesc' => Str::limit(sprintf('%s invoice %s', strtoupper($invoice->type), $invoice->invoice_number), 120, ''),
-            'UserName' => (string) ($snapshot['legal_name'] ?: $invoice->user?->name ?: 'Panel User'),
-            'UserEmail' => (string) ($snapshot['email'] ?: $invoice->user?->email),
-            'UserContact' => (string) ($snapshot['phone'] ?: ''),
-            'Remark' => sprintf('Invoice %s', $invoice->invoice_number),
-            'Lang' => 'en',
-            'ReturnURL' => (string) config('billing.fiuu.return_url'),
-            'CallbackURL' => (string) config('billing.fiuu.callback_url'),
+            'orderid' => $reference,
+            'amount' => $amount,
+            'bill_name' => $billName,
+            'bill_email' => $billEmail,
+            'bill_mobile' => $billMobile,
+            'bill_desc' => Str::limit(sprintf('%s invoice %s', strtoupper($invoice->type), $invoice->invoice_number), 120, ''),
+            'channel' => $method,
+            'currency' => $invoice->currency,
+            'returnurl' => (string) config('billing.fiuu.return_url'),
+            'callbackurl' => (string) config('billing.fiuu.callback_url'),
+            'cancelurl' => (string) config('billing.fiuu.return_url'),
         ];
 
         if ($verifyKey !== '') {
-            $payload['vcode'] = md5($amount . $merchantId . $reference . $verifyKey);
+            $payload['vcode'] = $this->generateVerifyCode(
+                amount: $amount,
+                merchantId: $merchantId,
+                reference: $reference,
+                verifyKey: $verifyKey,
+                currency: $invoice->currency,
+                extended: $extendedVcode
+            );
         }
+
+        $payload = array_filter($payload, static fn ($value) => !is_null($value) && $value !== '');
+        $url = $merchantUrl . '?' . http_build_query($payload);
 
         return [
             'provider' => self::PROVIDER,
-            'method' => 'POST',
+            'method' => 'GET',
             'url' => $url,
-            'payload' => $payload,
+            'payload' => [],
         ];
+    }
+
+    private function assertCheckoutUrlIsReachable(string $url, bool $sandbox, string $merchantId): void
+    {
+        $probe = $this->probeCheckoutUrl($url);
+        if (!$this->isRejectedCheckoutResponse($probe)) {
+            return;
+        }
+
+        $mode = $sandbox ? 'sandbox' : 'production';
+
+        throw new DisplayException(sprintf(
+            'Fiuu rejected the %s checkout URL for Merchant ID "%s". Check that your Merchant ID and sandbox/live mode are correct.',
+            $mode,
+            $merchantId,
+            $probe['status'] ?? 'unknown'
+        ));
+    }
+
+    private function probeCheckoutUrl(string $url): ?array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->withOptions(['allow_redirects' => false])
+                ->head($url);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return [
+            'status' => $response->status(),
+            'location' => (string) $response->header('Location', ''),
+        ];
+    }
+
+    private function isRejectedCheckoutResponse(?array $probe): bool
+    {
+        if (is_null($probe)) {
+            return false;
+        }
+
+        if (in_array($probe['status'] ?? null, [401, 403, 404], true)) {
+            return true;
+        }
+
+        $location = strtolower((string) ($probe['location'] ?? ''));
+
+        return str_contains($location, '/not-found');
+    }
+
+    private function resolveCheckoutChannel(): ?string
+    {
+        $methods = array_values(array_filter(array_map(
+            static fn ($value) => trim((string) $value),
+            (array) config('billing.fiuu.enabled_methods', [])
+        )));
+
+        if (count($methods) !== 1) {
+            return null;
+        }
+
+        $method = strtolower($methods[0]);
+        if (in_array($method, ['all', '*', 'auto', 'choose'], true)) {
+            return null;
+        }
+
+        return $methods[0];
+    }
+
+    private function generateVerifyCode(
+        string $amount,
+        string $merchantId,
+        string $reference,
+        string $verifyKey,
+        string $currency,
+        bool $extended
+    ): string {
+        if ($extended) {
+            return md5($amount . $merchantId . $reference . $verifyKey . $currency);
+        }
+
+        return md5($amount . $merchantId . $reference . $verifyKey);
     }
 }

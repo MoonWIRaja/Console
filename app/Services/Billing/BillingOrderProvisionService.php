@@ -27,10 +27,23 @@ class BillingOrderProvisionService
      */
     public function handle(BillingOrder $order, ?User $admin = null): BillingOrder
     {
-        $order->loadMissing('nodeConfig', 'user', 'invoice');
+        $order->loadMissing('nodeConfig', 'user', 'invoice', 'server');
 
         if ($order->order_type !== BillingOrder::TYPE_NEW_SERVER) {
             throw new \RuntimeException('Only new server billing orders can be provisioned.');
+        }
+
+        if ($order->server_id && $order->server) {
+            $order->forceFill([
+                'status' => BillingOrder::STATUS_PROVISIONED,
+                'provisioned_at' => $order->provisioned_at ?? CarbonImmutable::now(),
+                'provision_failure_code' => null,
+                'provision_failure_message' => null,
+            ])->saveOrFail();
+
+            $this->subscriptionService->createFromProvisionedOrder($order);
+
+            return $order->fresh(['server', 'user']);
         }
 
         if (!in_array($order->status, [

@@ -122,6 +122,11 @@ class BillingOrder extends Model
         'failed_at' => 'datetime',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'id';
+    }
+
     public static array $validationRules = [
         'user_id' => 'required|exists:users,id',
         'billing_node_config_id' => 'required|exists:billing_node_configs,id',

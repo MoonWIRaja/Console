@@ -7,15 +7,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Pterodactyl\Models\BillingOrder;
+use Pterodactyl\Notifications\Concerns\FormatsBillingMailMessage;
 
 class BillingProvisioningFailed extends Notification implements ShouldQueue
 {
     use Queueable;
-
-    public bool $afterCommit = true;
+    use FormatsBillingMailMessage;
 
     public function __construct(private BillingOrder $order)
     {
+        $this->afterCommit();
     }
 
     public function via(): array
@@ -27,13 +28,13 @@ class BillingProvisioningFailed extends Notification implements ShouldQueue
     {
         $reason = $this->order->provision_failure_message ?: 'The server could not be provisioned automatically.';
 
-        return (new MailMessage())
-            ->subject(sprintf('Provisioning Issue for %s', $this->order->server_name))
-            ->greeting('Hello ' . $notifiable->username . '.')
-            ->line('We received your payment, but the server provisioning step did not complete successfully.')
+        return $this->makeBillingMail(
+            $notifiable,
+            sprintf('Provisioning Issue: %s', $this->order->server_name),
+            'We received the payment, but the server was not provisioned cleanly.'
+        )
             ->line('Order server name: ' . $this->order->server_name)
             ->line('Reason: ' . $reason)
-            ->line('Our team can retry provisioning without requiring another payment.')
-            ->action('Open Billing', url('/billing'));
+            ->line('No second payment is required. The provisioning step can be retried safely.');
     }
 }

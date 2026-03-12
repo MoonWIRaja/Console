@@ -65,6 +65,11 @@ class BillingInvoice extends Model
         'reminder_state' => 'array',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'id';
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

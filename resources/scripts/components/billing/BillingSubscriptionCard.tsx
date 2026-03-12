@@ -7,11 +7,13 @@ interface Props {
     subscription: BillingSubscription;
     renewing: boolean;
     upgrading: boolean;
+    togglingAutoRenew: boolean;
     onRenew: (subscription: BillingSubscription) => void;
     onUpgrade: (
         subscription: BillingSubscription,
         payload: { cpuCores: number; memoryGb: number; diskGb: number }
     ) => void;
+    onToggleAutoRenew: (subscription: BillingSubscription, enabled: boolean) => void;
 }
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
@@ -47,7 +49,15 @@ const getStatusLabel = (status: string): string => {
     return 'Deleted';
 };
 
-export default ({ subscription, renewing, upgrading, onRenew, onUpgrade }: Props) => {
+export default ({
+    subscription,
+    renewing,
+    upgrading,
+    togglingAutoRenew,
+    onRenew,
+    onUpgrade,
+    onToggleAutoRenew,
+}: Props) => {
     const [upgradeOpen, setUpgradeOpen] = useState(false);
     const [cpuCores, setCpuCores] = useState(subscription.cpuCores);
     const [memoryGb, setMemoryGb] = useState(subscription.memoryGb);
@@ -161,6 +171,51 @@ export default ({ subscription, renewing, upgrading, onRenew, onUpgrade }: Props
                     This billing server has already been deleted because it was not renewed in time.
                 </div>
             )}
+
+            <div className={'mt-5 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-4'}>
+                <div className={'flex flex-wrap items-start justify-between gap-3'}>
+                    <div>
+                        <p className={'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'}>
+                            Auto Renew
+                        </p>
+                        <p className={'mt-2 text-sm text-[#f8f6ef]'}>
+                            {subscription.autoRenew
+                                ? 'Automatic renewal is armed for this subscription.'
+                                : 'Automatic renewal is currently disabled.'}
+                        </p>
+                        <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                            Auto-debit needs a reusable Fiuu token from a supported card payment. QR and online banking
+                            usually do not create that token.
+                        </p>
+                    </div>
+                    <span
+                        className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${
+                            subscription.autoRenew ? 'billing-status billing-status-active' : 'billing-status billing-status-suspended'
+                        }`}
+                    >
+                        {subscription.autoRenew ? 'Enabled' : 'Disabled'}
+                    </span>
+                </div>
+
+                <div className={'mt-4 flex flex-wrap items-center gap-3'}>
+                    <button
+                        type={'button'}
+                        disabled={togglingAutoRenew || (!subscription.autoRenew && !subscription.autoRenewAvailable)}
+                        onClick={() => onToggleAutoRenew(subscription, !subscription.autoRenew)}
+                        className={subscription.autoRenew ? 'billing-secondary-btn' : 'billing-primary-btn'}
+                    >
+                        {togglingAutoRenew
+                            ? 'Saving...'
+                            : subscription.autoRenew
+                            ? 'Disable Auto Renew'
+                            : 'Enable Auto Renew'}
+                    </button>
+
+                    {!subscription.autoRenew && subscription.autoRenewUnavailableReason && (
+                        <p className={'text-xs leading-6 text-amber-200'}>{subscription.autoRenewUnavailableReason}</p>
+                    )}
+                </div>
+            </div>
 
             <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                 <button

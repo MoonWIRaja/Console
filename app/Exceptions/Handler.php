@@ -11,6 +11,7 @@ use Illuminate\Container\Container;
 use Illuminate\Database\Connection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
@@ -137,6 +138,19 @@ class Handler extends ExceptionHandler
         // @see https://github.com/pterodactyl/panel/pull/1468
         if ($connections->transactionLevel()) {
             $connections->rollBack(0);
+        }
+
+        if ($request->is('billing/gateways/fiuu/return')) {
+            Log::error('Laravel rendered an exception on the Fiuu return route.', [
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'reference' => $request->input('RefNo') ?? $request->input('reference') ?? $request->input('orderid'),
+                'exception_class' => $e::class,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => collect($e->getTrace())->map(fn ($trace) => Arr::except($trace, ['args']))->take(20)->all(),
+            ]);
         }
 
         return parent::render($request, $e);
