@@ -78,6 +78,16 @@
                         <p class="text-muted small" style="margin: 6px 0 0;">Used by this panel to generate checkout <code>vcode</code> and to validate callback signatures. If this is wrong, payments will arrive but not verify safely.</p>
                     </div>
                     <div class="col-md-4 form-group">
+                        <label>Request Token</label>
+                        <select name="billing:fiuu:request_token" class="form-control">
+                            <option value="1" {{ config('billing.fiuu.request_token', true) ? 'selected' : '' }}>Yes</option>
+                            <option value="0" {{ !config('billing.fiuu.request_token', true) ? 'selected' : '' }}>No</option>
+                        </select>
+                        <p class="text-muted small" style="margin: 6px 0 0;">When enabled, the panel adds <code>req4token=1</code> to checkout so Fiuu can return a reusable payment token after a supported card payment. This does not create card support by itself; your merchant must already have tokenized card / recurring enabled by Fiuu.</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 form-group">
                         <label>Extended Vcode</label>
                         <select name="billing:fiuu:extended_vcode" class="form-control">
                             <option value="1" {{ config('billing.fiuu.extended_vcode') ? 'selected' : '' }}>Yes</option>

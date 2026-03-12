@@ -74,8 +74,12 @@ class BillingPaymentAttemptService
     private function generateCheckoutReference(string $provider, int $invoiceId, int $attemptNumber): string
     {
         $prefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $provider) ?: 'PAY');
-        $reference = sprintf('%s%d%d%s', $prefix, $invoiceId, $attemptNumber, strtoupper(Str::random(8)));
+        $prefix = substr($prefix, 0, 4);
 
-        return substr($reference, 0, 40);
+        do {
+            $reference = strtoupper($prefix . Str::random(11));
+        } while (BillingPaymentAttempt::query()->where('checkout_reference', $reference)->exists());
+
+        return $reference;
     }
 }

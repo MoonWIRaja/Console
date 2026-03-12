@@ -93,6 +93,10 @@ const billingModalInputClass =
 const formatMissingBillingFields = (fields: Array<keyof BillingProfile>): string =>
     fields.map((field) => billingProfileFieldLabels[field]).join(', ');
 
+const ACTIVE_SUBSCRIPTIONS_PAGE_SIZE = 1;
+const INVOICES_PAGE_SIZE = 4;
+const ORDERS_PAGE_SIZE = 6;
+
 const getOrderStatusClasses = (status: string): string => {
     if (status === 'provisioned') {
         return 'billing-status billing-status-active';
@@ -133,6 +137,92 @@ const getInvoiceStatusClasses = (status: string): string => {
     return 'billing-status billing-status-rejected';
 };
 
+const clampPage = (page: number, totalItems: number, pageSize: number): number => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    return Math.min(Math.max(page, 1), totalPages);
+};
+
+const paginateItems = <T,>(items: T[], page: number, pageSize: number): T[] => {
+    const startIndex = (page - 1) * pageSize;
+
+    return items.slice(startIndex, startIndex + pageSize);
+};
+
+type BillingPaginationProps = {
+    currentPage: number;
+    onPageChange: (page: number) => void;
+    pageSize: number;
+    totalItems: number;
+};
+
+const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: BillingPaginationProps) => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const safePage = clampPage(currentPage, totalItems, pageSize);
+    const start = totalItems < 1 ? 0 : (safePage - 1) * pageSize + 1;
+    const end = totalItems < 1 ? 0 : Math.min(safePage * pageSize, totalItems);
+    const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+    return (
+        <div className={'billing-pagination-top'}>
+            <div className={'billing-pagination-bar'}>
+                <p className={'billing-pagination-copy'}>
+                    Showing <span className={'billing-pagination-value'}>{start}</span> to{' '}
+                    <span className={'billing-pagination-value'}>{end}</span> of{' '}
+                    <span className={'billing-pagination-value'}>{totalItems}</span> results.
+                </p>
+                <div className={'billing-pagination-actions'}>
+                    <button
+                        type={'button'}
+                        className={'billing-page-btn'}
+                        disabled={safePage <= 1}
+                        onClick={() => onPageChange(1)}
+                        aria-label={'Go to first page'}
+                    >
+                        <svg xmlns={'http://www.w3.org/2000/svg'} viewBox={'0 0 20 20'} fill={'currentColor'} className={'h-3 w-3'}>
+                            <path
+                                fillRule={'evenodd'}
+                                d={'M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z'}
+                                clipRule={'evenodd'}
+                            />
+                        </svg>
+                    </button>
+                    {pages.map((page) => (
+                        <button
+                            key={page}
+                            type={'button'}
+                            className={`billing-page-btn ${page === safePage ? 'billing-page-btn-active' : ''}`}
+                            onClick={() => onPageChange(page)}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        type={'button'}
+                        className={'billing-page-btn'}
+                        disabled={safePage >= totalPages}
+                        onClick={() => onPageChange(totalPages)}
+                        aria-label={'Go to last page'}
+                    >
+                        <svg xmlns={'http://www.w3.org/2000/svg'} viewBox={'0 0 20 20'} fill={'currentColor'} className={'h-3 w-3'}>
+                            <path
+                                fillRule={'evenodd'}
+                                d={'M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'}
+                                clipRule={'evenodd'}
+                            />
+                            <path
+                                fillRule={'evenodd'}
+                                d={'M4.293 15.707a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'}
+                                clipRule={'evenodd'}
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const launchHostedCheckout = (checkout: BillingCheckout | null): boolean => {
     if (!checkout || typeof document === 'undefined' || typeof window === 'undefined') {
         return false;
@@ -164,7 +254,6 @@ const launchHostedCheckout = (checkout: BillingCheckout | null): boolean => {
 
     document.body.appendChild(form);
     form.submit();
-    document.body.removeChild(form);
 
     return true;
 };
@@ -211,6 +300,9 @@ export default () => {
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
     const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
     const [retryingInvoiceId, setRetryingInvoiceId] = useState<number | null>(null);
+    const [subscriptionsPage, setSubscriptionsPage] = useState(1);
+    const [invoicesPage, setInvoicesPage] = useState(1);
+    const [ordersPage, setOrdersPage] = useState(1);
     const [billingModalOpen, setBillingModalOpen] = useState(false);
     const [billingModalSaving, setBillingModalSaving] = useState(false);
     const [billingModalForm, setBillingModalForm] = useState<BillingProfile>(emptyBillingProfile);
@@ -249,6 +341,20 @@ export default () => {
             setBillingModalForm(billingProfile);
         }
     }, [billingProfile]);
+
+    useEffect(() => {
+        setSubscriptionsPage((current) =>
+            clampPage(current, subscriptions?.length ?? 0, ACTIVE_SUBSCRIPTIONS_PAGE_SIZE)
+        );
+    }, [subscriptions?.length]);
+
+    useEffect(() => {
+        setInvoicesPage((current) => clampPage(current, invoices?.length ?? 0, INVOICES_PAGE_SIZE));
+    }, [invoices?.length]);
+
+    useEffect(() => {
+        setOrdersPage((current) => clampPage(current, orders?.length ?? 0, ORDERS_PAGE_SIZE));
+    }, [orders?.length]);
 
     useEffect(() => {
         if (!catalog || catalog.length < 1) {
@@ -1053,6 +1159,68 @@ export default () => {
                     padding: 1.1rem;
                 }
 
+                .billing-pagination-top {
+                    width: 100%;
+                }
+
+                .billing-pagination-bar {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 0.9rem;
+                    margin: 0.5rem 0 0;
+                }
+
+                .billing-pagination-copy {
+                    font-size: 0.875rem;
+                    color: rgb(163 163 163);
+                }
+
+                .billing-pagination-value {
+                    font-weight: 700;
+                    color: #f8f6ef;
+                }
+
+                .billing-pagination-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                }
+
+                .billing-page-btn {
+                    display: inline-flex;
+                    min-width: 2.2rem;
+                    height: 2.2rem;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 0.85rem;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    background: rgba(255, 255, 255, 0.03);
+                    color: rgba(248, 246, 239, 0.86);
+                    font-size: 0.82rem;
+                    font-weight: 800;
+                    transition: all 0.2s ease;
+                }
+
+                .billing-page-btn:hover:not(:disabled) {
+                    border-color: rgba(var(--primary-rgb), 0.34);
+                    background: rgba(var(--primary-rgb), 0.12);
+                    color: #f8f6ef;
+                }
+
+                .billing-page-btn:disabled {
+                    cursor: not-allowed;
+                    opacity: 0.45;
+                }
+
+                .billing-page-btn-active {
+                    border-color: rgba(var(--primary-rgb), 0.44);
+                    background: linear-gradient(100deg, rgba(var(--primary-rgb), 0.95), rgba(var(--primary-rgb), 0.74));
+                    color: rgb(10 13 16);
+                    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.24);
+                }
+
                 @media (max-width: 640px) {
                     .billing-hero {
                         border-radius: 18px;
@@ -1061,6 +1229,14 @@ export default () => {
 
                     .billing-hero-pill-row {
                         margin-bottom: 10px;
+                    }
+
+                    .billing-pagination-bar {
+                        align-items: flex-start;
+                    }
+
+                    .billing-pagination-actions {
+                        flex-wrap: wrap;
                     }
                 }
             `}</style>
@@ -1701,7 +1877,7 @@ export default () => {
                 )}
 
                 <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-3'}>
+                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                         <div>
                             <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
                                 Active Subscriptions
@@ -1710,14 +1886,24 @@ export default () => {
                                 Renew a server for another month, or upgrade its plan. Downgrades are blocked.
                             </p>
                         </div>
-                        {subscriptionsLoading && subscriptions ? <Spinner size={Spinner.Size.SMALL} /> : null}
+                        {subscriptions && subscriptions.length > 0 ? (
+                            <BillingPagination
+                                currentPage={subscriptionsPage}
+                                onPageChange={setSubscriptionsPage}
+                                pageSize={ACTIVE_SUBSCRIPTIONS_PAGE_SIZE}
+                                totalItems={subscriptions.length}
+                            />
+                        ) : subscriptionsLoading && subscriptions ? (
+                            <Spinner size={Spinner.Size.SMALL} />
+                        ) : null}
                     </div>
 
                     {!subscriptions && subscriptionsLoading ? (
                         <Spinner centered />
                     ) : subscriptions && subscriptions.length > 0 ? (
                         <div className={'grid gap-4'}>
-                            {subscriptions.map((subscription) => (
+                            {paginateItems(subscriptions, subscriptionsPage, ACTIVE_SUBSCRIPTIONS_PAGE_SIZE).map(
+                                (subscription) => (
                                 <BillingSubscriptionCard
                                     key={subscription.id}
                                     subscription={subscription}
@@ -1728,7 +1914,8 @@ export default () => {
                                     onUpgrade={(current, payload) => void onUpgradeSubscription(current.id, payload)}
                                     onToggleAutoRenew={(current, enabled) => void onToggleAutoRenew(current.id, enabled)}
                                 />
-                            ))}
+                                )
+                            )}
                         </div>
                     ) : (
                         <div className={'billing-empty-card'}>No active billing subscriptions exist yet.</div>
@@ -1736,21 +1923,30 @@ export default () => {
                 </section>
 
                 <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-3'}>
+                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                         <div>
                             <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>Invoices</h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
                                 Checkout, renewals, upgrades, and payment receipts now flow through invoices first.
                             </p>
                         </div>
-                        {invoicesLoading && invoices ? <Spinner size={Spinner.Size.SMALL} /> : null}
+                        {invoices && invoices.length > 0 ? (
+                            <BillingPagination
+                                currentPage={invoicesPage}
+                                onPageChange={setInvoicesPage}
+                                pageSize={INVOICES_PAGE_SIZE}
+                                totalItems={invoices.length}
+                            />
+                        ) : invoicesLoading && invoices ? (
+                            <Spinner size={Spinner.Size.SMALL} />
+                        ) : null}
                     </div>
 
                     {!invoices && invoicesLoading ? (
                         <Spinner centered />
                     ) : invoices && invoices.length > 0 ? (
                         <div className={'grid gap-4 xl:grid-cols-2'}>
-                            {invoices.slice(0, 8).map((invoice: BillingInvoice) => (
+                            {paginateItems(invoices, invoicesPage, INVOICES_PAGE_SIZE).map((invoice: BillingInvoice) => (
                                 <article key={invoice.id} className={'billing-order-card'}>
                                     {(() => {
                                         const latestPayment = invoice.payments[0] || null;
@@ -1855,21 +2051,30 @@ export default () => {
                 </section>
 
                 <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-3'}>
+                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                         <div>
                             <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>My Billing Orders</h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
                                 Provisioning intent and server deployment status after payment verification.
                             </p>
                         </div>
-                        {ordersLoading && orders ? <Spinner size={Spinner.Size.SMALL} /> : null}
+                        {orders && orders.length > 0 ? (
+                            <BillingPagination
+                                currentPage={ordersPage}
+                                onPageChange={setOrdersPage}
+                                pageSize={ORDERS_PAGE_SIZE}
+                                totalItems={orders.length}
+                            />
+                        ) : ordersLoading && orders ? (
+                            <Spinner size={Spinner.Size.SMALL} />
+                        ) : null}
                     </div>
 
                     {!orders && ordersLoading ? (
                         <Spinner centered />
                     ) : orders && orders.length > 0 ? (
                         <div className={'grid gap-4 xl:grid-cols-2'}>
-                            {orders.map((order) => (
+                            {paginateItems(orders, ordersPage, ORDERS_PAGE_SIZE).map((order) => (
                                 <article key={order.id} className={'billing-order-card'}>
                                     <div className={'flex flex-wrap items-start justify-between gap-3'}>
                                         <div>

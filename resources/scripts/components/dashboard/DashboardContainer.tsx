@@ -201,6 +201,9 @@ export default () => {
                     min-height: 0;
                     overflow-y: auto;
                     overflow-x: hidden;
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior-y: contain;
+                    touch-action: pan-y;
                     padding-right: 4px;
                     padding-bottom: 10px;
                 }
@@ -319,8 +322,23 @@ export default () => {
 
                 @media (max-width: 1023px) {
                     .dashboard-auth-shell {
-                        height: calc(100dvh - 48px);
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        height: auto;
                         min-height: calc(100dvh - 48px);
+                    }
+
+                    .dashboard-theme {
+                        height: auto;
+                        min-height: calc(100dvh - 48px);
+                    }
+
+                    .dashboard-scroll-region {
+                        flex: 0 0 auto;
+                        min-height: auto;
+                        overflow: visible;
+                        padding-right: 0;
+                        padding-bottom: 18px;
                     }
                 }
             `}</style>

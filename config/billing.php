@@ -18,6 +18,7 @@ return [
         'sandbox' => (bool) env('BILLING_FIUU_SANDBOX', true),
         'merchant_id' => env('BILLING_FIUU_MERCHANT_ID'),
         'verify_key' => env('BILLING_FIUU_VERIFY_KEY'),
+        'request_token' => (bool) env('BILLING_FIUU_REQUEST_TOKEN', true),
         'extended_vcode' => (bool) env('BILLING_FIUU_EXTENDED_VCODE', false),
         'secret_key' => env('BILLING_FIUU_SECRET_KEY'),
         'return_url' => env('BILLING_FIUU_RETURN_URL', rtrim((string) env('APP_URL', ''), '/') . '/fiuu-return.php'),

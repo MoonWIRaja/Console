@@ -51,6 +51,7 @@ class SettingsServiceProvider extends ServiceProvider
         'billing:fiuu:sandbox',
         'billing:fiuu:merchant_id',
         'billing:fiuu:verify_key',
+        'billing:fiuu:request_token',
         'billing:fiuu:extended_vcode',
         'billing:fiuu:secret_key',
         'billing:fiuu:return_url',

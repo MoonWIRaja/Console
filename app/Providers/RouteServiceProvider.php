@@ -44,6 +44,9 @@ class RouteServiceProvider extends ServiceProvider
                 ->name('billing.gateway.fiuu.return');
 
             Route::middleware('web')->group(function () {
+                Route::get('/billing/gateways/fiuu/checkout/{checkoutReference}', [FiuuGatewayController::class, 'checkout'])
+                    ->name('billing.gateway.fiuu.checkout');
+
                 Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
                     ->group(base_path('routes/base.php'));
 

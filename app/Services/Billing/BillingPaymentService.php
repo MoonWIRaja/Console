@@ -22,6 +22,8 @@ use Pterodactyl\Notifications\BillingPaymentActionRequired;
 
 class BillingPaymentService
 {
+    private const CHECKOUT_REUSE_WINDOW_MINUTES = 15;
+
     public function __construct(
         private BillingPaymentAttemptService $attemptService,
         private BillingInvoiceNumberService $numberService,
@@ -56,9 +58,28 @@ class BillingPaymentService
             throw new DisplayException('This invoice cannot be sent to checkout in its current state.');
         }
 
+        $reusableAttempt = $this->findReusableCheckoutAttempt($invoice);
+        if ($reusableAttempt) {
+            $checkout = $this->fiuuCheckoutService->resumeCheckout($reusableAttempt, $reusableAttempt->raw_request_payload ?? []);
+            $attempt = $this->attemptService->markRedirected($reusableAttempt, $checkout['request_payload'] ?? $checkout['payload']);
+
+            if ($invoice->status === BillingInvoice::STATUS_DRAFT) {
+                $invoice->forceFill([
+                    'status' => BillingInvoice::STATUS_OPEN,
+                    'issued_at' => $invoice->issued_at ?? CarbonImmutable::now(),
+                ])->saveOrFail();
+            }
+
+            return [
+                'attempt' => $attempt,
+                'checkout' => $checkout,
+                'invoice' => $invoice->fresh(),
+            ];
+        }
+
         $attempt = $this->attemptService->create($invoice, FiuuCheckoutService::PROVIDER);
         $checkout = $this->fiuuCheckoutService->buildCheckout($invoice, $attempt);
-        $attempt = $this->attemptService->markRedirected($attempt, $checkout['payload']);
+        $attempt = $this->attemptService->markRedirected($attempt, $checkout['request_payload'] ?? $checkout['payload']);
 
         if ($invoice->status === BillingInvoice::STATUS_DRAFT) {
             $invoice->forceFill([
@@ -77,6 +98,30 @@ class BillingPaymentService
     public function retryCheckout(BillingInvoice $invoice): array
     {
         return $this->startCheckout($invoice);
+    }
+
+    private function findReusableCheckoutAttempt(BillingInvoice $invoice): ?BillingPaymentAttempt
+    {
+        $attempt = BillingPaymentAttempt::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('provider', FiuuCheckoutService::PROVIDER)
+            ->whereIn('status', [
+                BillingPaymentAttempt::STATUS_INITIATED,
+                BillingPaymentAttempt::STATUS_REDIRECTED,
+            ])
+            ->latest('id')
+            ->first();
+
+        if (!$attempt || !is_array($attempt->raw_request_payload) || $attempt->raw_request_payload === []) {
+            return null;
+        }
+
+        $cutoff = CarbonImmutable::now()->subMinutes(self::CHECKOUT_REUSE_WINDOW_MINUTES);
+        if (!$attempt->created_at || $attempt->created_at->lt($cutoff)) {
+            return null;
+        }
+
+        return $attempt;
     }
 
     public function settleZeroAmountInvoice(BillingInvoice $invoice, ?string $reason = null): BillingPayment
@@ -323,9 +368,15 @@ class BillingPaymentService
         ];
     }
 
-    public function refundPayment(BillingPayment $payment, float $amount, ?string $reason = null, ?User $requestedBy = null): BillingRefund
+    public function refundPayment(
+        BillingPayment $payment,
+        float $amount,
+        ?string $reason = null,
+        ?User $requestedBy = null,
+        bool $notifyUser = true
+    ): BillingRefund
     {
-        $payment->loadMissing('invoice.user');
+        $payment->loadMissing('invoice.user', 'invoice.order', 'invoice.subscription');
 
         if ($amount <= 0) {
             throw new DisplayException('Refund amount must be greater than zero.');
@@ -346,7 +397,7 @@ class BillingPaymentService
             ));
         }
 
-        return DB::transaction(function () use ($payment, $amount, $reason, $requestedBy) {
+        $refund = DB::transaction(function () use ($payment, $amount, $reason, $requestedBy, $notifyUser) {
             $refund = BillingRefund::query()->create([
                 'payment_id' => $payment->id,
                 'refund_number' => $this->numberService->nextRefundNumber(),
@@ -379,13 +430,27 @@ class BillingPaymentService
 
             if ($response['successful']) {
                 $invoice = $this->handleSuccessfulRefundOutcome($invoice);
-                $payment->invoice->user?->notify(
-                    new BillingRefundCompleted($refund->fresh(['payment.invoice.subscription.server', 'payment.invoice.order', 'payment']))
-                );
+                if ($notifyUser) {
+                    $payment->invoice->user?->notify(
+                        new BillingRefundCompleted($refund->fresh(['payment.invoice.subscription.server', 'payment.invoice.order', 'payment']))
+                    );
+                }
             }
 
             return $refund->fresh(['payment', 'requestedBy']);
         });
+
+        if ($refund->status === BillingRefund::STATUS_COMPLETED) {
+            $invoice = BillingInvoice::query()
+                ->with(['order', 'subscription.server', 'payments.refunds'])
+                ->find($payment->invoice_id);
+
+            if ($invoice) {
+                $this->cascadeUpgradeRefundsForTerminatedSubscription($invoice, $requestedBy);
+            }
+        }
+
+        return $refund->fresh(['payment', 'requestedBy']);
     }
 
     private function recordVerifiedPayment(BillingInvoice $invoice, ?BillingPaymentAttempt $attempt, array $payload): BillingPayment
@@ -612,6 +677,69 @@ class BillingPaymentService
         }
 
         return $invoice->fresh(['order', 'subscription.server']);
+    }
+
+    private function cascadeUpgradeRefundsForTerminatedSubscription(BillingInvoice $invoice, ?User $requestedBy = null): void
+    {
+        if (!in_array($invoice->type, [BillingInvoice::TYPE_NEW_SERVER, BillingInvoice::TYPE_RENEWAL], true)) {
+            return;
+        }
+
+        $subscription = $invoice->subscription ?: $this->resolveSubscriptionForInvoice($invoice);
+        if (!$subscription?->server_id) {
+            return;
+        }
+
+        BillingInvoice::query()
+            ->with(['payments.refunds', 'order'])
+            ->where('type', BillingInvoice::TYPE_UPGRADE)
+            ->whereIn('status', [
+                BillingInvoice::STATUS_PAID,
+                BillingInvoice::STATUS_PARTIALLY_REFUNDED,
+            ])
+            ->whereHas('order', function ($query) use ($subscription) {
+                $query->where('user_id', $subscription->user_id)
+                    ->where('server_id', $subscription->server_id)
+                    ->where('order_type', BillingOrder::TYPE_UPGRADE);
+            })
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id')
+            ->get()
+            ->each(function (BillingInvoice $upgradeInvoice) use ($requestedBy, $invoice) {
+                foreach ($upgradeInvoice->payments->sortByDesc('id') as $upgradePayment) {
+                    $remainingRefundable = round(
+                        max((float) $upgradePayment->amount - $this->getCompletedRefundTotal($upgradePayment), 0),
+                        2
+                    );
+
+                    if ($remainingRefundable <= 0) {
+                        continue;
+                    }
+
+                    try {
+                        $this->refundPayment(
+                            $upgradePayment->fresh(['invoice.user', 'invoice.order', 'invoice.subscription']),
+                            $remainingRefundable,
+                            sprintf(
+                                'Automatically refunded because server invoice %s was fully refunded and the subscription is being terminated.',
+                                $invoice->invoice_number
+                            ),
+                            $requestedBy,
+                            false
+                        );
+                    } catch (\Throwable $exception) {
+                        report($exception);
+                        Log::warning('Billing upgrade refund cascade failed after base server refund.', [
+                            'base_invoice_id' => $invoice->id,
+                            'base_invoice_number' => $invoice->invoice_number,
+                            'upgrade_invoice_id' => $upgradeInvoice->id,
+                            'upgrade_invoice_number' => $upgradeInvoice->invoice_number,
+                            'payment_id' => $upgradePayment->id,
+                            'message' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
     }
 
     private function resolveSubscriptionForInvoice(BillingInvoice $invoice): ?BillingSubscription

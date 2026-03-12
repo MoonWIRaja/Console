@@ -5,12 +5,59 @@ namespace Pterodactyl\Http\Controllers\Billing;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Models\BillingInvoice;
+use Pterodactyl\Models\BillingPaymentAttempt;
 use Pterodactyl\Services\Billing\BillingPaymentService;
+use Pterodactyl\Services\Billing\FiuuCheckoutService;
 
 class FiuuGatewayController extends Controller
 {
-    public function __construct(private BillingPaymentService $paymentService)
+    public function __construct(
+        private BillingPaymentService $paymentService,
+        private FiuuCheckoutService $checkoutService,
+    )
     {
+    }
+
+    public function checkout(string $checkoutReference): Response
+    {
+        $billingPaymentAttempt = BillingPaymentAttempt::query()
+            ->with('invoice')
+            ->where('checkout_reference', $checkoutReference)
+            ->latest('id')
+            ->firstOrFail();
+
+        $billingPaymentAttempt->loadMissing('invoice');
+
+        if (
+            $billingPaymentAttempt->provider !== FiuuCheckoutService::PROVIDER
+            || !is_array($billingPaymentAttempt->raw_request_payload)
+            || $billingPaymentAttempt->raw_request_payload === []
+        ) {
+            return $this->redirectToBilling($billingPaymentAttempt->checkout_reference);
+        }
+
+        $invoice = $billingPaymentAttempt->invoice;
+        if ($invoice && in_array($invoice->status, [
+            BillingInvoice::STATUS_PAID,
+            BillingInvoice::STATUS_REFUNDED,
+            BillingInvoice::STATUS_VOID,
+        ], true)) {
+            return $this->redirectToBilling($billingPaymentAttempt->checkout_reference);
+        }
+
+        $html = view('billing.fiuu-checkout', [
+            'reference' => $billingPaymentAttempt->checkout_reference,
+            'action' => $this->checkoutService->resolveMerchantUrl(),
+            'payload' => $billingPaymentAttempt->raw_request_payload,
+        ])->render();
+
+        return response($html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT',
+        ]);
     }
 
     public function callback(Request $request): Response
