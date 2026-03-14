@@ -41,6 +41,15 @@ class BillingSubscription extends Model
         'gateway_provider',
         'gateway_customer_reference',
         'gateway_token_reference',
+        'provider_subscription_id',
+        'provider_subscription_item_id',
+        'provider_price_id',
+        'provider_status',
+        'provider_current_period_start',
+        'provider_current_period_end',
+        'provider_cancel_at',
+        'migration_source',
+        'migration_state',
         'server_name',
         'node_name',
         'game_name',
@@ -73,6 +82,9 @@ class BillingSubscription extends Model
         'billing_order_id' => 'integer',
         'last_paid_invoice_id' => 'integer',
         'auto_renew' => 'boolean',
+        'provider_current_period_start' => 'datetime',
+        'provider_current_period_end' => 'datetime',
+        'provider_cancel_at' => 'datetime',
         'cpu_cores' => 'integer',
         'memory_gb' => 'integer',
         'disk_gb' => 'integer',
@@ -132,6 +144,11 @@ class BillingSubscription extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(BillingInvoice::class, 'subscription_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(BillingSubscriptionRevision::class, 'subscription_id');
     }
 
     public function hasAttachedServer(): bool

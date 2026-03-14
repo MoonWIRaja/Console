@@ -10,7 +10,20 @@ return [
     'renewal_reminder_offsets' => [7, 3, 1],
     'invoice_due_hours' => (int) env('BILLING_INVOICE_DUE_HOURS', 24),
     'gateway' => [
-        'default' => 'fiuu',
+        'default' => env('BILLING_GATEWAY', 'stripe'),
+    ],
+    'stripe' => [
+        'provider' => 'stripe',
+        'enabled' => (bool) env('BILLING_STRIPE_ENABLED', false),
+        'mode' => env('BILLING_STRIPE_MODE', 'test'),
+        'publishable_key' => env('BILLING_STRIPE_PUBLISHABLE_KEY'),
+        'secret_key' => env('BILLING_STRIPE_SECRET_KEY'),
+        'webhook_secret' => env('BILLING_STRIPE_WEBHOOK_SECRET'),
+        'portal_configuration_id' => env('BILLING_STRIPE_PORTAL_CONFIGURATION_ID'),
+        'automatic_tax_enabled' => (bool) env('BILLING_STRIPE_AUTOMATIC_TAX_ENABLED', false),
+        'api_version' => env('BILLING_STRIPE_API_VERSION'),
+        'success_url' => env('BILLING_STRIPE_SUCCESS_URL', rtrim((string) env('APP_URL', ''), '/') . '/billing/gateways/stripe/return'),
+        'cancel_url' => env('BILLING_STRIPE_CANCEL_URL', rtrim((string) env('APP_URL', ''), '/') . '/billing'),
     ],
     'fiuu' => [
         'provider' => 'fiuu',

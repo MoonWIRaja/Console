@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Pterodactyl\Http\Controllers\Billing\FiuuGatewayController;
+use Pterodactyl\Http\Controllers\Billing\StripeGatewayController;
 use Pterodactyl\Http\Middleware\TrimStrings;
 use Pterodactyl\Http\Middleware\AdminAuthenticate;
 use Pterodactyl\Http\Middleware\RequireTwoFactorAuthentication;
@@ -42,6 +43,12 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::match(['GET', 'POST'], '/billing/gateways/fiuu/return', [FiuuGatewayController::class, 'return'])
                 ->name('billing.gateway.fiuu.return');
+
+            Route::post('/billing/gateways/stripe/webhook', [StripeGatewayController::class, 'webhook'])
+                ->name('billing.gateway.stripe.webhook');
+
+            Route::get('/billing/gateways/stripe/return', [StripeGatewayController::class, 'return'])
+                ->name('billing.gateway.stripe.return');
 
             Route::middleware('web')->group(function () {
                 Route::get('/billing/gateways/fiuu/checkout/{checkoutReference}', [FiuuGatewayController::class, 'checkout'])

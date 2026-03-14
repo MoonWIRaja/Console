@@ -20,6 +20,8 @@ class BillingPaymentAttemptService
             'attempt_number' => $attemptNumber,
             'status' => BillingPaymentAttempt::STATUS_INITIATED,
             'checkout_reference' => $this->generateCheckoutReference($provider, $invoice->id, $attemptNumber),
+            'provider_session_id' => $requestPayload['provider_session_id'] ?? null,
+            'attempt_mode' => $requestPayload['attempt_mode'] ?? null,
             'raw_request_payload' => $requestPayload ?: null,
         ]);
     }
@@ -29,6 +31,8 @@ class BillingPaymentAttemptService
         $attempt->forceFill([
             'status' => BillingPaymentAttempt::STATUS_REDIRECTED,
             'redirected_at' => CarbonImmutable::now(),
+            'provider_session_id' => $requestPayload['provider_session_id'] ?? $attempt->provider_session_id,
+            'attempt_mode' => $requestPayload['attempt_mode'] ?? $attempt->attempt_mode,
             'raw_request_payload' => $requestPayload ?: $attempt->raw_request_payload,
         ])->saveOrFail();
 

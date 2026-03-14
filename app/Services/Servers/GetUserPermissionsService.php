@@ -17,13 +17,18 @@ class GetUserPermissionsService
         if ($user->root_admin || $user->id === $server->owner_id) {
             $permissions = ['*'];
 
+            if ($user->id === $server->owner_id) {
+                $permissions[] = 'admin.websocket.errors';
+                $permissions[] = 'admin.websocket.install';
+            }
+
             if ($user->root_admin) {
                 $permissions[] = 'admin.websocket.errors';
                 $permissions[] = 'admin.websocket.install';
                 $permissions[] = 'admin.websocket.transfer';
             }
 
-            return $permissions;
+            return array_values(array_unique($permissions));
         }
 
         /** @var \Pterodactyl\Models\Subuser|null $subuserPermissions */

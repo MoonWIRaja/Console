@@ -3,6 +3,7 @@
 namespace Pterodactyl\Services\Billing;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingInvoice;
@@ -17,6 +18,8 @@ class BillingSubscriptionService
         private BillingCatalogService $catalogService,
         private SuspensionService $suspensionService,
         private BuildModificationService $buildModificationService,
+        private StripeClientFactory $stripe,
+        private BillingSubscriptionRevisionService $revisionService,
     ) {
     }
 
@@ -25,10 +28,14 @@ class BillingSubscriptionService
         $order->loadMissing('invoice.payments');
 
         $now = CarbonImmutable::now();
-        $renewsAt = $now->addMonthsNoOverflow(1);
+        $existing = BillingSubscription::query()->where('billing_order_id', $order->id)->first();
+        $gatewayProvider = $existing?->gateway_provider ?: ($order->invoice?->provider ?: config('billing.gateway.default', 'fiuu'));
+        $renewsAt = $existing?->provider_current_period_end
+            ?: $existing?->renews_at
+            ?: $now->addMonthsNoOverflow(1);
         $gatewayReferences = $this->extractGatewayReferencesFromOrder($order);
 
-        return BillingSubscription::query()->updateOrCreate(
+        $subscription = BillingSubscription::query()->updateOrCreate(
             ['billing_order_id' => $order->id],
             [
                 'user_id' => $order->user_id,
@@ -36,10 +43,23 @@ class BillingSubscriptionService
                 'billing_node_config_id' => $order->billing_node_config_id,
                 'billing_game_profile_id' => $order->billing_game_profile_id,
                 'status' => BillingSubscription::STATUS_ACTIVE,
-                'auto_renew' => false,
-                'gateway_provider' => config('billing.gateway.default', 'fiuu'),
-                'gateway_customer_reference' => $gatewayReferences['customer_reference'],
-                'gateway_token_reference' => $gatewayReferences['token_reference'],
+                'auto_renew' => $gatewayProvider === StripeCheckoutService::PROVIDER
+                    ? ($existing?->auto_renew ?? true)
+                    : false,
+                'gateway_provider' => $gatewayProvider,
+                'gateway_customer_reference' => $existing?->gateway_customer_reference ?: $gatewayReferences['customer_reference'],
+                'gateway_token_reference' => $gatewayProvider === StripeCheckoutService::PROVIDER
+                    ? null
+                    : ($existing?->gateway_token_reference ?: $gatewayReferences['token_reference']),
+                'provider_subscription_id' => $existing?->provider_subscription_id,
+                'provider_subscription_item_id' => $existing?->provider_subscription_item_id,
+                'provider_price_id' => $existing?->provider_price_id,
+                'provider_status' => $existing?->provider_status,
+                'provider_current_period_start' => $existing?->provider_current_period_start,
+                'provider_current_period_end' => $existing?->provider_current_period_end,
+                'provider_cancel_at' => $existing?->provider_cancel_at,
+                'migration_source' => $existing?->migration_source,
+                'migration_state' => $existing?->migration_state,
                 'server_name' => $order->server_name,
                 'node_name' => $order->node_name,
                 'game_name' => $order->game_name,
@@ -65,6 +85,18 @@ class BillingSubscriptionService
                 'deleted_at' => null,
             ]
         );
+
+        if (!$subscription->revisions()->where('source_order_id', $order->id)->exists()) {
+            $this->revisionService->record(
+                $subscription,
+                'new_server',
+                $order->invoice,
+                $order,
+                $subscription->provider_price_id
+            );
+        }
+
+        return $subscription;
     }
 
     public function renew(BillingSubscription $subscription): BillingSubscription
@@ -192,6 +224,26 @@ class BillingSubscriptionService
 
     public function toggleAutoRenew(BillingSubscription $subscription, bool $enabled): BillingSubscription
     {
+        if ($subscription->gateway_provider === StripeCheckoutService::PROVIDER || filled($subscription->provider_subscription_id)) {
+            if (blank($subscription->provider_subscription_id)) {
+                throw new DisplayException('This Stripe subscription has not been linked yet.');
+            }
+
+            $stripeSubscription = $this->stripe->make()->subscriptions->update($subscription->provider_subscription_id, [
+                'cancel_at_period_end' => !$enabled,
+            ])->toArray();
+
+            $subscription->forceFill([
+                'auto_renew' => !(bool) Arr::get($stripeSubscription, 'cancel_at_period_end', false),
+                'provider_status' => Arr::get($stripeSubscription, 'status', $subscription->provider_status),
+                'provider_cancel_at' => $this->mapTimestamp(Arr::get($stripeSubscription, 'cancel_at')),
+                'provider_current_period_start' => $this->mapTimestamp(Arr::get($stripeSubscription, 'current_period_start')),
+                'provider_current_period_end' => $this->mapTimestamp(Arr::get($stripeSubscription, 'current_period_end')),
+            ])->saveOrFail();
+
+            return $subscription->fresh();
+        }
+
         if ($enabled && blank($subscription->gateway_token_reference)) {
             throw new DisplayException('Auto-renew needs a stored recurring payment token. Complete a supported tokenized card payment first, then enable auto-renew.');
         }
@@ -265,6 +317,14 @@ class BillingSubscriptionService
             'recurring_total' => $pricing['total'],
             'upgraded_at' => CarbonImmutable::now(),
         ])->saveOrFail();
+
+        $this->revisionService->record(
+            $subscription->fresh(),
+            'upgrade',
+            $order->invoice,
+            $order,
+            $subscription->provider_price_id
+        );
 
         return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
     }
@@ -341,6 +401,14 @@ class BillingSubscriptionService
             'upgraded_at' => CarbonImmutable::now(),
         ])->saveOrFail();
 
+        $this->revisionService->record(
+            $subscription->fresh(),
+            'refund_rollback',
+            $effectiveOrder->invoice,
+            $effectiveOrder,
+            $subscription->provider_price_id
+        );
+
         return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
     }
 
@@ -362,11 +430,21 @@ class BillingSubscriptionService
             'customer_reference' => $callback['customer_reference']
                 ?? $callback['customer_id']
                 ?? $callback['cust_ref']
+                ?? $raw['customer']
                 ?? $requery['customer_reference']
                 ?? $requery['customer_id']
                 ?? $requery['cust_ref']
                 ?? null,
         ];
+    }
+
+    private function mapTimestamp(mixed $timestamp): ?CarbonImmutable
+    {
+        if (!is_numeric($timestamp)) {
+            return null;
+        }
+
+        return CarbonImmutable::createFromTimestampUTC((int) $timestamp);
     }
 
     private function resolveLatestEffectiveResourceOrder(BillingSubscription $subscription): ?BillingOrder

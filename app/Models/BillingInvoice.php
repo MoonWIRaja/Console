@@ -34,6 +34,13 @@ class BillingInvoice extends Model
         'billing_profile_id',
         'billing_order_id',
         'subscription_id',
+        'provider',
+        'provider_invoice_id',
+        'provider_checkout_session_id',
+        'provider_payment_intent_id',
+        'hosted_invoice_url',
+        'invoice_pdf_url',
+        'provider_status',
         'type',
         'currency',
         'subtotal',
@@ -103,5 +110,10 @@ class BillingInvoice extends Model
     public function attempts(): HasMany
     {
         return $this->hasMany(BillingPaymentAttempt::class, 'invoice_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(BillingSubscriptionRevision::class, 'source_invoice_id');
     }
 }

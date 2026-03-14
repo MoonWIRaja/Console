@@ -8,12 +8,14 @@ interface Props {
     renewing: boolean;
     upgrading: boolean;
     togglingAutoRenew: boolean;
+    migratingToStripe?: boolean;
     onRenew: (subscription: BillingSubscription) => void;
     onUpgrade: (
         subscription: BillingSubscription,
         payload: { cpuCores: number; memoryGb: number; diskGb: number }
     ) => void;
     onToggleAutoRenew: (subscription: BillingSubscription, enabled: boolean) => void;
+    onMigrateToStripe: (subscription: BillingSubscription) => void;
 }
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
@@ -54,9 +56,11 @@ export default ({
     renewing,
     upgrading,
     togglingAutoRenew,
+    migratingToStripe,
     onRenew,
     onUpgrade,
     onToggleAutoRenew,
+    onMigrateToStripe,
 }: Props) => {
     const [upgradeOpen, setUpgradeOpen] = useState(false);
     const [cpuCores, setCpuCores] = useState(subscription.cpuCores);
@@ -94,6 +98,16 @@ export default ({
                 ? `Renewal opens on ${subscription.renewAvailableAt.toLocaleString()}.`
                 : 'Renewal opens 2 days before the billing deadline.'
             : null;
+    const isStripeManaged = subscription.gatewayProvider === 'stripe' && !!subscription.providerSubscriptionId;
+    const needsStripeMigration = !isStripeManaged && subscription.canRenew;
+    const autoRenewDescription = isStripeManaged
+        ? subscription.autoRenew
+            ? 'Automatic renewal is armed on Stripe for this subscription.'
+            : 'Automatic renewal is currently disabled on Stripe.'
+        : 'Automatic renewal will unlock after this subscription is migrated to Stripe with a reusable card payment.';
+    const autoRenewHelper = isStripeManaged
+        ? 'Card, Apple Pay, and Google Pay methods that Stripe can reuse are supported. Plan and resource changes still stay in this billing panel.'
+        : 'Legacy Fiuu subscriptions must be migrated at the next renewal window before Stripe can charge them automatically.';
 
     return (
         <article className={'billing-subscription-card'}>
@@ -179,13 +193,10 @@ export default ({
                             Auto Renew
                         </p>
                         <p className={'mt-2 text-sm text-[#f8f6ef]'}>
-                            {subscription.autoRenew
-                                ? 'Automatic renewal is armed for this subscription.'
-                                : 'Automatic renewal is currently disabled.'}
+                            {autoRenewDescription}
                         </p>
                         <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                            Auto-debit needs a reusable Fiuu token from a supported card payment. QR and online banking
-                            usually do not create that token.
+                            {autoRenewHelper}
                         </p>
                     </div>
                     <span
@@ -200,7 +211,11 @@ export default ({
                 <div className={'mt-4 flex flex-wrap items-center gap-3'}>
                     <button
                         type={'button'}
-                        disabled={togglingAutoRenew || (!subscription.autoRenew && !subscription.autoRenewAvailable)}
+                        disabled={
+                            togglingAutoRenew ||
+                            !isStripeManaged ||
+                            (!subscription.autoRenew && !subscription.autoRenewAvailable)
+                        }
                         onClick={() => onToggleAutoRenew(subscription, !subscription.autoRenew)}
                         className={subscription.autoRenew ? 'billing-secondary-btn' : 'billing-primary-btn'}
                     >
@@ -220,20 +235,31 @@ export default ({
             <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                 <button
                     type={'button'}
-                    disabled={!subscription.canRenew || renewing}
+                    disabled={!subscription.canRenew || renewing || needsStripeMigration || isStripeManaged}
                     onClick={() => onRenew(subscription)}
                     className={'billing-primary-btn'}
                 >
                     {renewing
                         ? 'Creating...'
-                        : subscription.status === 'suspended'
-                        ? 'Create Renewal Invoice'
+                        : isStripeManaged
+                        ? 'Stripe Managed'
                         : 'Create Renewal Invoice'}
                 </button>
 
+                {needsStripeMigration && (
+                    <button
+                        type={'button'}
+                        disabled={migratingToStripe}
+                        onClick={() => onMigrateToStripe(subscription)}
+                        className={'billing-primary-btn'}
+                    >
+                        {migratingToStripe ? 'Starting...' : 'Migrate to Stripe'}
+                    </button>
+                )}
+
                 <button
                     type={'button'}
-                    disabled={!subscription.canUpgrade || upgrading}
+                    disabled={!subscription.canUpgrade || upgrading || !isStripeManaged}
                     onClick={() => setUpgradeOpen((value) => !value)}
                     className={'billing-secondary-btn'}
                 >
@@ -251,7 +277,14 @@ export default ({
                 <p className={'mt-3 text-xs leading-6 text-[color:var(--muted-foreground)]'}>{renewWindowMessage}</p>
             )}
 
-            {upgradeOpen && subscription.canUpgrade && (
+            {!isStripeManaged && (
+                <p className={'mt-3 text-xs leading-6 text-amber-200'}>
+                    This subscription still uses the legacy billing gateway. Migrate it to Stripe in the renewal
+                    window before using auto-renew or upgrade checkout.
+                </p>
+            )}
+
+            {upgradeOpen && subscription.canUpgrade && isStripeManaged && (
                 <div className={'billing-upgrade-panel'}>
                     <div className={'mb-4'}>
                         <h4 className={'text-lg font-black tracking-tight text-[#f8f6ef]'}>Upgrade Plan</h4>

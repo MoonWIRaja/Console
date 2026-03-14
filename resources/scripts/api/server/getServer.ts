@@ -42,6 +42,9 @@ export interface Server {
     };
     invocation: string;
     dockerImage: string;
+    skipEggScripts: boolean;
+    canReinstall: boolean;
+    reinstallBlockReason: string | null;
     description: string;
     limits: {
         memory: number;
@@ -74,6 +77,9 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     status: data.status,
     invocation: data.invocation,
     dockerImage: data.docker_image,
+    skipEggScripts: data.skip_egg_scripts,
+    canReinstall: data.can_reinstall,
+    reinstallBlockReason: data.reinstall_block_reason,
     sftpDetails: {
         ip: data.sftp_details.ip,
         port: data.sftp_details.port,

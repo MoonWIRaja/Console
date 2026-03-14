@@ -286,149 +286,154 @@ const StartupContainer = () => {
             showFlashKey={'startup:image'}
             className={'content-container-full px-4 xl:px-6'}
         >
-            <div css={tw`xl:flex`}>
-                <TitledGreyBox
-                    title={
-                        <div css={tw`flex items-center justify-between gap-3`}>
-                            <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Startup Command</p>
-                            {canEditStartup && (
-                                <InteractiveHoverButton
-                                    type={'button'}
-                                    text={'Recovery'}
-                                    variant={'warning'}
-                                    className={'h-8 min-w-0 px-3 text-xs'}
-                                    onClick={() => setRecoveryOpen(true)}
-                                />
-                            )}
-                        </div>
-                    }
-                    css={tw`flex-1`}
-                >
-                    <Dialog.Confirm
-                        open={recoveryOpen}
-                        title={'Recover startup command'}
-                        confirm={'Recover'}
-                        onClose={() => setRecoveryOpen(false)}
-                        onConfirmed={recoverStartupCommand}
+            <div
+                css={tw`flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pr-1 pb-4`}
+                style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+                <div css={tw`xl:flex`}>
+                    <TitledGreyBox
+                        title={
+                            <div css={tw`flex items-center justify-between gap-3`}>
+                                <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Startup Command</p>
+                                {canEditStartup && (
+                                    <InteractiveHoverButton
+                                        type={'button'}
+                                        text={'Recovery'}
+                                        variant={'warning'}
+                                        className={'h-8 min-w-0 px-3 text-xs'}
+                                        onClick={() => setRecoveryOpen(true)}
+                                    />
+                                )}
+                            </div>
+                        }
+                        css={tw`flex-1`}
                     >
-                        Reset startup command to the default service command?
-                    </Dialog.Confirm>
+                        <Dialog.Confirm
+                            open={recoveryOpen}
+                            title={'Recover startup command'}
+                            confirm={'Recover'}
+                            onClose={() => setRecoveryOpen(false)}
+                            onConfirmed={recoverStartupCommand}
+                        >
+                            Reset startup command to the default service command?
+                        </Dialog.Confirm>
 
-                    <FlashMessageRender byKey={'startup:command'} css={tw`mb-3`} />
+                        <FlashMessageRender byKey={'startup:command'} css={tw`mb-3`} />
 
-                    <div css={tw`space-y-3 px-1 py-2`}>
-                        <Textarea
-                            value={startupDraft}
-                            onChange={(event) => setStartupDraft(event.currentTarget.value)}
-                            rows={4}
-                            readOnly={!canEditStartup}
-                            css={tw`font-mono`}
-                            style={{ backgroundColor: 'var(--card)' }}
-                        />
-                        {canEditStartup && commandSaving && (
-                            <div css={tw`flex items-center justify-end gap-2 text-xs text-neutral-400`}>
-                                <Spinner size={Spinner.Size.SMALL} />
-                                <span>Auto-saving...</span>
+                        <div css={tw`space-y-3 px-1 py-2`}>
+                            <Textarea
+                                value={startupDraft}
+                                onChange={(event) => setStartupDraft(event.currentTarget.value)}
+                                rows={4}
+                                readOnly={!canEditStartup}
+                                css={tw`font-mono`}
+                                style={{ backgroundColor: 'var(--card)' }}
+                            />
+                            {canEditStartup && commandSaving && (
+                                <div css={tw`flex items-center justify-end gap-2 text-xs text-neutral-400`}>
+                                    <Spinner size={Spinner.Size.SMALL} />
+                                    <span>Auto-saving...</span>
+                                </div>
+                            )}
+                            <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
+                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Preview</p>
+                                <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>{commandPreview.preview}</p>
+                                {commandPreview.placeholders.length > 0 && (
+                                    <p css={tw`mt-2 text-xs text-neutral-400`}>
+                                        Placeholders: {commandPreview.placeholders.join(', ')}
+                                    </p>
+                                )}
                             </div>
-                        )}
-                        <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
-                            <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Preview</p>
-                            <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>{commandPreview.preview}</p>
-                            {commandPreview.placeholders.length > 0 && (
-                                <p css={tw`mt-2 text-xs text-neutral-400`}>
-                                    Placeholders: {commandPreview.placeholders.join(', ')}
-                                </p>
-                            )}
                         </div>
-                    </div>
-                </TitledGreyBox>
-                <TitledGreyBox
-                    title={
-                        <div css={tw`flex items-center justify-between gap-3`}>
-                            <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Server Setup</p>
-                            {canEditStartup && (
-                                <InteractiveHoverButton
-                                    type={'button'}
-                                    text={'Change'}
-                                    variant={'success'}
-                                    className={'h-8 min-w-0 px-3 text-xs'}
-                                    disabled={!hasEggChange || loading}
-                                    onClick={() => setChangeEggOpen(true)}
-                                />
-                            )}
-                        </div>
-                    }
-                    css={tw`flex-1 xl:flex-none xl:w-1/3 mt-8 xl:mt-0 xl:ml-10`}
-                >
-                    <Dialog.Confirm
-                        open={changeEggOpen}
-                        title={'Confirm startup profile change'}
-                        confirm={'Change Egg'}
-                        onClose={() => setChangeEggOpen(false)}
-                        onConfirmed={applyStartupProfileChange}
+                    </TitledGreyBox>
+                    <TitledGreyBox
+                        title={
+                            <div css={tw`flex items-center justify-between gap-3`}>
+                                <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Server Setup</p>
+                                {canEditStartup && (
+                                    <InteractiveHoverButton
+                                        type={'button'}
+                                        text={'Change'}
+                                        variant={'success'}
+                                        className={'h-8 min-w-0 px-3 text-xs'}
+                                        disabled={!hasEggChange || loading}
+                                        onClick={() => setChangeEggOpen(true)}
+                                    />
+                                )}
+                            </div>
+                        }
+                        css={tw`flex-1 xl:flex-none xl:w-1/3 mt-8 xl:mt-0 xl:ml-10`}
                     >
-                        Changing Egg will replace current startup variables with the new Egg variables. Old variable
-                        values will be removed. After changing Egg, you need to fill the new variables and then run
-                        reinstall from Settings.
-                    </Dialog.Confirm>
+                        <Dialog.Confirm
+                            open={changeEggOpen}
+                            title={'Confirm startup profile change'}
+                            confirm={'Change Egg'}
+                            onClose={() => setChangeEggOpen(false)}
+                            onConfirmed={applyStartupProfileChange}
+                        >
+                            Changing Egg will replace current startup variables with the new Egg variables. Old variable
+                            values will be removed. After changing Egg, you need to fill the new variables and then run
+                            reinstall from Settings.
+                        </Dialog.Confirm>
 
-                    <InputSpinner visible={loading}>
-                        <div css={tw`space-y-3`}>
-                            <div>
-                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Game Type</p>
-                                <Input readOnly value={currentNestName} />
+                        <InputSpinner visible={loading}>
+                            <div css={tw`space-y-3`}>
+                                <div>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Game Type</p>
+                                    <Input readOnly value={currentNestName} />
+                                </div>
+                                <div>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Server Type</p>
+                                    <Select
+                                        disabled={!canEditStartup}
+                                        onChange={(value) => {
+                                            const nextEggId = Number(value);
+                                            setSelectedEggId(nextEggId);
+                                            const egg = availableEggs.find((item) => item.id === nextEggId);
+                                            const nextDocker = egg?.dockerImages?.[0]?.value || '';
+                                            if (nextDocker) {
+                                                setSelectedDockerImage(nextDocker);
+                                            }
+                                        }}
+                                        defaultValue={String(selectedEggId)}
+                                        title={'Choose Server Type'}
+                                        data={availableEggs.map((egg) => ({
+                                            id: String(egg.id),
+                                            label: egg.name,
+                                            value: String(egg.id),
+                                            description: egg.description || undefined,
+                                        }))}
+                                    />
+                                </div>
+                                <div>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Docker Image</p>
+                                    <Select
+                                        disabled={!canEditStartup || dockerOptionsForSelectedEgg.length < 1}
+                                        onChange={(value) => setSelectedDockerImage(value)}
+                                        defaultValue={selectedDockerImage}
+                                        title={'Choose Docker Image'}
+                                        data={dockerOptionsForSelectedEgg.map((image) => ({
+                                            id: image.value,
+                                            label: image.label || image.value,
+                                            value: image.value,
+                                            description: image.value,
+                                        }))}
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Server Type</p>
-                                <Select
-                                    disabled={!canEditStartup}
-                                    onChange={(value) => {
-                                        const nextEggId = Number(value);
-                                        setSelectedEggId(nextEggId);
-                                        const egg = availableEggs.find((item) => item.id === nextEggId);
-                                        const nextDocker = egg?.dockerImages?.[0]?.value || '';
-                                        if (nextDocker) {
-                                            setSelectedDockerImage(nextDocker);
-                                        }
-                                    }}
-                                    defaultValue={String(selectedEggId)}
-                                    title={'Choose Server Type'}
-                                    data={availableEggs.map((egg) => ({
-                                        id: String(egg.id),
-                                        label: egg.name,
-                                        value: String(egg.id),
-                                        description: egg.description || undefined,
-                                    }))}
-                                />
-                            </div>
-                            <div>
-                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Docker Image</p>
-                                <Select
-                                    disabled={!canEditStartup || dockerOptionsForSelectedEgg.length < 1}
-                                    onChange={(value) => setSelectedDockerImage(value)}
-                                    defaultValue={selectedDockerImage}
-                                    title={'Choose Docker Image'}
-                                    data={dockerOptionsForSelectedEgg.map((image) => ({
-                                        id: image.value,
-                                        label: image.label || image.value,
-                                        value: image.value,
-                                        description: image.value,
-                                    }))}
-                                />
-                            </div>
-                        </div>
-                    </InputSpinner>
-                    <p css={tw`mt-3 text-xs text-neutral-300`}>
-                        Game Type is managed by administrator. You can change Server Type and Docker Image here. If
-                        Server Type is changed, update new variables and run reinstall from Settings.
-                    </p>
-                </TitledGreyBox>
-            </div>
-            <h3 css={tw`mt-8 mb-2 text-2xl`}>Variables</h3>
-            <div css={tw`grid gap-8 md:grid-cols-2`}>
-                {data.variables.map((variable) => (
-                    <VariableBox key={variable.envVariable} variable={variable} />
-                ))}
+                        </InputSpinner>
+                        <p css={tw`mt-3 text-xs text-neutral-300`}>
+                            Game Type is managed by administrator. You can change Server Type and Docker Image here. If
+                            Server Type is changed, update new variables and run reinstall from Settings.
+                        </p>
+                    </TitledGreyBox>
+                </div>
+                <h3 css={tw`mt-8 mb-2 text-2xl`}>Variables</h3>
+                <div css={tw`grid gap-8 md:grid-cols-2`}>
+                    {data.variables.map((variable) => (
+                        <VariableBox key={variable.envVariable} variable={variable} />
+                    ))}
+                </div>
             </div>
         </ServerContentBlock>
     );

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Actions, useStoreActions, useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import { FlashMessage } from '@/state/flashes';
+import Portal from '@/components/elements/Portal';
 
 type Props = Readonly<{
     byKey?: string;
@@ -91,6 +92,7 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '10px',
+                pointerEvents: 'auto',
                 transform: visible && !exiting ? 'translateX(0)' : 'translateX(-120%)',
                 opacity: visible && !exiting ? 1 : 0,
                 transition: 'transform 0.3s ease, opacity 0.3s ease',
@@ -178,29 +180,34 @@ const FlashMessageRender = ({ byKey, className }: Props) => {
     if (!visibleFlashes.length) return null;
 
     return (
-        <div
-            className={className}
-            style={{
-                position: 'fixed',
-                bottom: '20px',
-                left: '20px',
-                zIndex: 9999,
-                display: 'flex',
-                flexDirection: 'column-reverse',
-                pointerEvents: 'auto',
-            }}
-        >
-            {visibleFlashes.map((flash) => (
-                <ToastItem
-                    key={flash.id}
-                    id={flash.id}
-                    type={flash.type}
-                    title={flash.title}
-                    message={flash.message}
-                    onDismiss={removeFlash}
-                />
-            ))}
-        </div>
+        <Portal>
+            <div
+                className={className}
+                style={{
+                    position: 'fixed',
+                    right: '20px',
+                    bottom: '20px',
+                    left: 'auto',
+                    zIndex: 2147483647,
+                    display: 'flex',
+                    flexDirection: 'column-reverse',
+                    alignItems: 'flex-end',
+                    pointerEvents: 'none',
+                    maxWidth: 'calc(100vw - 32px)',
+                }}
+            >
+                {visibleFlashes.map((flash) => (
+                    <ToastItem
+                        key={flash.id}
+                        id={flash.id}
+                        type={flash.type}
+                        title={flash.title}
+                        message={flash.message}
+                        onDismiss={removeFlash}
+                    />
+                ))}
+            </div>
+        </Portal>
     );
 };
 

@@ -29,6 +29,9 @@ class BillingPaymentService
         private BillingInvoiceNumberService $numberService,
         private BillingInvoiceService $invoiceService,
         private BillingSubscriptionService $subscriptionService,
+        private StripeCheckoutService $stripeCheckoutService,
+        private StripeRefundService $stripeRefundService,
+        private StripeClientFactory $stripeClientFactory,
         private FiuuCheckoutService $fiuuCheckoutService,
         private FiuuCallbackVerificationService $callbackVerificationService,
         private FiuuStatusRequeryService $statusRequeryService,
@@ -40,6 +43,7 @@ class BillingPaymentService
     public function startCheckout(BillingInvoice $invoice): array
     {
         $invoice->loadMissing('user', 'attempts');
+        $provider = $this->resolveCheckoutProvider($invoice);
 
         if ($invoice->status === BillingInvoice::STATUS_PAID) {
             throw new DisplayException('This invoice has already been paid.');
@@ -58,10 +62,16 @@ class BillingPaymentService
             throw new DisplayException('This invoice cannot be sent to checkout in its current state.');
         }
 
-        $reusableAttempt = $this->findReusableCheckoutAttempt($invoice);
-        if ($reusableAttempt) {
-            $checkout = $this->fiuuCheckoutService->resumeCheckout($reusableAttempt, $reusableAttempt->raw_request_payload ?? []);
-            $attempt = $this->attemptService->markRedirected($reusableAttempt, $checkout['request_payload'] ?? $checkout['payload']);
+        if ($provider === StripeCheckoutService::PROVIDER && $resume = $this->stripeCheckoutService->resumeHostedInvoice($invoice)) {
+            $existingAttempt = BillingPaymentAttempt::query()
+                ->where('invoice_id', $invoice->id)
+                ->where('provider', StripeCheckoutService::PROVIDER)
+                ->latest('id')
+                ->first();
+
+            if ($existingAttempt) {
+                $existingAttempt = $this->attemptService->markRedirected($existingAttempt, $resume['request_payload'] ?? $resume['payload']);
+            }
 
             if ($invoice->status === BillingInvoice::STATUS_DRAFT) {
                 $invoice->forceFill([
@@ -71,14 +81,50 @@ class BillingPaymentService
             }
 
             return [
-                'attempt' => $attempt,
-                'checkout' => $checkout,
+                'attempt' => $existingAttempt,
+                'checkout' => $resume,
                 'invoice' => $invoice->fresh(),
             ];
         }
 
-        $attempt = $this->attemptService->create($invoice, FiuuCheckoutService::PROVIDER);
-        $checkout = $this->fiuuCheckoutService->buildCheckout($invoice, $attempt);
+        $reusableAttempt = $this->findReusableCheckoutAttempt($invoice, $provider);
+        if ($reusableAttempt) {
+            $checkout = $provider === StripeCheckoutService::PROVIDER
+                ? [
+                    'provider' => StripeCheckoutService::PROVIDER,
+                    'method' => 'GET',
+                    'url' => (string) Arr::get($reusableAttempt->raw_request_payload, 'session_url', Arr::get($reusableAttempt->raw_request_payload, 'hosted_invoice_url', '')),
+                    'payload' => [],
+                    'request_payload' => $reusableAttempt->raw_request_payload ?? [],
+                ]
+                : $this->fiuuCheckoutService->resumeCheckout($reusableAttempt, $reusableAttempt->raw_request_payload ?? []);
+
+            if (($checkout['url'] ?? '') === '') {
+                $checkout = null;
+            }
+
+            if ($checkout) {
+                $attempt = $this->attemptService->markRedirected($reusableAttempt, $checkout['request_payload'] ?? $checkout['payload']);
+
+                if ($invoice->status === BillingInvoice::STATUS_DRAFT) {
+                    $invoice->forceFill([
+                        'status' => BillingInvoice::STATUS_OPEN,
+                        'issued_at' => $invoice->issued_at ?? CarbonImmutable::now(),
+                    ])->saveOrFail();
+                }
+
+                return [
+                    'attempt' => $attempt,
+                    'checkout' => $checkout,
+                    'invoice' => $invoice->fresh(),
+                ];
+            }
+        }
+
+        $attempt = $this->attemptService->create($invoice, $provider);
+        $checkout = $provider === StripeCheckoutService::PROVIDER
+            ? $this->stripeCheckoutService->buildCheckout($invoice, $attempt)
+            : $this->fiuuCheckoutService->buildCheckout($invoice, $attempt);
         $attempt = $this->attemptService->markRedirected($attempt, $checkout['request_payload'] ?? $checkout['payload']);
 
         if ($invoice->status === BillingInvoice::STATUS_DRAFT) {
@@ -100,11 +146,11 @@ class BillingPaymentService
         return $this->startCheckout($invoice);
     }
 
-    private function findReusableCheckoutAttempt(BillingInvoice $invoice): ?BillingPaymentAttempt
+    private function findReusableCheckoutAttempt(BillingInvoice $invoice, string $provider): ?BillingPaymentAttempt
     {
         $attempt = BillingPaymentAttempt::query()
             ->where('invoice_id', $invoice->id)
-            ->where('provider', FiuuCheckoutService::PROVIDER)
+            ->where('provider', $provider)
             ->whereIn('status', [
                 BillingPaymentAttempt::STATUS_INITIATED,
                 BillingPaymentAttempt::STATUS_REDIRECTED,
@@ -408,10 +454,15 @@ class BillingPaymentService
                 'requested_at' => CarbonImmutable::now(),
             ]);
 
-            $response = $this->refundService->refund($payment, $amount, $refund->refund_number, $reason);
+            $response = $payment->provider === StripeCheckoutService::PROVIDER
+                ? $this->stripeRefundService->refund($payment, $amount, $reason)
+                : $this->refundService->refund($payment, $amount, $refund->refund_number, $reason);
 
             $refund->forceFill([
                 'provider_refund_id' => $response['refund_id'],
+                'provider_charge_id' => $payment->provider_charge_id,
+                'provider_payment_intent_id' => $payment->provider_payment_intent_id,
+                'provider_refund_status' => Arr::get($response['response'], 'status'),
                 'status' => $response['successful'] ? BillingRefund::STATUS_COMPLETED : BillingRefund::STATUS_FAILED,
                 'completed_at' => $response['successful'] ? CarbonImmutable::now() : null,
                 'raw_response' => $response['response'] ?: ['raw_body' => $response['raw_body']],
@@ -453,6 +504,76 @@ class BillingPaymentService
         return $refund->fresh(['payment', 'requestedBy']);
     }
 
+    public function recordStripeInvoicePayment(BillingInvoice $invoice, array $stripeInvoice, ?BillingPaymentAttempt $attempt = null): BillingPayment
+    {
+        $paymentDetails = $this->resolveStripePaymentDetails($stripeInvoice);
+        $paymentIntent = $paymentDetails['payment_intent'];
+        $paymentMethod = $paymentDetails['payment_method'];
+        $paymentIntentId = $paymentDetails['payment_intent_id'];
+        $latestChargeId = $paymentDetails['charge_id'];
+
+        if ($paymentIntentId && $invoice->provider_payment_intent_id !== $paymentIntentId) {
+            $invoice->forceFill([
+                'provider_payment_intent_id' => $paymentIntentId,
+            ])->saveOrFail();
+        }
+
+        $payment = $this->recordVerifiedPayment($invoice, $attempt, [
+            'provider' => StripeCheckoutService::PROVIDER,
+            'provider_transaction_id' => $latestChargeId ?: Arr::get($paymentIntent, 'id'),
+            'provider_payment_intent_id' => Arr::get($paymentIntent, 'id', $paymentIntentId),
+            'provider_charge_id' => $latestChargeId,
+            'provider_order_id' => Arr::get($stripeInvoice, 'number', $invoice->invoice_number),
+            'provider_payment_method' => Arr::get($paymentMethod, 'type', Arr::get($stripeInvoice, 'collection_method')),
+            'payment_method_type' => Arr::get($paymentMethod, 'type'),
+            'payment_method_brand' => Arr::get($paymentMethod, 'card.brand'),
+            'payment_method_last4' => Arr::get($paymentMethod, 'card.last4'),
+            'provider_status' => Arr::get($stripeInvoice, 'status'),
+            'amount' => round(((float) Arr::get($stripeInvoice, 'total', 0)) / 100, 2),
+            'currency' => strtoupper((string) Arr::get($stripeInvoice, 'currency', $invoice->currency)),
+            'raw_response' => [
+                'stripe_invoice' => $stripeInvoice,
+                'stripe_payment_intent' => $paymentIntent,
+            ],
+            'gateway_context' => [
+                'provider' => StripeCheckoutService::PROVIDER,
+                'customer_reference' => $this->extractStripeId(Arr::get($stripeInvoice, 'customer')),
+                'subscription_id' => $this->extractStripeId(Arr::get($stripeInvoice, 'subscription')),
+            ],
+        ]);
+
+        $this->sendPaymentReceiptOnce($payment);
+
+        return $payment;
+    }
+
+    public function markStripeInvoiceFailed(BillingInvoice $invoice, array $stripeInvoice, string $reason): BillingInvoice
+    {
+        $invoice->forceFill([
+            'provider' => StripeCheckoutService::PROVIDER,
+            'provider_invoice_id' => $this->extractStripeId(Arr::get($stripeInvoice, 'id')) ?? $invoice->provider_invoice_id,
+            'provider_payment_intent_id' => $this->extractStripeId(Arr::get($stripeInvoice, 'payment_intent')) ?? $invoice->provider_payment_intent_id,
+            'hosted_invoice_url' => Arr::get($stripeInvoice, 'hosted_invoice_url', $invoice->hosted_invoice_url),
+            'invoice_pdf_url' => Arr::get($stripeInvoice, 'invoice_pdf', $invoice->invoice_pdf_url),
+            'provider_status' => Arr::get($stripeInvoice, 'status', $invoice->provider_status),
+        ])->saveOrFail();
+
+        $invoice = $this->invoiceService->markFailed($invoice, $reason);
+        if ($invoice->subscription) {
+            $invoice->subscription->forceFill([
+                'status' => BillingSubscription::STATUS_PAST_DUE,
+                'failed_payment_count' => (int) $invoice->subscription->failed_payment_count + 1,
+            ])->saveOrFail();
+        }
+
+        $invoice->user?->notify(new BillingPaymentActionRequired(
+            $invoice->fresh(['subscription', 'order']),
+            $reason
+        ));
+
+        return $invoice->fresh(['subscription', 'order']);
+    }
+
     private function recordVerifiedPayment(BillingInvoice $invoice, ?BillingPaymentAttempt $attempt, array $payload): BillingPayment
     {
         $payment = BillingPayment::query()
@@ -470,8 +591,13 @@ class BillingPaymentService
                 'provider' => $payload['provider'] ?? FiuuCheckoutService::PROVIDER,
                 'payment_number' => $this->numberService->nextPaymentNumber(),
                 'provider_transaction_id' => $payload['provider_transaction_id'] ?: null,
+                'provider_payment_intent_id' => $payload['provider_payment_intent_id'] ?? null,
+                'provider_charge_id' => $payload['provider_charge_id'] ?? null,
                 'provider_order_id' => $payload['provider_order_id'] ?: ($attempt?->checkout_reference ?? $invoice->invoice_number),
                 'provider_payment_method' => $payload['provider_payment_method'] ?: null,
+                'payment_method_type' => $payload['payment_method_type'] ?? null,
+                'payment_method_brand' => $payload['payment_method_brand'] ?? null,
+                'payment_method_last4' => $payload['payment_method_last4'] ?? null,
                 'provider_status' => $payload['provider_status'],
                 'amount' => round((float) $payload['amount'], 2),
                 'currency' => $payload['currency'],
@@ -483,8 +609,13 @@ class BillingPaymentService
             $payment->forceFill([
                 'provider' => $payload['provider'] ?? $payment->provider,
                 'provider_transaction_id' => $payload['provider_transaction_id'] ?: $payment->provider_transaction_id,
+                'provider_payment_intent_id' => $payload['provider_payment_intent_id'] ?? $payment->provider_payment_intent_id,
+                'provider_charge_id' => $payload['provider_charge_id'] ?? $payment->provider_charge_id,
                 'provider_order_id' => $payload['provider_order_id'] ?: $payment->provider_order_id ?: ($attempt?->checkout_reference ?? $invoice->invoice_number),
                 'provider_payment_method' => $payload['provider_payment_method'] ?: $payment->provider_payment_method,
+                'payment_method_type' => $payload['payment_method_type'] ?? $payment->payment_method_type,
+                'payment_method_brand' => $payload['payment_method_brand'] ?? $payment->payment_method_brand,
+                'payment_method_last4' => $payload['payment_method_last4'] ?? $payment->payment_method_last4,
                 'provider_status' => $payload['provider_status'],
                 'amount' => round((float) $payload['amount'], 2),
                 'currency' => $payload['currency'],
@@ -547,6 +678,18 @@ class BillingPaymentService
     private function syncSubscriptionGatewayReferences(BillingInvoice $invoice, array $gatewayContext = []): void
     {
         if (!$invoice->subscription) {
+            return;
+        }
+
+        if (($gatewayContext['provider'] ?? null) === StripeCheckoutService::PROVIDER || $invoice->provider === StripeCheckoutService::PROVIDER) {
+            $invoice->subscription->forceFill([
+                'gateway_provider' => StripeCheckoutService::PROVIDER,
+                'gateway_customer_reference' => $gatewayContext['customer_reference']
+                    ?? $invoice->subscription->gateway_customer_reference,
+                'provider_subscription_id' => $gatewayContext['subscription_id']
+                    ?? $invoice->subscription->provider_subscription_id,
+            ])->saveOrFail();
+
             return;
         }
 
@@ -762,6 +905,105 @@ class BillingPaymentService
                 ->where('server_id', $invoice->order->server_id)
                 ->latest('id')
                 ->first();
+        }
+
+        return null;
+    }
+
+    private function resolveCheckoutProvider(BillingInvoice $invoice): string
+    {
+        if (filled($invoice->provider)) {
+            return $invoice->provider;
+        }
+
+        if (filled($invoice->subscription?->gateway_provider)) {
+            return (string) $invoice->subscription->gateway_provider;
+        }
+
+        return (string) config('billing.gateway.default', FiuuCheckoutService::PROVIDER);
+    }
+
+    private function resolveStripePaymentIntent(?string $paymentIntentId): array
+    {
+        if (!$paymentIntentId || !$this->stripeClientFactory->isEnabled()) {
+            return [];
+        }
+
+        try {
+            return $this->stripeClientFactory->make()->paymentIntents->retrieve($paymentIntentId, [
+                'expand' => ['latest_charge', 'payment_method'],
+            ])->toArray();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
+    }
+
+    private function resolveStripePaymentDetails(array $stripeInvoice): array
+    {
+        $paymentIntentId = $this->extractStripeId(Arr::get($stripeInvoice, 'payment_intent'));
+        $paymentIntent = $this->resolveStripePaymentIntent(is_string($paymentIntentId) ? $paymentIntentId : null);
+
+        if ($paymentIntent === []) {
+            $paymentIntent = $this->resolveStripePaymentIntentFromInvoicePayments(
+                $this->extractStripeId(Arr::get($stripeInvoice, 'id'))
+            );
+        }
+
+        $resolvedPaymentIntentId = $this->extractStripeId($paymentIntent) ?: $paymentIntentId;
+        $paymentMethod = Arr::get($paymentIntent, 'payment_method', []);
+
+        return [
+            'payment_intent' => $paymentIntent,
+            'payment_method' => $paymentMethod,
+            'payment_intent_id' => $resolvedPaymentIntentId,
+            'charge_id' => $this->extractStripeId(Arr::get($paymentIntent, 'latest_charge')),
+        ];
+    }
+
+    private function resolveStripePaymentIntentFromInvoicePayments(?string $invoiceId): array
+    {
+        if (!$invoiceId || !$this->stripeClientFactory->isEnabled()) {
+            return [];
+        }
+
+        try {
+            $invoicePayments = $this->stripeClientFactory->make()->invoicePayments->all([
+                'invoice' => $invoiceId,
+                'expand' => ['data.payment.payment_intent.latest_charge', 'data.payment.payment_intent.payment_method'],
+            ])->toArray();
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to hydrate Stripe payment intent from invoice payments.', [
+                'invoice_id' => $invoiceId,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        $paymentIntent = Arr::get($invoicePayments, 'data.0.payment.payment_intent');
+        if (is_array($paymentIntent)) {
+            return $paymentIntent;
+        }
+
+        $paymentIntentId = $this->extractStripeId($paymentIntent);
+
+        return $this->resolveStripePaymentIntent($paymentIntentId);
+    }
+
+    private function extractStripeId(mixed $value): ?string
+    {
+        if (is_string($value) || is_numeric($value)) {
+            $id = trim((string) $value);
+
+            return $id === '' ? null : $id;
+        }
+
+        if (is_array($value)) {
+            $id = trim((string) Arr::get($value, 'id', ''));
+
+            return $id === '' ? null : $id;
         }
 
         return null;

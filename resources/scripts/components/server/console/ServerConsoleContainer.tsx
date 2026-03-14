@@ -587,6 +587,8 @@ const mapSlotsToGrid = (
 const ServerConsoleContainer = () => {
     const name = ServerContext.useStoreState((state) => state.server.data!.name);
     const status = ServerContext.useStoreState((state) => state.status.value);
+    const conflictStatus = ServerContext.useStoreState((state) => state.server.data!.status);
+    const inConflictState = ServerContext.useStoreState((state) => state.server.inConflictState);
     const limits = ServerContext.useStoreState((state) => state.server.data!.limits);
     const node = ServerContext.useStoreState((state) => state.server.data!.node);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -646,7 +648,39 @@ const ServerConsoleContainer = () => {
         return () => window.clearTimeout(timeout);
     }, [playerSearch]);
 
+    const playersUnavailableReason = (() => {
+        if (conflictStatus === 'installing') {
+            return 'Player data is unavailable while the server is installing or reinstalling.';
+        }
+
+        if (conflictStatus === 'install_failed' || conflictStatus === 'reinstall_failed') {
+            return 'Player data is unavailable while the server is in a failed install state.';
+        }
+
+        if (conflictStatus === 'suspended') {
+            return 'Player data is unavailable while the server is suspended.';
+        }
+
+        if (isTransferring) {
+            return 'Player data is unavailable while the server is being transferred.';
+        }
+
+        if (isNodeUnderMaintenance) {
+            return 'Player data is unavailable while the node is under maintenance.';
+        }
+
+        return null;
+    })();
+
     useEffect(() => {
+        if (inConflictState) {
+            setPlayersLoading(false);
+            setPlayersData(null);
+            setPlayersError(playersUnavailableReason || 'Player data is temporarily unavailable.');
+
+            return;
+        }
+
         let active = true;
         let inFlight = false;
 
@@ -689,7 +723,7 @@ const ServerConsoleContainer = () => {
             active = false;
             window.clearInterval(interval);
         };
-    }, [uuid, playerScope, debouncedPlayerSearch]);
+    }, [uuid, playerScope, debouncedPlayerSearch, inConflictState, playersUnavailableReason]);
 
     useWebsocketEvent(SocketEvent.STATS, (data) => {
         let parsed: any = {};

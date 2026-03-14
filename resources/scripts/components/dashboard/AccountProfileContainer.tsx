@@ -12,12 +12,7 @@ import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer'
 import LinkedAccountsContainer from '@/components/dashboard/LinkedAccountsContainer';
 import DiscordCommunityCard from '@/components/dashboard/DiscordCommunityCard';
 import { ActivityLogFilters, useActivityLogs } from '@/api/account/activity';
-import {
-    BillingProfile,
-    updateBillingProfile,
-    useBillingProfile,
-    useBillingSubscriptions,
-} from '@/api/account/billing';
+import { openBillingPortal, useBillingSubscriptions } from '@/api/account/billing';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
@@ -28,15 +23,12 @@ import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button
 import updateAccountAvatar from '@/api/account/updateAccountAvatar';
 import removeAccountAvatar from '@/api/account/removeAccountAvatar';
 import { useHistory, useLocation } from 'react-router-dom';
-import { emptyBillingProfile } from '@/components/billing/billingProfileUtils';
 
 type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
 
 const cardClass =
     'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
-const billingInputClass =
-    'w-full rounded-xl border border-[color:var(--border)] bg-[rgba(5,8,14,0.72)] px-3 py-2 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)] focus:shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.35)]';
 
 export default () => {
     const history = useHistory();
@@ -55,6 +47,7 @@ export default () => {
         page: 1,
         sorts: { timestamp: -1 },
     });
+    const [openingBillingPortal, setOpeningBillingPortal] = useState(false);
 
     const {
         data: activityData,
@@ -64,24 +57,11 @@ export default () => {
         revalidateOnMount: true,
         revalidateOnFocus: false,
     });
-    const {
-        data: billingProfile,
-        mutate: mutateBillingProfile,
-        isValidating: billingProfileLoading,
-    } = useBillingProfile();
     const { data: billingSubscriptions } = useBillingSubscriptions();
-    const [billingForm, setBillingForm] = useState<BillingProfile>(emptyBillingProfile);
-    const [billingSaving, setBillingSaving] = useState(false);
 
     useEffect(() => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
-
-    useEffect(() => {
-        if (billingProfile) {
-            setBillingForm(billingProfile);
-        }
-    }, [billingProfile]);
 
     useEffect(() => {
         const search = new URLSearchParams(location.search);
@@ -189,49 +169,17 @@ export default () => {
         }
     };
 
-    const setBillingField = <K extends keyof BillingProfile>(field: K, value: BillingProfile[K]) => {
-        setBillingForm((state) => ({ ...state, [field]: value }));
-    };
-
-    const renderBillingLabel = (label: string, required = false) => (
-        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-            {label}
-            {required && <span className={'ml-1 text-[color:var(--primary)]'}>*</span>}
-        </span>
-    );
-
-    const onBillingProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setBillingSaving(true);
+    const onOpenBillingPortal = async () => {
+        setOpeningBillingPortal(true);
         clearAndAddHttpError();
 
         try {
-            const payload: BillingProfile = {
-                ...billingForm,
-                countryCode: billingForm.countryCode.trim().toUpperCase() || 'MY',
-                companyName: billingForm.companyName?.trim() || null,
-                phone: billingForm.phone?.trim() || null,
-                addressLine1: billingForm.addressLine1?.trim() || null,
-                addressLine2: billingForm.addressLine2?.trim() || null,
-                city: billingForm.city?.trim() || null,
-                state: billingForm.state?.trim() || null,
-                postcode: billingForm.postcode?.trim() || null,
-                taxId: billingForm.taxId?.trim() || null,
-            };
-            const updated = await updateBillingProfile(payload);
-
-            await mutateBillingProfile(updated, false);
-            clearFlashes('account');
-            addFlash({
-                key: 'account',
-                type: 'success',
-                title: 'Billing Profile Updated',
-                message: 'Invoice identity and billing address have been saved.',
-            });
+            const url = await openBillingPortal();
+            window.location.assign(url);
         } catch (error) {
             clearAndAddHttpError(error as Error);
         } finally {
-            setBillingSaving(false);
+            setOpeningBillingPortal(false);
         }
     };
 
@@ -631,12 +579,11 @@ export default () => {
                     <section className={cardClass}>
                         <div className={'mb-5 flex flex-wrap items-start justify-between gap-4'}>
                             <div>
-                                <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Billing Profile</h2>
+                                <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Billing & Invoices</h2>
                                 <p className={'mt-1 text-xs text-gray-400'}>
-                                    Saved here once, then copied into each invoice snapshot before checkout.
-                                </p>
-                                <p className={'mt-2 text-[11px] text-[color:var(--primary)]'}>
-                                    Fields marked with * are required before any invoice checkout can start.
+                                    Billing details, tax IDs, payment methods, and invoice history are now managed in
+                                    Stripe. Product actions like create server, renew, and upgrade still stay under
+                                    `/billing`.
                                 </p>
                             </div>
                             <div className={'flex flex-wrap gap-2'}>
@@ -652,169 +599,33 @@ export default () => {
                                         'rounded-xl border border-[color:var(--border)] bg-[rgba(var(--primary-rgb),0.08)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--primary)]'
                                     }
                                 >
-                                    {billingForm.countryCode || 'MY'} Billing Country
+                                    Stripe Managed
                                 </span>
                             </div>
                         </div>
 
-                        {!billingProfile && billingProfileLoading ? (
-                            <Spinner centered />
-                        ) : (
-                            <form className={'space-y-5'} onSubmit={onBillingProfileSubmit}>
-                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Legal Name', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.legalName}
-                                            onChange={(event) => setBillingField('legalName', event.currentTarget.value)}
-                                            maxLength={191}
-                                            required
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Company Name')}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.companyName ?? ''}
-                                            onChange={(event) =>
-                                                setBillingField('companyName', event.currentTarget.value || null)
-                                            }
-                                            maxLength={191}
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Invoice Email', true)}
-                                        <input
-                                            type={'email'}
-                                            className={billingInputClass}
-                                            value={billingForm.email}
-                                            onChange={(event) => setBillingField('email', event.currentTarget.value)}
-                                            maxLength={191}
-                                            required
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Phone', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.phone ?? ''}
-                                            onChange={(event) => setBillingField('phone', event.currentTarget.value || null)}
-                                            maxLength={32}
-                                            required
-                                        />
-                                    </label>
-                                </div>
-
-                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
-                                    <label className={'block md:col-span-2'}>
-                                        {renderBillingLabel('Address Line 1', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.addressLine1 ?? ''}
-                                            onChange={(event) =>
-                                                setBillingField('addressLine1', event.currentTarget.value || null)
-                                            }
-                                            maxLength={191}
-                                            required
-                                        />
-                                    </label>
-                                    <label className={'block md:col-span-2'}>
-                                        {renderBillingLabel('Address Line 2')}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.addressLine2 ?? ''}
-                                            onChange={(event) =>
-                                                setBillingField('addressLine2', event.currentTarget.value || null)
-                                            }
-                                            maxLength={191}
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('City', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.city ?? ''}
-                                            onChange={(event) => setBillingField('city', event.currentTarget.value || null)}
-                                            maxLength={191}
-                                            required
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('State')}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.state ?? ''}
-                                            onChange={(event) => setBillingField('state', event.currentTarget.value || null)}
-                                            maxLength={191}
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Postcode', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.postcode ?? ''}
-                                            onChange={(event) =>
-                                                setBillingField('postcode', event.currentTarget.value || null)
-                                            }
-                                            maxLength={32}
-                                            required
-                                        />
-                                    </label>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Country Code', true)}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.countryCode}
-                                            onChange={(event) =>
-                                                setBillingField('countryCode', event.currentTarget.value.toUpperCase())
-                                            }
-                                            maxLength={2}
-                                            required
-                                        />
-                                    </label>
-                                </div>
-
-                                <div className={'grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]'}>
-                                    <label className={'block'}>
-                                        {renderBillingLabel('Tax ID')}
-                                        <input
-                                            className={billingInputClass}
-                                            value={billingForm.taxId ?? ''}
-                                            onChange={(event) => setBillingField('taxId', event.currentTarget.value || null)}
-                                            maxLength={191}
-                                        />
-                                    </label>
-                                    <label
-                                        className={
-                                            'flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-gray-200'
-                                        }
-                                    >
-                                        <input
-                                            type={'checkbox'}
-                                            className={'h-4 w-4 rounded border-[color:var(--border)] bg-transparent'}
-                                            checked={billingForm.isBusiness}
-                                            onChange={(event) =>
-                                                setBillingField('isBusiness', event.currentTarget.checked)
-                                            }
-                                        />
-                                        <span>Business billing entity</span>
-                                    </label>
-                                </div>
-
-                                <div className={'flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--border)] pt-4'}>
-                                    <p className={'max-w-[38rem] text-xs leading-6 text-gray-400'}>
-                                        These values are copied into each invoice so future changes do not rewrite your old billing records.
-                                    </p>
-                                    <InteractiveHoverButton
-                                        type={'submit'}
-                                        text={billingSaving ? 'Saving...' : 'Save Billing Profile'}
-                                        className={'!h-10 !min-w-[12rem] !px-5 !text-[10px]'}
-                                        disabled={billingSaving}
-                                    />
-                                </div>
-                            </form>
-                        )}
+                        <div className={'grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]'}>
+                            <div className={'rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-7 text-gray-300'}>
+                                Update cards, billing address, legal entity name, and tax IDs from the Stripe customer
+                                portal. Open the billing dashboard when you need to create invoices, renew a server, or
+                                migrate a legacy subscription to Stripe.
+                            </div>
+                            <div className={'flex flex-wrap items-center gap-3 md:justify-end'}>
+                                <InteractiveHoverButton
+                                    type={'button'}
+                                    text={'Open Billing'}
+                                    className={'!h-10 !min-w-[11rem] !px-5 !text-[10px]'}
+                                    onClick={() => history.push('/billing')}
+                                />
+                                <InteractiveHoverButton
+                                    type={'button'}
+                                    text={openingBillingPortal ? 'Opening...' : 'Stripe Portal'}
+                                    className={'!h-10 !min-w-[11rem] !px-5 !text-[10px]'}
+                                    onClick={() => void onOpenBillingPortal()}
+                                    disabled={openingBillingPortal}
+                                />
+                            </div>
+                        </div>
                     </section>
 
                     <section className={cardClass}>

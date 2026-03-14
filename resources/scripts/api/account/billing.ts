@@ -122,6 +122,12 @@ export interface BillingSubscription {
     autoRenewAvailable?: boolean;
     autoRenewUnavailableReason?: string | null;
     gatewayProvider?: string | null;
+    providerStatus?: string | null;
+    migrationSource?: string | null;
+    migrationState?: string | null;
+    providerSubscriptionId?: string | null;
+    nextInvoiceAt?: Date | null;
+    failedPaymentCount?: number;
     graceSuspendAt?: Date | null;
     graceDeleteAt?: Date | null;
 }
@@ -142,6 +148,11 @@ export interface BillingPaymentSummary {
     providerTransactionId: string | null;
     providerPaymentMethod: string | null;
     providerStatus: string | null;
+    providerPaymentIntentId?: string | null;
+    providerChargeId?: string | null;
+    paymentMethodType?: string | null;
+    paymentMethodBrand?: string | null;
+    paymentMethodLast4?: string | null;
     amount: number;
     currency: string;
     status: string;
@@ -173,6 +184,13 @@ export interface BillingInvoice {
     subtotal: number;
     taxTotal: number;
     grandTotal: number;
+    provider?: string | null;
+    providerInvoiceId?: string | null;
+    providerCheckoutSessionId?: string | null;
+    providerPaymentIntentId?: string | null;
+    providerStatus?: string | null;
+    hostedInvoiceUrl?: string | null;
+    invoicePdfUrl?: string | null;
     issuedAt: Date | null;
     dueAt: Date | null;
     paidAt: Date | null;
@@ -184,6 +202,7 @@ export interface BillingCheckout {
     method: string;
     url: string;
     payload: Record<string, string>;
+    publishableKey?: string | null;
 }
 
 export interface BillingOrderActionResponse {
@@ -269,6 +288,12 @@ const mapSubscription = (item: any): BillingSubscription => ({
     autoRenewAvailable: item.auto_renew_available ?? false,
     autoRenewUnavailableReason: item.auto_renew_unavailable_reason ?? null,
     gatewayProvider: item.gateway_provider ?? null,
+    providerStatus: item.provider_status ?? null,
+    migrationSource: item.migration_source ?? null,
+    migrationState: item.migration_state ?? null,
+    providerSubscriptionId: item.provider_subscription_id ?? null,
+    nextInvoiceAt: item.next_invoice_at ? new Date(item.next_invoice_at) : null,
+    failedPaymentCount: item.failed_payment_count ?? 0,
     graceSuspendAt: item.grace_suspend_at ? new Date(item.grace_suspend_at) : null,
     graceDeleteAt: item.grace_delete_at ? new Date(item.grace_delete_at) : null,
     pricing: {
@@ -294,6 +319,13 @@ const mapInvoice = (item: any): BillingInvoice => ({
     subtotal: item.subtotal,
     taxTotal: item.tax_total,
     grandTotal: item.grand_total,
+    provider: item.provider ?? null,
+    providerInvoiceId: item.provider_invoice_id ?? null,
+    providerCheckoutSessionId: item.provider_checkout_session_id ?? null,
+    providerPaymentIntentId: item.provider_payment_intent_id ?? null,
+    providerStatus: item.provider_status ?? null,
+    hostedInvoiceUrl: item.hosted_invoice_url ?? null,
+    invoicePdfUrl: item.invoice_pdf_url ?? null,
     issuedAt: item.issued_at ? new Date(item.issued_at) : null,
     dueAt: item.due_at ? new Date(item.due_at) : null,
     paidAt: item.paid_at ? new Date(item.paid_at) : null,
@@ -304,6 +336,11 @@ const mapInvoice = (item: any): BillingInvoice => ({
         providerTransactionId: payment.provider_transaction_id ?? null,
         providerPaymentMethod: payment.provider_payment_method ?? null,
         providerStatus: payment.provider_status ?? null,
+        providerPaymentIntentId: payment.provider_payment_intent_id ?? null,
+        providerChargeId: payment.provider_charge_id ?? null,
+        paymentMethodType: payment.payment_method_type ?? null,
+        paymentMethodBrand: payment.payment_method_brand ?? null,
+        paymentMethodLast4: payment.payment_method_last4 ?? null,
         amount: payment.amount,
         currency: payment.currency,
         status: payment.status,
@@ -341,6 +378,7 @@ const mapCheckout = (item: any): BillingCheckout | null =>
               method: item.method,
               url: item.url,
               payload: item.payload || {},
+              publishableKey: item.publishable_key ?? null,
           }
         : null;
 
@@ -543,6 +581,18 @@ const retryBillingInvoicePayment = async (id: number): Promise<BillingCheckout> 
     return mapCheckout(data.data)!;
 };
 
+const openBillingPortal = async (): Promise<string> => {
+    const { data } = await http.post('/api/client/account/billing/portal');
+
+    return data.data.url;
+};
+
+const migrateBillingSubscriptionToStripe = async (id: number): Promise<BillingSubscriptionActionResponse> => {
+    const { data } = await http.post(`/api/client/account/billing/subscriptions/${id}/migrate-to-stripe`);
+
+    return mapSubscriptionActionResponse(data.data);
+};
+
 const toggleBillingSubscriptionAutoRenew = async (id: number, autoRenew: boolean): Promise<BillingSubscription> => {
     const { data } = await http.patch(`/api/client/account/billing/subscriptions/${id}/auto-renew`, {
         auto_renew: autoRenew,
@@ -562,5 +612,7 @@ export {
     renewBillingSubscription,
     upgradeBillingSubscription,
     retryBillingInvoicePayment,
+    openBillingPortal,
+    migrateBillingSubscriptionToStripe,
     toggleBillingSubscriptionAutoRenew,
 };

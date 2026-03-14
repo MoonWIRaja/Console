@@ -16,6 +16,7 @@ use Pterodactyl\Notifications\BillingSubscriptionSuspended;
 use Pterodactyl\Notifications\BillingSubscriptionDeletionScheduled;
 use Pterodactyl\Services\Billing\BillingInvoiceService;
 use Pterodactyl\Services\Billing\BillingPaymentService;
+use Pterodactyl\Services\Billing\StripeCheckoutService;
 use Pterodactyl\Services\Billing\BillingSubscriptionService;
 use Pterodactyl\Services\Billing\BillingWebhookReplayService;
 use Pterodactyl\Services\Servers\SuspensionService;
@@ -275,6 +276,10 @@ class ProcessBillingSubscriptionsCommand extends Command
                 BillingSubscription::STATUS_PAST_DUE,
             ])
             ->whereNotNull('server_id')
+            ->where(function ($query) {
+                $query->whereNull('provider_subscription_id')
+                    ->orWhere('gateway_provider', '!=', StripeCheckoutService::PROVIDER);
+            })
             ->where(function ($query) use ($now) {
                 $query->where('next_invoice_at', '<=', $now)
                     ->orWhere(function ($subQuery) use ($now) {
@@ -366,7 +371,12 @@ class ProcessBillingSubscriptionsCommand extends Command
             ->chunkById(100, function ($invoices) use ($now) {
                 foreach ($invoices as $invoice) {
                     $subscription = $invoice->subscription;
-                    if (!$subscription || !$subscription->auto_renew || !$subscription->user) {
+                    if (
+                        !$subscription
+                        || !$subscription->auto_renew
+                        || !$subscription->user
+                        || $subscription->gateway_provider === StripeCheckoutService::PROVIDER
+                    ) {
                         continue;
                     }
 

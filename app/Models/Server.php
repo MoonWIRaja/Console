@@ -221,6 +221,24 @@ class Server extends Model implements Identifiable
         return $this->status === self::STATUS_SUSPENDED;
     }
 
+    public function canRunInstallScript(): bool
+    {
+        return !$this->skip_scripts && filled($this->egg?->copy_script_install);
+    }
+
+    public function getInstallScriptBlockReason(): ?string
+    {
+        if ($this->skip_scripts) {
+            return 'This server is configured to skip egg installation scripts. Disable "Skip Egg Install Script" before reinstalling it.';
+        }
+
+        if (blank($this->egg?->copy_script_install)) {
+            return 'This server\'s egg does not define an installation script, so reinstall is unavailable.';
+        }
+
+        return null;
+    }
+
     /**
      * Gets the user who owns the server.
      *

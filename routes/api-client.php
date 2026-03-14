@@ -47,9 +47,11 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::get('/billing/invoices/{billingInvoice}', [Client\BillingController::class, 'showInvoice']);
     Route::post('/billing/invoices/{billingInvoice}/checkout', [Client\BillingController::class, 'checkout']);
     Route::post('/billing/invoices/{billingInvoice}/retry-payment', [Client\BillingController::class, 'retryPayment']);
+    Route::post('/billing/portal', [Client\BillingController::class, 'portal']);
     Route::get('/billing/subscriptions', [Client\BillingController::class, 'subscriptions']);
     Route::post('/billing/orders', [Client\BillingController::class, 'store']);
     Route::post('/billing/subscriptions/{billingSubscription}/renew', [Client\BillingController::class, 'renew']);
+    Route::post('/billing/subscriptions/{billingSubscription}/migrate-to-stripe', [Client\BillingController::class, 'migrateToStripe']);
     Route::post('/billing/subscriptions/{billingSubscription}/upgrade/quote', [Client\BillingController::class, 'upgradeQuote']);
     Route::post('/billing/subscriptions/{billingSubscription}/upgrade', [Client\BillingController::class, 'upgrade']);
     Route::patch('/billing/subscriptions/{billingSubscription}/auto-renew', [Client\BillingController::class, 'toggleAutoRenew']);

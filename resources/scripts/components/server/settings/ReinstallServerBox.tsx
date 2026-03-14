@@ -10,7 +10,10 @@ import { Dialog } from '@/components/elements/dialog';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 export default () => {
-    const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const server = ServerContext.useStoreState((state) => state.server.data!);
+    const uuid = server.uuid;
+    const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
+    const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
     const [modalVisible, setModalVisible] = useState(false);
     const { addFlash, clearFlashes } = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes);
 
@@ -18,11 +21,16 @@ export default () => {
         clearFlashes('settings');
         reinstallServer(uuid)
             .then(() => {
+                setServerFromState((state) => ({ ...state, status: 'installing' }));
                 addFlash({
                     key: 'settings',
                     type: 'success',
                     message: 'Your server has begun the reinstallation process.',
                 });
+
+                window.setTimeout(() => {
+                    getServer(uuid).catch((error) => console.error(error));
+                }, 1500);
             })
             .catch((error) => {
                 console.error(error);
@@ -56,10 +64,16 @@ export default () => {
                     continuing.
                 </strong>
             </p>
+            {!server.canReinstall && server.reinstallBlockReason && (
+                <p css={tw`mt-4 rounded-xl border border-yellow-500 bg-yellow-900 px-4 py-3 text-sm text-yellow-100`}>
+                    {server.reinstallBlockReason}
+                </p>
+            )}
             <div css={tw`mt-6 text-right`}>
                 <InteractiveHoverButton
                     text={'Reinstall Server'}
                     variant={'danger'}
+                    disabled={!server.canReinstall}
                     onClick={() => setModalVisible(true)}
                 />
             </div>

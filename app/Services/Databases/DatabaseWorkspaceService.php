@@ -142,8 +142,8 @@ class DatabaseWorkspaceService
             throw new DisplayException('Unable to determine the query type for this statement.');
         }
 
-        if ($type === 'source' || $type === 'use') {
-            throw new DisplayException('This SQL statement is not supported in the panel query console.');
+        if (($unsupportedReason = $this->unsupportedQueryReason($query)) !== null) {
+            throw new DisplayException($unsupportedReason);
         }
 
         $connection = $this->connection($database);
@@ -218,24 +218,39 @@ class DatabaseWorkspaceService
             throw new DisplayException('The SQL import is empty.');
         }
 
+        ['sql' => $sanitizedSql, 'skipped_statements' => $skippedStatements] = $this->sanitizeImportSql($sql);
+        if (trim($sanitizedSql) === '') {
+            throw new DisplayException(
+                'The SQL import only contained administrative statements that cannot be executed inside this database. ' .
+                'Remove CREATE DATABASE, USE, GRANT, or similar server-level statements and try again.'
+            );
+        }
+
         $startedAt = microtime(true);
         $host = $this->hostResolver->forDatabaseHost($database->host);
-        [$stdout, $stderr] = $this->runClientCommand(
-            $database,
-            $this->resolveBinary(['mysql', '/usr/bin/mysql', '/bin/mysql']),
-            [
-                '--default-character-set=utf8mb4',
-                '--host=' . $host,
-                '--port=' . $database->host->port,
-                '--user=' . $database->username,
-                $database->database,
-            ],
-            $sql
-        );
+        try {
+            [$stdout, $stderr] = $this->runClientCommand(
+                $database,
+                $this->resolveBinary(['mysql', '/usr/bin/mysql', '/bin/mysql']),
+                [
+                    '--default-character-set=utf8mb4',
+                    '--host=' . $host,
+                    '--port=' . $database->host->port,
+                    '--user=' . $database->username,
+                    $database->database,
+                ],
+                $sanitizedSql
+            );
+        } catch (DisplayException $exception) {
+            throw $this->formatImportException($database, $exception);
+        }
 
         return [
-            'message' => 'SQL import completed successfully.',
-            'bytes' => strlen($sql),
+            'message' => $skippedStatements > 0
+                ? 'SQL import completed successfully. Unsupported database-level statements were skipped automatically.'
+                : 'SQL import completed successfully.',
+            'bytes' => strlen($sanitizedSql),
+            'skipped_statements' => $skippedStatements,
             'execution_time_ms' => round((microtime(true) - $startedAt) * 1000, 2),
             'output' => trim($stdout ?: $stderr),
         ];
@@ -342,8 +357,13 @@ class DatabaseWorkspaceService
 
     private function ensureTableExists(ConnectionInterface $connection, string $table): string
     {
-        $result = $connection->select('SHOW TABLES LIKE ?', [$table]);
-        if (empty($result)) {
+        $databaseName = (string) $connection->getDatabaseName();
+        $result = $connection->selectOne(
+            'SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? LIMIT 1',
+            [$databaseName, $table]
+        );
+
+        if (is_null($result)) {
             throw new DisplayException('The requested table could not be found in this database.');
         }
 
@@ -470,6 +490,31 @@ class DatabaseWorkspaceService
         return in_array($type, ['select', 'show', 'describe', 'desc', 'explain'], true);
     }
 
+    private function unsupportedQueryReason(string $query): ?string
+    {
+        $cleaned = trim($query);
+
+        $patterns = [
+            '/^\s*source\b/i' => 'SOURCE statements are not supported in the panel query console.',
+            '/^\s*use\b/i' => 'USE statements are not supported. The panel already runs queries inside your assigned database.',
+            '/^\s*(?:create|drop|alter)\s+(?:database|schema)\b/i' => 'Database-level statements such as CREATE DATABASE are not allowed here. Run table and data statements inside your assigned database only.',
+            '/^\s*(?:create|alter|drop|rename)\s+user\b/i' => 'User management statements are not allowed from the panel database console.',
+            '/^\s*(?:grant|revoke)\b/i' => 'Privilege management statements are not allowed from the panel database console.',
+            '/^\s*set\s+password\b/i' => 'Password management statements are not allowed from the panel database console.',
+            '/^\s*flush\s+privileges\b/i' => 'FLUSH PRIVILEGES is not allowed from the panel database console.',
+            '/^\s*lock\s+tables\b/i' => 'LOCK TABLES is not supported in the panel database console.',
+            '/^\s*unlock\s+tables\b/i' => 'UNLOCK TABLES is not supported in the panel database console.',
+        ];
+
+        foreach ($patterns as $pattern => $message) {
+            if (preg_match($pattern, $cleaned) === 1) {
+                return $message;
+            }
+        }
+
+        return null;
+    }
+
     private function resolveBinary(array $candidates): string
     {
         foreach ($candidates as $candidate) {
@@ -540,6 +585,81 @@ class DatabaseWorkspaceService
         }
 
         return [$stdout ?: '', $stderr ?: ''];
+    }
+
+    private function sanitizeImportSql(string $sql): array
+    {
+        $sanitized = str_replace("\r\n", "\n", $sql);
+        $skippedStatements = 0;
+
+        $statementPatterns = [
+            '/^\s*CREATE\s+(?:DATABASE|SCHEMA)\b.*?;\s*$/ims',
+            '/^\s*DROP\s+(?:DATABASE|SCHEMA)\b.*?;\s*$/ims',
+            '/^\s*ALTER\s+(?:DATABASE|SCHEMA)\b.*?;\s*$/ims',
+            '/^\s*USE\s+(?:`[^`]+`|[a-zA-Z0-9_$]+)\s*;\s*$/ims',
+            '/^\s*LOCK\s+TABLES\b.*?;\s*$/ims',
+            '/^\s*UNLOCK\s+TABLES\s*;\s*$/ims',
+            '/^\s*(?:CREATE|ALTER|DROP|RENAME)\s+USER\b.*?;\s*$/ims',
+            '/^\s*(?:GRANT|REVOKE)\b.*?;\s*$/ims',
+            '/^\s*SET\s+PASSWORD\b.*?;\s*$/ims',
+            '/^\s*FLUSH\s+PRIVILEGES\b.*?;\s*$/ims',
+            '/^\s*SOURCE\b.*?;\s*$/ims',
+        ];
+
+        foreach ($statementPatterns as $pattern) {
+            $sanitized = preg_replace_callback(
+                $pattern,
+                function () use (&$skippedStatements) {
+                    $skippedStatements++;
+
+                    return '';
+                },
+                $sanitized
+            ) ?? $sanitized;
+        }
+
+        $sanitized = preg_replace(
+            '/\bDEFINER\s*=\s*(?:`[^`]+`|\'[^\']+\'|"[^"]+"|[^@\s]+)\s*@\s*(?:`[^`]+`|\'[^\']+\'|"[^"]+"|[^ \t\r\n*;]+)/i',
+            '',
+            $sanitized
+        ) ?? $sanitized;
+
+        $sanitized = preg_replace('/\bSQL\s+SECURITY\s+DEFINER\b/i', 'SQL SECURITY INVOKER', $sanitized) ?? $sanitized;
+
+        return [
+            'sql' => trim($sanitized) . "\n",
+            'skipped_statements' => $skippedStatements,
+        ];
+    }
+
+    private function formatImportException(Database $database, DisplayException $exception): DisplayException
+    {
+        $message = $exception->getMessage();
+
+        if (preg_match("/Access denied for user .* to database '([^']+)'/i", $message, $matches) === 1) {
+            $referencedDatabase = (string) ($matches[1] ?? '');
+            if ($referencedDatabase !== '' && strcasecmp($referencedDatabase, $database->database) !== 0) {
+                return new DisplayException(
+                    sprintf(
+                        'This SQL dump still references the database "%s". Imports from the panel can only run inside "%s". ' .
+                        'Remove CREATE DATABASE, USE, or database-qualified table names before importing again.',
+                        $referencedDatabase,
+                        $database->database
+                    ),
+                    $exception
+                );
+            }
+        }
+
+        if (preg_match('/ERROR 1227|SUPER privilege|SET_USER_ID|TRIGGER command denied|LOCK TABLES/i', $message) === 1) {
+            return new DisplayException(
+                'This SQL dump contains privileged statements that cannot be run by the panel database user. ' .
+                'Remove definer, lock table, user, or server-level statements and try again.',
+                $exception
+            );
+        }
+
+        return $exception;
     }
 
     private function formatException(\Throwable $exception): \Exception

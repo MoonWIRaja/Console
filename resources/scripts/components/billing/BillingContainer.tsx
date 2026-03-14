@@ -5,21 +5,19 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
-import { Dialog } from '@/components/elements/dialog';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
     BillingCheckout,
     BillingInvoice,
     BillingNodeCatalog,
-    BillingProfile,
     createBillingOrder,
+    migrateBillingSubscriptionToStripe,
+    openBillingPortal,
     retryBillingInvoicePayment,
     toggleBillingSubscriptionAutoRenew,
-    updateBillingProfile,
     useBillingCatalog,
     useBillingInvoices,
     useBillingOrders,
-    useBillingProfile,
     useBillingSubscriptions,
     renewBillingSubscription,
     upgradeBillingSubscription,
@@ -27,12 +25,6 @@ import {
 import BillingVariableBox from '@/components/billing/BillingVariableBox';
 import BillingResourceSlider from '@/components/billing/BillingResourceSlider';
 import BillingSubscriptionCard from '@/components/billing/BillingSubscriptionCard';
-import {
-    billingProfileFieldLabels,
-    emptyBillingProfile,
-    getMissingBillingProfileFields,
-    normalizeBillingProfile,
-} from '@/components/billing/billingProfileUtils';
 
 type NestOption = {
     id: number;
@@ -44,11 +36,6 @@ type UpgradePayload = {
     memoryGb: number;
     diskGb: number;
 };
-
-type PendingBillingAction =
-    | { type: 'create' }
-    | { type: 'renew'; subscriptionId: number }
-    | { type: 'upgrade'; subscriptionId: number; payload: UpgradePayload };
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
     style: 'currency',
@@ -86,12 +73,6 @@ const getNestOptions = (node: BillingNodeCatalog | null): NestOption[] => {
 
 const getOrderStatusLabel = (status: string): string =>
     status.replace(/_/g, ' ').replace(/\b\w/g, (value) => value.toUpperCase());
-
-const billingModalInputClass =
-    'w-full rounded-xl border border-[color:var(--border)] bg-[rgba(5,8,14,0.72)] px-3 py-2 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)] focus:shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.35)]';
-
-const formatMissingBillingFields = (fields: Array<keyof BillingProfile>): string =>
-    fields.map((field) => billingProfileFieldLabels[field]).join(', ');
 
 const ACTIVE_SUBSCRIPTIONS_PAGE_SIZE = 1;
 const INVOICES_PAGE_SIZE = 4;
@@ -280,11 +261,6 @@ export default () => {
         isValidating: invoicesLoading,
         mutate: mutateInvoices,
     } = useBillingInvoices();
-    const {
-        data: billingProfile,
-        isValidating: billingProfileLoading,
-        mutate: mutateBillingProfile,
-    } = useBillingProfile();
     const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
 
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
@@ -299,14 +275,12 @@ export default () => {
     const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<number | null>(null);
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
     const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
+    const [migratingSubscriptionId, setMigratingSubscriptionId] = useState<number | null>(null);
     const [retryingInvoiceId, setRetryingInvoiceId] = useState<number | null>(null);
+    const [openingPortal, setOpeningPortal] = useState(false);
     const [subscriptionsPage, setSubscriptionsPage] = useState(1);
     const [invoicesPage, setInvoicesPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
-    const [billingModalOpen, setBillingModalOpen] = useState(false);
-    const [billingModalSaving, setBillingModalSaving] = useState(false);
-    const [billingModalForm, setBillingModalForm] = useState<BillingProfile>(emptyBillingProfile);
-    const [pendingBillingAction, setPendingBillingAction] = useState<PendingBillingAction | null>(null);
 
     useEffect(() => {
         clearFlashes();
@@ -335,12 +309,6 @@ export default () => {
             clearAndAddHttpError(invoicesError);
         }
     }, [invoicesError, clearAndAddHttpError]);
-
-    useEffect(() => {
-        if (billingProfile) {
-            setBillingModalForm(billingProfile);
-        }
-    }, [billingProfile]);
 
     useEffect(() => {
         setSubscriptionsPage((current) =>
@@ -470,38 +438,6 @@ export default () => {
 
         return null;
     })();
-
-    const getCurrentBillingProfile = (): BillingProfile => normalizeBillingProfile(billingProfile || emptyBillingProfile);
-
-    const setBillingModalField = <K extends keyof BillingProfile>(field: K, value: BillingProfile[K]) => {
-        setBillingModalForm((state) => ({ ...state, [field]: value }));
-    };
-
-    const closeBillingModal = () => {
-        setBillingModalOpen(false);
-        setPendingBillingAction(null);
-    };
-
-    const requireCompleteBillingProfile = (action: PendingBillingAction): boolean => {
-        if (billingProfileLoading && !billingProfile) {
-            addError('Billing profile is still loading. Please wait a moment and try again.', 'Billing');
-            return true;
-        }
-
-        const profile = getCurrentBillingProfile();
-        const missingFields = getMissingBillingProfileFields(profile);
-        if (missingFields.length < 1) {
-            return false;
-        }
-
-        clearFlashes();
-        addError(`Complete your billing profile first: ${formatMissingBillingFields(missingFields)}.`, 'Billing');
-        setBillingModalForm(profile);
-        setPendingBillingAction(action);
-        setBillingModalOpen(true);
-
-        return true;
-    };
 
     const performCreateInvoice = async () => {
         if (!selectedNode || !selectedGame) {
@@ -670,7 +606,10 @@ export default () => {
                 key: 'billing',
                 type: 'success',
                 title: 'Retrying Payment',
-                message: 'Redirecting back to the hosted Fiuu checkout now.',
+                message:
+                    checkout.provider === 'stripe'
+                        ? 'Redirecting to the Stripe hosted payment flow now.'
+                        : 'Redirecting to the hosted checkout now.',
             });
 
             if (launchHostedCheckout(checkout)) {
@@ -683,17 +622,47 @@ export default () => {
         }
     };
 
-    const runPendingBillingAction = async (action: PendingBillingAction) => {
-        switch (action.type) {
-            case 'create':
-                await performCreateInvoice();
-                break;
-            case 'renew':
-                await performRenewSubscription(action.subscriptionId);
-                break;
-            case 'upgrade':
-                await performUpgradeSubscription(action.subscriptionId, action.payload);
-                break;
+    const onOpenCustomerPortal = async () => {
+        clearFlashes();
+        setOpeningPortal(true);
+
+        try {
+            const url = await openBillingPortal();
+            window.location.assign(url);
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setOpeningPortal(false);
+        }
+    };
+
+    const onMigrateSubscriptionToStripe = async (subscriptionId: number) => {
+        clearFlashes();
+        setMigratingSubscriptionId(subscriptionId);
+
+        try {
+            const response = await migrateBillingSubscriptionToStripe(subscriptionId);
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: response.checkout ? 'Stripe Migration Started' : 'Migration Pending',
+                message: response.checkout
+                    ? `${response.subscription.serverName} is moving to Stripe for the next renewal. Redirecting to secure checkout now.`
+                    : response.checkoutError
+                    ? `${response.subscription.serverName} migration invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is not ready yet: ${response.checkoutError}`
+                    : `${response.subscription.serverName} migration invoice ${response.invoice?.invoiceNumber ?? '#'} is ready.`,
+            });
+
+            void mutateSubscriptions();
+            void mutateInvoices();
+
+            if (launchHostedCheckout(response.checkout)) {
+                return;
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setMigratingSubscriptionId(null);
         }
     };
 
@@ -721,67 +690,16 @@ export default () => {
             return;
         }
 
-        if (requireCompleteBillingProfile({ type: 'create' })) {
-            return;
-        }
-
         await performCreateInvoice();
     };
 
     const onRenewSubscription = async (subscriptionId: number) => {
-        if (requireCompleteBillingProfile({ type: 'renew', subscriptionId })) {
-            return;
-        }
-
         await performRenewSubscription(subscriptionId);
     };
 
     const onUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
-        if (requireCompleteBillingProfile({ type: 'upgrade', subscriptionId, payload })) {
-            return;
-        }
-
         await performUpgradeSubscription(subscriptionId, payload);
     };
-
-    const onBillingModalSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        clearFlashes();
-
-        const payload = normalizeBillingProfile(billingModalForm);
-        const missingFields = getMissingBillingProfileFields(payload);
-        if (missingFields.length > 0) {
-            addError(`Fill all required billing fields first: ${formatMissingBillingFields(missingFields)}.`, 'Billing');
-            return;
-        }
-
-        setBillingModalSaving(true);
-
-        try {
-            const updated = await updateBillingProfile(payload);
-            await mutateBillingProfile(updated, false);
-            setBillingModalForm(updated);
-
-            const nextAction = pendingBillingAction;
-            setBillingModalOpen(false);
-            setPendingBillingAction(null);
-
-            if (nextAction) {
-                await runPendingBillingAction(nextAction);
-            }
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setBillingModalSaving(false);
-        }
-    };
-
-    const renderBillingModalLabel = (label: string, required = false) => (
-        <span className={'mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500'}>
-            {label}
-            {required && <span className={'ml-1 text-[color:var(--primary)]'}>*</span>}
-        </span>
-    );
 
     if (!catalog && catalogLoading) {
         return (
@@ -1242,183 +1160,6 @@ export default () => {
             `}</style>
             <div className={'billing-wrap'}>
                 <FlashMessageRender byKey={'billing'} />
-                <Dialog
-                    open={billingModalOpen}
-                    onClose={closeBillingModal}
-                    title={'Complete Billing Profile'}
-                    description={'Fill the required billing details below before checkout can continue.'}
-                    panelClassName={
-                        '!max-w-3xl !rounded-[1.5rem] !border !border-[color:var(--border)] !bg-[color:var(--card)] !shadow-[0_24px_48px_rgba(0,0,0,0.55)]'
-                    }
-                    contentClassName={'max-h-[75vh] overflow-y-auto'}
-                    preventExternalClose={billingModalSaving}
-                    hideCloseIcon={billingModalSaving}
-                >
-                    <form className={'space-y-5 pt-4'} onSubmit={onBillingModalSubmit}>
-                        <div
-                            className={
-                                'rounded-xl border border-[rgba(var(--primary-rgb),0.22)] bg-[rgba(var(--primary-rgb),0.08)] px-4 py-3 text-xs leading-6 text-[rgba(248,246,239,0.82)]'
-                            }
-                        >
-                            Fields marked with <span className={'font-black text-[color:var(--primary)]'}>*</span> are
-                            required before any invoice can be created or sent to Fiuu checkout.
-                        </div>
-
-                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Legal Name', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.legalName}
-                                    onChange={(event) => setBillingModalField('legalName', event.currentTarget.value)}
-                                    maxLength={191}
-                                    required
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Company Name')}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.companyName ?? ''}
-                                    onChange={(event) =>
-                                        setBillingModalField('companyName', event.currentTarget.value || null)
-                                    }
-                                    maxLength={191}
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Invoice Email', true)}
-                                <input
-                                    type={'email'}
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.email}
-                                    onChange={(event) => setBillingModalField('email', event.currentTarget.value)}
-                                    maxLength={191}
-                                    required
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Phone', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.phone ?? ''}
-                                    onChange={(event) => setBillingModalField('phone', event.currentTarget.value || null)}
-                                    maxLength={32}
-                                    required
-                                />
-                            </label>
-                        </div>
-
-                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-2'}>
-                            <label className={'block md:col-span-2'}>
-                                {renderBillingModalLabel('Address Line 1', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.addressLine1 ?? ''}
-                                    onChange={(event) =>
-                                        setBillingModalField('addressLine1', event.currentTarget.value || null)
-                                    }
-                                    maxLength={191}
-                                    required
-                                />
-                            </label>
-                            <label className={'block md:col-span-2'}>
-                                {renderBillingModalLabel('Address Line 2')}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.addressLine2 ?? ''}
-                                    onChange={(event) =>
-                                        setBillingModalField('addressLine2', event.currentTarget.value || null)
-                                    }
-                                    maxLength={191}
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('City', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.city ?? ''}
-                                    onChange={(event) => setBillingModalField('city', event.currentTarget.value || null)}
-                                    maxLength={191}
-                                    required
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('State')}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.state ?? ''}
-                                    onChange={(event) => setBillingModalField('state', event.currentTarget.value || null)}
-                                    maxLength={191}
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Postcode', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.postcode ?? ''}
-                                    onChange={(event) =>
-                                        setBillingModalField('postcode', event.currentTarget.value || null)
-                                    }
-                                    maxLength={32}
-                                    required
-                                />
-                            </label>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Country Code', true)}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.countryCode}
-                                    onChange={(event) =>
-                                        setBillingModalField('countryCode', event.currentTarget.value.toUpperCase())
-                                    }
-                                    maxLength={2}
-                                    required
-                                />
-                            </label>
-                        </div>
-
-                        <div className={'grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]'}>
-                            <label className={'block'}>
-                                {renderBillingModalLabel('Tax ID')}
-                                <input
-                                    className={billingModalInputClass}
-                                    value={billingModalForm.taxId ?? ''}
-                                    onChange={(event) => setBillingModalField('taxId', event.currentTarget.value || null)}
-                                    maxLength={191}
-                                />
-                            </label>
-                            <label
-                                className={
-                                    'flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-gray-200'
-                                }
-                            >
-                                <input
-                                    type={'checkbox'}
-                                    className={'h-4 w-4 rounded border-[color:var(--border)] bg-transparent'}
-                                    checked={billingModalForm.isBusiness}
-                                    onChange={(event) => setBillingModalField('isBusiness', event.currentTarget.checked)}
-                                />
-                                <span>Business billing entity</span>
-                            </label>
-                        </div>
-
-                        <div className={'flex flex-wrap items-center justify-end gap-3 border-t border-[color:var(--border)] pt-5'}>
-                            <button
-                                type={'button'}
-                                className={'billing-ghost-btn min-w-[10rem]'}
-                                onClick={closeBillingModal}
-                                disabled={billingModalSaving}
-                            >
-                                Cancel
-                            </button>
-                            <button type={'submit'} className={'billing-primary-btn min-w-[13rem]'} disabled={billingModalSaving}>
-                                {billingModalSaving ? 'Saving...' : 'Save & Continue'}
-                            </button>
-                        </div>
-                    </form>
-                </Dialog>
-
                 <div className={'billing-hero'}>
                     <div className={'billing-hero-pill-row'}>
                         <span className={'billing-hero-pill'}>Secure billing panel</span>
@@ -1426,9 +1167,23 @@ export default () => {
                     </div>
                     <h1 className={'billing-hero-title'}>Billing</h1>
                     <p className={'billing-hero-copy'}>
-                        Build a server plan from the node stock that is currently available. vCore is only a per-order
-                        limit, while RAM and storage determine whether a node is sold out.
+                        Build a server plan from the node stock that is currently available. Stripe Checkout now
+                        collects card, billing address, and tax information, while the Stripe customer portal manages
+                        invoices, billing details, and payment methods.
                     </p>
+                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
+                        <button
+                            type={'button'}
+                            className={'billing-primary-btn'}
+                            disabled={openingPortal}
+                            onClick={() => void onOpenCustomerPortal()}
+                        >
+                            {openingPortal ? 'Opening...' : 'Open Customer Portal'}
+                        </button>
+                        <span className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                            Use the portal to update cards, billing details, tax IDs, and download invoice PDFs.
+                        </span>
+                    </div>
                 </div>
 
                 {!catalog || catalog.length < 1 ? (
@@ -1648,8 +1403,8 @@ export default () => {
                                 }
                             >
                                 <div className={'text-xs text-[color:var(--muted-foreground)]'}>
-                                    Orders create an invoice in RM immediately. Provisioning starts only after the
-                                    payment is verified successfully.
+                                    Orders create a Stripe-backed invoice in RM immediately. Provisioning starts only
+                                    after the first invoice is confirmed as paid.
                                 </div>
                                 <button
                                     type={'submit'}
@@ -1883,7 +1638,8 @@ export default () => {
                                 Active Subscriptions
                             </h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Renew a server for another month, or upgrade its plan. Downgrades are blocked.
+                                Stripe-managed subscriptions can auto-renew with reusable cards. Legacy subscriptions
+                                must migrate during the renewal window before Stripe auto-renew and paid upgrades can be used.
                             </p>
                         </div>
                         {subscriptions && subscriptions.length > 0 ? (
@@ -1910,9 +1666,11 @@ export default () => {
                                     renewing={renewingSubscriptionId === subscription.id}
                                     upgrading={upgradingSubscriptionId === subscription.id}
                                     togglingAutoRenew={togglingSubscriptionId === subscription.id}
+                                    migratingToStripe={migratingSubscriptionId === subscription.id}
                                     onRenew={(current) => void onRenewSubscription(current.id)}
                                     onUpgrade={(current, payload) => void onUpgradeSubscription(current.id, payload)}
                                     onToggleAutoRenew={(current, enabled) => void onToggleAutoRenew(current.id, enabled)}
+                                    onMigrateToStripe={(current) => void onMigrateSubscriptionToStripe(current.id)}
                                 />
                                 )
                             )}
@@ -1927,7 +1685,8 @@ export default () => {
                         <div>
                             <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>Invoices</h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Checkout, renewals, upgrades, and payment receipts now flow through invoices first.
+                                Checkout, renewals, upgrades, and payment receipts now flow through invoices first, with
+                                Stripe-hosted invoice retries where available.
                             </p>
                         </div>
                         {invoices && invoices.length > 0 ? (
@@ -2004,7 +1763,17 @@ export default () => {
                                             <div className={'flex items-center justify-between gap-3'}>
                                                 <span>Payment Method</span>
                                                 <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {latestPayment.providerPaymentMethod || latestPayment.provider || 'Recorded'}
+                                                    {latestPayment.paymentMethodBrand && latestPayment.paymentMethodLast4
+                                                        ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${latestPayment.paymentMethodLast4}`
+                                                        : latestPayment.providerPaymentMethod || latestPayment.provider || 'Recorded'}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {invoice.providerStatus && (
+                                            <div className={'flex items-center justify-between gap-3'}>
+                                                <span>Gateway Status</span>
+                                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                                    {getOrderStatusLabel(invoice.providerStatus)}
                                                 </span>
                                             </div>
                                         )}
@@ -2028,6 +1797,16 @@ export default () => {
                                                 {retryingInvoiceId === invoice.id ? 'Redirecting...' : 'Retry Payment'}
                                             </button>
                                         )}
+                                        {invoice.hostedInvoiceUrl && (
+                                            <a href={invoice.hostedInvoiceUrl} className={'billing-secondary-btn'}>
+                                                Open Hosted Invoice
+                                            </a>
+                                        )}
+                                        {invoice.invoicePdfUrl && (
+                                            <a href={invoice.invoicePdfUrl} className={'billing-ghost-btn'} target={'_blank'} rel={'noreferrer'}>
+                                                Invoice PDF
+                                            </a>
+                                        )}
                                         {latestPayment && rootAdmin && (
                                             <a href={`/admin/billing/payments/${latestPayment.id}`} className={'billing-secondary-btn'}>
                                                 Open Refund Tools
@@ -2035,7 +1814,7 @@ export default () => {
                                         )}
                                         {latestPayment && !rootAdmin && (
                                             <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                                                Refunds are reviewed from billing admin after payment verification.
+                                                Refunds are reviewed by billing admin after payment verification.
                                             </p>
                                         )}
                                     </div>

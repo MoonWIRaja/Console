@@ -59,7 +59,7 @@ class PaymentController extends Controller
                 ?? Arr::get($refund->raw_response, 'Description')
                 ?? Arr::get($refund->raw_response, 'StatName')
                 ?? Arr::get($refund->raw_response, 'message')
-                ?? 'The refund request was rejected by Fiuu.';
+                ?? 'The refund request was rejected by the payment provider.';
 
             $this->alert->danger($reason)->flash();
 

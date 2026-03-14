@@ -20,6 +20,11 @@ class BillingRefund extends Model
         'payment_id',
         'refund_number',
         'provider_refund_id',
+        'provider_charge_id',
+        'provider_payment_intent_id',
+        'provider_refund_status',
+        'refund_scope',
+        'source_revision_id',
         'amount',
         'reason',
         'status',
@@ -32,6 +37,7 @@ class BillingRefund extends Model
     protected $casts = [
         'payment_id' => 'integer',
         'requested_by' => 'integer',
+        'source_revision_id' => 'integer',
         'amount' => 'decimal:2',
         'requested_at' => 'datetime',
         'completed_at' => 'datetime',
@@ -46,5 +52,10 @@ class BillingRefund extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function sourceRevision(): BelongsTo
+    {
+        return $this->belongsTo(BillingSubscriptionRevision::class, 'source_revision_id');
     }
 }

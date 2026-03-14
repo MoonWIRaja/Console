@@ -19,12 +19,33 @@
                         <dt>User</dt><dd>{{ $invoice->user->email }}</dd>
                         <dt>Status</dt><dd><span class="label label-default">{{ strtoupper($invoice->status) }}</span></dd>
                         <dt>Type</dt><dd>{{ strtoupper($invoice->type) }}</dd>
+                        <dt>Provider</dt><dd>{{ strtoupper($invoice->provider ?? 'local') }}</dd>
+                        <dt>Provider Status</dt><dd>{{ $invoice->provider_status ?? 'N/A' }}</dd>
+                        <dt>Provider Invoice</dt><dd><code>{{ $invoice->provider_invoice_id ?? 'N/A' }}</code></dd>
+                        <dt>Checkout Session</dt><dd><code>{{ $invoice->provider_checkout_session_id ?? 'N/A' }}</code></dd>
+                        <dt>Payment Intent</dt><dd><code>{{ $invoice->provider_payment_intent_id ?? 'N/A' }}</code></dd>
                         <dt>Subtotal</dt><dd>RM {{ number_format((float) $invoice->subtotal, 2) }}</dd>
                         <dt>Tax</dt><dd>RM {{ number_format((float) $invoice->tax_total, 2) }}</dd>
                         <dt>Total</dt><dd>RM {{ number_format((float) $invoice->grand_total, 2) }}</dd>
                         <dt>Issued</dt><dd>{{ $invoice->issued_at ?? 'N/A' }}</dd>
                         <dt>Due</dt><dd>{{ $invoice->due_at ?? 'N/A' }}</dd>
                         <dt>Paid</dt><dd>{{ $invoice->paid_at ?? 'N/A' }}</dd>
+                        <dt>Hosted Invoice</dt>
+                        <dd>
+                            @if($invoice->hosted_invoice_url)
+                                <a href="{{ $invoice->hosted_invoice_url }}" target="_blank" rel="noreferrer">Open Hosted Invoice</a>
+                            @else
+                                N/A
+                            @endif
+                        </dd>
+                        <dt>Invoice PDF</dt>
+                        <dd>
+                            @if($invoice->invoice_pdf_url)
+                                <a href="{{ $invoice->invoice_pdf_url }}" target="_blank" rel="noreferrer">Open PDF</a>
+                            @else
+                                N/A
+                            @endif
+                        </dd>
                         @if($invoice->order)
                             <dt>Order</dt><dd><a href="{{ route('admin.billing.orders.view', $invoice->order->id) }}">#{{ $invoice->order->id }}</a></dd>
                         @endif
@@ -83,17 +104,24 @@
                 <div class="box-header with-border"><h3 class="box-title">Payment Trail</h3></div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
-                        <thead><tr><th>Payment</th><th>Status</th><th>Provider</th><th>Amount</th></tr></thead>
+                        <thead><tr><th>Payment</th><th>Status</th><th>Provider</th><th>Method</th><th>Amount</th></tr></thead>
                         <tbody>
                             @forelse($invoice->payments as $payment)
                                 <tr>
                                     <td><a href="{{ route('admin.billing.payments.view', $payment->id) }}">{{ $payment->payment_number }}</a></td>
                                     <td><span class="label label-default">{{ strtoupper($payment->status) }}</span></td>
                                     <td>{{ strtoupper($payment->provider) }}</td>
+                                    <td>
+                                        @if($payment->payment_method_brand && $payment->payment_method_last4)
+                                            {{ strtoupper($payment->payment_method_brand) }} •••• {{ $payment->payment_method_last4 }}
+                                        @else
+                                            {{ $payment->provider_payment_method ?? 'N/A' }}
+                                        @endif
+                                    </td>
                                     <td>RM {{ number_format((float) $payment->amount, 2) }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="text-center text-muted">No payment records on this invoice yet.</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted">No payment records on this invoice yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -104,17 +132,23 @@
                 <div class="box-header with-border"><h3 class="box-title">Checkout Attempts</h3></div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
-                        <thead><tr><th>Attempt</th><th>Status</th><th>Checkout Reference</th><th>Verified</th></tr></thead>
+                        <thead><tr><th>Attempt</th><th>Status</th><th>Mode</th><th>Checkout Reference</th><th>Verified</th></tr></thead>
                         <tbody>
                             @forelse($invoice->attempts as $attempt)
                                 <tr>
                                     <td>#{{ $attempt->attempt_number }}</td>
                                     <td><span class="label label-default">{{ strtoupper($attempt->status) }}</span></td>
-                                    <td><code>{{ $attempt->checkout_reference ?? 'N/A' }}</code></td>
+                                    <td>{{ strtoupper($attempt->attempt_mode ?? 'checkout') }}</td>
+                                    <td>
+                                        <div><code>{{ $attempt->checkout_reference ?? 'N/A' }}</code></div>
+                                        @if($attempt->provider_session_id)
+                                            <div class="text-muted"><code>{{ $attempt->provider_session_id }}</code></div>
+                                        @endif
+                                    </td>
                                     <td>{{ $attempt->verified_at ?? 'N/A' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="text-center text-muted">No checkout attempts recorded.</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted">No checkout attempts recorded.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

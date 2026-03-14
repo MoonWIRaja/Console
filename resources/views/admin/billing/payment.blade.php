@@ -21,7 +21,12 @@
                         <dt>Status</dt><dd><span class="label label-default">{{ strtoupper($payment->status) }}</span></dd>
                         <dt>Provider</dt><dd>{{ strtoupper($payment->provider) }}</dd>
                         <dt>Provider Txn</dt><dd><code>{{ $payment->provider_transaction_id ?? 'N/A' }}</code></dd>
-                        <dt>Method</dt><dd>{{ $payment->provider_payment_method ?? 'N/A' }}</dd>
+                        <dt>Gateway Status</dt><dd>{{ $payment->provider_status ?? 'N/A' }}</dd>
+                        <dt>Method</dt><dd>{{ $payment->provider_payment_method ?? $payment->payment_method_type ?? 'N/A' }}</dd>
+                        <dt>Card Brand</dt><dd>{{ $payment->payment_method_brand ? strtoupper($payment->payment_method_brand) : 'N/A' }}</dd>
+                        <dt>Last 4</dt><dd>{{ $payment->payment_method_last4 ?? 'N/A' }}</dd>
+                        <dt>Payment Intent</dt><dd><code>{{ $payment->provider_payment_intent_id ?? 'N/A' }}</code></dd>
+                        <dt>Charge</dt><dd><code>{{ $payment->provider_charge_id ?? 'N/A' }}</code></dd>
                         <dt>Amount</dt><dd>RM {{ number_format((float) $payment->amount, 2) }}</dd>
                         <dt>Paid At</dt><dd>{{ $payment->paid_at ?? 'N/A' }}</dd>
                     </dl>
@@ -41,6 +46,7 @@
                         <div class="form-group">
                             <label>Reason</label>
                             <textarea name="reason" class="form-control" rows="4"></textarea>
+                            <p class="help-block">Base server refunds can cancel the Stripe subscription and cascade into descendant upgrade refunds if needed.</p>
                         </div>
                     </div>
                     <div class="box-footer">

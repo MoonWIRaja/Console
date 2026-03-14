@@ -29,6 +29,8 @@ class BillingPaymentAttempt extends Model
         'attempt_number',
         'status',
         'checkout_reference',
+        'provider_session_id',
+        'attempt_mode',
         'redirected_at',
         'callback_received_at',
         'verified_at',

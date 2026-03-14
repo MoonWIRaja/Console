@@ -16,5 +16,6 @@ class VerifyCsrfToken extends BaseVerifier
         'daemon/*',
         'billing/gateways/fiuu/callback',
         'billing/gateways/fiuu/return',
+        'billing/gateways/stripe/webhook',
     ];
 }

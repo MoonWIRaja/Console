@@ -5,7 +5,7 @@
 @endsection
 
 @section('content-header')
-    <h1>Billing Gateway<small>Configure Fiuu and billing lifecycle values.</small></h1>
+    <h1>Billing Gateway<small>Configure Stripe checkout, portal, webhooks, and billing lifecycle values.</small></h1>
     <ol class="breadcrumb">
         <li><a href="{{ route('admin.index') }}">Admin</a></li>
         <li><a href="{{ route('admin.billing') }}">Billing</a></li>
@@ -17,21 +17,20 @@
     @include('admin.billing.partials.nav')
 
     @php
-        $defaultReturnUrl = url('/fiuu-return.php');
-        $defaultCallbackUrl = route('billing.gateway.fiuu.callback');
-        $defaultRequeryUrl = 'https://api.fiuu.com/RMS/API/gate-query/index.php';
-        $defaultRecurringUrl = 'https://pay.fiuu.com/RMS/API/token/index.php';
-        $defaultRefundUrl = 'https://api.fiuu.com/RMS/API/refundAPI/index.php';
+        $defaultWebhookUrl = route('billing.gateway.stripe.webhook');
+        $defaultSuccessUrl = route('billing.gateway.stripe.return');
+        $defaultCancelUrl = rtrim(config('app.url'), '/') . '/billing';
+        $defaultPortalReturnUrl = rtrim(config('app.url'), '/') . '/billing';
     @endphp
 
     <div class="callout callout-info">
-        <p><strong>How this panel uses Fiuu:</strong> hosted checkout redirects the customer to Fiuu, then Fiuu returns the browser to <code>Return URL</code> and sends server-to-server payment status to <code>Callback URL</code>.</p>
-        <p style="margin: 6px 0 0;">Verified payment flow depends on <code>Merchant ID</code>, <code>Verify Key</code>, <code>Secret Key</code>, and a working <code>Requery URL</code>. Auto-renew and admin refund need <code>Recurring URL</code> and <code>Refund URL</code>.</p>
+        <p><strong>How this panel uses Stripe:</strong> new billed servers and Stripe migration renewals start in Stripe Checkout, billing details and saved cards are managed through Stripe Customer Portal, and <code>invoice.paid</code> webhooks are the source of truth before the panel provisions or upgrades a server.</p>
+        <p style="margin: 6px 0 0;">Keep the webhook URL below registered in Stripe, use card-capable recurring payment methods only, and enable Stripe Tax only if your Stripe account country supports it.</p>
     </div>
 
     <div class="box box-primary">
         <div class="box-header with-border">
-            <h3 class="box-title">Fiuu Settings</h3>
+            <h3 class="box-title">Stripe Settings</h3>
         </div>
         <form method="POST" action="{{ route('admin.billing.gateway.update') }}">
             @csrf
@@ -40,113 +39,112 @@
                 <div class="row">
                     <div class="col-md-3 form-group">
                         <label>Enabled</label>
-                        <select name="billing:fiuu:enabled" class="form-control">
-                            <option value="1" {{ config('billing.fiuu.enabled') ? 'selected' : '' }}>Yes</option>
-                            <option value="0" {{ !config('billing.fiuu.enabled') ? 'selected' : '' }}>No</option>
+                        <select name="billing:stripe:enabled" class="form-control">
+                            <option value="1" {{ config('billing.stripe.enabled') ? 'selected' : '' }}>Yes</option>
+                            <option value="0" {{ !config('billing.stripe.enabled') ? 'selected' : '' }}>No</option>
                         </select>
-                        <p class="text-muted small" style="margin: 6px 0 0;">Master switch for Fiuu checkout. Leave this off until every credential and callback URL below is valid.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Master switch for Stripe billing. Leave this off until keys and webhook secret are valid.</p>
                     </div>
                     <div class="col-md-3 form-group">
-                        <label>Sandbox</label>
-                        <select name="billing:fiuu:sandbox" class="form-control">
-                            <option value="1" {{ config('billing.fiuu.sandbox') ? 'selected' : '' }}>Yes</option>
-                            <option value="0" {{ !config('billing.fiuu.sandbox') ? 'selected' : '' }}>No</option>
+                        <label>Mode</label>
+                        <select name="billing:stripe:mode" class="form-control">
+                            <option value="test" {{ config('billing.stripe.mode', 'test') === 'test' ? 'selected' : '' }}>Test</option>
+                            <option value="live" {{ config('billing.stripe.mode', 'test') === 'live' ? 'selected' : '' }}>Live</option>
                         </select>
-                        <p class="text-muted small" style="margin: 6px 0 0;">Use this for Fiuu test mode. Official Fiuu installation docs note sandbox Merchant IDs commonly start with <code>SB_</code>.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Use <code>test</code> until webhook delivery, checkout, renewal, upgrade, and refund flows are proven end to end.</p>
                     </div>
                     <div class="col-md-3 form-group">
                         <label>Currency</label>
                         <input type="text" name="billing:currency" class="form-control" value="{{ config('billing.currency', 'MYR') }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Panel billing phase 1 is designed for <code>MYR</code>. Keep this as <code>MYR</code> unless you also change gateway and pricing assumptions in code.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Stripe migration v1 is designed for <code>MYR</code>. Keep this aligned with your Stripe prices and tax settings.</p>
                     </div>
                     <div class="col-md-3 form-group">
-                        <label>Enabled Methods</label>
-                        <input type="text" name="billing:fiuu:enabled_methods" class="form-control" value="{{ implode(',', config('billing.fiuu.enabled_methods', [])) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Comma-separated Fiuu channel codes approved on your merchant account. If you enter exactly <strong>one</strong> code, the panel locks checkout to that method. If you leave this blank, enter multiple codes, or use <code>all</code>, the panel will not send a fixed <code>channel</code> and the payer can choose the payment method directly on the Fiuu page.</p>
-                        <p class="text-muted small" style="margin: 6px 0 0;">Important: <code>all</code> does not force card, QR, FPX, and every other method to appear. Fiuu will only display channels that are actually enabled on your merchant account. Auto-renew also needs a tokenized card-capable channel, not just QR or online banking.</p>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-4 form-group">
-                        <label>Merchant ID</label>
-                        <input type="text" name="billing:fiuu:merchant_id" class="form-control" value="{{ config('billing.fiuu.merchant_id') }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Your Fiuu merchant identifier. This is sent in checkout, callback verification, requery, recurring charge, and refund requests.</p>
-                    </div>
-                    <div class="col-md-4 form-group">
-                        <label>Verify Key</label>
-                        <input type="password" name="billing:fiuu:verify_key" class="form-control" value="{{ config('billing.fiuu.verify_key') }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Used by this panel to generate checkout <code>vcode</code> and to validate callback signatures. If this is wrong, payments will arrive but not verify safely.</p>
-                    </div>
-                    <div class="col-md-4 form-group">
-                        <label>Request Token</label>
-                        <select name="billing:fiuu:request_token" class="form-control">
-                            <option value="1" {{ config('billing.fiuu.request_token', true) ? 'selected' : '' }}>Yes</option>
-                            <option value="0" {{ !config('billing.fiuu.request_token', true) ? 'selected' : '' }}>No</option>
+                        <label>Stripe Tax</label>
+                        <select name="billing:stripe:automatic_tax_enabled" class="form-control">
+                            <option value="1" {{ config('billing.stripe.automatic_tax_enabled', false) ? 'selected' : '' }}>Enabled</option>
+                            <option value="0" {{ !config('billing.stripe.automatic_tax_enabled', false) ? 'selected' : '' }}>Disabled</option>
                         </select>
-                        <p class="text-muted small" style="margin: 6px 0 0;">When enabled, the panel adds <code>req4token=1</code> to checkout so Fiuu can return a reusable payment token after a supported card payment. This does not create card support by itself; your merchant must already have tokenized card / recurring enabled by Fiuu.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Enable this only if your Stripe account supports Stripe Tax in its country. Otherwise checkout can fail and the panel will fall back to local tax-free checkout.</p>
                     </div>
                 </div>
+
                 <div class="row">
                     <div class="col-md-4 form-group">
-                        <label>Extended Vcode</label>
-                        <select name="billing:fiuu:extended_vcode" class="form-control">
-                            <option value="1" {{ config('billing.fiuu.extended_vcode') ? 'selected' : '' }}>Yes</option>
-                            <option value="0" {{ !config('billing.fiuu.extended_vcode') ? 'selected' : '' }}>No</option>
-                        </select>
-                        <p class="text-muted small" style="margin: 6px 0 0;">Controls whether checkout <code>vcode</code> is generated with the extended currency format. Start with <strong>No</strong> unless your Fiuu merchant explicitly enables the extended verify format in merchant settings.</p>
+                        <label>Publishable Key</label>
+                        <input type="text" name="billing:stripe:publishable_key" class="form-control" value="{{ config('billing.stripe.publishable_key') }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Used by the front-end only if you later choose Stripe.js flows. Current hosted checkout still keeps the server as the source of truth.</p>
                     </div>
-                </div>
-                <div class="row">
                     <div class="col-md-4 form-group">
                         <label>Secret Key</label>
-                        <input type="password" name="billing:fiuu:secret_key" class="form-control" value="{{ config('billing.fiuu.secret_key') }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Used for secure server-to-server operations such as payment requery, recurring charging, and refund requests.</p>
+                        <input type="password" name="billing:stripe:secret_key" class="form-control" value="{{ config('billing.stripe.secret_key') }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Required for Checkout Session creation, subscription sync, invoice sync, refunds, and portal sessions.</p>
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label>Webhook Secret</label>
+                        <input type="password" name="billing:stripe:webhook_secret" class="form-control" value="{{ config('billing.stripe.webhook_secret') }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Used to verify incoming Stripe webhooks. Without this, the panel cannot trust <code>invoice.paid</code> and related lifecycle events.</p>
                     </div>
                 </div>
+
                 <div class="row">
                     <div class="col-md-6 form-group">
-                        <label>Return URL</label>
-                        <input type="url" name="billing:fiuu:return_url" class="form-control" value="{{ old('billing:fiuu:return_url', config('billing.fiuu.return_url') ?: $defaultReturnUrl) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Auto-filled with a lightweight browser-return endpoint that forwards the customer back to <code>/billing</code> after payment. Current default: <code>{{ $defaultReturnUrl }}</code></p>
+                        <label>Portal Configuration ID</label>
+                        <input type="text" name="billing:stripe:portal_configuration_id" class="form-control" value="{{ config('billing.stripe.portal_configuration_id') }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Optional Stripe Billing Portal configuration. Use this to lock the portal down to billing details, tax ID, payment methods, and invoices only.</p>
                     </div>
                     <div class="col-md-6 form-group">
-                        <label>Callback URL</label>
-                        <input type="url" name="billing:fiuu:callback_url" class="form-control" value="{{ old('billing:fiuu:callback_url', config('billing.fiuu.callback_url') ?: $defaultCallbackUrl) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Auto-filled with the panel callback route. This must stay publicly reachable over HTTPS. Current default: <code>{{ $defaultCallbackUrl }}</code></p>
+                        <label>Portal Return URL</label>
+                        <input type="url" class="form-control" value="{{ $defaultPortalReturnUrl }}" readonly>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Read-only return path for Stripe Customer Portal sessions. The panel sends users back to <code>/billing</code>.</p>
                     </div>
                 </div>
+
                 <div class="row">
                     <div class="col-md-4 form-group">
-                        <label>Requery URL</label>
-                        <input type="url" name="billing:fiuu:requery_url" class="form-control" value="{{ old('billing:fiuu:requery_url', config('billing.fiuu.requery_url') ?: $defaultRequeryUrl) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Auto-filled with Fiuu's official Direct Status Requery endpoint. Source: <a href="https://docs.fiuu.dev/reference/direct-status-requery" target="_blank" rel="noreferrer">docs.fiuu.dev/reference/direct-status-requery</a></p>
+                        <label>Webhook URL</label>
+                        <input type="url" class="form-control" value="{{ $defaultWebhookUrl }}" readonly>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Register this exact HTTPS endpoint in Stripe for recurring invoice, subscription, and refund events.</p>
                     </div>
                     <div class="col-md-4 form-group">
-                        <label>Recurring URL</label>
-                        <input type="url" name="billing:fiuu:recurring_url" class="form-control" value="{{ old('billing:fiuu:recurring_url', config('billing.fiuu.recurring_url') ?: $defaultRecurringUrl) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Auto-filled with Fiuu's official token API endpoint. This panel uses it as the default recurring/token URL, but recurring charges still require tokenization approval on your Fiuu merchant. Source: <a href="https://docs.fiuu.dev/reference/payment-token-api" target="_blank" rel="noreferrer">docs.fiuu.dev/reference/payment-token-api</a></p>
+                        <label>Checkout Success URL</label>
+                        <input type="url" name="billing:stripe:success_url" class="form-control" value="{{ old('billing:stripe:success_url', config('billing.stripe.success_url') ?: $defaultSuccessUrl) }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Browser redirect after Stripe Checkout. Source of truth still remains the webhook, not this redirect.</p>
                     </div>
                     <div class="col-md-4 form-group">
-                        <label>Refund URL</label>
-                        <input type="url" name="billing:fiuu:refund_url" class="form-control" value="{{ old('billing:fiuu:refund_url', config('billing.fiuu.refund_url') ?: $defaultRefundUrl) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Auto-filled with Fiuu's official Advanced Full/Partial Refund endpoint. Source: <a href="https://docs.fiuu.dev/reference/advanced-fullpartial-refund" target="_blank" rel="noreferrer">docs.fiuu.dev/reference/advanced-fullpartial-refund</a></p>
+                        <label>Checkout Cancel URL</label>
+                        <input type="url" name="billing:stripe:cancel_url" class="form-control" value="{{ old('billing:stripe:cancel_url', config('billing.stripe.cancel_url') ?: $defaultCancelUrl) }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Where the payer returns if Checkout is cancelled before payment is completed.</p>
                     </div>
                 </div>
+
                 <div class="row">
-                    <div class="col-md-4 form-group">
+                    <div class="col-md-3 form-group">
                         <label>Invoice Lead Days</label>
                         <input type="number" min="1" name="billing:invoice_lead_days" class="form-control" value="{{ config('billing.invoice_lead_days', 7) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">How many days before <code>renews_at</code> the panel should issue a renewal invoice and begin reminder emails.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Used by legacy subscriptions and migration windows before Stripe renewal cutover.</p>
                     </div>
-                    <div class="col-md-4 form-group">
+                    <div class="col-md-3 form-group">
                         <label>Suspend Grace Hours</label>
                         <input type="number" min="1" name="billing:suspend_grace_hours" class="form-control" value="{{ config('billing.suspend_grace_hours', 24) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after an unpaid renewal due date before the subscription moves into panel suspension.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after unpaid renewal before the panel suspends the server.</p>
                     </div>
-                    <div class="col-md-4 form-group">
+                    <div class="col-md-3 form-group">
                         <label>Delete Grace Hours</label>
                         <input type="number" min="1" name="billing:delete_grace_hours" class="form-control" value="{{ config('billing.delete_grace_hours', 72) }}">
-                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after the unpaid grace window before the subscription is marked for deletion. Keep this higher than suspend grace.</p>
+                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after due date before the overdue server is deleted.</p>
+                    </div>
+                    <div class="col-md-3 form-group">
+                        <label>Refund Suspend Hours</label>
+                        <input type="number" min="1" name="billing:refund_suspend_hours" class="form-control" value="{{ config('billing.refund_suspend_hours', 5) }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after a full base-server refund before the server is suspended.</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 form-group">
+                        <label>Refund Delete After Suspend</label>
+                        <input type="number" min="1" name="billing:refund_delete_after_suspend_hours" class="form-control" value="{{ config('billing.refund_delete_after_suspend_hours', 24) }}">
+                        <p class="text-muted small" style="margin: 6px 0 0;">Hours after refund suspension before the refunded server is deleted.</p>
                     </div>
                 </div>
             </div>
