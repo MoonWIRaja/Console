@@ -8,8 +8,12 @@ use Pterodactyl\Enum\ResourceLimit;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Pterodactyl\Http\Controllers\Api\Internal\TicketDiscordBridgeController;
+use Pterodactyl\Http\Controllers\Billing\BillingDocumentController;
 use Pterodactyl\Http\Controllers\Billing\FiuuGatewayController;
 use Pterodactyl\Http\Controllers\Billing\StripeGatewayController;
+use Pterodactyl\Http\Controllers\Tickets\DiscordInteractionController;
+use Pterodactyl\Http\Controllers\Tickets\TicketAttachmentController;
 use Pterodactyl\Http\Middleware\TrimStrings;
 use Pterodactyl\Http\Middleware\AdminAuthenticate;
 use Pterodactyl\Http\Middleware\RequireTwoFactorAuthentication;
@@ -38,6 +42,9 @@ class RouteServiceProvider extends ServiceProvider
         Route::model('database', Database::class);
 
         $this->routes(function () {
+            Route::post('/tickets/discord/interactions', DiscordInteractionController::class)
+                ->name('tickets.discord.interactions');
+
             Route::post('/billing/gateways/fiuu/callback', [FiuuGatewayController::class, 'callback'])
                 ->name('billing.gateway.fiuu.callback');
 
@@ -51,6 +58,24 @@ class RouteServiceProvider extends ServiceProvider
                 ->name('billing.gateway.stripe.return');
 
             Route::middleware('web')->group(function () {
+                Route::get('/billing/documents/invoices/{billingInvoice}', [BillingDocumentController::class, 'invoice'])
+                    ->name('billing.documents.invoices.show');
+                Route::get('/billing/documents/invoices/{billingInvoice}/raw', [BillingDocumentController::class, 'invoiceRaw'])
+                    ->name('billing.documents.invoices.raw');
+
+                Route::get('/billing/documents/payments/{billingPayment}/receipt', [BillingDocumentController::class, 'receipt'])
+                    ->name('billing.documents.payments.receipt');
+                Route::get('/billing/documents/payments/{billingPayment}/receipt/raw', [BillingDocumentController::class, 'receiptRaw'])
+                    ->name('billing.documents.payments.receipt.raw');
+
+                Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
+                    ->get('/tickets/attachments/{ticketAttachment}', [TicketAttachmentController::class, 'download'])
+                    ->name('tickets.attachments.download');
+
+                Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
+                    ->get('/billing/tickets/attachments/{ticketAttachment}', [TicketAttachmentController::class, 'download'])
+                    ->name('tickets.attachments.download.legacy');
+
                 Route::get('/billing/gateways/fiuu/checkout/{checkoutReference}', [FiuuGatewayController::class, 'checkout'])
                     ->name('billing.gateway.fiuu.checkout');
 
@@ -63,6 +88,12 @@ class RouteServiceProvider extends ServiceProvider
 
                 Route::prefix('/oauth')->group(base_path('routes/oauth.php'));
                 Route::middleware('guest')->prefix('/auth')->group(base_path('routes/auth.php'));
+            });
+
+            Route::prefix('/api/internal')->group(function () {
+                Route::post('/tickets/discord/interactions', [TicketDiscordBridgeController::class, 'interactions']);
+                Route::post('/tickets/discord/events', [TicketDiscordBridgeController::class, 'events']);
+                Route::post('/tickets/discord/heartbeat', [TicketDiscordBridgeController::class, 'heartbeat']);
             });
 
             Route::middleware(['api', RequireTwoFactorAuthentication::class])->group(function () {

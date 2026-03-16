@@ -50,6 +50,11 @@ class BillingPayment extends Model
         'raw_gateway_response' => 'array',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'id';
+    }
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(BillingInvoice::class, 'invoice_id');

@@ -50,12 +50,12 @@ class GatewayController extends Controller
             $this->kernel->call('queue:restart');
         } catch (Throwable $exception) {
             report($exception);
-            $this->alert->warning('Billing gateway settings were saved, but queue restart could not be triggered automatically.')->flash();
+            $this->alert->warning('Billing settings were saved, but queue restart could not be triggered automatically.')->flash();
 
             return redirect()->route('admin.billing.gateway');
         }
 
-        $this->alert->success('Billing gateway settings have been updated.')->flash();
+        $this->alert->success('Billing settings have been updated.')->flash();
 
         return redirect()->route('admin.billing.gateway');
     }

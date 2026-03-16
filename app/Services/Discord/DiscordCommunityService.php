@@ -89,6 +89,24 @@ class DiscordCommunityService
         ];
     }
 
+    public function ensureGuildMembership(User $user): array
+    {
+        $status = $this->getFrontendStatus($user);
+        if (!$status['available']) {
+            throw new RuntimeException('Discord community join is not available right now.');
+        }
+
+        if ($status['member'] && $status['role_assigned']) {
+            return [
+                'redirect_url' => $this->inviteUrl(),
+                'member' => true,
+                'role_assigned' => true,
+            ];
+        }
+
+        return $this->join($user);
+    }
+
     private function ensureFreshDiscordToken(UserOAuthAccount $account): UserOAuthAccount
     {
         if (!$account->token_expires_at || $account->token_expires_at->isFuture()) {

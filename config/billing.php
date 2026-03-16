@@ -10,7 +10,12 @@ return [
     'renewal_reminder_offsets' => [7, 3, 1],
     'invoice_due_hours' => (int) env('BILLING_INVOICE_DUE_HOURS', 24),
     'gateway' => [
-        'default' => env('BILLING_GATEWAY', 'stripe'),
+        'default' => env('BILLING_GATEWAY', 'manual'),
+        'manual_mode' => (bool) env('BILLING_MANUAL_MODE', true),
+    ],
+    'manual' => [
+        'provider' => 'manual',
+        'enabled' => (bool) env('BILLING_MANUAL_ENABLED', true),
     ],
     'stripe' => [
         'provider' => 'stripe',

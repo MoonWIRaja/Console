@@ -114,6 +114,17 @@ Route::group(['prefix' => 'billing'], function () {
     Route::any('/{path?}', [Admin\Billing\IndexController::class, 'redirect'])->where('path', '.*');
 });
 
+Route::group(['prefix' => 'tickets'], function () {
+    Route::get('/', [Admin\Tickets\IndexController::class, 'index'])->name('admin.tickets');
+    Route::get('/settings', [Admin\Tickets\SettingsController::class, 'index'])->name('admin.tickets.settings');
+    Route::patch('/settings', [Admin\Tickets\SettingsController::class, 'update'])->name('admin.tickets.settings.update');
+    Route::post('/settings/sync-launcher', [Admin\Tickets\SettingsController::class, 'syncLauncher'])->name('admin.tickets.settings.sync-launcher');
+    Route::get('/{ticket:id}', [Admin\Tickets\ViewController::class, 'view'])->name('admin.tickets.view');
+    Route::post('/{ticket:id}/messages', [Admin\Tickets\ViewController::class, 'postMessage'])->name('admin.tickets.messages.store');
+    Route::patch('/{ticket:id}', [Admin\Tickets\ViewController::class, 'update'])->name('admin.tickets.update');
+    Route::post('/{ticket:id}/reopen', [Admin\Tickets\ViewController::class, 'reopen'])->name('admin.tickets.reopen');
+});
+
 /*
 |--------------------------------------------------------------------------
 | User Controller Routes

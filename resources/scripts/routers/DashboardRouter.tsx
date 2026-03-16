@@ -4,6 +4,7 @@ import NavigationBar from '@/components/NavigationBar';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import AccountProfileContainer from '@/components/dashboard/AccountProfileContainer';
 import BillingContainer from '@/components/billing/BillingContainer';
+import BillingTicketsContainer from '@/components/billing/BillingTicketsContainer';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import { useLocation } from 'react-router';
@@ -87,7 +88,9 @@ export default () => {
                     </>
                 )}
                 <TransitionRouter>
-                    <React.Suspense fallback={<PageLoadingSkeleton rows={7} showChrome={false} className='min-h-[65vh]' />}>
+                    <React.Suspense
+                        fallback={<PageLoadingSkeleton rows={7} showChrome={false} className='min-h-[65vh]' />}
+                    >
                         <Switch location={location}>
                             <Route path={'/'} exact>
                                 <DashboardContainer />
@@ -97,6 +100,18 @@ export default () => {
                             </Route>
                             <Route path={'/billing'} exact>
                                 <BillingContainer />
+                            </Route>
+                            <Route path={'/tickets'} exact>
+                                <BillingTicketsContainer />
+                            </Route>
+                            <Route path={'/tickets/:ticketId'} exact>
+                                <BillingTicketsContainer />
+                            </Route>
+                            <Route path={'/billing/tickets'} exact>
+                                <BillingTicketsContainer />
+                            </Route>
+                            <Route path={'/billing/tickets/:ticketId'} exact>
+                                <BillingTicketsContainer />
                             </Route>
                             {/* Redirect old routes to /account to prevent broken links in case users saved them */}
                             <Route path={'/account/api'} exact>

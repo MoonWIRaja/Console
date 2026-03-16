@@ -350,6 +350,30 @@ class User extends Model implements
     }
 
     /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Ticket, $this>
+     */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Ticket, $this>
+     */
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'assigned_admin_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\TicketMessage, $this>
+     */
+    public function ticketMessages(): HasMany
+    {
+        return $this->hasMany(TicketMessage::class, 'author_user_id');
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne<\Pterodactyl\Models\BillingProfile, $this>
      */
     public function billingProfile(): HasOne

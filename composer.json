@@ -25,6 +25,7 @@
         "ext-posix": "*",
         "ext-zip": "*",
         "aws/aws-sdk-php": "^3.369",
+        "barryvdh/laravel-dompdf": "^3.1",
         "guzzlehttp/guzzle": "^7.9.2",
         "hashids/hashids": "^5.0.2",
         "laracasts/utilities": "~3.2.3",

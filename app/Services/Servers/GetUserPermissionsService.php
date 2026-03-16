@@ -34,6 +34,17 @@ class GetUserPermissionsService
         /** @var \Pterodactyl\Models\Subuser|null $subuserPermissions */
         $subuserPermissions = $server->subusers()->where('user_id', $user->id)->first();
 
-        return $subuserPermissions ? $subuserPermissions->permissions : [];
+        if (!$subuserPermissions) {
+            return [];
+        }
+
+        $permissions = $subuserPermissions->permissions;
+
+        if (in_array('websocket.connect', $permissions, true)) {
+            $permissions[] = 'admin.websocket.errors';
+            $permissions[] = 'admin.websocket.install';
+        }
+
+        return array_values(array_unique($permissions));
     }
 }

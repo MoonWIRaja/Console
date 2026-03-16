@@ -44,6 +44,8 @@ return [
         'enabled' => env('DISCORD_OAUTH_ENABLED', false),
         'client_id' => env('DISCORD_OAUTH_CLIENT_ID'),
         'client_secret' => env('DISCORD_OAUTH_CLIENT_SECRET'),
+        'application_id' => env('DISCORD_APPLICATION_ID'),
+        'application_public_key' => env('DISCORD_APPLICATION_PUBLIC_KEY'),
         'community_enabled' => env('DISCORD_COMMUNITY_ENABLED', false),
         'invite_url' => env('DISCORD_COMMUNITY_INVITE_URL'),
         'guild_id' => env('DISCORD_COMMUNITY_GUILD_ID'),

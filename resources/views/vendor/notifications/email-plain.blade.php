@@ -1,9 +1,13 @@
 <?php
 
+$companyName = config('mail.from.name') ?: config('app.name');
+
+echo $companyName, " - Official Email", "\n\n";
+
 if (! empty($greeting)) {
     echo $greeting, "\n\n";
 } else {
-    echo $level == 'error' ? 'Whoops!' : 'Hello!', "\n\n";
+    echo $level == 'error' ? 'Attention required,' : 'Hello,', "\n\n";
 }
 
 if (! empty($introLines)) {
@@ -19,4 +23,4 @@ if (! empty($outroLines)) {
 }
 
 echo 'Regards,', "\n";
-echo config('app.name'), "\n";
+echo $companyName, "\n";

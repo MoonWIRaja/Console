@@ -19,10 +19,12 @@ use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Notifications\BillingRefundCompleted;
 use Pterodactyl\Notifications\BillingPaymentReceipt;
 use Pterodactyl\Notifications\BillingPaymentActionRequired;
+use Pterodactyl\Services\Tickets\BillingTicketAutomationService;
 
 class BillingPaymentService
 {
     private const CHECKOUT_REUSE_WINDOW_MINUTES = 15;
+    public const MANUAL_PROVIDER = 'manual';
 
     public function __construct(
         private BillingPaymentAttemptService $attemptService,
@@ -37,6 +39,7 @@ class BillingPaymentService
         private FiuuStatusRequeryService $statusRequeryService,
         private FiuuRecurringChargeService $recurringChargeService,
         private FiuuRefundService $refundService,
+        private BillingTicketAutomationService $ticketAutomation,
     ) {
     }
 
@@ -60,6 +63,36 @@ class BillingPaymentService
             BillingInvoice::STATUS_PROCESSING,
         ], true)) {
             throw new DisplayException('This invoice cannot be sent to checkout in its current state.');
+        }
+
+        if ($provider === self::MANUAL_PROVIDER) {
+            if (
+                $invoice->status === BillingInvoice::STATUS_DRAFT
+                || $invoice->provider !== self::MANUAL_PROVIDER
+                || $invoice->provider_status !== 'awaiting_manual_payment'
+            ) {
+                $invoice->forceFill([
+                    'status' => BillingInvoice::STATUS_OPEN,
+                    'issued_at' => $invoice->issued_at ?? CarbonImmutable::now(),
+                    'provider' => self::MANUAL_PROVIDER,
+                    'provider_status' => 'awaiting_manual_payment',
+                    'hosted_invoice_url' => null,
+                    'provider_checkout_session_id' => null,
+                    'provider_payment_intent_id' => null,
+                ])->saveOrFail();
+            }
+
+            throw new DisplayException(
+                config('tickets.enabled')
+                    ? sprintf(
+                        'Online payment gateway is disabled. Open or continue your support ticket for invoice %s.',
+                        $invoice->invoice_number
+                    )
+                    : sprintf(
+                        'Online payment gateway is disabled. Contact billing admin through Discord and reference invoice %s.',
+                        $invoice->invoice_number
+                    )
+            );
         }
 
         if ($provider === StripeCheckoutService::PROVIDER && $resume = $this->stripeCheckoutService->resumeHostedInvoice($invoice)) {
@@ -146,6 +179,89 @@ class BillingPaymentService
         return $this->startCheckout($invoice);
     }
 
+    public function recordManualApproval(
+        BillingInvoice $invoice,
+        User $approvedBy,
+        ?string $notes = null,
+        bool $sendReceipt = true
+    ): BillingPayment {
+        $invoice->loadMissing('order', 'subscription');
+
+        if ($invoice->status === BillingInvoice::STATUS_PAID) {
+            $existingPayment = $invoice->payments()->latest('id')->first();
+            if ($existingPayment) {
+                if ($sendReceipt) {
+                    $this->sendPaymentReceiptOnce($existingPayment->fresh(['invoice.user', 'invoice.subscription', 'invoice.order']));
+                }
+
+                return $existingPayment;
+            }
+        }
+
+        if ((float) $invoice->grand_total <= 0) {
+            $payment = $this->settleZeroAmountInvoice($invoice, 'Manual approval confirmed a zero-amount invoice.');
+            if ($sendReceipt) {
+                $this->sendPaymentReceiptOnce($payment->fresh(['invoice.user', 'invoice.subscription', 'invoice.order']));
+            }
+
+            return $payment;
+        }
+
+        if (!in_array($invoice->status, [
+            BillingInvoice::STATUS_DRAFT,
+            BillingInvoice::STATUS_OPEN,
+            BillingInvoice::STATUS_PROCESSING,
+            BillingInvoice::STATUS_FAILED,
+        ], true)) {
+            throw new DisplayException('This invoice cannot be approved in its current state.');
+        }
+
+        $payment = DB::transaction(function () use ($invoice, $approvedBy, $notes) {
+            if ($invoice->order) {
+                $invoice->order->forceFill([
+                    'approved_by' => $approvedBy->id,
+                    'approved_at' => $invoice->order->approved_at ?? CarbonImmutable::now(),
+                    'payment_verified_at' => CarbonImmutable::now(),
+                    'admin_notes' => trim(implode("\n\n", array_filter([
+                        $invoice->order->admin_notes,
+                        $notes,
+                    ]))),
+                ])->saveOrFail();
+            }
+
+            return $this->recordVerifiedPayment($invoice, null, [
+                'provider' => self::MANUAL_PROVIDER,
+                'provider_transaction_id' => null,
+                'provider_order_id' => $invoice->invoice_number,
+                'provider_payment_method' => 'manual_approval',
+                'provider_status' => 'approved_manually',
+                'amount' => (float) $invoice->grand_total,
+                'currency' => $invoice->currency,
+                'raw_response' => [
+                    'approved_by' => $approvedBy->id,
+                    'approved_email' => $approvedBy->email,
+                    'approved_at' => CarbonImmutable::now()->toIso8601String(),
+                    'admin_notes' => $notes,
+                ],
+                'gateway_context' => [
+                    'provider' => self::MANUAL_PROVIDER,
+                ],
+                'suppress_new_server_queue' => true,
+            ]);
+        });
+
+        if ($sendReceipt) {
+            $this->sendPaymentReceiptOnce($payment->fresh(['invoice.user', 'invoice.subscription', 'invoice.order']));
+        }
+
+        return $payment;
+    }
+
+    public function notifyPaymentReceipt(BillingPayment $payment): void
+    {
+        $this->sendPaymentReceiptOnce($payment);
+    }
+
     private function findReusableCheckoutAttempt(BillingInvoice $invoice, string $provider): ?BillingPaymentAttempt
     {
         $attempt = BillingPaymentAttempt::query()
@@ -205,6 +321,10 @@ class BillingPaymentService
 
     public function chargeRecurringInvoice(BillingInvoice $invoice): array
     {
+        if ($this->manualBillingEnabled()) {
+            throw new DisplayException('Automatic recurring charges are disabled while manual billing mode is active.');
+        }
+
         $invoice->loadMissing('subscription', 'user', 'attempts');
 
         if ($invoice->type !== BillingInvoice::TYPE_RENEWAL || !$invoice->subscription) {
@@ -454,9 +574,7 @@ class BillingPaymentService
                 'requested_at' => CarbonImmutable::now(),
             ]);
 
-            $response = $payment->provider === StripeCheckoutService::PROVIDER
-                ? $this->stripeRefundService->refund($payment, $amount, $reason)
-                : $this->refundService->refund($payment, $amount, $refund->refund_number, $reason);
+            $response = $this->resolveRefundResponse($payment, $amount, $refund->refund_number, $reason, $requestedBy);
 
             $refund->forceFill([
                 'provider_refund_id' => $response['refund_id'],
@@ -481,6 +599,7 @@ class BillingPaymentService
 
             if ($response['successful']) {
                 $invoice = $this->handleSuccessfulRefundOutcome($invoice);
+                $this->ticketAutomation->markRefundCompleted($payment->fresh(['invoice']));
                 if ($notifyUser) {
                     $payment->invoice->user?->notify(
                         new BillingRefundCompleted($refund->fresh(['payment.invoice.subscription.server', 'payment.invoice.order', 'payment']))
@@ -629,10 +748,12 @@ class BillingPaymentService
             $this->attemptService->markVerifiedPaid($attempt, $payment, Arr::wrap($payload['raw_response'] ?? []));
         }
         $this->invoiceService->markPaid($invoice, $payment);
+        $this->ticketAutomation->markPaymentSatisfied($invoice->fresh(['order', 'subscription']));
         $this->syncSubscriptionGatewayReferences($invoice->fresh(['subscription']), $payload['gateway_context'] ?? []);
 
         if ($invoice->order && $invoice->type === BillingInvoice::TYPE_NEW_SERVER) {
             $invoice->order->loadMissing('server');
+            $suppressNewServerQueue = (bool) ($payload['suppress_new_server_queue'] ?? false);
 
             if ($invoice->order->server_id && $invoice->order->server) {
                 $invoice->order->forceFill([
@@ -641,7 +762,7 @@ class BillingPaymentService
                     'provision_failure_code' => null,
                     'provision_failure_message' => null,
                 ])->saveOrFail();
-            } else {
+            } elseif (!$suppressNewServerQueue) {
                 $invoice->order->forceFill([
                     'status' => BillingOrder::STATUS_QUEUED_PROVISION,
                 ])->saveOrFail();
@@ -775,6 +896,41 @@ class BillingPaymentService
         return round((float) $payment->refunds()
             ->where('status', BillingRefund::STATUS_COMPLETED)
             ->sum('amount'), 2);
+    }
+
+    private function resolveRefundResponse(
+        BillingPayment $payment,
+        float $amount,
+        string $refundNumber,
+        ?string $reason = null,
+        ?User $requestedBy = null
+    ): array {
+        if ($payment->provider === StripeCheckoutService::PROVIDER) {
+            return $this->stripeRefundService->refund($payment, $amount, $reason);
+        }
+
+        if (in_array($payment->provider, [self::MANUAL_PROVIDER, 'system'], true)) {
+            return [
+                'successful' => true,
+                'status' => 'completed',
+                'refund_id' => $refundNumber,
+                'reason' => $reason ?: 'Manual refund recorded by billing admin.',
+                'response' => array_filter([
+                    'provider' => $payment->provider,
+                    'status' => 'completed',
+                    'refund_id' => $refundNumber,
+                    'refund_method' => 'manual_record',
+                    'message' => 'Refund recorded manually by billing admin.',
+                    'recorded_by' => $requestedBy?->id,
+                    'recorded_by_email' => $requestedBy?->email,
+                    'recorded_at' => CarbonImmutable::now()->toIso8601String(),
+                    'reason' => $reason,
+                ], fn ($value) => !is_null($value) && $value !== ''),
+                'raw_body' => null,
+            ];
+        }
+
+        return $this->refundService->refund($payment, $amount, $refundNumber, $reason);
     }
 
     private function determineRefundPaymentStatus(BillingPayment $payment, float $completedRefundTotal, bool $lastAttemptSuccessful): string
@@ -912,6 +1068,10 @@ class BillingPaymentService
 
     private function resolveCheckoutProvider(BillingInvoice $invoice): string
     {
+        if ($this->manualBillingEnabled()) {
+            return self::MANUAL_PROVIDER;
+        }
+
         if (filled($invoice->provider)) {
             return $invoice->provider;
         }
@@ -921,6 +1081,12 @@ class BillingPaymentService
         }
 
         return (string) config('billing.gateway.default', FiuuCheckoutService::PROVIDER);
+    }
+
+    public function manualBillingEnabled(): bool
+    {
+        return (bool) config('billing.gateway.manual_mode', false)
+            || (string) config('billing.gateway.default', '') === self::MANUAL_PROVIDER;
     }
 
     private function resolveStripePaymentIntent(?string $paymentIntentId): array

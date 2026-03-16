@@ -30,9 +30,11 @@ class BillingRefundCompleted extends Notification implements ShouldQueue
     {
         $invoice = $this->refund->payment->invoice;
         $subscription = $invoice->subscription ?: $this->resolveSubscriptionForInvoice($invoice);
+        $isManualRefund = in_array($this->refund->payment->provider, ['manual', 'system'], true);
         $providerReference = data_get($this->refund->raw_response, 'refundID')
             ?? $this->refund->provider_refund_id
-            ?? 'Pending assignment';
+            ?? ($isManualRefund ? 'Manual refund record' : 'Pending assignment');
+        $providerReferenceLabel = $isManualRefund ? 'Reference' : 'Provider reference';
 
         $message = $this->makeBillingMail(
             $notifiable,
@@ -41,7 +43,7 @@ class BillingRefundCompleted extends Notification implements ShouldQueue
         )
             ->line('Refund: ' . $this->refund->refund_number)
             ->line('Amount: ' . $this->formatBillingAmount($this->refund->payment->currency, (float) $this->refund->amount))
-            ->line('Provider reference: ' . $providerReference)
+            ->line($providerReferenceLabel . ': ' . $providerReference)
             ->line('Submitted at: ' . $this->formatBillingDate($this->refund->completed_at, 'Just now'));
 
         if ($invoice->status === BillingInvoice::STATUS_REFUNDED && $subscription && in_array($invoice->type, [
@@ -64,6 +66,12 @@ class BillingRefundCompleted extends Notification implements ShouldQueue
                     $subscription->memory_gb,
                     $subscription->disk_gb
                 ));
+        }
+
+        if ($isManualRefund) {
+            return $message
+                ->line('This refund was recorded manually by billing admin after the payment was handled outside the panel.')
+                ->line('If you have not received the refunded amount yet, please contact support and include the refund number above.');
         }
 
         return $message
@@ -98,6 +106,10 @@ class BillingRefundCompleted extends Notification implements ShouldQueue
 
         if ($invoice->status === BillingInvoice::STATUS_REFUNDED && $invoice->type === BillingInvoice::TYPE_UPGRADE) {
             return 'Your upgrade refund request has been accepted and the server has been returned to the previous paid plan.';
+        }
+
+        if (in_array($this->refund->payment->provider, ['manual', 'system'], true)) {
+            return 'Your refund request has been recorded manually by billing admin.';
         }
 
         return 'Your refund request has been accepted and is now being processed by the payment provider.';

@@ -358,6 +358,11 @@ class ProcessBillingSubscriptionsCommand extends Command
 
     private function attemptAutomaticRenewals(CarbonImmutable $now): void
     {
+        if ((bool) config('billing.gateway.manual_mode', false)
+            || (string) config('billing.gateway.default', '') === \Pterodactyl\Services\Billing\BillingPaymentService::MANUAL_PROVIDER) {
+            return;
+        }
+
         BillingInvoice::query()
             ->with(['subscription.user'])
             ->where('type', BillingInvoice::TYPE_RENEWAL)

@@ -61,7 +61,7 @@ class IndexController extends Controller
                 BillingSubscription::STATUS_PAST_DUE,
                 BillingSubscription::STATUS_SUSPENDED,
             ])->count(),
-            'pendingOrders' => BillingOrder::query()->where('status', BillingOrder::STATUS_PENDING)->count(),
+            'pendingOrders' => BillingOrder::query()->where('status', BillingOrder::STATUS_AWAITING_PAYMENT)->count(),
             'openInvoices' => BillingInvoice::query()->whereIn('status', [
                 BillingInvoice::STATUS_OPEN,
                 BillingInvoice::STATUS_PROCESSING,

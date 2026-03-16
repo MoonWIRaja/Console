@@ -1,5 +1,19 @@
 import { BillingProfile } from '@/api/account/billing';
 
+export type BillingProfileEditableKey =
+    | 'legalName'
+    | 'companyName'
+    | 'email'
+    | 'phone'
+    | 'addressLine1'
+    | 'addressLine2'
+    | 'city'
+    | 'state'
+    | 'postcode'
+    | 'countryCode'
+    | 'taxId'
+    | 'isBusiness';
+
 export const emptyBillingProfile: BillingProfile = {
     legalName: '',
     companyName: null,
@@ -13,9 +27,12 @@ export const emptyBillingProfile: BillingProfile = {
     countryCode: 'MY',
     taxId: null,
     isBusiness: false,
+    isComplete: false,
+    missingFields: [],
+    requiredFields: [],
 };
 
-export const billingProfileFieldLabels: Record<keyof BillingProfile, string> = {
+export const billingProfileFieldLabels: Record<BillingProfileEditableKey, string> = {
     legalName: 'Legal Name',
     companyName: 'Company Name',
     email: 'Invoice Email',
@@ -30,12 +47,13 @@ export const billingProfileFieldLabels: Record<keyof BillingProfile, string> = {
     isBusiness: 'Business Billing Entity',
 };
 
-export const requiredBillingProfileFields: Array<keyof BillingProfile> = [
+export const requiredBillingProfileFields: BillingProfileEditableKey[] = [
     'legalName',
     'email',
     'phone',
     'addressLine1',
     'city',
+    'state',
     'postcode',
     'countryCode',
 ];
@@ -54,9 +72,12 @@ export const normalizeBillingProfile = (profile: BillingProfile): BillingProfile
     countryCode: profile.countryCode.trim().toUpperCase() || 'MY',
     taxId: profile.taxId?.trim() || null,
     isBusiness: Boolean(profile.isBusiness),
+    isComplete: profile.isComplete ?? false,
+    missingFields: profile.missingFields ?? [],
+    requiredFields: profile.requiredFields ?? [],
 });
 
-export const getMissingBillingProfileFields = (profile: BillingProfile): Array<keyof BillingProfile> => {
+export const getMissingBillingProfileFields = (profile: BillingProfile): BillingProfileEditableKey[] => {
     const normalized = normalizeBillingProfile(profile);
 
     return requiredBillingProfileFields.filter((field) => {

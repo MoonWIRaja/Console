@@ -588,6 +588,22 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                             active={location.pathname === '/billing'}
                         />
 
+                        <SidebarLink
+                            link={{
+                                label: 'Support',
+                                href: '/tickets',
+                                icon: (
+                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                        support_agent
+                                    </span>
+                                ),
+                            }}
+                            active={
+                                location.pathname.startsWith('/tickets') ||
+                                location.pathname.startsWith('/billing/tickets')
+                            }
+                        />
+
                         {rootAdmin && (
                             <>
                                 <SidebarLabel label='ADMIN' />

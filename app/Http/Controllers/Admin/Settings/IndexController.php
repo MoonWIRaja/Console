@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Http\Controllers\Admin\Settings;
 
+use Throwable;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
@@ -68,7 +69,15 @@ class IndexController extends Controller
             $this->settings->set('settings::app:logo', 'storage/' . $path);
         }
 
-        $this->kernel->call('queue:restart');
+        try {
+            $this->kernel->call('queue:restart');
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->alert->warning('Panel settings were saved, but queue restart could not be triggered automatically.')->flash();
+
+            return redirect()->route('admin.settings');
+        }
+
         $this->alert->success('Panel settings have been updated successfully and the queue worker was restarted to apply these changes.')->flash();
 
         return redirect()->route('admin.settings');

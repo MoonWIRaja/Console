@@ -1,0 +1,11 @@
+{
+  "name": "owlscottage-discord-ticket-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  }
+}

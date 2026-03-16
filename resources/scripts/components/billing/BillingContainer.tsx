@@ -7,17 +7,16 @@ import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
-    BillingCheckout,
     BillingInvoice,
     BillingNodeCatalog,
+    BillingOrderActionResponse,
+    BillingSubscriptionActionResponse,
     createBillingOrder,
-    migrateBillingSubscriptionToStripe,
-    openBillingPortal,
-    retryBillingInvoicePayment,
     toggleBillingSubscriptionAutoRenew,
     useBillingCatalog,
     useBillingInvoices,
     useBillingOrders,
+    useBillingProfile,
     useBillingSubscriptions,
     renewBillingSubscription,
     upgradeBillingSubscription,
@@ -25,6 +24,7 @@ import {
 import BillingVariableBox from '@/components/billing/BillingVariableBox';
 import BillingResourceSlider from '@/components/billing/BillingResourceSlider';
 import BillingSubscriptionCard from '@/components/billing/BillingSubscriptionCard';
+import { getMissingBillingProfileLabels } from '@/components/billing/billingProfileUtils';
 
 type NestOption = {
     id: number;
@@ -35,6 +35,14 @@ type UpgradePayload = {
     cpuCores: number;
     memoryGb: number;
     diskGb: number;
+};
+
+type BillingFollowUpAction = {
+    label: string;
+    href: string;
+    description: string;
+    warning: string | null;
+    eyebrow: string;
 };
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
@@ -52,6 +60,61 @@ const clamp = (value: number, min: number, max: number): number => {
     }
 
     return Math.min(Math.max(value, min), max);
+};
+
+const withReturnTo = (url: string, returnTo: string): string => {
+    try {
+        const parsed = new URL(url, window.location.origin);
+        parsed.searchParams.set('return_to', returnTo);
+
+        return parsed.toString();
+    } catch {
+        return url;
+    }
+};
+
+const buildFollowUpAction = (
+    response: BillingOrderActionResponse | BillingSubscriptionActionResponse,
+    returnTo: string
+): BillingFollowUpAction | null => {
+    if (response.autoSettled) {
+        return null;
+    }
+
+    if (response.ticket?.url) {
+        return {
+            label: response.ticketAutoCreated ? 'Open Payment Ticket' : 'View Payment Ticket',
+            href: response.ticket.url,
+            description:
+                'Your support ticket for this invoice is ready. Open it to share payment proof, continue the conversation, and track manual approval updates.',
+            warning: response.ticketWarning ?? null,
+            eyebrow: response.ticketAutoCreated ? 'Ticket Auto Opened' : 'Payment Ticket Ready',
+        };
+    }
+
+    if (response.ticketRequiresDiscordLink && response.linkDiscordUrl) {
+        return {
+            label: 'Link Discord & Open Ticket',
+            href: withReturnTo(response.linkDiscordUrl, returnTo),
+            description:
+                'Link your Discord account first so the panel can open a private support ticket for this invoice and sync it to your Discord thread.',
+            warning: response.ticketWarning ?? null,
+            eyebrow: 'Discord Link Required',
+        };
+    }
+
+    if (response.manualPaymentRequired) {
+        return {
+            label: 'Open Support Inbox',
+            href: withReturnTo('/tickets', returnTo),
+            description:
+                'Continue this manual payment flow in your support inbox. That is where payment proof, staff replies, and approval updates are now tracked.',
+            warning: response.ticketWarning ?? null,
+            eyebrow: 'Manual Billing',
+        };
+    }
+
+    return null;
 };
 
 const getNestOptions = (node: BillingNodeCatalog | null): NestOption[] => {
@@ -160,10 +223,17 @@ const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: 
                         onClick={() => onPageChange(1)}
                         aria-label={'Go to first page'}
                     >
-                        <svg xmlns={'http://www.w3.org/2000/svg'} viewBox={'0 0 20 20'} fill={'currentColor'} className={'h-3 w-3'}>
+                        <svg
+                            xmlns={'http://www.w3.org/2000/svg'}
+                            viewBox={'0 0 20 20'}
+                            fill={'currentColor'}
+                            className={'h-3 w-3'}
+                        >
                             <path
                                 fillRule={'evenodd'}
-                                d={'M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z'}
+                                d={
+                                    'M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z'
+                                }
                                 clipRule={'evenodd'}
                             />
                         </svg>
@@ -185,15 +255,24 @@ const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: 
                         onClick={() => onPageChange(totalPages)}
                         aria-label={'Go to last page'}
                     >
-                        <svg xmlns={'http://www.w3.org/2000/svg'} viewBox={'0 0 20 20'} fill={'currentColor'} className={'h-3 w-3'}>
+                        <svg
+                            xmlns={'http://www.w3.org/2000/svg'}
+                            viewBox={'0 0 20 20'}
+                            fill={'currentColor'}
+                            className={'h-3 w-3'}
+                        >
                             <path
                                 fillRule={'evenodd'}
-                                d={'M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'}
+                                d={
+                                    'M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'
+                                }
                                 clipRule={'evenodd'}
                             />
                             <path
                                 fillRule={'evenodd'}
-                                d={'M4.293 15.707a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'}
+                                d={
+                                    'M4.293 15.707a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z'
+                                }
                                 clipRule={'evenodd'}
                             />
                         </svg>
@@ -204,44 +283,15 @@ const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: 
     );
 };
 
-const launchHostedCheckout = (checkout: BillingCheckout | null): boolean => {
-    if (!checkout || typeof document === 'undefined' || typeof window === 'undefined') {
-        return false;
-    }
-
-    const method = (checkout.method || 'POST').toUpperCase();
-    if (method === 'GET') {
-        const url = new URL(checkout.url, window.location.origin);
-        Object.entries(checkout.payload || {}).forEach(([key, value]) => {
-            url.searchParams.set(key, value);
-        });
-        window.location.assign(url.toString());
-
-        return true;
-    }
-
-    const form = document.createElement('form');
-    form.method = method;
-    form.action = checkout.url;
-    form.style.display = 'none';
-
-    Object.entries(checkout.payload || {}).forEach(([key, value]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-
-    return true;
-};
-
 export default () => {
     const { addFlash } = useFlash();
     const { clearFlashes, clearAndAddHttpError, addError } = useFlashKey('billing');
+    const {
+        data: billingProfile,
+        error: billingProfileError,
+        isValidating: billingProfileLoading,
+        mutate: mutateBillingProfile,
+    } = useBillingProfile();
     const {
         data: catalog,
         error: catalogError,
@@ -275,12 +325,10 @@ export default () => {
     const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<number | null>(null);
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
     const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
-    const [migratingSubscriptionId, setMigratingSubscriptionId] = useState<number | null>(null);
-    const [retryingInvoiceId, setRetryingInvoiceId] = useState<number | null>(null);
-    const [openingPortal, setOpeningPortal] = useState(false);
     const [subscriptionsPage, setSubscriptionsPage] = useState(1);
     const [invoicesPage, setInvoicesPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
+    const [followUpAction, setFollowUpAction] = useState<BillingFollowUpAction | null>(null);
 
     useEffect(() => {
         clearFlashes();
@@ -291,6 +339,12 @@ export default () => {
             clearAndAddHttpError(catalogError);
         }
     }, [catalogError, clearAndAddHttpError]);
+
+    useEffect(() => {
+        if (billingProfileError) {
+            clearAndAddHttpError(billingProfileError);
+        }
+    }, [billingProfileError, clearAndAddHttpError]);
 
     useEffect(() => {
         if (ordersError) {
@@ -338,6 +392,8 @@ export default () => {
     }, [catalog, selectedNodeId]);
 
     const selectedNode = (catalog || []).find((node) => node.id === selectedNodeId) || null;
+    const billingProfileComplete = billingProfile?.isComplete ?? false;
+    const billingProfileMissingLabels = billingProfile ? getMissingBillingProfileLabels(billingProfile) : '';
     const nestOptions = getNestOptions(selectedNode);
     const availableGames = (selectedNode?.games || []).filter(
         (game) => !selectedNestId || game.nestId === selectedNestId
@@ -445,6 +501,7 @@ export default () => {
         }
 
         setSubmitting(true);
+        setFollowUpAction(null);
 
         try {
             const response = await createBillingOrder({
@@ -456,32 +513,44 @@ export default () => {
                 diskGb,
                 variables,
             });
+            const returnTo = response.invoice?.id
+                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets';
+            const action = buildFollowUpAction(response, returnTo);
+            setFollowUpAction(action);
 
             addFlash({
                 key: 'billing',
                 type: 'success',
-                title: response.autoSettled
-                    ? 'Provisioning Started'
-                    : response.checkout
-                    ? 'Invoice Created'
-                    : 'Order Created',
+                title: response.autoSettled ? 'Provisioning Started' : 'Invoice Created',
                 message: response.autoSettled
-                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} required no payment and was settled automatically. Provisioning has started.`
-                    : response.checkout
-                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} has been created. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is not ready yet: ${response.checkoutError}`
-                    : `Invoice ${response.invoice?.invoiceNumber ?? '#'} was created successfully. Complete payment to continue provisioning.`,
+                    ? `Invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } required no payment and was settled automatically. Provisioning has started.`
+                    : action
+                    ? `Invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Use the support ticket prompt below to continue this manual payment flow.`
+                    : `Invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Check your email and open your support inbox to continue manual payment confirmation.`,
             });
+
+            if (response.ticketWarning) {
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'Discord Sync Warning',
+                    message: response.ticketWarning,
+                });
+            }
 
             void mutateCatalog();
             void mutateOrders();
             void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
+            void mutateBillingProfile();
         } catch (error) {
+            setFollowUpAction(null);
             clearAndAddHttpError(error as Error);
         } finally {
             setSubmitting(false);
@@ -491,33 +560,43 @@ export default () => {
     const performRenewSubscription = async (subscriptionId: number) => {
         clearFlashes();
         setRenewingSubscriptionId(subscriptionId);
+        setFollowUpAction(null);
 
         try {
             const response = await renewBillingSubscription(subscriptionId);
+            const returnTo = response.invoice?.id
+                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets';
+            const action = buildFollowUpAction(response, returnTo);
+            setFollowUpAction(action);
             addFlash({
                 key: 'billing',
                 type: 'success',
-                title: response.autoSettled
-                    ? 'Renewal Applied'
-                    : response.checkout
-                    ? 'Renewal Invoice Created'
-                    : 'Renewal Pending Payment',
+                title: response.autoSettled ? 'Renewal Applied' : 'Renewal Invoice Created',
                 message: response.autoSettled
                     ? `${response.subscription.serverName} renewal required no payment and was applied immediately.`
-                    : response.checkout
-                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
-                    : `${response.subscription.serverName} renewal invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Complete payment to renew the server.`,
+                    : action
+                    ? `${response.subscription.serverName} renewal invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Continue the payment flow through the support ticket prompt below.`
+                    : `${response.subscription.serverName} renewal invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Check your email and open your support inbox to continue manual payment confirmation.`,
             });
+
+            if (response.ticketWarning) {
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'Discord Sync Warning',
+                    message: response.ticketWarning,
+                });
+            }
 
             void mutateSubscriptions();
             void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
         } catch (error) {
+            setFollowUpAction(null);
             clearAndAddHttpError(error as Error);
         } finally {
             setRenewingSubscriptionId(null);
@@ -527,6 +606,7 @@ export default () => {
     const performUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
         clearFlashes();
         setUpgradingSubscriptionId(subscriptionId);
+        setFollowUpAction(null);
         const currentSubscription = subscriptions?.find((item) => item.id === subscriptionId) || null;
 
         try {
@@ -537,36 +617,49 @@ export default () => {
                 diskGb: payload.diskGb,
             });
             const additionalCharge = Number(
-                Math.max(response.subscription.recurringTotal - (currentSubscription?.recurringTotal ?? 0), 0).toFixed(2)
+                Math.max(response.subscription.recurringTotal - (currentSubscription?.recurringTotal ?? 0), 0).toFixed(
+                    2
+                )
             );
+            const returnTo = response.invoice?.id
+                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets';
+            const action = buildFollowUpAction(response, returnTo);
+            setFollowUpAction(action);
 
             addFlash({
                 key: 'billing',
                 type: 'success',
-                title: response.autoSettled
-                    ? 'Upgrade Applied'
-                    : response.checkout
-                    ? 'Upgrade Invoice Created'
-                    : 'Upgrade Pending Payment',
+                title: response.autoSettled ? 'Upgrade Applied' : 'Upgrade Invoice Created',
                 message: response.autoSettled
                     ? `${response.subscription.serverName} upgrade required no payment and was applied immediately.`
-                    : response.checkout
-                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} is ready. Redirecting to checkout now.`
-                    : response.checkoutError
-                    ? `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is unavailable: ${response.checkoutError}`
-                    : `${response.subscription.serverName} upgrade invoice ${response.invoice?.invoiceNumber ?? '#'} was created. Prorated amount due now: ${formatMoney(
+                    : action
+                    ? `${response.subscription.serverName} upgrade invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Estimated prorated amount due now: ${formatMoney(
                           additionalCharge
-                      )}.`,
+                      )}. Continue the payment flow through the support ticket prompt below.`
+                    : `${response.subscription.serverName} upgrade invoice ${
+                          response.invoice?.invoiceNumber ?? '#'
+                      } was created. Estimated prorated amount due now: ${formatMoney(
+                          additionalCharge
+                      )}. Check your email and open your support inbox to continue manual payment confirmation.`,
             });
+
+            if (response.ticketWarning) {
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'Discord Sync Warning',
+                    message: response.ticketWarning,
+                });
+            }
 
             void mutateSubscriptions();
             void mutateCatalog();
             void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
         } catch (error) {
+            setFollowUpAction(null);
             clearAndAddHttpError(error as Error);
         } finally {
             setUpgradingSubscriptionId(null);
@@ -584,8 +677,8 @@ export default () => {
                 type: 'success',
                 title: enabled ? 'Auto Renew Enabled' : 'Auto Renew Disabled',
                 message: enabled
-                    ? `${subscription.serverName} will now try automatic renewal when a stored payment token is available.`
-                    : `${subscription.serverName} will no longer attempt automatic renewal.`,
+                    ? `${subscription.serverName} will now use automatic renewal when gateway billing is enabled again.`
+                    : `${subscription.serverName} will remain on manual renewal invoices only.`,
             });
 
             void mutateSubscriptions();
@@ -596,82 +689,20 @@ export default () => {
         }
     };
 
-    const onRetryInvoicePayment = async (invoiceId: number) => {
-        clearFlashes();
-        setRetryingInvoiceId(invoiceId);
-
-        try {
-            const checkout = await retryBillingInvoicePayment(invoiceId);
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: 'Retrying Payment',
-                message:
-                    checkout.provider === 'stripe'
-                        ? 'Redirecting to the Stripe hosted payment flow now.'
-                        : 'Redirecting to the hosted checkout now.',
-            });
-
-            if (launchHostedCheckout(checkout)) {
-                return;
-            }
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setRetryingInvoiceId(null);
-        }
-    };
-
-    const onOpenCustomerPortal = async () => {
-        clearFlashes();
-        setOpeningPortal(true);
-
-        try {
-            const url = await openBillingPortal();
-            window.location.assign(url);
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setOpeningPortal(false);
-        }
-    };
-
-    const onMigrateSubscriptionToStripe = async (subscriptionId: number) => {
-        clearFlashes();
-        setMigratingSubscriptionId(subscriptionId);
-
-        try {
-            const response = await migrateBillingSubscriptionToStripe(subscriptionId);
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: response.checkout ? 'Stripe Migration Started' : 'Migration Pending',
-                message: response.checkout
-                    ? `${response.subscription.serverName} is moving to Stripe for the next renewal. Redirecting to secure checkout now.`
-                    : response.checkoutError
-                    ? `${response.subscription.serverName} migration invoice ${response.invoice?.invoiceNumber ?? '#'} was created, but checkout is not ready yet: ${response.checkoutError}`
-                    : `${response.subscription.serverName} migration invoice ${response.invoice?.invoiceNumber ?? '#'} is ready.`,
-            });
-
-            void mutateSubscriptions();
-            void mutateInvoices();
-
-            if (launchHostedCheckout(response.checkout)) {
-                return;
-            }
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setMigratingSubscriptionId(null);
-        }
-    };
-
     const submit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         clearFlashes();
 
         if (!selectedNode) {
             addError('Choose a billing node first.', 'Billing');
+            return;
+        }
+
+        if (!billingProfileComplete) {
+            addError(
+                `Complete your billing details in /account before checkout. Missing: ${billingProfileMissingLabels}.`,
+                'Billing'
+            );
             return;
         }
 
@@ -694,10 +725,26 @@ export default () => {
     };
 
     const onRenewSubscription = async (subscriptionId: number) => {
+        if (!billingProfileComplete) {
+            addError(
+                `Complete your billing details in /account before renewal checkout. Missing: ${billingProfileMissingLabels}.`,
+                'Billing'
+            );
+            return;
+        }
+
         await performRenewSubscription(subscriptionId);
     };
 
     const onUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
+        if (!billingProfileComplete) {
+            addError(
+                `Complete your billing details in /account before upgrade checkout. Missing: ${billingProfileMissingLabels}.`,
+                'Billing'
+            );
+            return;
+        }
+
         await performUpgradeSubscription(subscriptionId, payload);
     };
 
@@ -1167,24 +1214,51 @@ export default () => {
                     </div>
                     <h1 className={'billing-hero-title'}>Billing</h1>
                     <p className={'billing-hero-copy'}>
-                        Build a server plan from the node stock that is currently available. Stripe Checkout now
-                        collects card, billing address, and tax information, while the Stripe customer portal manages
-                        invoices, billing details, and payment methods.
+                        Build a server plan from the node stock that is currently available. New orders, renewals, and
+                        upgrades now create manual billing invoices inside the panel first. After checkout, the panel
+                        opens or prepares your private support ticket so payment proof, staff replies, and approval
+                        updates stay in one place.
                     </p>
-                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
-                        <button
-                            type={'button'}
-                            className={'billing-primary-btn'}
-                            disabled={openingPortal}
-                            onClick={() => void onOpenCustomerPortal()}
-                        >
-                            {openingPortal ? 'Opening...' : 'Open Customer Portal'}
-                        </button>
-                        <span className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                            Use the portal to update cards, billing details, tax IDs, and download invoice PDFs.
-                        </span>
+                    <div className={'mt-5 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                        Every invoice stays pending until billing staff confirms payment manually through your support
+                        ticket workflow.
                     </div>
                 </div>
+
+                {followUpAction ? (
+                    <section className={'billing-panel mb-6 p-6'}>
+                        <div className={'flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between'}>
+                            <div>
+                                <p
+                                    className={
+                                        'text-xs font-black uppercase tracking-[0.28em] text-[color:var(--primary)]'
+                                    }
+                                >
+                                    {followUpAction.eyebrow}
+                                </p>
+                                <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                    Continue In Your Support Ticket
+                                </h2>
+                                <p className={'mt-3 max-w-3xl text-sm leading-7 text-[color:var(--muted-foreground)]'}>
+                                    {followUpAction.description}
+                                </p>
+                                {followUpAction.warning ? (
+                                    <p className={'mt-3 text-sm leading-7 text-amber-200'}>
+                                        Discord sync warning: {followUpAction.warning}
+                                    </p>
+                                ) : null}
+                            </div>
+                            <div className={'flex flex-wrap gap-3'}>
+                                <a className={'billing-primary-btn'} href={followUpAction.href}>
+                                    {followUpAction.label}
+                                </a>
+                                <a className={'billing-secondary-btn'} href={'/tickets'}>
+                                    Ticket Inbox
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+                ) : null}
 
                 {!catalog || catalog.length < 1 ? (
                     <section className={'billing-panel p-8'}>
@@ -1197,6 +1271,20 @@ export default () => {
                 ) : (
                     <div className={'grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] xl:items-start'}>
                         <form onSubmit={submit} className={'billing-panel p-6 md:p-8'}>
+                            {!billingProfileLoading && !billingProfileComplete && (
+                                <div
+                                    className={
+                                        'mb-6 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-4 py-4 text-sm leading-7 text-amber-100'
+                                    }
+                                >
+                                    Complete your billing details in{' '}
+                                    <a href={'/account'} className={'font-bold underline'}>
+                                        /account
+                                    </a>{' '}
+                                    before checkout.
+                                    {billingProfileMissingLabels ? ` Missing: ${billingProfileMissingLabels}.` : ''}
+                                </div>
+                            )}
                             <div className={'grid gap-6 lg:grid-cols-2'}>
                                 <div>
                                     <label
@@ -1403,20 +1491,21 @@ export default () => {
                                 }
                             >
                                 <div className={'text-xs text-[color:var(--muted-foreground)]'}>
-                                    Orders create a Stripe-backed invoice in RM immediately. Provisioning starts only
-                                    after the first invoice is confirmed as paid.
+                                    Orders create a manual invoice in RM immediately. Provisioning starts only after
+                                    billing admin marks the first invoice as paid.
                                 </div>
                                 <button
                                     type={'submit'}
                                     disabled={
                                         submitting ||
+                                        !billingProfileComplete ||
                                         !selectedNode ||
                                         !selectedGame ||
                                         !selectedNode.availability.isAvailable
                                     }
                                     className={'billing-primary-btn min-w-[13rem] px-6 py-3 text-xs'}
                                 >
-                                    {submitting ? 'Creating Invoice...' : 'Create Invoice'}
+                                    {submitting ? 'Creating Invoice...' : 'Checkout'}
                                 </button>
                             </div>
                         </form>
@@ -1638,8 +1727,8 @@ export default () => {
                                 Active Subscriptions
                             </h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Stripe-managed subscriptions can auto-renew with reusable cards. Legacy subscriptions
-                                must migrate during the renewal window before Stripe auto-renew and paid upgrades can be used.
+                                Renewals and upgrades stay available here, but every invoice is handled manually while
+                                payment gateway checkout is disabled.
                             </p>
                         </div>
                         {subscriptions && subscriptions.length > 0 ? (
@@ -1660,18 +1749,22 @@ export default () => {
                         <div className={'grid gap-4'}>
                             {paginateItems(subscriptions, subscriptionsPage, ACTIVE_SUBSCRIPTIONS_PAGE_SIZE).map(
                                 (subscription) => (
-                                <BillingSubscriptionCard
-                                    key={subscription.id}
-                                    subscription={subscription}
-                                    renewing={renewingSubscriptionId === subscription.id}
-                                    upgrading={upgradingSubscriptionId === subscription.id}
-                                    togglingAutoRenew={togglingSubscriptionId === subscription.id}
-                                    migratingToStripe={migratingSubscriptionId === subscription.id}
-                                    onRenew={(current) => void onRenewSubscription(current.id)}
-                                    onUpgrade={(current, payload) => void onUpgradeSubscription(current.id, payload)}
-                                    onToggleAutoRenew={(current, enabled) => void onToggleAutoRenew(current.id, enabled)}
-                                    onMigrateToStripe={(current) => void onMigrateSubscriptionToStripe(current.id)}
-                                />
+                                    <BillingSubscriptionCard
+                                        key={subscription.id}
+                                        subscription={subscription}
+                                        renewing={renewingSubscriptionId === subscription.id}
+                                        upgrading={upgradingSubscriptionId === subscription.id}
+                                        togglingAutoRenew={togglingSubscriptionId === subscription.id}
+                                        billingProfileReady={billingProfileComplete}
+                                        billingProfileBlockReason={billingProfileMissingLabels || null}
+                                        onRenew={(current) => void onRenewSubscription(current.id)}
+                                        onUpgrade={(current, payload) =>
+                                            void onUpgradeSubscription(current.id, payload)
+                                        }
+                                        onToggleAutoRenew={(current, enabled) =>
+                                            void onToggleAutoRenew(current.id, enabled)
+                                        }
+                                    />
                                 )
                             )}
                         </div>
@@ -1685,8 +1778,8 @@ export default () => {
                         <div>
                             <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>Invoices</h2>
                             <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Checkout, renewals, upgrades, and payment receipts now flow through invoices first, with
-                                Stripe-hosted invoice retries where available.
+                                New orders, renewals, upgrades, and payment receipts flow through invoices first. Manual
+                                payment review is required before provisioning or renewal is applied.
                             </p>
                         </div>
                         {invoices && invoices.length > 0 ? (
@@ -1705,124 +1798,187 @@ export default () => {
                         <Spinner centered />
                     ) : invoices && invoices.length > 0 ? (
                         <div className={'grid gap-4 xl:grid-cols-2'}>
-                            {paginateItems(invoices, invoicesPage, INVOICES_PAGE_SIZE).map((invoice: BillingInvoice) => (
-                                <article key={invoice.id} className={'billing-order-card'}>
-                                    {(() => {
-                                        const latestPayment = invoice.payments[0] || null;
-                                        const latestRefund = latestPayment?.refunds[0] || null;
-                                        const canRetryPayment =
-                                            !invoice.paidAt && ['open', 'draft', 'failed', 'processing'].includes(invoice.status);
+                            {paginateItems(invoices, invoicesPage, INVOICES_PAGE_SIZE).map(
+                                (invoice: BillingInvoice) => (
+                                    <article key={invoice.id} className={'billing-order-card'}>
+                                        {(() => {
+                                            const latestPayment = invoice.payments[0] || null;
+                                            const latestRefund = latestPayment?.refunds[0] || null;
+                                            const canRetryPayment =
+                                                invoice.provider !== 'manual' &&
+                                                !invoice.paidAt &&
+                                                ['open', 'draft', 'failed', 'processing'].includes(invoice.status);
 
-                                        return (
-                                            <>
-                                    <div className={'flex flex-wrap items-start justify-between gap-3'}>
-                                        <div>
-                                            <p
-                                                className={
-                                                    'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                {invoice.invoiceNumber}
-                                            </p>
-                                            <h3 className={'mt-2 text-xl font-black tracking-tight text-[#f8f6ef]'}>
-                                                {getOrderStatusLabel(invoice.type)}
-                                            </h3>
-                                            <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
-                                                Issued {invoice.issuedAt ? invoice.issuedAt.toLocaleString() : 'Unknown'}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getInvoiceStatusClasses(
-                                                invoice.status
-                                            )}`}
-                                        >
-                                            {getOrderStatusLabel(invoice.status)}
-                                        </span>
-                                    </div>
+                                            return (
+                                                <>
+                                                    <div className={'flex flex-wrap items-start justify-between gap-3'}>
+                                                        <div>
+                                                            <p
+                                                                className={
+                                                                    'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
+                                                                }
+                                                            >
+                                                                {invoice.invoiceNumber}
+                                                            </p>
+                                                            <h3
+                                                                className={
+                                                                    'mt-2 text-xl font-black tracking-tight text-[#f8f6ef]'
+                                                                }
+                                                            >
+                                                                {getOrderStatusLabel(invoice.type)}
+                                                            </h3>
+                                                            <p
+                                                                className={
+                                                                    'mt-2 text-xs text-[color:var(--muted-foreground)]'
+                                                                }
+                                                            >
+                                                                Issued{' '}
+                                                                {invoice.issuedAt
+                                                                    ? invoice.issuedAt.toLocaleString()
+                                                                    : 'Unknown'}
+                                                            </p>
+                                                        </div>
+                                                        <span
+                                                            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getInvoiceStatusClasses(
+                                                                invoice.status
+                                                            )}`}
+                                                        >
+                                                            {getOrderStatusLabel(invoice.status)}
+                                                        </span>
+                                                    </div>
 
-                                    <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)]'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Amount</span>
-                                            <span className={'font-semibold text-[color:var(--primary)]'}>
-                                                {formatMoney(invoice.grandTotal)}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Due At</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {invoice.dueAt ? invoice.dueAt.toLocaleString() : 'Unknown'}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Paid At</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {invoice.paidAt ? invoice.paidAt.toLocaleString() : 'Not paid yet'}
-                                            </span>
-                                        </div>
-                                        {latestPayment && (
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span>Payment Method</span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {latestPayment.paymentMethodBrand && latestPayment.paymentMethodLast4
-                                                        ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${latestPayment.paymentMethodLast4}`
-                                                        : latestPayment.providerPaymentMethod || latestPayment.provider || 'Recorded'}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {invoice.providerStatus && (
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span>Gateway Status</span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {getOrderStatusLabel(invoice.providerStatus)}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {latestRefund && (
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span>Latest Refund</span>
-                                                <span className={'font-semibold text-amber-200'}>
-                                                    {latestRefund.refundNumber} • {getOrderStatusLabel(latestRefund.status)}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
-                                        {canRetryPayment && (
-                                            <button
-                                                type={'button'}
-                                                onClick={() => void onRetryInvoicePayment(invoice.id)}
-                                                disabled={retryingInvoiceId === invoice.id}
-                                                className={'billing-primary-btn'}
-                                            >
-                                                {retryingInvoiceId === invoice.id ? 'Redirecting...' : 'Retry Payment'}
-                                            </button>
-                                        )}
-                                        {invoice.hostedInvoiceUrl && (
-                                            <a href={invoice.hostedInvoiceUrl} className={'billing-secondary-btn'}>
-                                                Open Hosted Invoice
-                                            </a>
-                                        )}
-                                        {invoice.invoicePdfUrl && (
-                                            <a href={invoice.invoicePdfUrl} className={'billing-ghost-btn'} target={'_blank'} rel={'noreferrer'}>
-                                                Invoice PDF
-                                            </a>
-                                        )}
-                                        {latestPayment && rootAdmin && (
-                                            <a href={`/admin/billing/payments/${latestPayment.id}`} className={'billing-secondary-btn'}>
-                                                Open Refund Tools
-                                            </a>
-                                        )}
-                                        {latestPayment && !rootAdmin && (
-                                            <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                                                Refunds are reviewed by billing admin after payment verification.
-                                            </p>
-                                        )}
-                                    </div>
-                                            </>
-                                        );
-                                    })()}
-                                </article>
-                            ))}
+                                                    <div
+                                                        className={
+                                                            'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)]'
+                                                        }
+                                                    >
+                                                        <div className={'flex items-center justify-between gap-3'}>
+                                                            <span>Amount</span>
+                                                            <span
+                                                                className={'font-semibold text-[color:var(--primary)]'}
+                                                            >
+                                                                {formatMoney(invoice.grandTotal)}
+                                                            </span>
+                                                        </div>
+                                                        <div className={'flex items-center justify-between gap-3'}>
+                                                            <span>Due At</span>
+                                                            <span className={'font-semibold text-[#f8f6ef]'}>
+                                                                {invoice.dueAt
+                                                                    ? invoice.dueAt.toLocaleString()
+                                                                    : 'Unknown'}
+                                                            </span>
+                                                        </div>
+                                                        <div className={'flex items-center justify-between gap-3'}>
+                                                            <span>Paid At</span>
+                                                            <span className={'font-semibold text-[#f8f6ef]'}>
+                                                                {invoice.paidAt
+                                                                    ? invoice.paidAt.toLocaleString()
+                                                                    : 'Not paid yet'}
+                                                            </span>
+                                                        </div>
+                                                        {latestPayment && (
+                                                            <div className={'flex items-center justify-between gap-3'}>
+                                                                <span>Payment Method</span>
+                                                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                                                    {latestPayment.paymentMethodBrand &&
+                                                                    latestPayment.paymentMethodLast4
+                                                                        ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${
+                                                                              latestPayment.paymentMethodLast4
+                                                                          }`
+                                                                        : latestPayment.providerPaymentMethod ||
+                                                                          latestPayment.provider ||
+                                                                          'Recorded'}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {invoice.providerStatus && (
+                                                            <div className={'flex items-center justify-between gap-3'}>
+                                                                <span>Gateway Status</span>
+                                                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                                                    {getOrderStatusLabel(invoice.providerStatus)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {latestRefund && (
+                                                            <div className={'flex items-center justify-between gap-3'}>
+                                                                <span>Latest Refund</span>
+                                                                <span className={'font-semibold text-amber-200'}>
+                                                                    {latestRefund.refundNumber} •{' '}
+                                                                    {getOrderStatusLabel(latestRefund.status)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
+                                                        {!latestPayment && !invoice.paidAt && (
+                                                            <p
+                                                                className={
+                                                                    'text-xs leading-6 text-[color:var(--muted-foreground)]'
+                                                                }
+                                                            >
+                                                                Waiting for billing admin to confirm manual payment
+                                                                before this invoice can be marked paid.
+                                                            </p>
+                                                        )}
+                                                        {canRetryPayment && (
+                                                            <span className={'text-xs leading-6 text-amber-200'}>
+                                                                Online retry is unavailable while manual billing mode is
+                                                                active.
+                                                            </span>
+                                                        )}
+                                                        {invoice.hostedInvoiceUrl && (
+                                                            <a
+                                                                href={invoice.hostedInvoiceUrl}
+                                                                className={'billing-secondary-btn'}
+                                                            >
+                                                                Open Hosted Invoice
+                                                            </a>
+                                                        )}
+                                                        {invoice.invoicePdfUrl && (
+                                                            <a
+                                                                href={invoice.invoicePdfUrl}
+                                                                className={'billing-ghost-btn'}
+                                                                target={'_blank'}
+                                                                rel={'noreferrer'}
+                                                            >
+                                                                Invoice PDF
+                                                            </a>
+                                                        )}
+                                                        {latestPayment?.receiptPdfUrl && (
+                                                            <a
+                                                                href={latestPayment.receiptPdfUrl}
+                                                                className={'billing-ghost-btn'}
+                                                                target={'_blank'}
+                                                                rel={'noreferrer'}
+                                                            >
+                                                                Receipt PDF
+                                                            </a>
+                                                        )}
+                                                        {latestPayment && rootAdmin && (
+                                                            <a
+                                                                href={`/admin/billing/payments/${latestPayment.id}`}
+                                                                className={'billing-secondary-btn'}
+                                                            >
+                                                                Open Refund Tools
+                                                            </a>
+                                                        )}
+                                                        {latestPayment && !rootAdmin && (
+                                                            <p
+                                                                className={
+                                                                    'text-xs leading-6 text-[color:var(--muted-foreground)]'
+                                                                }
+                                                            >
+                                                                Refunds are reviewed by billing admin after payment
+                                                                verification.
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </article>
+                                )
+                            )}
                         </div>
                     ) : (
                         <div className={'billing-empty-card'}>No invoices have been created yet.</div>

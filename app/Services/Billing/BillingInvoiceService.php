@@ -24,6 +24,8 @@ class BillingInvoiceService
         private BillingTaxCalculationService $taxCalculationService,
         private BillingInvoiceNumberService $numberService,
         private BillingOrderCreationService $orderCreationService,
+        private BillingDocumentService $documentService,
+        private BillingAdminNotificationService $adminNotificationService,
     ) {
     }
 
@@ -54,7 +56,7 @@ class BillingInvoiceService
 
     public function createNewOrderInvoice(User $user, array $data): BillingOrder
     {
-        return DB::transaction(function () use ($user, $data) {
+        $order = DB::transaction(function () use ($user, $data) {
             $quote = $this->quoteNewOrder($user, $data);
             $profile = $this->profileService->getOrCreateForUser($user);
             $snapshot = $this->profileService->snapshot($profile);
@@ -81,7 +83,6 @@ class BillingInvoiceService
                 subscription: null,
                 notes: 'Initial server order invoice.',
                 dueAt: CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
-                notifyUser: false,
             );
 
             $order->forceFill([
@@ -90,6 +91,10 @@ class BillingInvoiceService
 
             return $order->fresh(['invoice', 'user', 'nodeConfig', 'gameProfile']);
         });
+
+        $this->notifyManualInvoiceCreated($order->invoice->fresh(['items', 'order', 'subscription', 'user']));
+
+        return $order;
     }
 
     public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false): BillingInvoice
@@ -110,7 +115,7 @@ class BillingInvoiceService
             return $openInvoice;
         }
 
-        return DB::transaction(function () use ($subscription, $notifyUser) {
+        $invoice = DB::transaction(function () use ($subscription) {
             $profile = $this->profileService->getOrCreateForUser($subscription->user);
             $snapshot = $this->profileService->snapshot($profile);
             $subtotal = (float) $subscription->recurring_total;
@@ -167,13 +172,18 @@ class BillingInvoiceService
                 dueAt: $subscription->renews_at
                     ? CarbonImmutable::instance($subscription->renews_at)
                     : CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
-                notifyUser: $notifyUser,
             );
 
             $order->forceFill(['billing_invoice_id' => $invoice->id])->saveOrFail();
 
             return $invoice->fresh(['items', 'order', 'subscription']);
         });
+
+        if ($notifyUser) {
+            $this->notifyManualInvoiceCreated($invoice->fresh(['items', 'order', 'subscription', 'user']));
+        }
+
+        return $invoice;
     }
 
     public function quoteUpgrade(BillingSubscription $subscription, array $data): array
@@ -275,9 +285,9 @@ class BillingInvoiceService
         ];
     }
 
-    public function createUpgradeInvoice(BillingSubscription $subscription, array $data): BillingInvoice
+    public function createUpgradeInvoice(BillingSubscription $subscription, array $data, bool $notifyUser = true): BillingInvoice
     {
-        return DB::transaction(function () use ($subscription, $data) {
+        $invoice = DB::transaction(function () use ($subscription, $data) {
             $quote = $this->quoteUpgrade($subscription, $data);
             $profile = $this->profileService->getOrCreateForUser($subscription->user);
             $snapshot = $this->profileService->snapshot($profile);
@@ -324,13 +334,18 @@ class BillingInvoiceService
                 subscription: $subscription,
                 notes: 'Subscription upgrade invoice.',
                 dueAt: CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
-                notifyUser: false,
             );
 
             $order->forceFill(['billing_invoice_id' => $invoice->id])->saveOrFail();
 
             return $invoice->fresh(['items', 'order', 'subscription']);
         });
+
+        if ($notifyUser) {
+            $this->notifyManualInvoiceCreated($invoice->fresh(['items', 'order', 'subscription', 'user']));
+        }
+
+        return $invoice;
     }
 
     public function markPaid(BillingInvoice $invoice, BillingPayment $payment): BillingInvoice
@@ -339,6 +354,10 @@ class BillingInvoiceService
             $invoice->forceFill([
                 'status' => BillingInvoice::STATUS_PAID,
                 'paid_at' => $payment->paid_at ?? CarbonImmutable::now(),
+                'provider' => $payment->provider ?: $invoice->provider,
+                'provider_status' => $payment->provider === BillingPaymentService::MANUAL_PROVIDER
+                    ? 'approved_manually'
+                    : $invoice->provider_status,
             ])->saveOrFail();
 
             if ($invoice->order) {
@@ -370,7 +389,7 @@ class BillingInvoiceService
                 ])->saveOrFail();
             }
 
-            return $invoice->fresh(['order', 'subscription']);
+            return $this->documentService->syncInvoiceUrl($invoice->fresh(['order', 'subscription']));
         });
     }
 
@@ -463,7 +482,6 @@ class BillingInvoiceService
         ?BillingSubscription $subscription = null,
         ?string $notes = null,
         ?CarbonImmutable $dueAt = null,
-        bool $notifyUser = false,
     ): BillingInvoice {
         $invoice = BillingInvoice::query()->create([
             'invoice_number' => $this->numberService->nextInvoiceNumber(),
@@ -472,6 +490,9 @@ class BillingInvoiceService
             'billing_order_id' => $order?->id,
             'subscription_id' => $subscription?->id,
             'provider' => $provider,
+            'provider_status' => $provider === BillingPaymentService::MANUAL_PROVIDER
+                ? 'awaiting_manual_payment'
+                : null,
             'type' => $type,
             'currency' => config('billing.currency', 'MYR'),
             'subtotal' => round($subtotal, 2),
@@ -510,11 +531,7 @@ class BillingInvoiceService
             ]);
         }
 
-        if ($notifyUser) {
-            $user->notify(new BillingInvoiceIssued($invoice->fresh(['items', 'order', 'subscription'])));
-        }
-
-        return $invoice;
+        return $this->documentService->syncInvoiceUrl($invoice->fresh(['items', 'order', 'subscription']));
     }
 
     private function buildNewOrderItems(array $pricing): array
@@ -545,5 +562,19 @@ class BillingInvoiceService
                 'meta' => ['component' => 'disk'],
             ],
         ];
+    }
+
+    private function notifyManualInvoiceCreated(BillingInvoice $invoice): void
+    {
+        $invoice->loadMissing(['user', 'order']);
+
+        $invoice->user?->notify(new BillingInvoiceIssued($invoice));
+
+        if ($invoice->order) {
+            $this->adminNotificationService->notifyOrderAwaitingApproval(
+                $invoice->order->fresh(['user', 'invoice']),
+                $invoice->fresh()
+            );
+        }
     }
 }

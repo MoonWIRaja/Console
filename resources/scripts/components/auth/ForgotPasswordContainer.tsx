@@ -46,6 +46,7 @@ const ForgotPasswordContainer = () => {
     const [resetToken, setResetToken] = useState('');
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
+    const [captchaWidgetFailed, setCaptchaWidgetFailed] = useState(false);
     const { name } = useSiteBranding();
 
     const { clearFlashes, addFlash } = useFlash();
@@ -62,6 +63,22 @@ const ForgotPasswordContainer = () => {
         }
 
         addFlash({ type: 'error', title: 'Error', message: httpErrorToHuman(error) });
+    };
+
+    const handleCaptchaVerified = (token: string) => {
+        setCaptchaWidgetFailed(false);
+        setCaptchaToken(token);
+    };
+
+    const handleCaptchaError = () => {
+        setCaptchaToken('');
+        setCaptchaWidgetFailed(true);
+        addFlash({
+            type: 'error',
+            title: 'Verification Unavailable',
+            message:
+                'Cloudflare Turnstile could not initialize for this hostname. If this panel is not running behind a Cloudflare zone, disable Turnstile pre-clearance in the Cloudflare widget settings.',
+        });
     };
 
     const handleRequest = (values: RequestValues, { setSubmitting }: FormikHelpers<RequestValues>) => {
@@ -92,6 +109,7 @@ const ForgotPasswordContainer = () => {
                 setResetToken(response.resetToken || '');
                 setMode('verify');
                 setCaptchaToken('');
+                setCaptchaWidgetFailed(false);
             })
             .catch((error) => {
                 console.error(error);
@@ -261,11 +279,17 @@ const ForgotPasswordContainer = () => {
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
                                                         siteKey={captcha.siteKey}
-                                                        onVerify={(token) => setCaptchaToken(token)}
+                                                        onVerify={handleCaptchaVerified}
                                                         onExpire={() => setCaptchaToken('')}
-                                                        onError={() => setCaptchaToken('')}
+                                                        onError={handleCaptchaError}
                                                         className='flex justify-center'
                                                     />
+                                                    {captchaWidgetFailed && (
+                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                            Verification could not be loaded on this hostname. Check the
+                                                            Turnstile widget configuration in Cloudflare.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </Form>
@@ -283,7 +307,9 @@ const ForgotPasswordContainer = () => {
                                         formRenderedAt: Date.now(),
                                     }}
                                     validationSchema={object().shape({
-                                        pin: string().matches(/^[0-9]{6}$/, 'PIN must be 6 digits.').required('PIN is required.'),
+                                        pin: string()
+                                            .matches(/^[0-9]{6}$/, 'PIN must be 6 digits.')
+                                            .required('PIN is required.'),
                                         password: string()
                                             .required('A new password is required.')
                                             .min(8, 'Your new password should be at least 8 characters in length.'),
@@ -401,6 +427,7 @@ const ForgotPasswordContainer = () => {
                                                     setMode('request');
                                                     setResetToken('');
                                                     setCaptchaToken('');
+                                                    setCaptchaWidgetFailed(false);
                                                 }}
                                                 className={authSecondaryButtonClass}
                                             >
@@ -411,11 +438,17 @@ const ForgotPasswordContainer = () => {
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
                                                         siteKey={captcha.siteKey}
-                                                        onVerify={(token) => setCaptchaToken(token)}
+                                                        onVerify={handleCaptchaVerified}
                                                         onExpire={() => setCaptchaToken('')}
-                                                        onError={() => setCaptchaToken('')}
+                                                        onError={handleCaptchaError}
                                                         className='flex justify-center'
                                                     />
+                                                    {captchaWidgetFailed && (
+                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                            Verification could not be loaded on this hostname. Check the
+                                                            Turnstile widget configuration in Cloudflare.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </Form>

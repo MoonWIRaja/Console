@@ -55,6 +55,14 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::post('/billing/subscriptions/{billingSubscription}/upgrade/quote', [Client\BillingController::class, 'upgradeQuote']);
     Route::post('/billing/subscriptions/{billingSubscription}/upgrade', [Client\BillingController::class, 'upgrade']);
     Route::patch('/billing/subscriptions/{billingSubscription}/auto-renew', [Client\BillingController::class, 'toggleAutoRenew']);
+    Route::get('/tickets', [Client\TicketController::class, 'index']);
+    Route::get('/tickets/eligibles', [Client\TicketController::class, 'eligibles']);
+    Route::post('/tickets', [Client\TicketController::class, 'store']);
+    Route::get('/tickets/{ticket}', [Client\TicketController::class, 'show']);
+    Route::post('/tickets/{ticket}/messages', [Client\TicketController::class, 'postMessage']);
+    Route::post('/tickets/{ticket}/read', [Client\TicketController::class, 'markRead']);
+    Route::post('/tickets/{ticket}/reopen', [Client\TicketController::class, 'reopen']);
+    Route::get('/tickets/{ticket}/stream', [Client\TicketController::class, 'stream']);
 
     Route::get('/api-keys', [Client\ApiKeyController::class, 'index']);
     Route::post('/api-keys', [Client\ApiKeyController::class, 'store']);

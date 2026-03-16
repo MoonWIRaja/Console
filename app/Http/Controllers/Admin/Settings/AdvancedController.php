@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Http\Controllers\Admin\Settings;
 
+use Throwable;
 use Illuminate\Http\RedirectResponse;
 use Prologue\Alerts\AlertsMessageBag;
 use Illuminate\Contracts\Console\Kernel;
@@ -52,7 +53,15 @@ class AdvancedController extends Controller
             $this->settings->set('settings::' . $key, $value);
         }
 
-        $this->kernel->call('queue:restart');
+        try {
+            $this->kernel->call('queue:restart');
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->alert->warning('Advanced settings were saved, but queue restart could not be triggered automatically.')->flash();
+
+            return redirect()->route('admin.settings');
+        }
+
         $this->alert->success('Advanced settings have been updated successfully and the queue worker was restarted to apply these changes.')->flash();
 
         return redirect()->route('admin.settings');

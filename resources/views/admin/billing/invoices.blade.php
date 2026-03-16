@@ -29,7 +29,11 @@
                             <td><a href="{{ route('admin.billing.invoices.view', $invoice->id) }}">{{ $invoice->invoice_number }}</a></td>
                             <td>{{ $invoice->user->email }}</td>
                             <td>{{ strtoupper($invoice->type) }}</td>
-                            <td><span class="label label-default">{{ strtoupper($invoice->status) }}</span></td>
+                            <td>
+                                <span class="label {{ $invoice->status === \Pterodactyl\Models\BillingInvoice::STATUS_OPEN && $invoice->provider === 'manual' ? 'label-warning' : 'label-default' }}">
+                                    {{ strtoupper($invoice->status) }}
+                                </span>
+                            </td>
                             <td>{{ $invoice->due_at ?? 'N/A' }}</td>
                             <td>RM {{ number_format((float) $invoice->grand_total, 2) }}</td>
                         </tr>

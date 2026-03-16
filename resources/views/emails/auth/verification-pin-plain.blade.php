@@ -1,4 +1,4 @@
-{{ $appName }} - Verify Your Account
+{{ config('mail.from.name') ?: $appName }} - Official Security Email
 
 Hi {{ $recipientName }},
 
@@ -11,3 +11,6 @@ This code expires in {{ $expiresInMinutes }} minutes.
 Open panel: {{ $panelUrl }}
 
 If you did not request this, you can ignore this email safely.
+
+Regards,
+{{ config('mail.from.name') ?: $appName }}

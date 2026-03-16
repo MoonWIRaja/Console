@@ -57,6 +57,17 @@
             </div>
         </div>
         <div class="col-md-6">
+            @if($invoice->order && $invoice->order->status === \Pterodactyl\Models\BillingOrder::STATUS_AWAITING_PAYMENT)
+                <div class="box box-success">
+                    <div class="box-header with-border"><h3 class="box-title">Awaiting Approval</h3></div>
+                    <div class="box-body">
+                        <p class="text-muted">This invoice is still unpaid and waiting for billing admin to confirm manual payment.</p>
+                    </div>
+                    <div class="box-footer">
+                        <a href="{{ route('admin.billing.orders.view', $invoice->order->id) }}" class="btn btn-success btn-sm pull-right">Open Approval View</a>
+                    </div>
+                </div>
+            @endif
             <div class="box">
                 <div class="box-header with-border"><h3 class="box-title">Billing Snapshot</h3></div>
                 <div class="box-body">

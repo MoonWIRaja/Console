@@ -16,8 +16,8 @@ trait FormatsBillingMailMessage
             ->subject($subject)
             ->greeting(sprintf('Hello %s,', $name))
             ->line($headline)
-            ->action('Open Billing', url('/billing'))
-            ->salutation(sprintf("Regards,\n%s Billing", $appName));
+            ->action('Open Billing Workspace', url('/billing'))
+            ->salutation(sprintf("Regards,\n%s Billing Operations", $appName));
     }
 
     protected function formatBillingAmount(string $currency, float $amount): string

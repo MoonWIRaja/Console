@@ -10,6 +10,7 @@ use Pterodactyl\Models\User;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Notifications\BillingProvisioningFailed;
 use Pterodactyl\Services\Servers\ServerCreationService;
+use Pterodactyl\Services\Tickets\BillingTicketAutomationService;
 
 class BillingOrderProvisionService
 {
@@ -17,6 +18,7 @@ class BillingOrderProvisionService
         private BillingCatalogService $catalogService,
         private ServerCreationService $serverCreationService,
         private BillingSubscriptionService $subscriptionService,
+        private BillingTicketAutomationService $ticketAutomation,
     ) {
     }
 
@@ -155,7 +157,8 @@ class BillingOrderProvisionService
             ]))),
         ])->saveOrFail();
 
-        $order->user?->notify(new BillingProvisioningFailed($order->fresh('user')));
+        $order->user?->notify(new BillingProvisioningFailed($order->fresh(['user', 'invoice.payments', 'server'])));
+        $this->ticketAutomation->markProvisionFailed($order->fresh(['invoice']));
     }
 
     private function resolveDockerImage(Egg $egg, ?string $override): string

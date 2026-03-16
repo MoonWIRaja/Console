@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Pterodactyl\Models\UserOAuthAccount;
 use Pterodactyl\Services\Auth\OAuth\OAuthProviderService;
 
@@ -41,6 +42,7 @@ class OAuthController extends AbstractLoginController
             'intent' => $intent,
             'state' => $state = bin2hex(random_bytes(20)),
             'user_id' => $intent === 'link' ? $request->user()?->id : null,
+            'return_to' => $this->sanitizeReturnTo($request->query('return_to')),
             'expires_at' => CarbonImmutable::now()->addMinutes(10),
         ]);
 
@@ -58,20 +60,20 @@ class OAuthController extends AbstractLoginController
         $intent = is_array($flow) ? (($flow['intent'] ?? null) ?: null) : null;
 
         if (!$this->hasValidFlow($flow, $provider, (string) $request->query('state', ''))) {
-            return $this->redirectWithStatus($request, $intent, $provider, 'invalid_state');
+            return $this->redirectWithStatus($request, $intent, $provider, 'invalid_state', $flow);
         }
 
         if (!$this->providers->isAvailable($provider)) {
-            return $this->redirectWithStatus($request, $intent, $provider, 'disabled');
+            return $this->redirectWithStatus($request, $intent, $provider, 'disabled', $flow);
         }
 
         if ($request->filled('error')) {
-            return $this->redirectWithStatus($request, $intent, $provider, 'cancelled');
+            return $this->redirectWithStatus($request, $intent, $provider, 'cancelled', $flow);
         }
 
         $code = (string) $request->query('code', '');
         if ($code === '') {
-            return $this->redirectWithStatus($request, $intent, $provider, 'failed');
+            return $this->redirectWithStatus($request, $intent, $provider, 'failed', $flow);
         }
 
         try {
@@ -79,11 +81,11 @@ class OAuthController extends AbstractLoginController
         } catch (Throwable $exception) {
             report($exception);
 
-            return $this->redirectWithStatus($request, $intent, $provider, 'failed');
+            return $this->redirectWithStatus($request, $intent, $provider, 'failed', $flow);
         }
 
         if (($flow['intent'] ?? 'login') === 'link') {
-            return $this->handleLinkedAccountCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity);
+            return $this->handleLinkedAccountCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
         }
 
         return $this->handleLoginCallback($request, $provider, $identity);
@@ -118,7 +120,7 @@ class OAuthController extends AbstractLoginController
         return redirect()->intended($this->redirectPath());
     }
 
-    private function handleLinkedAccountCallback(Request $request, string $provider, int $userId, array $identity): RedirectResponse
+    private function handleLinkedAccountCallback(Request $request, string $provider, int $userId, array $identity, ?array $flow = null): RedirectResponse
     {
         $user = $request->user();
         if (!$user || $user->id !== $userId) {
@@ -138,7 +140,7 @@ class OAuthController extends AbstractLoginController
         $account = $user->oauthAccounts()->firstOrNew(['provider' => $provider]);
         $this->syncAccount($account, $identity);
 
-        return $this->redirectWithStatus($request, 'link', $provider, 'linked');
+        return $this->redirectWithStatus($request, 'link', $provider, 'linked', $flow);
     }
 
     private function syncAccount(UserOAuthAccount $account, array $identity): void
@@ -182,8 +184,16 @@ class OAuthController extends AbstractLoginController
         return !$flow['expires_at']->isBefore(CarbonImmutable::now());
     }
 
-    private function redirectWithStatus(Request $request, ?string $intent, string $provider, string $status): RedirectResponse
+    private function redirectWithStatus(Request $request, ?string $intent, string $provider, string $status, ?array $flow = null): RedirectResponse
     {
+        $returnTo = is_array($flow) ? ($flow['return_to'] ?? null) : null;
+        if ($intent === 'link' && $request->user() && is_string($returnTo) && $returnTo !== '') {
+            return redirect()->to($this->appendQuery($returnTo, [
+                'oauth_status' => $status,
+                'oauth_provider' => $provider,
+            ]));
+        }
+
         $route = $intent === 'link' && $request->user() ? 'account' : 'auth.login';
 
         return redirect()->route($route, [
@@ -195,5 +205,27 @@ class OAuthController extends AbstractLoginController
     private function resolveIntent(Request $request): string
     {
         return $request->query('intent') === 'link' ? 'link' : 'login';
+    }
+
+    private function sanitizeReturnTo(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '' || !str_starts_with($path, '/')) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    private function appendQuery(string $url, array $query): string
+    {
+        $parts = parse_url($url);
+        $existing = [];
+        parse_str((string) Arr::get($parts, 'query', ''), $existing);
+
+        $queryString = http_build_query(array_merge($existing, $query));
+        $path = (string) Arr::get($parts, 'path', '/');
+
+        return $path . ($queryString !== '' ? '?' . $queryString : '');
     }
 }

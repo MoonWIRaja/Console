@@ -2,6 +2,8 @@ import useSWR, { ConfigInterface } from 'swr';
 import { AxiosError } from 'axios';
 import http from '@/api/http';
 import { useUserSWRKey } from '@/plugins/useSWRKey';
+import type { TicketDetail } from '@/api/account/tickets';
+import { mapTicketDetail } from '@/api/account/tickets';
 
 export interface BillingGame {
     id: number;
@@ -157,6 +159,7 @@ export interface BillingPaymentSummary {
     currency: string;
     status: string;
     paidAt: Date | null;
+    receiptPdfUrl?: string | null;
     refunds: BillingRefundSummary[];
 }
 
@@ -173,6 +176,9 @@ export interface BillingProfile {
     countryCode: string;
     taxId: string | null;
     isBusiness: boolean;
+    isComplete?: boolean;
+    missingFields?: string[];
+    requiredFields?: string[];
 }
 
 export interface BillingInvoice {
@@ -211,6 +217,13 @@ export interface BillingOrderActionResponse {
     checkout: BillingCheckout | null;
     checkoutError: string | null;
     autoSettled: boolean;
+    manualPaymentRequired?: boolean;
+    discordInviteUrl?: string | null;
+    ticket?: TicketDetail | null;
+    ticketAutoCreated?: boolean;
+    ticketRequiresDiscordLink?: boolean;
+    linkDiscordUrl?: string | null;
+    ticketWarning?: string | null;
 }
 
 export interface BillingSubscriptionActionResponse {
@@ -219,6 +232,13 @@ export interface BillingSubscriptionActionResponse {
     checkout: BillingCheckout | null;
     checkoutError: string | null;
     autoSettled: boolean;
+    manualPaymentRequired?: boolean;
+    discordInviteUrl?: string | null;
+    ticket?: TicketDetail | null;
+    ticketAutoCreated?: boolean;
+    ticketRequiresDiscordLink?: boolean;
+    linkDiscordUrl?: string | null;
+    ticketWarning?: string | null;
 }
 
 export interface CreateBillingOrderPayload {
@@ -345,6 +365,7 @@ const mapInvoice = (item: any): BillingInvoice => ({
         currency: payment.currency,
         status: payment.status,
         paidAt: payment.paid_at ? new Date(payment.paid_at) : null,
+        receiptPdfUrl: payment.receipt_pdf_url ?? null,
         refunds: (payment.refunds || []).map((refund: any) => ({
             id: refund.id,
             refundNumber: refund.refund_number,
@@ -369,6 +390,9 @@ const mapProfile = (item: any): BillingProfile => ({
     countryCode: item.country_code ?? 'MY',
     taxId: item.tax_id ?? null,
     isBusiness: item.is_business ?? false,
+    isComplete: item.is_complete ?? false,
+    missingFields: item.missing_fields ?? [],
+    requiredFields: item.required_fields ?? [],
 });
 
 const mapCheckout = (item: any): BillingCheckout | null =>
@@ -388,6 +412,13 @@ const mapOrderActionResponse = (item: any): BillingOrderActionResponse => ({
     checkout: item.checkout ? mapCheckout(item.checkout.checkout ?? item.checkout) : null,
     checkoutError: item.checkout_error ?? null,
     autoSettled: item.auto_settled ?? false,
+    manualPaymentRequired: item.manual_payment_required ?? false,
+    discordInviteUrl: item.discord_invite_url ?? null,
+    ticket: item.ticket ? mapTicketDetail(item.ticket) : null,
+    ticketAutoCreated: item.ticket_auto_created ?? false,
+    ticketRequiresDiscordLink: item.ticket_requires_discord_link ?? false,
+    linkDiscordUrl: item.link_discord_url ?? null,
+    ticketWarning: item.ticket_warning ?? null,
 });
 
 const mapSubscriptionActionResponse = (item: any): BillingSubscriptionActionResponse => ({
@@ -396,6 +427,13 @@ const mapSubscriptionActionResponse = (item: any): BillingSubscriptionActionResp
     checkout: item.checkout ? mapCheckout(item.checkout.checkout ?? item.checkout) : null,
     checkoutError: item.checkout_error ?? null,
     autoSettled: item.auto_settled ?? false,
+    manualPaymentRequired: item.manual_payment_required ?? false,
+    discordInviteUrl: item.discord_invite_url ?? null,
+    ticket: item.ticket ? mapTicketDetail(item.ticket) : null,
+    ticketAutoCreated: item.ticket_auto_created ?? false,
+    ticketRequiresDiscordLink: item.ticket_requires_discord_link ?? false,
+    linkDiscordUrl: item.link_discord_url ?? null,
+    ticketWarning: item.ticket_warning ?? null,
 });
 
 const useBillingCatalog = (config?: ConfigInterface<BillingNodeCatalog[], AxiosError>) => {

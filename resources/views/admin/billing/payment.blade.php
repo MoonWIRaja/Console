@@ -29,6 +29,8 @@
                         <dt>Charge</dt><dd><code>{{ $payment->provider_charge_id ?? 'N/A' }}</code></dd>
                         <dt>Amount</dt><dd>RM {{ number_format((float) $payment->amount, 2) }}</dd>
                         <dt>Paid At</dt><dd>{{ $payment->paid_at ?? 'N/A' }}</dd>
+                        <dt>Receipt</dt>
+                        <dd><a href="{{ route('billing.documents.payments.receipt', $payment->id) }}" target="_blank" rel="noreferrer">Open Receipt PDF</a></dd>
                     </dl>
                 </div>
             </div>
@@ -46,7 +48,7 @@
                         <div class="form-group">
                             <label>Reason</label>
                             <textarea name="reason" class="form-control" rows="4"></textarea>
-                            <p class="help-block">Base server refunds can cancel the Stripe subscription and cascade into descendant upgrade refunds if needed.</p>
+                            <p class="help-block">Base server refunds can cancel the tracked subscription and cascade into descendant upgrade refunds if needed.</p>
                         </div>
                     </div>
                     <div class="box-footer">

@@ -60,6 +60,7 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
     const [verificationIdentity, setVerificationIdentity] = useState('');
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
+    const [captchaWidgetFailed, setCaptchaWidgetFailed] = useState(false);
     const { name } = useSiteBranding();
 
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
@@ -153,6 +154,7 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
         setVerificationIdentity('');
         setRequireCaptcha(false);
         setCaptchaToken('');
+        setCaptchaWidgetFailed(false);
     };
 
     const handleSecurityError = (error: any) => {
@@ -163,6 +165,25 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
 
         if (typeof clearAndAddHttpError === 'function') {
             clearAndAddHttpError({ error });
+        }
+    };
+
+    const handleCaptchaVerified = (token: string) => {
+        setCaptchaWidgetFailed(false);
+        setCaptchaToken(token);
+    };
+
+    const handleCaptchaError = () => {
+        setCaptchaToken('');
+        setCaptchaWidgetFailed(true);
+
+        if (typeof addFlash === 'function') {
+            addFlash({
+                type: 'error',
+                title: 'Verification Unavailable',
+                message:
+                    'Cloudflare Turnstile could not initialize for this hostname. If this panel is not running behind a Cloudflare zone, disable Turnstile pre-clearance in the Cloudflare widget settings.',
+            });
         }
     };
 
@@ -994,12 +1015,21 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                             <div className='flex justify-center'>
                                                                 <TurnstileWidget
                                                                     siteKey={captcha.siteKey}
-                                                                    onVerify={(token) => setCaptchaToken(token)}
+                                                                    onVerify={handleCaptchaVerified}
                                                                     onExpire={() => setCaptchaToken('')}
-                                                                    onError={() => setCaptchaToken('')}
+                                                                    onError={handleCaptchaError}
                                                                     className='flex justify-center'
                                                                 />
                                                             </div>
+                                                            {captchaWidgetFailed && (
+                                                                <p className='mt-4 text-[11px] leading-6 text-amber-200'>
+                                                                    Verification is blocked by the current Turnstile
+                                                                    hostname configuration.
+                                                                    <br />
+                                                                    Contact the panel administrator if this keeps
+                                                                    happening.
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
@@ -1227,11 +1257,17 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
                                                         siteKey={captcha.siteKey}
-                                                        onVerify={(token) => setCaptchaToken(token)}
+                                                        onVerify={handleCaptchaVerified}
                                                         onExpire={() => setCaptchaToken('')}
-                                                        onError={() => setCaptchaToken('')}
+                                                        onError={handleCaptchaError}
                                                         className='flex justify-center'
                                                     />
+                                                    {captchaWidgetFailed && (
+                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                            Verification could not be loaded on this hostname. Check the
+                                                            Turnstile widget configuration in Cloudflare.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </Form>

@@ -8,14 +8,14 @@ use Illuminate\Http\RedirectResponse;
 use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Http\Controllers\Controller;
-use Pterodactyl\Services\Billing\BillingOrderProvisionService;
+use Pterodactyl\Services\Billing\BillingManualApprovalService;
 use Pterodactyl\Http\Requests\Admin\Billing\BillingOrderDecisionRequest;
 
 class OrderController extends Controller
 {
     public function __construct(
         private AlertsMessageBag $alert,
-        private BillingOrderProvisionService $provisionService,
+        private BillingManualApprovalService $approvalService,
     ) {
     }
 
@@ -29,7 +29,7 @@ class OrderController extends Controller
     public function approve(BillingOrderDecisionRequest $request, BillingOrder $billingOrder): RedirectResponse
     {
         try {
-            $this->provisionService->handle($billingOrder, $request->user());
+            $this->approvalService->approve($billingOrder, $request->user(), $request->input('admin_notes'));
         } catch (Throwable $exception) {
             report($exception);
             $this->alert->danger($exception->getMessage())->flash();
@@ -37,7 +37,7 @@ class OrderController extends Controller
             return redirect()->route('admin.billing.orders.view', $billingOrder->id);
         }
 
-        $this->alert->success('The billing order was approved and the server provisioning request has been submitted.')->flash();
+        $this->alert->success('The billing order was approved, payment was recorded, and the service lifecycle has been advanced.')->flash();
 
         return redirect()->route('admin.billing.orders.view', $billingOrder->id);
     }
@@ -45,7 +45,7 @@ class OrderController extends Controller
     public function reject(BillingOrderDecisionRequest $request, BillingOrder $billingOrder): RedirectResponse
     {
         try {
-            $this->provisionService->reject($billingOrder, $request->user(), $request->input('admin_notes'));
+            $this->approvalService->reject($billingOrder, $request->user(), $request->input('admin_notes'));
         } catch (Throwable $exception) {
             report($exception);
             $this->alert->danger($exception->getMessage())->flash();

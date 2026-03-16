@@ -8,14 +8,14 @@ interface Props {
     renewing: boolean;
     upgrading: boolean;
     togglingAutoRenew: boolean;
-    migratingToStripe?: boolean;
+    billingProfileReady: boolean;
+    billingProfileBlockReason: string | null;
     onRenew: (subscription: BillingSubscription) => void;
     onUpgrade: (
         subscription: BillingSubscription,
         payload: { cpuCores: number; memoryGb: number; diskGb: number }
     ) => void;
     onToggleAutoRenew: (subscription: BillingSubscription, enabled: boolean) => void;
-    onMigrateToStripe: (subscription: BillingSubscription) => void;
 }
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
@@ -56,11 +56,11 @@ export default ({
     renewing,
     upgrading,
     togglingAutoRenew,
-    migratingToStripe,
+    billingProfileReady,
+    billingProfileBlockReason,
     onRenew,
     onUpgrade,
     onToggleAutoRenew,
-    onMigrateToStripe,
 }: Props) => {
     const [upgradeOpen, setUpgradeOpen] = useState(false);
     const [cpuCores, setCpuCores] = useState(subscription.cpuCores);
@@ -98,16 +98,15 @@ export default ({
                 ? `Renewal opens on ${subscription.renewAvailableAt.toLocaleString()}.`
                 : 'Renewal opens 2 days before the billing deadline.'
             : null;
-    const isStripeManaged = subscription.gatewayProvider === 'stripe' && !!subscription.providerSubscriptionId;
-    const needsStripeMigration = !isStripeManaged && subscription.canRenew;
-    const autoRenewDescription = isStripeManaged
-        ? subscription.autoRenew
-            ? 'Automatic renewal is armed on Stripe for this subscription.'
-            : 'Automatic renewal is currently disabled on Stripe.'
-        : 'Automatic renewal will unlock after this subscription is migrated to Stripe with a reusable card payment.';
-    const autoRenewHelper = isStripeManaged
-        ? 'Card, Apple Pay, and Google Pay methods that Stripe can reuse are supported. Plan and resource changes still stay in this billing panel.'
-        : 'Legacy Fiuu subscriptions must be migrated at the next renewal window before Stripe can charge them automatically.';
+    const autoRenewDescription = subscription.autoRenew
+        ? 'Automatic renewal is currently enabled for this subscription.'
+        : 'Automatic renewal is currently disabled for this subscription.';
+    const autoRenewHelper =
+        'Manual billing mode is active right now, so renewals and upgrades create invoices for admin review instead of charging a payment gateway.';
+    const billingProfileHelper =
+        !billingProfileReady && billingProfileBlockReason
+            ? `Checkout is blocked until billing details are completed in /account. Missing: ${billingProfileBlockReason}.`
+            : null;
 
     return (
         <article className={'billing-subscription-card'}>
@@ -211,11 +210,7 @@ export default ({
                 <div className={'mt-4 flex flex-wrap items-center gap-3'}>
                     <button
                         type={'button'}
-                        disabled={
-                            togglingAutoRenew ||
-                            !isStripeManaged ||
-                            (!subscription.autoRenew && !subscription.autoRenewAvailable)
-                        }
+                        disabled={togglingAutoRenew || (!subscription.autoRenew && !subscription.autoRenewAvailable)}
                         onClick={() => onToggleAutoRenew(subscription, !subscription.autoRenew)}
                         className={subscription.autoRenew ? 'billing-secondary-btn' : 'billing-primary-btn'}
                     >
@@ -235,31 +230,16 @@ export default ({
             <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                 <button
                     type={'button'}
-                    disabled={!subscription.canRenew || renewing || needsStripeMigration || isStripeManaged}
+                    disabled={!subscription.canRenew || renewing || !billingProfileReady}
                     onClick={() => onRenew(subscription)}
                     className={'billing-primary-btn'}
                 >
-                    {renewing
-                        ? 'Creating...'
-                        : isStripeManaged
-                        ? 'Stripe Managed'
-                        : 'Create Renewal Invoice'}
+                    {renewing ? 'Creating...' : 'Create Renewal Invoice'}
                 </button>
-
-                {needsStripeMigration && (
-                    <button
-                        type={'button'}
-                        disabled={migratingToStripe}
-                        onClick={() => onMigrateToStripe(subscription)}
-                        className={'billing-primary-btn'}
-                    >
-                        {migratingToStripe ? 'Starting...' : 'Migrate to Stripe'}
-                    </button>
-                )}
 
                 <button
                     type={'button'}
-                    disabled={!subscription.canUpgrade || upgrading || !isStripeManaged}
+                    disabled={!subscription.canUpgrade || upgrading || !billingProfileReady}
                     onClick={() => setUpgradeOpen((value) => !value)}
                     className={'billing-secondary-btn'}
                 >
@@ -277,20 +257,17 @@ export default ({
                 <p className={'mt-3 text-xs leading-6 text-[color:var(--muted-foreground)]'}>{renewWindowMessage}</p>
             )}
 
-            {!isStripeManaged && (
-                <p className={'mt-3 text-xs leading-6 text-amber-200'}>
-                    This subscription still uses the legacy billing gateway. Migrate it to Stripe in the renewal
-                    window before using auto-renew or upgrade checkout.
-                </p>
+            {billingProfileHelper && (
+                <p className={'mt-3 text-xs leading-6 text-amber-200'}>{billingProfileHelper}</p>
             )}
 
-            {upgradeOpen && subscription.canUpgrade && isStripeManaged && (
+            {upgradeOpen && subscription.canUpgrade && (
                 <div className={'billing-upgrade-panel'}>
                     <div className={'mb-4'}>
                         <h4 className={'text-lg font-black tracking-tight text-[#f8f6ef]'}>Upgrade Plan</h4>
                         <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
                             Only upgrades are allowed. The white marker shows the current plan, while the draggable
-                            slider sets the upgrade target. You only pay the difference now.
+                            slider sets the upgrade target. The upgrade invoice will be created first for manual review.
                         </p>
                     </div>
 
@@ -355,11 +332,11 @@ export default ({
                         </div>
                         <div className={'mt-4 flex flex-wrap items-center justify-between gap-4'}>
                             <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                                Future renewals will use the new monthly total after this upgrade is applied.
+                                Future renewals will use the new monthly total after this upgrade invoice is approved.
                             </p>
                             <button
                                 type={'button'}
-                                disabled={!hasUpgradeChanges || upgrading}
+                                disabled={!hasUpgradeChanges || upgrading || !billingProfileReady}
                                 onClick={() => onUpgrade(subscription, { cpuCores, memoryGb, diskGb })}
                                 className={'billing-primary-btn'}
                             >

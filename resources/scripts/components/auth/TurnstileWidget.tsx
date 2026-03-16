@@ -16,7 +16,7 @@ interface Props {
     siteKey: string;
     onVerify: (token: string) => void;
     onExpire: () => void;
-    onError: () => void;
+    onError: (reason?: string) => void;
     className?: string;
 }
 
@@ -27,6 +27,22 @@ const ensureScript = (): Promise<void> =>
     new Promise((resolve, reject) => {
         const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
         if (existing) {
+            if (existing.dataset.status === 'error') {
+                reject(new Error('Unable to load Turnstile script.'));
+
+                return;
+            }
+
+            if (existing.dataset.status === 'loaded') {
+                if (window.turnstile) {
+                    resolve();
+                } else {
+                    reject(new Error('Turnstile script loaded without exposing the widget API.'));
+                }
+
+                return;
+            }
+
             if (window.turnstile) {
                 resolve();
                 return;
@@ -44,8 +60,15 @@ const ensureScript = (): Promise<void> =>
         script.src = SCRIPT_SRC;
         script.async = true;
         script.defer = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Unable to load Turnstile script.'));
+        script.dataset.status = 'loading';
+        script.onload = () => {
+            script.dataset.status = 'loaded';
+            resolve();
+        };
+        script.onerror = () => {
+            script.dataset.status = 'error';
+            reject(new Error('Unable to load Turnstile script.'));
+        };
         document.head.appendChild(script);
     });
 
@@ -70,7 +93,7 @@ const TurnstileWidget = ({ siteKey, onVerify, onExpire, onError, className }: Pr
                 await ensureScript();
             } catch (_error) {
                 if (mounted) {
-                    onErrorRef.current();
+                    onErrorRef.current('script-load-failed');
                 }
 
                 return;
@@ -80,13 +103,20 @@ const TurnstileWidget = ({ siteKey, onVerify, onExpire, onError, className }: Pr
                 return;
             }
 
-            widgetIdRef.current = window.turnstile.render(containerRef.current, {
-                sitekey: siteKey,
-                theme: 'dark',
-                callback: (token: string) => onVerifyRef.current(token),
-                'expired-callback': () => onExpireRef.current(),
-                'error-callback': () => onErrorRef.current(),
-            });
+            try {
+                widgetIdRef.current = window.turnstile.render(containerRef.current, {
+                    sitekey: siteKey,
+                    theme: 'dark',
+                    retry: 'never',
+                    callback: (token: string) => onVerifyRef.current(token),
+                    'expired-callback': () => onExpireRef.current(),
+                    'error-callback': (errorCode?: string) => onErrorRef.current(errorCode),
+                });
+            } catch (_error) {
+                if (mounted) {
+                    onErrorRef.current('render-failed');
+                }
+            }
         };
 
         mountWidget();
@@ -94,7 +124,11 @@ const TurnstileWidget = ({ siteKey, onVerify, onExpire, onError, className }: Pr
         return () => {
             mounted = false;
             if (widgetIdRef.current && window.turnstile) {
-                window.turnstile.remove(widgetIdRef.current);
+                try {
+                    window.turnstile.remove(widgetIdRef.current);
+                } catch (_error) {
+                    // Ignore teardown failures from third-party widgets.
+                }
             }
             widgetIdRef.current = null;
         };

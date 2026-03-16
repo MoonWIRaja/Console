@@ -133,6 +133,15 @@
                             <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Billing</span>
                         </div>
                     </a>
+
+                    <a href="{{ route('admin.tickets') }}" style="text-decoration: none;">
+                        <div class="sidebar-link {{ ! starts_with(Route::currentRouteName(), 'admin.tickets') ?: 'active' }}">
+                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                <span class="material-icons-round" style="font-size: 20px;">support_agent</span>
+                            </div>
+                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Support</span>
+                        </div>
+                    </a>
                 @endif
 
                 <div class="sidebar-label sidebar-text">SERVICE MANAGEMENT</div>

@@ -5,7 +5,7 @@
 @endsection
 
 @section('content-header')
-    <h1>Billing<small>Catalog setup, invoice lifecycle, and payment operations.</small></h1>
+    <h1>Billing<small>Catalog setup, invoice lifecycle, and manual settlement operations.</small></h1>
     <ol class="breadcrumb">
         <li><a href="{{ route('admin.index') }}">Admin</a></li>
         <li class="active">Billing</li>
@@ -19,8 +19,8 @@
         <div class="col-xs-12">
             <div class="callout callout-info">
                 <p style="margin: 0;">
-                    This dashboard is now invoice-driven. New paid orders auto-provision after verified payment.
-                    Use <a href="{{ route('admin.billing.reconciliation') }}">Reconciliation</a> to audit exposure, failed callbacks, refund queue, and provisioning risk.
+                    This dashboard is now invoice-driven in manual billing mode. New orders, renewals, and upgrades stay pending until billing admin verifies payment and records settlement.
+                    Use <a href="{{ route('admin.billing.reconciliation') }}">Reconciliation</a> to audit unpaid exposure, refund queue, provisioning risk, and any legacy gateway artefacts that still need cleanup.
                 </p>
             </div>
         </div>
@@ -31,7 +31,7 @@
             <div class="small-box bg-aqua">
                 <div class="inner">
                     <h3>{{ $pendingOrders }}</h3>
-                    <p>Pending Billing Order{{ $pendingOrders === 1 ? '' : 's' }}</p>
+                    <p>Awaiting Approval Order{{ $pendingOrders === 1 ? '' : 's' }}</p>
                 </div>
                 <div class="icon"><i class="ion ion-card"></i></div>
             </div>
@@ -137,7 +137,7 @@
                                         </small>
                                     </td>
                                     <td>{{ $config->gameProfiles->where('enabled', true)->count() }}</td>
-                                    <td>{{ $config->orders()->where('status', \Pterodactyl\Models\BillingOrder::STATUS_PENDING)->count() }}</td>
+                                    <td>{{ $config->orders()->where('status', \Pterodactyl\Models\BillingOrder::STATUS_AWAITING_PAYMENT)->count() }}</td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.billing.nodes.view', $config->node_id) }}" class="btn btn-xs btn-primary">Setup</a>
                                     </td>
@@ -178,7 +178,11 @@
                                     <td>{{ $order->node_name }}</td>
                                     <td>{{ $order->game_name }}</td>
                                     <td>{{ $order->cpu_cores }} / {{ $order->memory_gb }} GB / {{ $order->disk_gb }} GB</td>
-                                    <td><span class="label label-default">{{ strtoupper($order->status) }}</span></td>
+                                    <td>
+                                        <span class="label {{ $order->status === \Pterodactyl\Models\BillingOrder::STATUS_AWAITING_PAYMENT ? 'label-warning' : 'label-default' }}">
+                                            {{ strtoupper($order->status) }}
+                                        </span>
+                                    </td>
                                     <td>RM {{ number_format((float) $order->total, 2) }}</td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.billing.orders.view', $order->id) }}" class="btn btn-xs btn-default">View</a>

@@ -1,4 +1,4 @@
-{{ $appName }} - Reset Password
+{{ config('mail.from.name') ?: $appName }} - Official Security Email
 
 Hi {{ $recipientName }},
 
@@ -11,3 +11,6 @@ This PIN expires in {{ $expiresInMinutes }} minutes.
 Reset password: {{ $panelUrl }}
 
 If you did not request this, you can ignore this email safely.
+
+Regards,
+{{ config('mail.from.name') ?: $appName }}

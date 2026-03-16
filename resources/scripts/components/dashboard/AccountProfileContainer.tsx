@@ -11,8 +11,8 @@ import AccountApiContainer from '@/components/dashboard/AccountApiContainer';
 import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer';
 import LinkedAccountsContainer from '@/components/dashboard/LinkedAccountsContainer';
 import DiscordCommunityCard from '@/components/dashboard/DiscordCommunityCard';
+import BillingDetailsCard from '@/components/dashboard/BillingDetailsCard';
 import { ActivityLogFilters, useActivityLogs } from '@/api/account/activity';
-import { openBillingPortal, useBillingSubscriptions } from '@/api/account/billing';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
@@ -47,7 +47,6 @@ export default () => {
         page: 1,
         sorts: { timestamp: -1 },
     });
-    const [openingBillingPortal, setOpeningBillingPortal] = useState(false);
 
     const {
         data: activityData,
@@ -57,8 +56,6 @@ export default () => {
         revalidateOnMount: true,
         revalidateOnFocus: false,
     });
-    const { data: billingSubscriptions } = useBillingSubscriptions();
-
     useEffect(() => {
         clearAndAddHttpError(activityError);
     }, [activityError]);
@@ -168,23 +165,6 @@ export default () => {
             setAvatarUploading(false);
         }
     };
-
-    const onOpenBillingPortal = async () => {
-        setOpeningBillingPortal(true);
-        clearAndAddHttpError();
-
-        try {
-            const url = await openBillingPortal();
-            window.location.assign(url);
-        } catch (error) {
-            clearAndAddHttpError(error as Error);
-        } finally {
-            setOpeningBillingPortal(false);
-        }
-    };
-
-    const billingSubscriptionCount = billingSubscriptions?.length ?? 0;
-    const autoRenewEnabledCount = billingSubscriptions?.filter((subscription) => subscription.autoRenew).length ?? 0;
 
     return (
         <div className={'account-theme account-auth-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
@@ -577,58 +557,6 @@ export default () => {
                     </section>
 
                     <section className={cardClass}>
-                        <div className={'mb-5 flex flex-wrap items-start justify-between gap-4'}>
-                            <div>
-                                <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Billing & Invoices</h2>
-                                <p className={'mt-1 text-xs text-gray-400'}>
-                                    Billing details, tax IDs, payment methods, and invoice history are now managed in
-                                    Stripe. Product actions like create server, renew, and upgrade still stay under
-                                    `/billing`.
-                                </p>
-                            </div>
-                            <div className={'flex flex-wrap gap-2'}>
-                                <span
-                                    className={
-                                        'rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300'
-                                    }
-                                >
-                                    {autoRenewEnabledCount}/{billingSubscriptionCount} Auto Renew
-                                </span>
-                                <span
-                                    className={
-                                        'rounded-xl border border-[color:var(--border)] bg-[rgba(var(--primary-rgb),0.08)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--primary)]'
-                                    }
-                                >
-                                    Stripe Managed
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className={'grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]'}>
-                            <div className={'rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-7 text-gray-300'}>
-                                Update cards, billing address, legal entity name, and tax IDs from the Stripe customer
-                                portal. Open the billing dashboard when you need to create invoices, renew a server, or
-                                migrate a legacy subscription to Stripe.
-                            </div>
-                            <div className={'flex flex-wrap items-center gap-3 md:justify-end'}>
-                                <InteractiveHoverButton
-                                    type={'button'}
-                                    text={'Open Billing'}
-                                    className={'!h-10 !min-w-[11rem] !px-5 !text-[10px]'}
-                                    onClick={() => history.push('/billing')}
-                                />
-                                <InteractiveHoverButton
-                                    type={'button'}
-                                    text={openingBillingPortal ? 'Opening...' : 'Stripe Portal'}
-                                    className={'!h-10 !min-w-[11rem] !px-5 !text-[10px]'}
-                                    onClick={() => void onOpenBillingPortal()}
-                                    disabled={openingBillingPortal}
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className={cardClass}>
                         <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                             <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Recent Activity</h2>
                             {activityData && (
@@ -672,6 +600,8 @@ export default () => {
                             </div>
                         )}
                     </section>
+
+                    <BillingDetailsCard cardClass={cardClass} />
                 </div>
 
                 <section className={'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'}>

@@ -88,15 +88,19 @@
         </div>
 
         <div class="col-md-4">
-            @if($order->status === \Pterodactyl\Models\BillingOrder::STATUS_PENDING)
+            @if(in_array($order->status, [\Pterodactyl\Models\BillingOrder::STATUS_AWAITING_PAYMENT, \Pterodactyl\Models\BillingOrder::STATUS_PENDING], true))
                 <div class="box box-success">
                     <div class="box-header with-border">
-                        <h3 class="box-title">Approve Legacy Manual Order</h3>
+                        <h3 class="box-title">Approve & Provision</h3>
                     </div>
                     <form action="{{ route('admin.billing.orders.approve', $order->id) }}" method="POST">
                         {!! csrf_field() !!}
                         <div class="box-body">
-                            <p class="text-muted">This action is only for legacy or manual orders. Invoice-driven paid orders auto-provision after payment verification.</p>
+                            <p class="text-muted">Use this after manual payment has been received. The invoice will be marked paid, a payment receipt will be generated, and the order lifecycle will continue immediately.</p>
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label class="control-label">Admin Notes</label>
+                                <textarea name="admin_notes" class="form-control" rows="4" placeholder="Optional internal note about the payment confirmation."></textarea>
+                            </div>
                         </div>
                         <div class="box-footer">
                             <button type="submit" class="btn btn-success btn-sm pull-right">Approve & Provision</button>
@@ -175,6 +179,24 @@
                         </table>
                     </div>
                 </div>
+
+                @if($order->invoice->invoice_pdf_url)
+                    <div class="box">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">Documents</h3>
+                        </div>
+                        <div class="box-body">
+                            <p><a href="{{ $order->invoice->invoice_pdf_url }}" target="_blank" rel="noreferrer">Open Invoice PDF</a></p>
+                            @if($order->invoice->payments->isNotEmpty())
+                                <p style="margin-top: 8px;">
+                                    <a href="{{ route('billing.documents.payments.receipt', $order->invoice->payments->sortByDesc('id')->first()->id) }}" target="_blank" rel="noreferrer">
+                                        Open Latest Receipt PDF
+                                    </a>
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
             @endif
         </div>
     </div>

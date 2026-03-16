@@ -5,7 +5,7 @@
 @endsection
 
 @section('content-header')
-    <h1>Billing Payments<small>Gateway verified payment records.</small></h1>
+    <h1>Billing Payments<small>Recorded settlement entries and receipt history.</small></h1>
 @endsection
 
 @section('content')

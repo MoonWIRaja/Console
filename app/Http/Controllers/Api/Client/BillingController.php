@@ -8,12 +8,16 @@ use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Services\Billing\BillingCatalogService;
+use Pterodactyl\Services\Billing\BillingDocumentService;
 use Pterodactyl\Services\Billing\BillingProfileService;
 use Pterodactyl\Services\Billing\BillingInvoiceService;
 use Pterodactyl\Services\Billing\BillingPaymentService;
+use Pterodactyl\Services\Billing\BillingProfileCompletenessService;
 use Pterodactyl\Services\Billing\StripeCheckoutService;
 use Pterodactyl\Services\Billing\StripePortalService;
 use Pterodactyl\Services\Billing\StripeWebhookService;
+use Pterodactyl\Services\Tickets\TicketTransformerService;
+use Pterodactyl\Services\Tickets\BillingTicketAutomationService;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Pterodactyl\Services\Billing\BillingSubscriptionService;
 use Pterodactyl\Http\Requests\Api\Client\Billing\StoreBillingQuoteRequest;
@@ -27,11 +31,15 @@ class BillingController extends ClientApiController
     public function __construct(
         private BillingCatalogService $catalogService,
         private BillingProfileService $profileService,
+        private BillingProfileCompletenessService $profileCompletenessService,
+        private BillingDocumentService $documentService,
         private BillingInvoiceService $invoiceService,
         private BillingPaymentService $paymentService,
         private BillingSubscriptionService $subscriptionService,
         private StripePortalService $portalService,
         private StripeWebhookService $stripeWebhookService,
+        private BillingTicketAutomationService $ticketAutomation,
+        private TicketTransformerService $ticketTransformer,
     ) {
         parent::__construct();
     }
@@ -105,6 +113,8 @@ class BillingController extends ClientApiController
 
     public function store(StoreBillingOrderRequest $request): array
     {
+        $this->profileCompletenessService->assertCompleteForCheckout($request->user());
+
         $order = $this->invoiceService->createNewOrderInvoice($request->user(), $request->validated());
         $payload = $this->transformOrder($order);
         $this->appendInvoicePaymentState($order->invoice, $payload, 'No payment was required for this order.');
@@ -150,6 +160,10 @@ class BillingController extends ClientApiController
 
     public function retryPayment(Request $request, BillingInvoice $billingInvoice): array
     {
+        if ($this->manualBillingEnabled()) {
+            throw new DisplayException('Retry payment is disabled while manual billing mode is active. Contact billing admin with your invoice number instead.');
+        }
+
         $invoice = $this->getInvoiceForRequest($request, $billingInvoice);
         $checkout = $this->paymentService->retryCheckout($invoice);
 
@@ -160,6 +174,10 @@ class BillingController extends ClientApiController
 
     public function portal(Request $request): array
     {
+        if ($this->manualBillingEnabled()) {
+            throw new DisplayException('Billing portal is disabled while manual billing mode is active.');
+        }
+
         return [
             'data' => [
                 'url' => $this->portalService->createSession($request->user()),
@@ -169,13 +187,18 @@ class BillingController extends ClientApiController
 
     public function renew(Request $request, BillingSubscription $billingSubscription): array
     {
+        $this->profileCompletenessService->assertCompleteForCheckout($request->user());
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
 
-        if ($subscription->gateway_provider === StripeCheckoutService::PROVIDER && filled($subscription->provider_subscription_id)) {
+        if (
+            !$this->manualBillingEnabled()
+            && $subscription->gateway_provider === StripeCheckoutService::PROVIDER
+            && filled($subscription->provider_subscription_id)
+        ) {
             throw new DisplayException('Stripe subscriptions renew automatically. Use retry payment on a failed renewal invoice or open the customer portal to update your card.');
         }
 
-        $invoice = $this->invoiceService->createRenewalInvoice($subscription);
+        $invoice = $this->invoiceService->createRenewalInvoice($subscription, true);
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
         $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this renewal.');
@@ -196,8 +219,9 @@ class BillingController extends ClientApiController
 
     public function upgrade(UpgradeBillingSubscriptionRequest $request, BillingSubscription $billingSubscription): array
     {
+        $this->profileCompletenessService->assertCompleteForCheckout($request->user());
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
-        $invoice = $this->invoiceService->createUpgradeInvoice($subscription, $request->validated());
+        $invoice = $this->invoiceService->createUpgradeInvoice($subscription, $request->validated(), true);
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
         $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this upgrade.');
@@ -209,6 +233,10 @@ class BillingController extends ClientApiController
 
     public function toggleAutoRenew(ToggleBillingAutoRenewRequest $request, BillingSubscription $billingSubscription): array
     {
+        if ($this->manualBillingEnabled()) {
+            throw new DisplayException('Auto renew is disabled while manual billing mode is active.');
+        }
+
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
         $subscription = $this->subscriptionService->toggleAutoRenew($subscription, (bool) $request->validated()['auto_renew']);
 
@@ -219,6 +247,10 @@ class BillingController extends ClientApiController
 
     public function migrateToStripe(Request $request, BillingSubscription $billingSubscription): array
     {
+        if ($this->manualBillingEnabled()) {
+            throw new DisplayException('Stripe migration is disabled while manual billing mode is active.');
+        }
+
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
 
         if ($subscription->gateway_provider === StripeCheckoutService::PROVIDER && filled($subscription->provider_subscription_id)) {
@@ -279,6 +311,8 @@ class BillingController extends ClientApiController
 
     private function appendInvoicePaymentState(BillingInvoice $invoice, array &$payload, string $zeroAmountReason): void
     {
+        $invoice->loadMissing('user', 'order', 'subscription');
+
         if ((float) $invoice->grand_total <= 0) {
             $this->paymentService->settleZeroAmountInvoice($invoice, $zeroAmountReason);
             $payload['invoice'] = $this->transformInvoice($invoice->fresh(['items', 'payments.refunds', 'subscription', 'order']));
@@ -290,13 +324,25 @@ class BillingController extends ClientApiController
         try {
             $payload['checkout'] = $this->transformCheckout($this->paymentService->startCheckout($invoice));
         } catch (DisplayException $exception) {
+            $payload['invoice'] = $this->transformInvoice($invoice->fresh(['items', 'payments.refunds', 'subscription', 'order']));
             $payload['checkout_error'] = $exception->getMessage();
+        }
+
+        if ($this->manualBillingEnabled()) {
+            $payload['manual_payment_required'] = true;
+            $payload['discord_invite_url'] = $this->discordInviteUrl();
+            $this->ticketAutomation->maybeCreateManualCheckoutTicket($invoice, $invoice->user, $payload);
+
+            if (($payload['ticket'] ?? null) instanceof \Pterodactyl\Models\Ticket) {
+                $payload['ticket'] = $this->ticketTransformer->detail($payload['ticket'], $invoice->user);
+            }
         }
     }
 
     private function transformSubscription(BillingSubscription $subscription): array
     {
         $subscription->loadMissing('server', 'nodeConfig', 'gameProfile.egg.nest');
+        $manualBillingEnabled = $this->manualBillingEnabled();
 
         $upgradeLimits = $subscription->nodeConfig
             ? $this->catalogService->getSubscriptionUpgradeLimits($subscription)
@@ -334,22 +380,28 @@ class BillingController extends ClientApiController
             'disk_gb' => $subscription->disk_gb,
             'renewal_period_months' => $subscription->renewal_period_months,
             'recurring_total' => (float) $subscription->recurring_total,
-            'auto_renew' => $subscription->auto_renew,
-            'gateway_provider' => $subscription->gateway_provider,
+            'auto_renew' => $manualBillingEnabled ? false : $subscription->auto_renew,
+            'gateway_provider' => $manualBillingEnabled
+                ? BillingPaymentService::MANUAL_PROVIDER
+                : $subscription->gateway_provider,
             'provider_status' => $subscription->provider_status,
             'migration_source' => $subscription->migration_source,
             'migration_state' => $subscription->migration_state,
             'provider_subscription_id' => $subscription->provider_subscription_id,
-            'auto_renew_available' => $subscription->gateway_provider === StripeCheckoutService::PROVIDER
-                ? !blank($subscription->provider_subscription_id)
-                : !blank($subscription->gateway_token_reference),
-            'auto_renew_unavailable_reason' => $subscription->gateway_provider === StripeCheckoutService::PROVIDER
-                ? (blank($subscription->provider_subscription_id)
-                    ? 'This subscription has not completed Stripe migration yet.'
-                    : null)
-                : (blank($subscription->gateway_token_reference)
-                    ? 'Auto-renew requires a tokenized card payment. QR and online banking payments usually do not create a reusable token.'
-                    : null),
+            'auto_renew_available' => $manualBillingEnabled
+                ? false
+                : ($subscription->gateway_provider === StripeCheckoutService::PROVIDER
+                    ? !blank($subscription->provider_subscription_id)
+                    : !blank($subscription->gateway_token_reference)),
+            'auto_renew_unavailable_reason' => $manualBillingEnabled
+                ? 'Auto renew is unavailable while manual billing mode is active.'
+                : ($subscription->gateway_provider === StripeCheckoutService::PROVIDER
+                    ? (blank($subscription->provider_subscription_id)
+                        ? 'This subscription has not completed Stripe migration yet.'
+                        : null)
+                    : (blank($subscription->gateway_token_reference)
+                        ? 'Auto-renew requires a tokenized card payment. QR and online banking payments usually do not create a reusable token.'
+                        : null)),
             'renews_at' => optional($subscription->renews_at)->toIso8601String(),
             'next_invoice_at' => optional($subscription->next_invoice_at)->toIso8601String(),
             'grace_suspend_at' => optional($subscription->grace_suspend_at)->toIso8601String(),
@@ -372,6 +424,7 @@ class BillingController extends ClientApiController
     private function transformInvoice(BillingInvoice $invoice): array
     {
         $invoice->loadMissing(['items', 'payments.refunds', 'subscription', 'order']);
+        $manualBillingEnabled = $this->manualBillingEnabled();
 
         return [
             'id' => $invoice->id,
@@ -382,13 +435,17 @@ class BillingController extends ClientApiController
             'subtotal' => (float) $invoice->subtotal,
             'tax_total' => (float) $invoice->tax_total,
             'grand_total' => (float) $invoice->grand_total,
-            'provider' => $invoice->provider,
+            'provider' => $manualBillingEnabled && !$invoice->paid_at
+                ? BillingPaymentService::MANUAL_PROVIDER
+                : $invoice->provider,
             'provider_invoice_id' => $invoice->provider_invoice_id,
             'provider_checkout_session_id' => $invoice->provider_checkout_session_id,
             'provider_payment_intent_id' => $invoice->provider_payment_intent_id,
-            'provider_status' => $invoice->provider_status,
-            'hosted_invoice_url' => $invoice->hosted_invoice_url,
-            'invoice_pdf_url' => $invoice->invoice_pdf_url,
+            'provider_status' => $manualBillingEnabled && !$invoice->paid_at ? 'awaiting_manual_payment' : $invoice->provider_status,
+            'hosted_invoice_url' => $manualBillingEnabled ? null : $invoice->hosted_invoice_url,
+            'invoice_pdf_url' => $invoice->provider === BillingPaymentService::MANUAL_PROVIDER || $manualBillingEnabled
+                ? $this->documentService->invoiceUrl($invoice)
+                : $invoice->invoice_pdf_url,
             'billing_order_id' => $invoice->billing_order_id,
             'subscription_id' => $invoice->subscription_id,
             'issued_at' => optional($invoice->issued_at)->toIso8601String(),
@@ -405,7 +462,7 @@ class BillingController extends ClientApiController
                 'line_subtotal' => (float) $item->line_subtotal,
                 'meta' => $item->meta,
             ])->all(),
-            'payments' => $invoice->payments->map(fn ($payment) => [
+            'payments' => $invoice->payments->sortByDesc('id')->values()->map(fn ($payment) => [
                 'id' => $payment->id,
                 'payment_number' => $payment->payment_number,
                 'provider' => $payment->provider,
@@ -421,7 +478,8 @@ class BillingController extends ClientApiController
                 'currency' => $payment->currency,
                 'status' => $payment->status,
                 'paid_at' => optional($payment->paid_at)->toIso8601String(),
-                'refunds' => $payment->refunds->map(fn ($refund) => [
+                'receipt_pdf_url' => $this->documentService->receiptUrl($payment),
+                'refunds' => $payment->refunds->sortByDesc('id')->values()->map(fn ($refund) => [
                     'id' => $refund->id,
                     'refund_number' => $refund->refund_number,
                     'amount' => (float) $refund->amount,
@@ -435,6 +493,10 @@ class BillingController extends ClientApiController
 
     private function transformProfile(array $profile): array
     {
+        $completeness = $this->profileCompletenessService->assess(
+            $this->profileService->getOrCreateForUser($this->request->user())
+        );
+
         return [
             'legal_name' => $profile['legal_name'] ?? null,
             'company_name' => $profile['company_name'] ?? null,
@@ -448,6 +510,9 @@ class BillingController extends ClientApiController
             'country_code' => $profile['country_code'] ?? null,
             'tax_id' => $profile['tax_id'] ?? null,
             'is_business' => (bool) ($profile['is_business'] ?? false),
+            'is_complete' => $completeness['is_complete'],
+            'missing_fields' => $completeness['missing_fields'],
+            'required_fields' => $completeness['required_fields'],
         ];
     }
 
@@ -492,10 +557,26 @@ class BillingController extends ClientApiController
 
     private function reconcilePendingStripeInvoices(Request $request): void
     {
+        if ($this->manualBillingEnabled()) {
+            return;
+        }
+
         try {
             $this->stripeWebhookService->reconcilePendingInvoicesForUser($request->user());
         } catch (\Throwable $exception) {
             report($exception);
         }
+    }
+
+    private function manualBillingEnabled(): bool
+    {
+        return $this->paymentService->manualBillingEnabled();
+    }
+
+    private function discordInviteUrl(): ?string
+    {
+        $value = trim((string) config('services.discord.invite_url', ''));
+
+        return $value !== '' ? $value : null;
     }
 }
