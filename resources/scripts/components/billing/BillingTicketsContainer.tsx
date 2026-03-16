@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CreditCard, LifeBuoy, Link2, Paperclip, RotateCcw } from 'lucide-react';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Modal from '@/components/elements/Modal';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import { joinDiscordCommunity, useDiscordCommunityStatus } from '@/api/account/discordCommunity';
 import { useOAuthAccounts } from '@/api/account/oauth';
@@ -27,6 +29,48 @@ type TicketComposeCategory = 'payment' | 'refund' | 'support';
 
 type TicketComposeDraft = {
     category: TicketComposeCategory;
+};
+
+const composeModalMeta = (category: TicketComposeCategory) => {
+    if (category === 'payment') {
+        return {
+            eyebrow: 'Billing Queue',
+            title: 'Open Payment Ticket',
+            copy: 'Pick the invoice you want staff to review and continue the payment conversation from one place.',
+            Icon: CreditCard,
+            iconClass: 'is-payment',
+        };
+    }
+
+    if (category === 'refund') {
+        return {
+            eyebrow: 'Refund Queue',
+            title: 'Open Refund Ticket',
+            copy: 'Choose the payment that needs refund review so billing history stays attached to the ticket.',
+            Icon: RotateCcw,
+            iconClass: 'is-refund',
+        };
+    }
+
+    return {
+        eyebrow: 'Support Desk',
+        title: 'Open Support Ticket',
+        copy: 'Describe the issue clearly and the panel will sync the conversation into a private Discord thread.',
+        Icon: LifeBuoy,
+        iconClass: 'is-support',
+    };
+};
+
+const formatFileSize = (size: number): string => {
+    if (size < 1024) {
+        return `${size} B`;
+    }
+
+    if (size < 1024 * 1024) {
+        return `${(size / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 const statusColor = (status: string): string => {
@@ -384,6 +428,9 @@ const BillingTicketsContainer = () => {
 
         return true;
     });
+    const selectedEligible = eligibles.find((item) => String(item.invoiceId || item.paymentId) === selectedEligibleId);
+    const composeMeta = composeModalMeta(composeCategory);
+    const ComposeIcon = composeMeta.Icon;
 
     return (
         <div className={'billing-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
@@ -500,6 +547,279 @@ const BillingTicketsContainer = () => {
                     color: rgba(248, 246, 239, 0.97);
                     text-shadow: 0 0 18px rgba(248, 246, 239, 0.19);
                 }
+
+                .ticket-modal {
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .ticket-modal::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    background:
+                        radial-gradient(circle at top right, rgba(var(--primary-rgb), 0.13), transparent 34%),
+                        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 38%);
+                    opacity: 0.9;
+                }
+
+                .ticket-modal-header,
+                .ticket-modal-field,
+                .ticket-modal-summary,
+                .ticket-modal-note,
+                .ticket-modal-upload,
+                .ticket-modal-footer {
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .ticket-modal-header {
+                    display: flex;
+                    gap: 1rem;
+                    align-items: flex-start;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                }
+
+                .ticket-modal-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 3.25rem;
+                    height: 3.25rem;
+                    border-radius: 18px;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    background: rgba(255, 255, 255, 0.04);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+                    color: rgba(248, 246, 239, 0.94);
+                    flex-shrink: 0;
+                }
+
+                .ticket-modal-icon.is-payment {
+                    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.06));
+                    border-color: rgba(74, 222, 128, 0.26);
+                    color: #bbf7d0;
+                }
+
+                .ticket-modal-icon.is-refund {
+                    background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.06));
+                    border-color: rgba(251, 191, 36, 0.24);
+                    color: #fde68a;
+                }
+
+                .ticket-modal-icon.is-support {
+                    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.24), rgba(var(--primary-rgb), 0.06));
+                    border-color: rgba(var(--primary-rgb), 0.24);
+                    color: rgba(230, 252, 180, 0.96);
+                }
+
+                .ticket-modal-eyebrow {
+                    color: rgba(248, 246, 239, 0.54);
+                    font-size: 0.68rem;
+                    font-weight: 800;
+                    letter-spacing: 0.18em;
+                    text-transform: uppercase;
+                }
+
+                .ticket-modal-title {
+                    margin: 0.45rem 0 0;
+                    font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+                    line-height: 1.08;
+                    font-weight: 900;
+                    color: rgba(248, 246, 239, 0.98);
+                }
+
+                .ticket-modal-copy {
+                    margin-top: 0.65rem;
+                    color: rgba(248, 246, 239, 0.68);
+                    font-size: 0.92rem;
+                    line-height: 1.7;
+                    max-width: 48ch;
+                }
+
+                .ticket-modal-body {
+                    margin-top: 1.1rem;
+                    display: grid;
+                    gap: 1rem;
+                }
+
+                .ticket-modal-field {
+                    display: grid;
+                    gap: 0.55rem;
+                }
+
+                .ticket-modal-label {
+                    color: rgba(248, 246, 239, 0.62);
+                    font-size: 0.7rem;
+                    font-weight: 800;
+                    letter-spacing: 0.16em;
+                    text-transform: uppercase;
+                }
+
+                .ticket-modal-input,
+                .ticket-modal-select,
+                .ticket-modal-textarea {
+                    width: 100%;
+                    border-radius: 18px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    background: rgba(3, 8, 14, 0.78);
+                    color: rgba(248, 246, 239, 0.98);
+                    padding: 0.95rem 1rem;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+                    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+                }
+
+                .ticket-modal-input::placeholder,
+                .ticket-modal-textarea::placeholder {
+                    color: rgba(248, 246, 239, 0.34);
+                }
+
+                .ticket-modal-input:focus,
+                .ticket-modal-select:focus,
+                .ticket-modal-textarea:focus {
+                    outline: none;
+                    border-color: rgba(var(--primary-rgb), 0.42);
+                    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
+                    background: rgba(5, 11, 18, 0.92);
+                }
+
+                .ticket-modal-textarea {
+                    min-height: 10rem;
+                    resize: vertical;
+                }
+
+                .ticket-modal-summary,
+                .ticket-modal-note,
+                .ticket-modal-upload {
+                    border-radius: 20px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: rgba(255, 255, 255, 0.03);
+                    padding: 1rem;
+                }
+
+                .ticket-modal-summary {
+                    display: grid;
+                    gap: 0.4rem;
+                }
+
+                .ticket-modal-summary-title {
+                    color: rgba(248, 246, 239, 0.98);
+                    font-size: 0.98rem;
+                    font-weight: 800;
+                }
+
+                .ticket-modal-summary-meta {
+                    color: rgba(248, 246, 239, 0.62);
+                    font-size: 0.84rem;
+                    line-height: 1.7;
+                }
+
+                .ticket-modal-note {
+                    color: rgba(248, 246, 239, 0.74);
+                    font-size: 0.88rem;
+                    line-height: 1.7;
+                }
+
+                .ticket-modal-note.is-warning {
+                    border-color: rgba(245, 158, 11, 0.22);
+                    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+                    color: #fde68a;
+                }
+
+                .ticket-modal-upload-head {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 0.75rem;
+                    margin-bottom: 0.85rem;
+                }
+
+                .ticket-modal-upload-title {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.55rem;
+                    color: rgba(248, 246, 239, 0.96);
+                    font-size: 0.92rem;
+                    font-weight: 800;
+                }
+
+                .ticket-modal-upload-help {
+                    color: rgba(248, 246, 239, 0.46);
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                }
+
+                .ticket-modal-file-input {
+                    display: block;
+                    width: 100%;
+                    color: rgba(248, 246, 239, 0.7);
+                    font-size: 0.88rem;
+                }
+
+                .ticket-modal-files {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.6rem;
+                    margin-top: 0.9rem;
+                }
+
+                .ticket-modal-file-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.45rem;
+                    border-radius: 999px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: rgba(255, 255, 255, 0.04);
+                    padding: 0.45rem 0.8rem;
+                    color: rgba(248, 246, 239, 0.82);
+                    font-size: 0.78rem;
+                }
+
+                .ticket-modal-file-size {
+                    color: rgba(248, 246, 239, 0.42);
+                }
+
+                .ticket-modal-footer {
+                    margin-top: 1.15rem;
+                    display: flex;
+                    flex-direction: column-reverse;
+                    gap: 0.75rem;
+                    align-items: stretch;
+                }
+
+                .ticket-modal-secondary {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 2.75rem;
+                    border-radius: 999px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    background: rgba(255, 255, 255, 0.04);
+                    padding: 0.75rem 1.25rem;
+                    color: rgba(248, 246, 239, 0.88);
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+                }
+
+                .ticket-modal-secondary:hover,
+                .ticket-modal-secondary:focus-visible {
+                    border-color: rgba(var(--primary-rgb), 0.32);
+                    background: rgba(255, 255, 255, 0.06);
+                    transform: translateY(-1px);
+                    outline: none;
+                }
+
+                @media (min-width: 640px) {
+                    .ticket-modal-footer {
+                        flex-direction: row;
+                        justify-content: flex-end;
+                        align-items: center;
+                    }
+                }
             `}</style>
             <div className={'billing-wrap'}>
                 <FlashMessageRender byKey={'tickets'} />
@@ -518,28 +838,27 @@ const BillingTicketsContainer = () => {
                                 tied directly to your account history.
                             </p>
                         </div>
-                        <div className={'flex flex-wrap gap-3'}>
-                            <button
-                                className={'btn btn-primary'}
+                        <div className={'flex w-full flex-wrap gap-3 md:w-auto md:justify-end'}>
+                            <InteractiveHoverButton
+                                className={'w-full normal-case tracking-normal sm:w-auto'}
                                 onClick={() => void openCompose('payment')}
+                                text={'Open Payment Ticket'}
                                 type={'button'}
-                            >
-                                Open Payment Ticket
-                            </button>
-                            <button
-                                className={'btn btn-default'}
+                                variant={'success'}
+                            />
+                            <InteractiveHoverButton
+                                className={'w-full normal-case tracking-normal sm:w-auto'}
                                 onClick={() => void openCompose('refund')}
+                                text={'Open Refund Ticket'}
                                 type={'button'}
-                            >
-                                Open Refund Ticket
-                            </button>
-                            <button
-                                className={'btn btn-default'}
+                                variant={'warning'}
+                            />
+                            <InteractiveHoverButton
+                                className={'w-full normal-case tracking-normal sm:w-auto'}
                                 onClick={() => void openCompose('support')}
+                                text={'Open Support Ticket'}
                                 type={'button'}
-                            >
-                                Open Support Ticket
-                            </button>
+                            />
                         </div>
                     </div>
                 </div>
@@ -850,122 +1169,200 @@ const BillingTicketsContainer = () => {
                 </div>
 
                 <Modal visible={composeModalVisible} onDismissed={() => setComposeModalVisible(false)}>
-                    <div>
-                        <h2 className={'text-xl font-black text-[#f8f6ef]'}>
-                            {composeCategory === 'support'
-                                ? 'Open Support Ticket'
-                                : composeCategory === 'payment'
-                                ? 'Open Payment Ticket'
-                                : 'Open Refund Ticket'}
-                        </h2>
-
-                        {composeCategory === 'support' ? (
-                            <div className={'mt-5 space-y-4'}>
-                                <input
-                                    className={
-                                        'w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
-                                    }
-                                    placeholder={'Subject'}
-                                    value={supportSubject}
-                                    onChange={(event) => setSupportSubject(event.currentTarget.value)}
-                                />
-                                <textarea
-                                    className={
-                                        'h-40 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
-                                    }
-                                    placeholder={'Tell us what you need help with'}
-                                    value={supportBody}
-                                    onChange={(event) => setSupportBody(event.currentTarget.value)}
-                                />
+                    <div className={'ticket-modal'}>
+                        <div className={'ticket-modal-header'}>
+                            <div className={`ticket-modal-icon ${composeMeta.iconClass}`}>
+                                <ComposeIcon size={18} />
                             </div>
-                        ) : (
-                            <div className={'mt-5 space-y-4'}>
-                                <p className={'text-sm text-[color:var(--muted-foreground)]'}>
-                                    Choose the {composeCategory === 'payment' ? 'invoice' : 'payment'} you want to
-                                    discuss.
-                                </p>
-                                <select
-                                    className={
-                                        'w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
-                                    }
-                                    value={selectedEligibleId}
-                                    onChange={(event) => setSelectedEligibleId(event.currentTarget.value)}
-                                >
-                                    {eligibles.map((item) => (
-                                        <option
-                                            key={item.invoiceId || item.paymentId}
-                                            value={item.invoiceId || item.paymentId}
-                                        >
-                                            {item.invoiceNumber || item.paymentNumber} - {item.currency}{' '}
-                                            {item.amount.toFixed(2)}
-                                        </option>
-                                    ))}
-                                </select>
-                                {eligibles.find(
-                                    (item) => String(item.invoiceId || item.paymentId) === selectedEligibleId
-                                )?.existingTicketId ? (
-                                    <p className={'text-sm leading-7 text-amber-200'}>
-                                        An active ticket already exists for this item. Opening it will continue the
-                                        existing conversation instead of creating a duplicate.
-                                    </p>
-                                ) : null}
+                            <div>
+                                <div className={'ticket-modal-eyebrow'}>{composeMeta.eyebrow}</div>
+                                <h2 className={'ticket-modal-title'}>{composeMeta.title}</h2>
+                                <p className={'ticket-modal-copy'}>{composeMeta.copy}</p>
                             </div>
-                        )}
-
-                        <div className={'mt-5'}>
-                            <label
-                                className={
-                                    'block text-xs font-black uppercase tracking-[0.2em] text-[color:var(--muted-foreground)]'
-                                }
-                            >
-                                Attachments
-                            </label>
-                            <input
-                                className={'mt-3 block w-full text-sm text-[color:var(--muted-foreground)]'}
-                                multiple
-                                type={'file'}
-                                onChange={(event) => setComposeFiles(Array.from(event.currentTarget.files || []))}
-                            />
                         </div>
 
-                        <div className={'mt-6 flex justify-end gap-3'}>
+                        <div className={'ticket-modal-body'}>
+                            {composeCategory === 'support' ? (
+                                <>
+                                    <div className={'ticket-modal-field'}>
+                                        <label className={'ticket-modal-label'}>Subject</label>
+                                        <input
+                                            className={'ticket-modal-input'}
+                                            placeholder={'Support request'}
+                                            value={supportSubject}
+                                            onChange={(event) => setSupportSubject(event.currentTarget.value)}
+                                        />
+                                    </div>
+                                    <div className={'ticket-modal-field'}>
+                                        <label className={'ticket-modal-label'}>Message</label>
+                                        <textarea
+                                            className={'ticket-modal-textarea'}
+                                            placeholder={'Tell us what you need help with'}
+                                            value={supportBody}
+                                            onChange={(event) => setSupportBody(event.currentTarget.value)}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className={'ticket-modal-field'}>
+                                        <label className={'ticket-modal-label'}>
+                                            {composeCategory === 'payment' ? 'Invoice' : 'Payment'}
+                                        </label>
+                                        <select
+                                            className={'ticket-modal-select'}
+                                            value={selectedEligibleId}
+                                            onChange={(event) => setSelectedEligibleId(event.currentTarget.value)}
+                                        >
+                                            {eligibles.map((item) => (
+                                                <option
+                                                    key={item.invoiceId || item.paymentId}
+                                                    value={item.invoiceId || item.paymentId}
+                                                >
+                                                    {item.invoiceNumber || item.paymentNumber} - {item.currency}{' '}
+                                                    {item.amount.toFixed(2)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {selectedEligible ? (
+                                        <div className={'ticket-modal-summary'}>
+                                            <div className={'ticket-modal-summary-title'}>
+                                                {selectedEligible.subject}
+                                            </div>
+                                            <div className={'ticket-modal-summary-meta'}>
+                                                {selectedEligible.invoiceNumber
+                                                    ? `Invoice ${selectedEligible.invoiceNumber}`
+                                                    : `Payment ${selectedEligible.paymentNumber}`}
+                                                {' • '}
+                                                {selectedEligible.currency} {selectedEligible.amount.toFixed(2)}
+                                                {selectedEligible.serverName ? ` • ${selectedEligible.serverName}` : ''}
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {eligibles.length === 0 ? (
+                                        <div className={'ticket-modal-note'}>
+                                            No eligible {composeCategory === 'payment' ? 'invoices' : 'payments'} are
+                                            available for this action right now.
+                                        </div>
+                                    ) : null}
+
+                                    {selectedEligible?.existingTicketId ? (
+                                        <div className={'ticket-modal-note is-warning'}>
+                                            An active ticket already exists for this item. Continuing will reopen the
+                                            existing conversation instead of creating a duplicate thread.
+                                        </div>
+                                    ) : null}
+                                </>
+                            )}
+
+                            <div className={'ticket-modal-upload'}>
+                                <div className={'ticket-modal-upload-head'}>
+                                    <div className={'ticket-modal-upload-title'}>
+                                        <Paperclip size={16} />
+                                        <span>Attachments</span>
+                                    </div>
+                                    <span className={'ticket-modal-upload-help'}>Optional</span>
+                                </div>
+                                <input
+                                    className={'ticket-modal-file-input'}
+                                    multiple
+                                    type={'file'}
+                                    onChange={(event) => setComposeFiles(Array.from(event.currentTarget.files || []))}
+                                />
+                                {composeFiles.length > 0 ? (
+                                    <div className={'ticket-modal-files'}>
+                                        {composeFiles.map((file) => (
+                                            <span
+                                                key={`${file.name}-${file.size}`}
+                                                className={'ticket-modal-file-chip'}
+                                            >
+                                                <span>{file.name}</span>
+                                                <span className={'ticket-modal-file-size'}>
+                                                    {formatFileSize(file.size)}
+                                                </span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className={'ticket-modal-summary-meta'}>
+                                        Add screenshots, invoices, receipts, or any file that helps staff review faster.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className={'ticket-modal-footer'}>
                             <button
-                                className={'btn btn-default'}
+                                className={'ticket-modal-secondary'}
                                 onClick={() => setComposeModalVisible(false)}
                                 type={'button'}
                             >
                                 Cancel
                             </button>
-                            <button
-                                className={'btn btn-primary'}
+                            <InteractiveHoverButton
+                                className={'w-full normal-case tracking-normal sm:w-auto'}
                                 disabled={composeBusy}
                                 onClick={() => void submitCompose()}
+                                text={
+                                    composeBusy
+                                        ? 'Opening...'
+                                        : selectedEligible?.existingTicketId
+                                        ? 'Continue Ticket'
+                                        : 'Open Ticket'
+                                }
                                 type={'button'}
-                            >
-                                {composeBusy ? 'Opening...' : 'Open Ticket'}
-                            </button>
+                                variant={
+                                    composeCategory === 'payment'
+                                        ? 'success'
+                                        : composeCategory === 'refund'
+                                        ? 'warning'
+                                        : 'neutral'
+                                }
+                            />
                         </div>
                     </div>
                 </Modal>
 
                 <Modal visible={linkPromptVisible} onDismissed={() => setLinkPromptVisible(false)}>
-                    <div>
-                        <h2 className={'text-xl font-black text-[#f8f6ef]'}>Link Discord First</h2>
-                        <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
-                            Support tickets sync into private Discord threads. Link your Discord account first, then you
-                            can continue this workflow.
-                        </p>
-                        <div className={'mt-6 flex justify-end gap-3'}>
+                    <div className={'ticket-modal'}>
+                        <div className={'ticket-modal-header'}>
+                            <div className={'ticket-modal-icon is-support'}>
+                                <Link2 size={18} />
+                            </div>
+                            <div>
+                                <div className={'ticket-modal-eyebrow'}>Discord Required</div>
+                                <h2 className={'ticket-modal-title'}>Link Discord First</h2>
+                                <p className={'ticket-modal-copy'}>
+                                    Support tickets sync into private Discord threads. Connect your Discord account
+                                    first so staff can continue the workflow with the right identity.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className={'ticket-modal-body'}>
+                            <div className={'ticket-modal-note'}>
+                                Once linked, the panel will return you here and you can continue opening the ticket
+                                without restarting the whole flow.
+                            </div>
+                        </div>
+
+                        <div className={'ticket-modal-footer'}>
                             <button
-                                className={'btn btn-default'}
+                                className={'ticket-modal-secondary'}
                                 onClick={() => setLinkPromptVisible(false)}
                                 type={'button'}
                             >
                                 Close
                             </button>
-                            <button className={'btn btn-primary'} onClick={handleLinkDiscord} type={'button'}>
-                                Link Discord
-                            </button>
+                            <InteractiveHoverButton
+                                className={'w-full normal-case tracking-normal sm:w-auto'}
+                                onClick={handleLinkDiscord}
+                                text={'Link Discord'}
+                                type={'button'}
+                            />
                         </div>
                     </div>
                 </Modal>

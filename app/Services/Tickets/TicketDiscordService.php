@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Client\PendingRequest;
 use Pterodactyl\Models\Ticket;
 use Pterodactyl\Models\TicketMessage;
+use Pterodactyl\Models\UserOAuthAccount;
 
 class TicketDiscordService
 {
@@ -69,19 +70,13 @@ class TicketDiscordService
             throw new RuntimeException('Discord did not return a valid thread identifier.');
         }
 
-        if ($ticket->requester_discord_user_id) {
-            $memberResponse = $this->botHttp()->put(
-                sprintf('%s/channels/%s/thread-members/%s', self::API_BASE, $threadId, $ticket->requester_discord_user_id)
-            );
-
-            if (!$memberResponse->successful() && $memberResponse->status() !== 204) {
-                $ticket->forceFill([
-                    'discord_sync_status' => Ticket::DISCORD_SYNC_FAILED,
-                    'discord_last_error' => $this->discordErrorMessage($memberResponse, 'Unable to add the requester to the Discord ticket thread.'),
-                    'discord_thread_id' => $threadId,
-                    'discord_parent_channel_id' => $this->settings->activeParentChannelId(),
-                ])->saveOrFail();
-            }
+        $memberSyncWarnings = $this->syncInitialThreadMembers($ticket, $threadId);
+        if ($memberSyncWarnings !== []) {
+            $this->logAudit(sprintf(
+                'Ticket %s Discord thread member sync warnings: %s',
+                $ticket->ticket_number,
+                implode(' ', $memberSyncWarnings)
+            ));
         }
 
         $ticket->forceFill([
@@ -89,7 +84,7 @@ class TicketDiscordService
             'discord_parent_channel_id' => $this->settings->activeParentChannelId(),
             'discord_sync_status' => Ticket::DISCORD_SYNC_SYNCED,
             'discord_last_synced_at' => now(),
-            'discord_last_error' => null,
+            'discord_last_error' => $memberSyncWarnings !== [] ? implode(' ', $memberSyncWarnings) : null,
         ])->saveOrFail();
 
         $this->postThreadIntro($ticket->fresh());
@@ -456,37 +451,122 @@ class TicketDiscordService
             return;
         }
 
+        $staffMentions = $this->staffRoleMentions();
+        $adminUrl = $this->urls->adminTicketUrl($ticket);
+        $clientUrl = $this->urls->clientTicketUrl($ticket);
         $lines = array_filter([
+            $staffMentions !== '' ? 'Staff alert: ' . $staffMentions : null,
             sprintf('Ticket %s has been created.', $ticket->ticket_number),
             'Category: ' . strtoupper($ticket->category),
             $ticket->invoice?->invoice_number ? 'Invoice: ' . $ticket->invoice->invoice_number : null,
             $ticket->payment?->payment_number ? 'Payment: ' . $ticket->payment->payment_number : null,
-            'Console: ' . rtrim((string) config('app.url', ''), '/') . '/tickets/' . $ticket->id,
+            'Admin: ' . $adminUrl,
+            'User: ' . $clientUrl,
         ]);
+
+        $payload = [
+            'content' => implode("\n", $lines),
+            'components' => [[
+                'type' => 1,
+                'components' => [
+                    [
+                        'type' => 2,
+                        'style' => 5,
+                        'label' => 'Open Admin Ticket',
+                        'url' => $adminUrl,
+                    ],
+                    [
+                        'type' => 2,
+                        'style' => 5,
+                        'label' => 'Open User Ticket',
+                        'url' => $clientUrl,
+                    ],
+                    [
+                        'type' => 2,
+                        'style' => 4,
+                        'label' => 'Close Ticket',
+                        'custom_id' => 'tickets:thread:close',
+                    ],
+                ],
+            ]],
+        ];
+
+        if ($staffMentions !== '') {
+            $payload['allowed_mentions'] = [
+                'parse' => [],
+                'roles' => $this->settings->staffRoleIds(),
+            ];
+        }
 
         $this->botHttp()->post(
             sprintf('%s/channels/%s/messages', self::API_BASE, $ticket->discord_thread_id),
-            [
-                'content' => implode("\n", $lines),
-                'components' => [[
-                    'type' => 1,
-                    'components' => [
-                        [
-                            'type' => 2,
-                            'style' => 5,
-                            'label' => 'Open Ticket',
-                            'url' => rtrim((string) config('app.url', ''), '/') . '/tickets/' . $ticket->id,
-                        ],
-                        [
-                            'type' => 2,
-                            'style' => 4,
-                            'label' => 'Close Ticket',
-                            'custom_id' => 'tickets:thread:close',
-                        ],
-                    ],
-                ]],
-            ]
+            $payload
         );
+    }
+
+    private function syncInitialThreadMembers(Ticket $ticket, string $threadId): array
+    {
+        $warnings = [];
+        $members = [];
+
+        $requesterId = trim((string) $ticket->requester_discord_user_id);
+        if ($requesterId !== '') {
+            $members[$requesterId] = 'requester';
+        }
+
+        foreach ($this->staffDiscordMemberIds($ticket) as $discordUserId) {
+            $members[$discordUserId] = $members[$discordUserId] ?? 'staff';
+        }
+
+        foreach ($members as $discordUserId => $memberType) {
+            $response = $this->botHttp()->put(
+                sprintf('%s/channels/%s/thread-members/%s', self::API_BASE, $threadId, $discordUserId)
+            );
+
+            if ($response->successful() || $response->status() === 204) {
+                continue;
+            }
+
+            $warnings[] = sprintf(
+                'Unable to add the %s Discord account %s to the thread: %s',
+                $memberType,
+                $discordUserId,
+                $this->discordErrorMessage($response, 'Unknown Discord API error.')
+            );
+        }
+
+        return $warnings;
+    }
+
+    private function staffDiscordMemberIds(Ticket $ticket): array
+    {
+        return UserOAuthAccount::query()
+            ->where('provider', 'discord')
+            ->whereNotNull('provider_id')
+            ->where('provider_id', '!=', '')
+            ->where(function ($query) use ($ticket) {
+                $query->whereHas('user', fn ($userQuery) => $userQuery->where('root_admin', true));
+
+                if ($ticket->assigned_admin_id) {
+                    $query->orWhere('user_id', $ticket->assigned_admin_id);
+                }
+            })
+            ->pluck('provider_id')
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function staffRoleMentions(): string
+    {
+        $roles = $this->settings->staffRoleIds();
+
+        return implode(' ', array_map(
+            fn (string $roleId) => sprintf('<@&%s>', $roleId),
+            array_values(array_filter(array_map('trim', $roles)))
+        ));
     }
 
     private function launcherEmbed(string $description, string $footer): array

@@ -9,11 +9,17 @@ use Pterodactyl\Models\TicketAttachment;
 
 class TicketUrlService
 {
+    private const ADMIN_BASE_PATH = '/admin/tickets';
     private const CLIENT_BASE_PATH = '/tickets';
 
     public function clientTicketUrl(Ticket $ticket): string
     {
         return rtrim((string) config('app.url', ''), '/') . self::CLIENT_BASE_PATH . '/' . $ticket->id;
+    }
+
+    public function adminTicketUrl(Ticket $ticket): string
+    {
+        return rtrim((string) config('app.url', ''), '/') . self::ADMIN_BASE_PATH . '/' . $ticket->id;
     }
 
     public function composeUrl(string $category, array $params = []): string
