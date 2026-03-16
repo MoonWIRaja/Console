@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html>
+    <head><base href="https://console.owlscottage.com/">
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>BurHan Console -     Administration
+</title>
+        <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+        <meta name="_token" content="sgZFT56Bs6OhxhRWSVVun0QUjQ6YOoIZzp5Qslr9">
+        <meta name="csrf-token" content="sgZFT56Bs6OhxhRWSVVun0QUjQ6YOoIZzp5Qslr9">
+
+        <link rel="apple-touch-icon" href="https://console.owlscottage.com/storage/branding/panel-logo-QnSstDHhBwdDuVxuS6nklo9W.png">
+    <link rel="icon" href="https://console.owlscottage.com/storage/branding/panel-logo-QnSstDHhBwdDuVxuS6nklo9W.png">
+    <link rel="shortcut icon" href="https://console.owlscottage.com/storage/branding/panel-logo-QnSstDHhBwdDuVxuS6nklo9W.png">
+<meta name="theme-color" content="#0e4688">
+
+        
+                    <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/select2/select2.min.css?t={cache-version}"/>
+
+            <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/bootstrap/bootstrap.min.css?t={cache-version}"/>
+
+            <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/adminlte/admin.min.css?t={cache-version}"/>
+
+            <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/adminlte/colors/skin-blue.min.css?t={cache-version}"/>
+
+            <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/sweetalert/sweetalert.min.css?t={cache-version}"/>
+
+            <link media="all" type="text/css" rel="stylesheet" href="https://console.owlscottage.com/themes/pterodactyl/vendor/animate/animate.min.css?t={cache-version}"/>
+
+            
+
+            <style>/* ============================================================
+   Admin Panel — Custom Sidebar (Matching React Neon Sidebar)
+   ============================================================ */
+
+/* ---------- Theme Variables (Cyberpunk defaults) ---------- */
+:root {
+    --admin-background: rgb(0, 0, 0);
+    --admin-foreground: rgb(0, 255, 65);
+    --admin-card: rgb(5, 5, 5);
+    --admin-card-foreground: rgb(0, 255, 65);
+    --admin-primary: rgb(0, 255, 65);
+    --admin-primary-foreground: rgb(0, 0, 0);
+    --admin-muted-foreground: rgb(0, 143, 17);
+    --admin-border: rgb(0, 59, 0);
+    --admin-accent: rgb(0, 255, 65);
+    --admin-destructive: rgb(255, 0, 0);
+    --admin-primary-rgb: 0, 255, 65;
+    --admin-background-rgb: 0, 0, 0;
+    --admin-card-rgb: 5, 5, 5;
+    --admin-primary-glow-soft: rgba(0, 255, 65, 0.22);
+    --admin-primary-glow-medium: rgba(0, 255, 65, 0.35);
+    --admin-primary-glow-strong: rgba(0, 255, 65, 0.55);
+}
+
+/* ---------- Reset AdminLTE layout so we use our own ---------- */
+body.skin-blue {
+    font-family: 'Inter', sans-serif !important;
+    color: var(--admin-foreground) !important;
+    background: var(--admin-background) !important;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Hide the original AdminLTE header & sidebar */
+.main-header,
+.main-sidebar,
+.left-side,
+.main-footer {
+    display: none !important;
+}
+
+/* Reset the AdminLTE wrapper — it might still be rendered by child views */
+.wrapper {
+    display: none !important;
+}
+
+/* Fix AdminLTE body fixed class adding padding-top */
+body.fixed {
+    padding-top: 0 !important;
+}
+
+/* Ensure content-wrapper from AdminLTE doesn't interfere */
+.content-wrapper {
+    margin-left: 0 !important;
+    min-height: 0 !important;
+    background: transparent !important;
+    padding-top: 0 !important;
+}
+
+/* ---------- Custom Sidebar Shell ---------- */
+.sidebar-desktop-shell {
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    background: var(--admin-card);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(var(--admin-primary-rgb), 0.22);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 72px;
+    transition: width 0.3s ease-in-out;
+}
+
+/* Spacer that pushes content right */
+.sidebar-spacer {
+    flex-shrink: 0;
+    width: 72px;
+    transition: width 0.3s ease-in-out;
+}
+
+/* Neon glow line on right edge */
+.sidebar-desktop-shell::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    right: -1px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--admin-border);
+    box-shadow: 0 0 0 rgba(12, 12, 12, 0);
+    pointer-events: none;
+}
+
+/* Animated neon dot flowing down the right edge */
+.sidebar-desktop-shell::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: -4px;
+    width: 8px;
+    height: 42px;
+    border-radius: 999px;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(var(--admin-primary-rgb), 0.98) 0%,
+        rgba(var(--admin-primary-rgb), 0.9) 35%,
+        rgba(var(--admin-primary-rgb), 0.32) 60%,
+        rgba(var(--admin-primary-rgb), 0) 100%
+    );
+    animation: sidebar-neon-flow 2.6s linear infinite;
+    filter: drop-shadow(0 0 10px rgba(var(--admin-primary-rgb), 0.85));
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes sidebar-neon-flow {
+    from { transform: translateY(0); }
+    to   { transform: translateY(calc(100vh - 62px)); }
+}
+
+/* ---------- Logo ---------- */
+.sidebar-logo-img {
+    width: 22px;
+    height: 22px;
+    transition: width 0.2s, height 0.2s;
+}
+
+.sidebar-desktop-shell:hover .sidebar-logo-img,
+.sidebar-desktop-shell.is-expanded .sidebar-logo-img {
+    width: 28px;
+    height: 28px;
+}
+
+/* ---------- Sidebar Text (collapsed/expanded) ---------- */
+.sidebar-text {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.sidebar-desktop-shell:hover .sidebar-text,
+.sidebar-desktop-shell.is-expanded .sidebar-text {
+    display: inline-block;
+    opacity: 1;
+}
+
+/* ---------- Sidebar Section Labels ---------- */
+.sidebar-label {
+    padding: 16px 12px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--admin-muted-foreground);
+    text-transform: uppercase;
+}
+
+/* ---------- Sidebar Link Items ---------- */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    padding: 10px 12px;
+    text-decoration: none;
+    color: var(--admin-foreground);
+    background-color: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+    border-radius: 8px;
+    margin: 2px 0;
+    transition: all 0.15s;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sidebar-desktop-shell:hover .sidebar-link,
+.sidebar-desktop-shell.is-expanded .sidebar-link {
+    gap: 12px;
+}
+
+.sidebar-link:hover {
+    color: var(--admin-primary) !important;
+    background-color: rgba(var(--admin-primary-rgb), 0.08) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.25) !important;
+}
+
+.sidebar-link.active {
+    color: var(--admin-primary);
+    background-color: var(--admin-primary-glow-soft);
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.35);
+    box-shadow: 0 0 12px rgba(var(--admin-primary-rgb), 0.2);
+}
+
+/* ---------- User Footer Button ---------- */
+.sidebar-user-btn {
+    justify-content: center;
+    transition: background-color 0.15s;
+}
+
+.sidebar-desktop-shell:hover .sidebar-user-btn,
+.sidebar-desktop-shell.is-expanded .sidebar-user-btn {
+    justify-content: flex-start;
+}
+
+.sidebar-user-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ---------- Footer Popup Menu Items ---------- */
+.footer-menu-item:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.08) !important;
+}
+
+.sidebar-mode-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 12px;
+}
+
+.sidebar-mode-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--admin-foreground);
+}
+
+.sidebar-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.sidebar-mode-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.15);
+    background: rgba(var(--admin-card-rgb), 0.65);
+    color: var(--admin-muted-foreground);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sidebar-mode-button:hover {
+    border-color: rgba(var(--admin-primary-rgb), 0.25);
+    background: rgba(var(--admin-primary-rgb), 0.08);
+    color: var(--admin-primary);
+}
+
+.sidebar-mode-button.active {
+    border-color: rgba(var(--admin-primary-rgb), 0.35);
+    background: rgba(var(--admin-primary-rgb), 0.18);
+    color: var(--admin-primary);
+    box-shadow: 0 0 12px rgba(var(--admin-primary-rgb), 0.14);
+}
+
+.sidebar-mode-button-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* ---------- Theme Select – Icon Circle ---------- */
+.theme-icon-circle {
+    display: flex;
+    height: 40px;
+    width: 40px;
+    min-height: 40px;
+    min-width: 40px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-background);
+    color: var(--admin-primary);
+    aspect-ratio: 1;
+}
+
+/* ---------- Theme Select – Label ---------- */
+.theme-label-text {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--admin-foreground);
+}
+
+/* ---------- Theme Select – Trigger ---------- */
+#themeSelectTrigger:hover {
+    border-color: var(--admin-primary) !important;
+}
+
+/* ---------- Theme Select – Dropdown ---------- */
+.theme-select-dropdown {
+    display: none;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + 8px);
+    z-index: 80;
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    background-color: var(--admin-card);
+    border-radius: 20px;
+    padding: 8px 0;
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
+    min-width: 220px;
+}
+
+/* ---------- Theme Select – Close Button ---------- */
+.theme-close-btn {
+    display: flex;
+    height: 24px;
+    width: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: var(--admin-background);
+    color: var(--admin-foreground);
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.theme-close-btn:hover {
+    background-color: var(--admin-accent) !important;
+}
+
+/* ---------- Theme Select – Scrollable List ---------- */
+.theme-select-scroll {
+    max-height: 288px;
+    width: 100%;
+    overflow-y: auto;
+}
+
+.theme-select-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.theme-select-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.theme-select-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--admin-primary-rgb), 0.25);
+    border-radius: 99px;
+}
+
+.theme-select-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.45);
+}
+
+/* ---------- Theme Select – Items ---------- */
+.theme-select-item {
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 16px;
+    transition: background-color 0.15s;
+}
+
+.theme-select-item:hover {
+    background-color: var(--admin-accent) !important;
+}
+
+/* ---------- Scrollbar ---------- */
+.sidebar-desktop-shell nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-desktop-shell nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-desktop-shell nav::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--admin-primary-rgb), 0.25);
+    border-radius: 999px;
+}
+
+/* ============================================================
+   Main Content Area
+   ============================================================ */
+
+.admin-content-wrapper {
+    margin-left: 72px;
+    min-height: 100vh;
+    background-color: var(--admin-background);
+    color: var(--admin-foreground);
+    font-family: 'Inter', sans-serif;
+    transition: margin-left 0.3s ease-in-out;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* ---------- Content Header ---------- */
+.content-header > h1 {
+    color: var(--admin-foreground) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.content-header > h1 > small {
+    color: var(--admin-muted-foreground) !important;
+}
+
+.content-header > .breadcrumb > li > a {
+    color: var(--admin-primary) !important;
+}
+
+.breadcrumb > .active {
+    color: var(--admin-muted-foreground) !important;
+}
+
+.breadcrumb {
+    background: transparent !important;
+}
+
+/* ============================================================
+   UI Components — All matching neon theme
+   ============================================================ */
+
+/* ---------- Box Components ---------- */
+.box {
+    background: rgba(var(--admin-card-rgb), 0.85) !important;
+    border-top: 1px solid rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 0 20px rgba(var(--admin-primary-rgb), 0.04) !important;
+    overflow: hidden;
+}
+
+.box-header {
+    color: var(--admin-foreground) !important;
+    background: rgba(var(--admin-primary-rgb), 0.06) !important;
+    border-bottom: 1px solid rgba(var(--admin-primary-rgb), 0.15) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.box-header .box-title {
+    color: var(--admin-primary) !important;
+    font-weight: 700 !important;
+}
+
+.box-header.with-border {
+    border-bottom: 1px solid rgba(var(--admin-primary-rgb), 0.15) !important;
+}
+
+.box-body {
+    color: var(--admin-foreground) !important;
+    background: transparent !important;
+}
+
+.box-footer {
+    border-top: 1px solid rgba(var(--admin-primary-rgb), 0.12) !important;
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    color: var(--admin-foreground) !important;
+}
+
+.box.box-success { border-top-color: rgba(0, 200, 80, 0.6) !important; }
+.box.box-danger  { border-top-color: rgba(255, 60, 60, 0.6) !important; }
+.box.box-warning { border-top-color: rgba(255, 180, 0, 0.6) !important; }
+.box.box-info    { border-top-color: rgba(var(--admin-primary-rgb), 0.5) !important; }
+
+/* ---------- Tables ---------- */
+.table > thead > tr > th,
+.table > tbody > tr > th,
+.table > tfoot > tr > th,
+.table > thead > tr > td,
+.table > tbody > tr > td,
+.table > tfoot > tr > td {
+    border-top: 1px solid rgba(var(--admin-primary-rgb), 0.1) !important;
+    color: var(--admin-foreground) !important;
+}
+
+.table > thead > tr > th {
+    border-bottom: 2px solid rgba(var(--admin-primary-rgb), 0.2) !important;
+    color: var(--admin-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.04) !important;
+}
+
+/* ---------- Forms ---------- */
+input.form-control,
+textarea.form-control,
+select.form-control,
+.form-control {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.2) !important;
+    color: var(--admin-foreground) !important;
+    border-radius: 8px !important;
+}
+
+input.form-control:focus,
+textarea.form-control:focus,
+select.form-control:focus,
+.form-control:focus {
+    border-color: rgba(var(--admin-primary-rgb), 0.5) !important;
+    box-shadow: 0 0 8px rgba(var(--admin-primary-rgb), 0.15) !important;
+}
+
+.form-control[disabled],
+.form-control[readonly] {
+    background-color: rgba(var(--admin-card-rgb), 0.35) !important;
+    color: var(--admin-muted-foreground) !important;
+}
+
+.input-group .input-group-addon {
+    border-color: rgba(var(--admin-primary-rgb), 0.2) !important;
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    color: var(--admin-foreground) !important;
+}
+
+label.control-label {
+    color: var(--admin-foreground) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* ---------- Buttons ---------- */
+.btn-success {
+    background-color: rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.4) !important;
+    color: var(--admin-primary) !important;
+}
+
+.btn-success:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.35) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.55) !important;
+}
+
+.btn-primary {
+    background-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.3) !important;
+    color: var(--admin-primary) !important;
+}
+
+.btn-primary:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.45) !important;
+}
+
+.btn-warning {
+    background-color: rgba(255, 180, 0, 0.2) !important;
+    border-color: rgba(255, 180, 0, 0.35) !important;
+    color: rgb(255, 200, 50) !important;
+}
+
+.btn-warning:hover {
+    background-color: rgba(255, 180, 0, 0.3) !important;
+    border-color: rgba(255, 180, 0, 0.5) !important;
+}
+
+.btn-danger {
+    background-color: rgba(255, 60, 60, 0.2) !important;
+    border-color: rgba(255, 60, 60, 0.35) !important;
+    color: rgb(255, 100, 100) !important;
+}
+
+.btn-danger:hover {
+    background-color: rgba(255, 60, 60, 0.3) !important;
+    border-color: rgba(255, 60, 60, 0.5) !important;
+}
+
+.btn-default {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    color: var(--admin-foreground) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.2) !important;
+}
+
+.btn-default:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.08) !important;
+    color: var(--admin-primary) !important;
+}
+
+/* ---------- Alerts ---------- */
+.alert-danger {
+    background: rgba(255, 60, 60, 0.15) !important;
+    color: rgb(255, 130, 130) !important;
+    border: 1px solid rgba(255, 60, 60, 0.3) !important;
+    border-radius: 8px !important;
+}
+
+.alert-info {
+    background: rgba(var(--admin-primary-rgb), 0.1) !important;
+    color: var(--admin-primary) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-radius: 8px !important;
+}
+
+.alert-success {
+    background: rgba(0, 200, 80, 0.1) !important;
+    color: rgb(0, 230, 100) !important;
+    border: 1px solid rgba(0, 200, 80, 0.25) !important;
+    border-radius: 8px !important;
+}
+
+.alert-warning {
+    background: rgba(255, 180, 0, 0.12) !important;
+    color: rgb(255, 200, 50) !important;
+    border: 1px solid rgba(255, 180, 0, 0.25) !important;
+    border-radius: 8px !important;
+}
+
+/* ---------- Links ---------- */
+a {
+    color: var(--admin-primary) !important;
+}
+
+a:hover {
+    color: rgba(var(--admin-primary-rgb), 0.75) !important;
+}
+
+/* ---------- Code & Pre ---------- */
+code {
+    background-color: rgba(var(--admin-card-rgb), 0.85) !important;
+    color: var(--admin-primary) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.2) !important;
+    border-radius: 4px !important;
+}
+
+pre {
+    color: var(--admin-foreground) !important;
+    background-color: rgba(var(--admin-card-rgb), 0.85) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    border-radius: 8px !important;
+}
+
+/* ---------- Modal ---------- */
+.modal-body {
+    background: var(--admin-card) !important;
+    color: var(--admin-foreground) !important;
+}
+
+.modal-header {
+    background: var(--admin-card) !important;
+    border-bottom-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    color: var(--admin-foreground) !important;
+}
+
+.modal-header .close {
+    color: var(--admin-foreground) !important;
+}
+
+.modal-footer {
+    background: var(--admin-card) !important;
+    border-top-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+}
+
+.modal-content {
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.2) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+/* ---------- Nav Tabs ---------- */
+.nav-tabs-custom {
+    background: var(--admin-card) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.nav-tabs-custom > .nav-tabs > li.active {
+    border-top-color: var(--admin-primary) !important;
+}
+
+.nav-tabs-custom > .nav-tabs > li.active > a,
+.nav-tabs-custom > .nav-tabs > li.active:hover > a {
+    background-color: rgba(var(--admin-primary-rgb), 0.08) !important;
+    border-left-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    border-right-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    color: var(--admin-primary) !important;
+}
+
+.nav-tabs-custom > .nav-tabs > li > a {
+    color: var(--admin-muted-foreground) !important;
+}
+
+.nav-tabs-custom > .nav-tabs > li > a:hover {
+    color: var(--admin-primary) !important;
+}
+
+/* ---------- Select2 ---------- */
+.select2-container--default .select2-selection--single {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.2) !important;
+    border-radius: 8px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--admin-foreground) !important;
+}
+
+.select2-container--default .select2-selection--multiple {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.2) !important;
+    border-radius: 8px !important;
+}
+
+.select2-dropdown {
+    background-color: var(--admin-card) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-radius: 8px !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: rgba(var(--admin-primary-rgb), 0.25) !important;
+    color: var(--admin-primary) !important;
+}
+
+.select2-results__option {
+    background-color: var(--admin-card) !important;
+    color: var(--admin-foreground) !important;
+}
+
+/* ---------- Well ---------- */
+.well {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.15) !important;
+    border-radius: 8px !important;
+    color: var(--admin-foreground) !important;
+}
+
+/* ---------- Callouts ---------- */
+.callout {
+    border-radius: 8px !important;
+}
+
+/* ---------- Pagination ---------- */
+.pagination > li > a,
+.pagination > li > span {
+    background-color: rgba(var(--admin-card-rgb), 0.65) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.15) !important;
+    color: var(--admin-foreground) !important;
+}
+
+.pagination > li.active > a,
+.pagination > li.active > span {
+    background-color: rgba(var(--admin-primary-rgb), 0.25) !important;
+    border-color: rgba(var(--admin-primary-rgb), 0.4) !important;
+    color: var(--admin-primary) !important;
+}
+
+.pagination > li > a:hover {
+    background-color: rgba(var(--admin-primary-rgb), 0.1) !important;
+    color: var(--admin-primary) !important;
+}
+
+/* ---------- Typography ---------- */
+.text-gray { color: var(--admin-muted-foreground) !important; }
+.text-muted { color: var(--admin-muted-foreground) !important; }
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--admin-foreground) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.h1 .small, .h1 small, .h2 .small, .h2 small,
+.h3 .small, .h3 small, .h4 .small, .h4 small,
+.h5 .small, .h5 small, .h6 .small, .h6 small,
+h1 .small, h1 small, h2 .small, h2 small,
+h3 .small, h3 small, h4 .small, h4 small,
+h5 .small, h5 small, h6 .small, h6 small {
+    color: var(--admin-muted-foreground) !important;
+}
+
+/* ---------- Small boxes (dashboard stats) ---------- */
+.small-box {
+    border-radius: 8px !important;
+    background: rgba(var(--admin-card-rgb), 0.85) !important;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.15) !important;
+}
+
+.small-box h3, .small-box p { color: var(--admin-foreground) !important; }
+.small-box .icon { color: rgba(var(--admin-primary-rgb), 0.3) !important; }
+.small-box .small-box-footer {
+    background: rgba(var(--admin-primary-rgb), 0.08) !important;
+    color: var(--admin-primary) !important;
+    border-radius: 0 0 8px 8px !important;
+}
+
+@media (max-width: 991px) {
+    .content-header > .breadcrumb {
+        background: var(--admin-card) !important;
+        border-radius: 8px !important;
+    }
+}
+
+/* ---------- Mobile responsive ---------- */
+@media (max-width: 767px) {
+    .sidebar-desktop-shell {
+        width: 0 !important;
+        overflow: hidden;
+    }
+
+    .sidebar-spacer {
+        width: 0 !important;
+        display: none;
+    }
+
+    .admin-content-wrapper {
+        margin-left: 0 !important;
+    }
+}
+</style>
+
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+
+            <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+            <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+            <![endif]-->
+            </head>
+    <body class="hold-transition skin-blue fixed sidebar-mini">
+        
+        <div class="sidebar-desktop-shell is-expanded" id="adminSidebar" style="width:256px;">
+            
+            <div style="padding: 24px 24px 16px; overflow: hidden; white-space: nowrap;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="https://console.owlscottage.com/storage/branding/panel-logo-QnSstDHhBwdDuVxuS6nklo9W.png" alt="System Logo" class="sidebar-logo-img" style="object-fit: contain; filter: brightness(1.15); flex-shrink: 0;">
+                    <div class="sidebar-text" style="font-size: 18px; font-weight: 900; color: var(--admin-foreground); line-height: 1; letter-spacing: -0.02em; text-shadow: 0 0 10px rgba(var(--admin-primary-rgb), 0.18); white-space: nowrap;">
+                        BurHan Console
+                    </div>
+                </div>
+            </div>
+
+            
+            <nav style="flex: 1; overflow-y: auto; padding: 0 12px;">
+                <div class="sidebar-label sidebar-text">BASIC ADMINISTRATION</div>
+
+                <a href="https://console.owlscottage.com/admin" style="text-decoration: none;">
+                    <div class="sidebar-link active">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">dashboard</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Overview</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/settings" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">settings</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Settings</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/api" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">api</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Application API</span>
+                    </div>
+                </a>
+
+                <div class="sidebar-label sidebar-text">MANAGEMENT</div>
+
+                <a href="https://console.owlscottage.com/admin/databases" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">dns</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Databases</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/locations" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">public</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Locations</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/nodes" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">hub</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nodes</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/servers" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">storage</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Servers</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/users" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">group</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Users</span>
+                    </div>
+                </a>
+
+                                    <a href="https://console.owlscottage.com/admin/billing" style="text-decoration: none;">
+                        <div class="sidebar-link ">
+                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                <span class="material-icons-round" style="font-size: 20px;">payments</span>
+                            </div>
+                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Billing</span>
+                        </div>
+                    </a>
+
+                    <a href="https://console.owlscottage.com/admin/tickets" style="text-decoration: none;">
+                        <div class="sidebar-link ">
+                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                <span class="material-icons-round" style="font-size: 20px;">support_agent</span>
+                            </div>
+                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Support</span>
+                        </div>
+                    </a>
+                
+                <div class="sidebar-label sidebar-text">SERVICE MANAGEMENT</div>
+
+                <a href="https://console.owlscottage.com/admin/mounts" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">inventory_2</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Mounts</span>
+                    </div>
+                </a>
+
+                <a href="https://console.owlscottage.com/admin/nests" style="text-decoration: none;">
+                    <div class="sidebar-link ">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">grid_view</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nests</span>
+                    </div>
+                </a>
+            </nav>
+
+            
+            <div style="padding: 0px 12px 8px;">
+                <a href="https://console.owlscottage.com/" style="text-decoration: none;">
+                    <div class="sidebar-link">
+                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">dashboard</span>
+                        </div>
+                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Back to Dashboard</span>
+                    </div>
+                </a>
+            </div>
+
+            
+            <div id="userFooter" style="border-top: 1px solid var(--admin-border); padding: 16px; background-color: rgba(var(--admin-card-rgb), 0.45); position: relative;">
+                
+                <button type="button" id="userFooterBtn" class="sidebar-user-btn" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-bottom: 0; cursor: pointer; padding: 4px; border-radius: 8px; border: none; background: transparent;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background-color: var(--admin-background); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--admin-primary-rgb), 0.35); box-shadow: 0 0 0 1px rgba(var(--admin-primary-rgb), 0.12), 0 6px 14px -6px rgba(var(--admin-primary-rgb), 0.45);">
+                        <img src="https://console.owlscottage.com/storage/avatars/8aec8fdb-6dee-4485-8b61-d82c59567dd9/YzR2m7jPWTTAOFVKaTSmEWjHQAP6QkwU5ZnOdWiG.png" alt="User avatar" style="width: 36px; height: 36px; border-radius: 9999px; object-fit: cover;">
+                    </div>
+                    <div class="sidebar-text" style="font-size: 14px; font-weight: 700; color: var(--admin-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span>moon wiraja</span>
+                        <span class="material-icons-round" id="userFooterArrow" style="font-size: 18px; color: var(--admin-muted-foreground);">expand_more</span>
+                    </div>
+                </button>
+
+                
+                <div id="userFooterMenu" style="display: none; position: absolute; left: 12px; right: 12px; bottom: calc(100% + 8px); border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 12px; padding: 10px; flex-direction: column; gap: 10px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); z-index: 50;">
+
+                    
+                    <a href="https://console.owlscottage.com/account" style="text-decoration: none;">
+                        <div class="footer-menu-item" style="width: 100%; color: var(--admin-foreground); display: flex; cursor: pointer; align-items: center; justify-content: space-between; gap: 8px; border-radius: 14px; padding: 12px; transition: background-color 0.15s;">
+                            <div style="display: flex; min-width: 0; align-items: center; gap: 10px;">
+                                <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--admin-border); background: var(--admin-background); color: var(--admin-primary);">
+                                    <span class="material-icons-round" style="font-size: 16px;">person</span>
+                                </div>
+                                <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;">Profile</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <div class="sidebar-mode-wrap">
+                        <span class="sidebar-mode-label">Sidebar</span>
+                        <div class="sidebar-mode-grid">
+                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="locked-closed">
+                                <span class="material-icons-round" style="font-size: 18px;">keyboard_double_arrow_left</span>
+                                <span class="sidebar-mode-button-label">Close Lock</span>
+                            </button>
+                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="locked-open">
+                                <span class="material-icons-round" style="font-size: 18px;">push_pin</span>
+                                <span class="sidebar-mode-button-label">Open Lock</span>
+                            </button>
+                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="auto">
+                                <span class="material-icons-round" style="font-size: 18px;">lock_open</span>
+                                <span class="sidebar-mode-button-label">Unlock</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    
+                    <div id="themeSelectWrapper" style="position: relative; padding: 4px 12px;">
+                        
+                        <div id="themeSelectTrigger" style="width: 100%; overflow: hidden; border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 30px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08); transition: border-color 0.15s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px;">
+                                <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                    <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                        <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                    </div>
+                                    <strong id="themeSelectLabel" class="theme-label-text">Cyberpunk</strong>
+                                </div>
+                                <div style="display: flex; align-items: center; padding-right: 12px;">
+                                    <span class="material-icons-round" style="font-size: 20px; color: var(--admin-primary);">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        
+                        <div id="themeSelectDropdown" class="theme-select-dropdown">
+                            
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;">
+                                <strong style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--admin-foreground);">Theme</strong>
+                                <button type="button" id="themeSelectClose" class="theme-close-btn">
+                                    <span class="material-icons-round" style="font-size: 12px;">close</span>
+                                </button>
+                            </div>
+                            
+                            <div class="theme-select-scroll">
+                                                                <div class="theme-select-item" data-theme-id="cyberpunk">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Cyberpunk</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="earthy">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Earthy</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="amber-mono">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Amber Mono</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="limes">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Limes</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="domia">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Domia</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="flat-pink">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Flat Pink</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="terminal-muted">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Terminal Muted</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                                <div class="theme-select-item" data-theme-id="light-green">
+                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
+                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
+                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
+                                            <strong class="theme-label-text">Light Green</strong>
+                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <button type="button" id="logoutButton" class="footer-menu-item" style="width: 100%; color: var(--admin-muted-foreground); cursor: pointer; border: none; background: transparent; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 14px; padding: 12px; transition: background-color 0.15s;">
+                        <div style="display: flex; min-width: 0; align-items: center; gap: 10px;">
+                            <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--admin-border); background: var(--admin-background); color: var(--admin-primary);">
+                                <span class="material-icons-round" style="font-size: 16px;">logout</span>
+                            </div>
+                            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;">Log out</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="admin-content-wrapper" style="display: flex; flex-direction: column; margin-left: 256px;">
+            <div style="flex: 1 1 auto;">
+            <section class="content-header" style="padding: 24px 30px 12px;">
+                    <h1>Administrative Overview<small>A quick glance at your system.</small></h1>
+    <ol class="breadcrumb">
+        <li><a href="https://console.owlscottage.com/admin">Admin</a></li>
+        <li class="active">Index</li>
+    </ol>
+            </section>
+            <section class="content" style="padding: 12px 30px 30px;">
+                <div class="row">
+                    <div class="col-xs-12">
+                                                                    </div>
+                </div>
+                <div class="row">
+    <div class="col-xs-12">
+        <div class="box
+                            box-success
+                    ">
+            <div class="box-header with-border">
+                <h3 class="box-title">System Information</h3>
+            </div>
+            <div class="box-body">
+                                    You are running Pterodactyl Panel version <code>1.12.1</code>. Your panel is up-to-date!
+                            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-xs-6 col-sm-3 text-center">
+        <a href="https://discord.gg/pterodactyl"><button class="btn btn-warning" style="width:100%;"><i class="fa fa-fw fa-support"></i> Get Help <small>(via Discord)</small></button></a>
+    </div>
+    <div class="col-xs-6 col-sm-3 text-center">
+        <a href="https://pterodactyl.io"><button class="btn btn-primary" style="width:100%;"><i class="fa fa-fw fa-link"></i> Documentation</button></a>
+    </div>
+    <div class="clearfix visible-xs-block">&nbsp;</div>
+    <div class="col-xs-6 col-sm-3 text-center">
+        <a href="https://github.com/pterodactyl/panel"><button class="btn btn-primary" style="width:100%;"><i class="fa fa-fw fa-support"></i> GitHub</button></a>
+    </div>
+    <div class="col-xs-6 col-sm-3 text-center">
+        <a href="https://github.com/sponsors/pterodactyl"><button class="btn btn-success" style="width:100%;"><i class="fa fa-fw fa-money"></i> Support the Project</button></a>
+    </div>
+</div>
+            </section>
+            </div>
+            <footer style="background: var(--admin-card); color: var(--admin-muted-foreground); border-top: 1px solid rgba(var(--admin-primary-rgb), 0.22); padding: 15px 30px; font-size: 13px; font-family: 'Inter', sans-serif; margin-top: auto;">
+                <div class="pull-right small" style="color: var(--admin-muted-foreground); margin-right:10px;margin-top:-7px;">
+                    <strong><i class="fa fa-fw fa-git-square"></i></strong> 38bb637c<br />
+                    <strong><i class="fa fa-fw fa-clock-o"></i></strong> 0.441s
+                </div>
+                Copyright &copy; 2015 - 2026 <a href="https://pterodactyl.io/" style="color: var(--admin-primary) !important;">Pterodactyl Software</a>.
+            </footer>
+        </div>
+
+                    <script src="https://console.owlscottage.com/js/keyboard.polyfill.js" type="application/javascript"></script>
+            <script>keyboardeventKeyPolyfill.polyfill();</script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/jquery/jquery.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/sweetalert/sweetalert.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/bootstrap/bootstrap.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/slimscroll/jquery.slimscroll.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/adminlte/app.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/bootstrap-notify/bootstrap-notify.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/vendor/select2/select2.full.min.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/themes/pterodactyl/js/admin/functions.js?t={cache-version}"></script>
+
+            <script src="https://console.owlscottage.com/js/autocomplete.js" type="application/javascript"></script>
+
+            
+            <script>
+                (function() {
+                    var sidebar = document.getElementById('adminSidebar');
+                    var content = document.querySelector('.admin-content-wrapper');
+                    var footerBtn = document.getElementById('userFooterBtn');
+                    var footerMenu = document.getElementById('userFooterMenu');
+                    var footerArrow = document.getElementById('userFooterArrow');
+                    var footerRef = document.getElementById('userFooter');
+                    var modeButtons = document.querySelectorAll('[data-sidebar-mode]');
+                    var expandedWidth = '256px';
+                    var collapsedWidth = '72px';
+                    var storageKey = 'ui.sidebar.mode';
+                    var isExpanded = false;
+                    var menuOpen = false;
+                    var mode = 'auto';
+
+                    function persistMode(nextMode) {
+                        mode = nextMode;
+                        localStorage.setItem(storageKey, nextMode);
+                        localStorage.setItem('ui.sidebar.locked', nextMode === 'locked-open' ? 'true' : 'false');
+                        syncModeButtons();
+                    }
+
+                    function readMode() {
+                        var storedMode = localStorage.getItem(storageKey);
+                        if (storedMode === 'locked-open' || storedMode === 'locked-closed' || storedMode === 'auto') {
+                            return storedMode;
+                        }
+
+                        return localStorage.getItem('ui.sidebar.locked') === 'true' ? 'locked-open' : 'auto';
+                    }
+
+                    function syncModeButtons() {
+                        for (var i = 0; i < modeButtons.length; i++) {
+                            var button = modeButtons[i];
+                            var active = button.getAttribute('data-sidebar-mode') === mode;
+                            button.classList.toggle('active', active);
+                        }
+                    }
+
+                    function setMenuOpen(val) {
+                        menuOpen = val;
+                        if (footerMenu) footerMenu.style.display = val ? 'flex' : 'none';
+                        if (footerArrow) footerArrow.textContent = val ? 'expand_less' : 'expand_more';
+                    }
+
+                    function setExpanded(val) {
+                        isExpanded = val;
+                        if (sidebar) {
+                            sidebar.style.width = val ? expandedWidth : collapsedWidth;
+                            sidebar.classList.toggle('is-expanded', val);
+                        }
+                        if (content) {
+                            content.style.marginLeft = val ? expandedWidth : collapsedWidth;
+                        }
+                        if (!val) setMenuOpen(false);
+                    }
+
+                    mode = readMode();
+                    syncModeButtons();
+
+                    function applyMode(nextMode) {
+                        persistMode(nextMode);
+
+                        if (nextMode === 'locked-open') {
+                            setExpanded(true);
+                            return;
+                        }
+
+                        setExpanded(false);
+                    }
+
+                    applyMode(mode);
+
+                    if (sidebar) {
+                        sidebar.addEventListener('mouseenter', function() {
+                            if (mode === 'auto') setExpanded(true);
+                        });
+                        sidebar.addEventListener('mouseleave', function() {
+                            if (mode === 'auto') setExpanded(false);
+                        });
+                    }
+
+                    // Avatar button click — expand sidebar first if collapsed, then toggle menu
+                    if (footerBtn) {
+                        footerBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            if (!isExpanded && mode !== 'locked-closed') {
+                                setExpanded(true);
+                                return;
+                            }
+                            setMenuOpen(!menuOpen);
+                        });
+                    }
+
+                    for (var i = 0; i < modeButtons.length; i++) {
+                        (function(button) {
+                            button.addEventListener('click', function(event) {
+                                event.stopPropagation();
+                                applyMode(button.getAttribute('data-sidebar-mode') || 'auto');
+                            });
+                        })(modeButtons[i]);
+                    }
+
+                    // Click outside to close menu
+                    document.addEventListener('mousedown', function(e) {
+                        if (!menuOpen) return;
+                        if (footerRef && !footerRef.contains(e.target)) {
+                            setMenuOpen(false);
+                        }
+                    });
+                })();
+            </script>
+
+            
+            <script>
+                (function() {
+                    var THEMES = {
+                        'cyberpunk':       { background:'rgb(0,0,0)', foreground:'rgb(0,255,65)', card:'rgb(5,5,5)', primary:'rgb(0,255,65)', 'muted-foreground':'rgb(0,143,17)', border:'rgb(0,59,0)', accent:'rgb(0,255,65)', destructive:'rgb(255,0,0)' },
+                        'earthy':          { background:'rgb(38,38,36)', foreground:'rgb(241,241,239)', card:'rgb(44,44,43)', primary:'rgb(217,119,87)', 'muted-foreground':'rgb(183,181,169)', border:'rgb(62,62,56)', accent:'rgb(26,25,21)', destructive:'rgb(239,68,68)' },
+                        'amber-mono':      { background:'rgb(10,10,10)', foreground:'rgb(245,245,245)', card:'rgb(23,23,23)', primary:'rgb(225,113,0)', 'muted-foreground':'rgb(166,160,155)', border:'rgb(68,64,59)', accent:'rgb(68,64,59)', destructive:'rgb(193,0,7)' },
+                        'limes':           { background:'rgb(0,0,0)', foreground:'rgb(255,255,255)', card:'rgb(0,0,0)', primary:'rgb(94,165,0)', 'muted-foreground':'rgb(164,164,164)', border:'rgb(36,36,36)', accent:'rgb(51,51,51)', destructive:'rgb(255,91,91)' },
+                        'domia':           { background:'rgb(0,0,0)', foreground:'rgb(231,233,234)', card:'rgb(23,24,28)', primary:'rgb(186,0,189)', 'muted-foreground':'rgb(114,118,122)', border:'rgb(36,38,40)', accent:'rgb(6,22,34)', destructive:'rgb(244,33,46)' },
+                        'flat-pink':       { background:'rgb(0,0,0)', foreground:'rgb(255,255,255)', card:'rgb(0,0,0)', primary:'rgb(124,0,81)', 'muted-foreground':'rgb(164,164,164)', border:'rgb(36,36,36)', accent:'rgb(51,51,51)', destructive:'rgb(91,91,255)' },
+                        'terminal-muted':  { background:'rgb(9,12,10)', foreground:'rgb(169,214,185)', card:'rgb(13,18,15)', primary:'rgb(69,161,103)', 'muted-foreground':'rgb(117,163,134)', border:'rgb(33,44,37)', accent:'rgb(34,42,37)', destructive:'rgb(172,57,57)' },
+                        'light-green':     { background:'rgb(2,6,23)', foreground:'rgb(248,250,252)', card:'rgb(15,23,42)', primary:'rgb(175,243,62)', 'muted-foreground':'rgb(148,163,184)', border:'rgb(30,41,59)', accent:'rgb(20,83,45)', destructive:'rgb(153,27,27)' }
+                    };
+
+                    var LABELS = {
+                        'cyberpunk':'Cyberpunk', 'earthy':'Earthy', 'amber-mono':'Amber Mono', 'limes':'Limes',
+                        'domia':'Domia', 'flat-pink':'Flat Pink', 'terminal-muted':'Terminal Muted', 'light-green':'Light Green'
+                    };
+
+                    function extractRgb(val) {
+                        if (!val) return null;
+                        var m = val.match(/rgb[a]?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+                        return m ? m[1]+', '+m[2]+', '+m[3] : null;
+                    }
+
+                    function applyTheme(themeId) {
+                        var t = THEMES[themeId];
+                        if (!t) return;
+                        var root = document.documentElement;
+                        var pRgb = extractRgb(t.primary) || '0,255,65';
+                        var bgRgb = extractRgb(t.background) || '0,0,0';
+                        var cardRgb = extractRgb(t.card) || bgRgb;
+
+                        root.style.setProperty('--admin-background', t.background);
+                        root.style.setProperty('--admin-foreground', t.foreground);
+                        root.style.setProperty('--admin-card', t.card);
+                        root.style.setProperty('--admin-card-foreground', t.foreground);
+                        root.style.setProperty('--admin-primary', t.primary);
+                        root.style.setProperty('--admin-muted-foreground', t['muted-foreground']);
+                        root.style.setProperty('--admin-border', t.border);
+                        root.style.setProperty('--admin-accent', t.accent);
+                        root.style.setProperty('--admin-destructive', t.destructive);
+                        root.style.setProperty('--admin-primary-rgb', pRgb);
+                        root.style.setProperty('--admin-background-rgb', bgRgb);
+                        root.style.setProperty('--admin-card-rgb', cardRgb);
+                        root.style.setProperty('--admin-primary-glow-soft', 'rgba('+pRgb+', 0.22)');
+                        root.style.setProperty('--admin-primary-glow-medium', 'rgba('+pRgb+', 0.35)');
+                        root.style.setProperty('--admin-primary-glow-strong', 'rgba('+pRgb+', 0.55)');
+
+                        localStorage.setItem('panel.theme.id', themeId);
+                        localStorage.setItem('panel.theme.mode', 'dark');
+
+                        // Update trigger label
+                        var label = document.getElementById('themeSelectLabel');
+                        if (label) label.textContent = LABELS[themeId] || themeId;
+                    }
+
+                    // Custom dropdown toggle
+                    var trigger = document.getElementById('themeSelectTrigger');
+                    var dropdown = document.getElementById('themeSelectDropdown');
+                    var closeBtn = document.getElementById('themeSelectClose');
+                    var wrapper = document.getElementById('themeSelectWrapper');
+                    var themeDropOpen = false;
+
+                    function setThemeDropOpen(val) {
+                        themeDropOpen = val;
+                        if (dropdown) dropdown.style.display = val ? 'block' : 'none';
+                    }
+
+                    if (trigger) {
+                        trigger.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            setThemeDropOpen(!themeDropOpen);
+                        });
+                    }
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            setThemeDropOpen(false);
+                        });
+                    }
+
+                    // Click outside to close theme dropdown
+                    document.addEventListener('mousedown', function(e) {
+                        if (!themeDropOpen) return;
+                        if (wrapper && !wrapper.contains(e.target)) {
+                            setThemeDropOpen(false);
+                        }
+                    });
+
+                    // Theme item clicks
+                    var items = document.querySelectorAll('.theme-select-item');
+                    for (var i = 0; i < items.length; i++) {
+                        (function(item) {
+                            item.addEventListener('click', function() {
+                                var id = item.getAttribute('data-theme-id');
+                                applyTheme(id);
+                                setThemeDropOpen(false);
+                            });
+                        })(items[i]);
+                    }
+
+                    // Load saved theme on page load
+                    var savedTheme = localStorage.getItem('panel.theme.id') || 'cyberpunk';
+                    applyTheme(savedTheme);
+                })();
+            </script>
+
+                            <script>
+                    $('#logoutButton').on('click', function (event) {
+                        event.preventDefault();
+
+                        var that = this;
+                        swal({
+                            title: 'Do you want to log out?',
+                            type: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d9534f',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Log out'
+                        }, function () {
+                             $.ajax({
+                                type: 'POST',
+                                url: 'https://console.owlscottage.com/auth/logout',
+                                data: {
+                                    _token: 'sgZFT56Bs6OhxhRWSVVun0QUjQ6YOoIZzp5Qslr9'
+                                },complete: function () {
+                                    window.location.href = 'https://console.owlscottage.com/auth/login';
+                                }
+                        });
+                    });
+                });
+                </script>
+            
+            <script>
+                $(function () {
+                    $('[data-toggle="tooltip"]').tooltip();
+                })
+            </script>
+            </body>
+</html>

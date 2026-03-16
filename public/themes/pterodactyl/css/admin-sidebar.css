@@ -70,7 +70,7 @@ body.fixed {
     flex-direction: column;
     border-right: 1px solid rgba(var(--admin-primary-rgb), 0.22);
     font-family: 'Inter', sans-serif;
-    overflow: hidden;
+    overflow: visible;
     flex-shrink: 0;
     width: 72px;
     transition: width 0.3s ease-in-out;
@@ -131,7 +131,8 @@ body.fixed {
     transition: width 0.2s, height 0.2s;
 }
 
-.sidebar-desktop-shell:hover .sidebar-logo-img {
+.sidebar-desktop-shell[data-sidebar-mode="auto"]:hover .sidebar-logo-img,
+.sidebar-desktop-shell.is-expanded .sidebar-logo-img {
     width: 28px;
     height: 28px;
 }
@@ -143,7 +144,8 @@ body.fixed {
     transition: opacity 0.2s;
 }
 
-.sidebar-desktop-shell:hover .sidebar-text {
+.sidebar-desktop-shell[data-sidebar-mode="auto"]:hover .sidebar-text,
+.sidebar-desktop-shell.is-expanded .sidebar-text {
     display: inline-block;
     opacity: 1;
 }
@@ -177,7 +179,8 @@ body.fixed {
     white-space: nowrap;
 }
 
-.sidebar-desktop-shell:hover .sidebar-link {
+.sidebar-desktop-shell[data-sidebar-mode="auto"]:hover .sidebar-link,
+.sidebar-desktop-shell.is-expanded .sidebar-link {
     gap: 12px;
 }
 
@@ -200,7 +203,8 @@ body.fixed {
     transition: background-color 0.15s;
 }
 
-.sidebar-desktop-shell:hover .sidebar-user-btn {
+.sidebar-desktop-shell[data-sidebar-mode="auto"]:hover .sidebar-user-btn,
+.sidebar-desktop-shell.is-expanded .sidebar-user-btn {
     justify-content: flex-start;
 }
 
@@ -211,6 +215,73 @@ body.fixed {
 /* ---------- Footer Popup Menu Items ---------- */
 .footer-menu-item:hover {
     background-color: rgba(var(--admin-primary-rgb), 0.08) !important;
+}
+
+.sidebar-footer-menu-compact {
+    left: 8px !important;
+    right: auto !important;
+    bottom: calc(100% + 8px) !important;
+    width: 240px;
+    max-width: min(240px, calc(100vw - 96px));
+}
+
+.sidebar-mode-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 12px;
+}
+
+.sidebar-mode-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--admin-foreground);
+}
+
+.sidebar-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.sidebar-mode-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--admin-primary-rgb), 0.15);
+    background: rgba(var(--admin-card-rgb), 0.65);
+    color: var(--admin-muted-foreground);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sidebar-mode-button:hover {
+    border-color: rgba(var(--admin-primary-rgb), 0.25);
+    background: rgba(var(--admin-primary-rgb), 0.08);
+    color: var(--admin-primary);
+}
+
+.sidebar-mode-button.active {
+    border-color: rgba(var(--admin-primary-rgb), 0.35);
+    background: rgba(var(--admin-primary-rgb), 0.18);
+    color: var(--admin-primary);
+    box-shadow: 0 0 12px rgba(var(--admin-primary-rgb), 0.14);
+}
+
+.sidebar-mode-button-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    text-align: center;
 }
 
 /* ---------- Theme Select – Icon Circle ---------- */
