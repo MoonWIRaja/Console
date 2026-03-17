@@ -105,7 +105,7 @@ export default ({
         'Manual billing mode is active right now, so renewals and upgrades create invoices for admin review instead of charging a payment gateway.';
     const billingProfileHelper =
         !billingProfileReady && billingProfileBlockReason
-            ? `Checkout is blocked until billing details are completed in /account. Missing: ${billingProfileBlockReason}.`
+            ? `Missing billing details will be requested in a checkout popup before continuing. Missing now: ${billingProfileBlockReason}.`
             : null;
 
     return (
@@ -185,22 +185,28 @@ export default ({
                 </div>
             )}
 
-            <div className={'mt-5 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-4'}>
+            <div
+                className={'mt-5 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-4'}
+            >
                 <div className={'flex flex-wrap items-start justify-between gap-3'}>
                     <div>
-                        <p className={'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
                             Auto Renew
                         </p>
-                        <p className={'mt-2 text-sm text-[#f8f6ef]'}>
-                            {autoRenewDescription}
-                        </p>
+                        <p className={'mt-2 text-sm text-[#f8f6ef]'}>{autoRenewDescription}</p>
                         <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
                             {autoRenewHelper}
                         </p>
                     </div>
                     <span
                         className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${
-                            subscription.autoRenew ? 'billing-status billing-status-active' : 'billing-status billing-status-suspended'
+                            subscription.autoRenew
+                                ? 'billing-status billing-status-active'
+                                : 'billing-status billing-status-suspended'
                         }`}
                     >
                         {subscription.autoRenew ? 'Enabled' : 'Disabled'}
@@ -230,7 +236,7 @@ export default ({
             <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                 <button
                     type={'button'}
-                    disabled={!subscription.canRenew || renewing || !billingProfileReady}
+                    disabled={!subscription.canRenew || renewing}
                     onClick={() => onRenew(subscription)}
                     className={'billing-primary-btn'}
                 >
@@ -239,7 +245,7 @@ export default ({
 
                 <button
                     type={'button'}
-                    disabled={!subscription.canUpgrade || upgrading || !billingProfileReady}
+                    disabled={!subscription.canUpgrade || upgrading}
                     onClick={() => setUpgradeOpen((value) => !value)}
                     className={'billing-secondary-btn'}
                 >
@@ -257,9 +263,7 @@ export default ({
                 <p className={'mt-3 text-xs leading-6 text-[color:var(--muted-foreground)]'}>{renewWindowMessage}</p>
             )}
 
-            {billingProfileHelper && (
-                <p className={'mt-3 text-xs leading-6 text-amber-200'}>{billingProfileHelper}</p>
-            )}
+            {billingProfileHelper && <p className={'mt-3 text-xs leading-6 text-amber-200'}>{billingProfileHelper}</p>}
 
             {upgradeOpen && subscription.canUpgrade && (
                 <div className={'billing-upgrade-panel'}>
@@ -336,7 +340,7 @@ export default ({
                             </p>
                             <button
                                 type={'button'}
-                                disabled={!hasUpgradeChanges || upgrading || !billingProfileReady}
+                                disabled={!hasUpgradeChanges || upgrading}
                                 onClick={() => onUpgrade(subscription, { cpuCores, memoryGb, diskGb })}
                                 className={'billing-primary-btn'}
                             >

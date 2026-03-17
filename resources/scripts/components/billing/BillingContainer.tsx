@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStoreState } from 'easy-peasy';
+import { useLocation } from 'react-router-dom';
 import { ApplicationStore } from '@/state';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Input from '@/components/elements/Input';
+import Modal from '@/components/elements/Modal';
 import Select from '@/components/elements/Select';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
@@ -19,12 +21,21 @@ import {
     useBillingProfile,
     useBillingSubscriptions,
     renewBillingSubscription,
+    updateBillingProfile,
     upgradeBillingSubscription,
 } from '@/api/account/billing';
+import { useOAuthAccounts } from '@/api/account/oauth';
 import BillingVariableBox from '@/components/billing/BillingVariableBox';
 import BillingResourceSlider from '@/components/billing/BillingResourceSlider';
 import BillingSubscriptionCard from '@/components/billing/BillingSubscriptionCard';
-import { getMissingBillingProfileLabels } from '@/components/billing/billingProfileUtils';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import { httpErrorToHuman } from '@/api/http';
+import {
+    emptyBillingProfile,
+    getMissingBillingProfileLabels,
+    isBillingProfileComplete,
+    normalizeBillingProfile,
+} from '@/components/billing/billingProfileUtils';
 
 type NestOption = {
     id: number;
@@ -44,6 +55,33 @@ type BillingFollowUpAction = {
     warning: string | null;
     eyebrow: string;
 };
+
+type BillingCheckoutDraft = {
+    selectedNodeId: number | null;
+    selectedNestId: number | null;
+    selectedGameId: number | null;
+    serverName: string;
+    cpuCores: number;
+    memoryGb: number;
+    diskGb: number;
+    variables: Record<string, string>;
+};
+
+type BillingPendingResumeAction =
+    | { type: 'create' }
+    | { type: 'renew'; subscriptionId: number }
+    | { type: 'upgrade'; subscriptionId: number; payload: UpgradePayload };
+
+type BillingCheckoutGateOptions = {
+    persistDraft?: boolean;
+    resumeAction?: BillingPendingResumeAction;
+};
+
+const BILLING_CHECKOUT_DRAFT_STORAGE_KEY = 'billing-checkout-draft';
+const BILLING_PENDING_ACTION_STORAGE_KEY = 'billing-pending-action';
+const BILLING_PENDING_ACTION_QUERY_KEY = 'billing_resume';
+const MANUAL_BILLING_DISCORD_REQUIRED_ERROR =
+    'Link your Discord account before checkout so the panel can open the required billing ticket.';
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
     style: 'currency',
@@ -70,6 +108,94 @@ const withReturnTo = (url: string, returnTo: string): string => {
         return parsed.toString();
     } catch {
         return url;
+    }
+};
+
+const readBillingCheckoutDraft = (): BillingCheckoutDraft | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const raw = window.sessionStorage.getItem(BILLING_CHECKOUT_DRAFT_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        return JSON.parse(raw) as BillingCheckoutDraft;
+    } catch {
+        return null;
+    }
+};
+
+const writeBillingCheckoutDraft = (draft: BillingCheckoutDraft | null): void => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (!draft) {
+        window.sessionStorage.removeItem(BILLING_CHECKOUT_DRAFT_STORAGE_KEY);
+        return;
+    }
+
+    window.sessionStorage.setItem(BILLING_CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+};
+
+const readBillingPendingAction = (): BillingPendingResumeAction | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const raw = window.sessionStorage.getItem(BILLING_PENDING_ACTION_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        return JSON.parse(raw) as BillingPendingResumeAction;
+    } catch {
+        return null;
+    }
+};
+
+const writeBillingPendingAction = (action: BillingPendingResumeAction | null): void => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (!action) {
+        window.sessionStorage.removeItem(BILLING_PENDING_ACTION_STORAGE_KEY);
+        return;
+    }
+
+    window.sessionStorage.setItem(BILLING_PENDING_ACTION_STORAGE_KEY, JSON.stringify(action));
+};
+
+const readBillingPendingActionFromSearch = (search: URLSearchParams): BillingPendingResumeAction | null => {
+    const raw = search.get(BILLING_PENDING_ACTION_QUERY_KEY);
+    if (!raw) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw) as BillingPendingResumeAction;
+    } catch {
+        return null;
+    }
+};
+
+const appendBillingPendingActionToReturnTo = (returnTo: string, action: BillingPendingResumeAction | null): string => {
+    if (!action) {
+        return returnTo;
+    }
+
+    try {
+        const parsed = new URL(returnTo, window.location.origin);
+        parsed.searchParams.set(BILLING_PENDING_ACTION_QUERY_KEY, JSON.stringify(action));
+
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return returnTo;
     }
 };
 
@@ -284,6 +410,7 @@ const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: 
 };
 
 export default () => {
+    const location = useLocation();
     const { addFlash } = useFlash();
     const { clearFlashes, clearAndAddHttpError, addError } = useFlashKey('billing');
     const {
@@ -311,7 +438,9 @@ export default () => {
         isValidating: invoicesLoading,
         mutate: mutateInvoices,
     } = useBillingInvoices();
+    const { data: providers } = useOAuthAccounts();
     const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
+    const discordProvider = (providers || []).find((provider) => provider.provider === 'discord') || null;
 
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
     const [selectedNestId, setSelectedNestId] = useState<number | null>(null);
@@ -329,10 +458,49 @@ export default () => {
     const [invoicesPage, setInvoicesPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
     const [followUpAction, setFollowUpAction] = useState<BillingFollowUpAction | null>(null);
+    const [addressPromptVisible, setAddressPromptVisible] = useState(false);
+    const [discordPromptVisible, setDiscordPromptVisible] = useState(false);
+    const [billingForm, setBillingForm] = useState(emptyBillingProfile);
+    const [billingSaving, setBillingSaving] = useState(false);
+    const pendingCheckoutAction = useRef<(() => Promise<void>) | null>(null);
+    const pendingCheckoutResumeAction = useRef<BillingPendingResumeAction | null>(null);
+    const oauthResumeHandled = useRef(false);
+    const restoredDraft = useRef(false);
+    const restoredDraftVariables = useRef<Record<string, string> | null>(null);
 
     useEffect(() => {
         clearFlashes();
     }, [clearFlashes]);
+
+    useEffect(() => {
+        if (billingProfile) {
+            setBillingForm(billingProfile);
+        }
+    }, [billingProfile]);
+
+    useEffect(() => {
+        if (restoredDraft.current || !catalog || catalog.length < 1) {
+            return;
+        }
+
+        restoredDraft.current = true;
+
+        const draft = readBillingCheckoutDraft();
+        if (!draft) {
+            return;
+        }
+
+        setSelectedNodeId(draft.selectedNodeId);
+        setSelectedNestId(draft.selectedNestId);
+        setSelectedGameId(draft.selectedGameId);
+        setServerName(draft.serverName);
+        setCpuCores(draft.cpuCores);
+        setMemoryGb(draft.memoryGb);
+        setDiskGb(draft.diskGb);
+        restoredDraftVariables.current = draft.variables || null;
+        setVariables(draft.variables || {});
+        writeBillingCheckoutDraft(null);
+    }, [catalog]);
 
     useEffect(() => {
         if (catalogError) {
@@ -437,6 +605,16 @@ export default () => {
             nextVariables[variable.envVariable] = variable.serverValue ?? variable.defaultValue ?? '';
         });
 
+        if (restoredDraftVariables.current) {
+            Object.entries(restoredDraftVariables.current).forEach(([envVariable, value]) => {
+                if (Object.prototype.hasOwnProperty.call(nextVariables, envVariable)) {
+                    nextVariables[envVariable] = value;
+                }
+            });
+
+            restoredDraftVariables.current = null;
+        }
+
         setVariables(nextVariables);
         setServerName((current) => (current.trim().length > 0 ? current : `${selectedGame.displayName} Server`));
     }, [selectedGame?.id, selectedNode?.id]);
@@ -495,6 +673,161 @@ export default () => {
         return null;
     })();
 
+    const onBillingFieldChange = <K extends keyof typeof billingForm>(key: K, value: (typeof billingForm)[K]) =>
+        setBillingForm((current) => ({ ...current, [key]: value }));
+
+    const writeCurrentCheckoutDraft = () => {
+        writeBillingCheckoutDraft({
+            selectedNodeId,
+            selectedNestId,
+            selectedGameId,
+            serverName,
+            cpuCores,
+            memoryGb,
+            diskGb,
+            variables,
+        });
+    };
+
+    const continuePendingCheckout = async () => {
+        const action = pendingCheckoutAction.current;
+        pendingCheckoutAction.current = null;
+
+        if (action) {
+            await action();
+        }
+    };
+
+    const clearPendingCheckoutResume = () => {
+        pendingCheckoutResumeAction.current = null;
+        writeBillingPendingAction(null);
+    };
+
+    const requestCheckoutGate = async (action: () => Promise<void>, options?: BillingCheckoutGateOptions) => {
+        if (billingProfileLoading && !billingProfile) {
+            addError('Billing details are still loading. Please wait a moment and try again.', 'Billing');
+            return;
+        }
+
+        if (!providers) {
+            addError('Discord link status is still loading. Please wait a moment and try again.', 'Billing');
+            return;
+        }
+
+        pendingCheckoutAction.current = action;
+        pendingCheckoutResumeAction.current = options?.resumeAction ?? null;
+
+        const nextProfile = normalizeBillingProfile(billingProfile || billingForm);
+        if (!isBillingProfileComplete(nextProfile)) {
+            setBillingForm(nextProfile);
+            setAddressPromptVisible(true);
+            return;
+        }
+
+        if (!discordProvider?.linked) {
+            if (!discordProvider?.available || !discordProvider.linkUrl) {
+                pendingCheckoutAction.current = null;
+                addError('Discord linking is not available right now. Contact an administrator.', 'Billing');
+                return;
+            }
+
+            if (options?.persistDraft) {
+                writeCurrentCheckoutDraft();
+            }
+
+            setDiscordPromptVisible(true);
+            return;
+        }
+
+        await continuePendingCheckout();
+    };
+
+    const handleManualBillingDiscordRequirement = (
+        error: unknown,
+        action: () => Promise<void>,
+        options?: BillingCheckoutGateOptions
+    ): boolean => {
+        if (httpErrorToHuman(error) !== MANUAL_BILLING_DISCORD_REQUIRED_ERROR) {
+            return false;
+        }
+
+        pendingCheckoutAction.current = action;
+        pendingCheckoutResumeAction.current = options?.resumeAction ?? null;
+
+        if (options?.persistDraft) {
+            writeCurrentCheckoutDraft();
+        }
+
+        if (discordProvider?.available && discordProvider.linkUrl) {
+            setDiscordPromptVisible(true);
+            return true;
+        }
+
+        return false;
+    };
+
+    const saveBillingDetailsFromPrompt = async () => {
+        setBillingSaving(true);
+        clearAndAddHttpError();
+
+        try {
+            const updated = await updateBillingProfile(normalizeBillingProfile(billingForm));
+            await mutateBillingProfile(updated, false);
+            setBillingForm(updated);
+
+            if (!isBillingProfileComplete(updated)) {
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'More Billing Details Needed',
+                    message: `Checkout is still blocked until these fields are completed: ${getMissingBillingProfileLabels(
+                        updated
+                    )}.`,
+                });
+                return;
+            }
+
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: 'Billing Details Saved',
+                message: 'Your billing details were updated. Checkout can continue now.',
+            });
+
+            setAddressPromptVisible(false);
+
+            if (!discordProvider?.linked) {
+                setDiscordPromptVisible(true);
+                return;
+            }
+
+            await continuePendingCheckout();
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setBillingSaving(false);
+        }
+    };
+
+    const handleLinkDiscordForCheckout = () => {
+        if (!discordProvider?.linkUrl) {
+            addError('Discord linking is not available right now. Contact an administrator.', 'Billing');
+            return;
+        }
+
+        writeCurrentCheckoutDraft();
+
+        if (pendingCheckoutResumeAction.current) {
+            writeBillingPendingAction(pendingCheckoutResumeAction.current);
+        }
+
+        const returnTo = appendBillingPendingActionToReturnTo(
+            `${location.pathname}${location.search}`,
+            pendingCheckoutResumeAction.current
+        );
+        window.location.assign(withReturnTo(discordProvider.linkUrl, returnTo));
+    };
+
     const performCreateInvoice = async () => {
         if (!selectedNode || !selectedGame) {
             return;
@@ -549,8 +882,20 @@ export default () => {
             void mutateOrders();
             void mutateInvoices();
             void mutateBillingProfile();
+            clearPendingCheckoutResume();
+            writeBillingCheckoutDraft(null);
         } catch (error) {
             setFollowUpAction(null);
+
+            if (
+                handleManualBillingDiscordRequirement(error, performCreateInvoice, {
+                    persistDraft: true,
+                    resumeAction: { type: 'create' },
+                })
+            ) {
+                return;
+            }
+
             clearAndAddHttpError(error as Error);
         } finally {
             setSubmitting(false);
@@ -595,8 +940,18 @@ export default () => {
 
             void mutateSubscriptions();
             void mutateInvoices();
+            clearPendingCheckoutResume();
         } catch (error) {
             setFollowUpAction(null);
+
+            if (
+                handleManualBillingDiscordRequirement(error, () => performRenewSubscription(subscriptionId), {
+                    resumeAction: { type: 'renew', subscriptionId },
+                })
+            ) {
+                return;
+            }
+
             clearAndAddHttpError(error as Error);
         } finally {
             setRenewingSubscriptionId(null);
@@ -658,13 +1013,133 @@ export default () => {
             void mutateSubscriptions();
             void mutateCatalog();
             void mutateInvoices();
+            clearPendingCheckoutResume();
         } catch (error) {
             setFollowUpAction(null);
+
+            if (
+                handleManualBillingDiscordRequirement(
+                    error,
+                    () => performUpgradeSubscription(subscriptionId, payload),
+                    {
+                        resumeAction: { type: 'upgrade', subscriptionId, payload },
+                    }
+                )
+            ) {
+                return;
+            }
+
             clearAndAddHttpError(error as Error);
         } finally {
             setUpgradingSubscriptionId(null);
         }
     };
+
+    const buildPendingCheckoutAction = (resumeAction: BillingPendingResumeAction): (() => Promise<void>) => {
+        switch (resumeAction.type) {
+            case 'create':
+                return performCreateInvoice;
+            case 'renew':
+                return () => performRenewSubscription(resumeAction.subscriptionId);
+            case 'upgrade':
+                return () => performUpgradeSubscription(resumeAction.subscriptionId, resumeAction.payload);
+        }
+    };
+
+    useEffect(() => {
+        const search = new URLSearchParams(location.search);
+        const oauthStatus = search.get('oauth_status');
+        const pendingActionFromQuery = readBillingPendingActionFromSearch(search);
+
+        if (!oauthStatus) {
+            oauthResumeHandled.current = false;
+            return;
+        }
+
+        if (oauthStatus !== 'linked') {
+            if (!oauthResumeHandled.current) {
+                oauthResumeHandled.current = true;
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'Discord Link',
+                    message: `Discord link flow ended with status: ${oauthStatus}.`,
+                });
+            }
+
+            return;
+        }
+
+        if (
+            oauthResumeHandled.current ||
+            !providers ||
+            !discordProvider?.linked ||
+            (billingProfileLoading && !billingProfile)
+        ) {
+            return;
+        }
+
+        const pendingAction = pendingActionFromQuery || readBillingPendingAction();
+        if (pendingAction?.type === 'create' && (!selectedNode || !selectedGame || !serverName.trim())) {
+            return;
+        }
+
+        if (
+            (pendingAction?.type === 'renew' || pendingAction?.type === 'upgrade') &&
+            !subscriptions &&
+            subscriptionsLoading
+        ) {
+            return;
+        }
+
+        oauthResumeHandled.current = true;
+
+        if (!pendingAction) {
+            addFlash({
+                key: 'billing',
+                type: 'success',
+                title: 'Discord Linked',
+                message: 'Your Discord account is linked. Your billing draft was restored if needed.',
+            });
+            return;
+        }
+
+        pendingCheckoutResumeAction.current = pendingAction;
+        writeBillingPendingAction(null);
+        if (pendingActionFromQuery && typeof window !== 'undefined') {
+            search.delete(BILLING_PENDING_ACTION_QUERY_KEY);
+            search.delete('oauth_status');
+            search.delete('oauth_provider');
+            const nextSearch = search.toString();
+            window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+        }
+
+        addFlash({
+            key: 'billing',
+            type: 'success',
+            title: 'Discord Linked',
+            message: 'Your Discord account is linked. Continuing the billing checkout flow now.',
+        });
+
+        void requestCheckoutGate(buildPendingCheckoutAction(pendingAction), {
+            persistDraft: pendingAction.type === 'create',
+            resumeAction: pendingAction,
+        });
+    }, [
+        location.search,
+        addFlash,
+        providers,
+        discordProvider?.linked,
+        billingProfileLoading,
+        billingProfile,
+        selectedNode,
+        selectedGame,
+        serverName,
+        subscriptions,
+        subscriptionsLoading,
+        requestCheckoutGate,
+        buildPendingCheckoutAction,
+    ]);
 
     const onToggleAutoRenew = async (subscriptionId: number, enabled: boolean) => {
         clearFlashes();
@@ -698,14 +1173,6 @@ export default () => {
             return;
         }
 
-        if (!billingProfileComplete) {
-            addError(
-                `Complete your billing details in /account before checkout. Missing: ${billingProfileMissingLabels}.`,
-                'Billing'
-            );
-            return;
-        }
-
         if (!selectedGame) {
             addError('Choose a game first.', 'Billing');
             return;
@@ -721,31 +1188,34 @@ export default () => {
             return;
         }
 
-        await performCreateInvoice();
+        await requestCheckoutGate(
+            async () => {
+                await performCreateInvoice();
+            },
+            { persistDraft: true, resumeAction: { type: 'create' } }
+        );
     };
 
     const onRenewSubscription = async (subscriptionId: number) => {
-        if (!billingProfileComplete) {
-            addError(
-                `Complete your billing details in /account before renewal checkout. Missing: ${billingProfileMissingLabels}.`,
-                'Billing'
-            );
-            return;
-        }
-
-        await performRenewSubscription(subscriptionId);
+        await requestCheckoutGate(
+            async () => {
+                await performRenewSubscription(subscriptionId);
+            },
+            {
+                resumeAction: { type: 'renew', subscriptionId },
+            }
+        );
     };
 
     const onUpgradeSubscription = async (subscriptionId: number, payload: UpgradePayload) => {
-        if (!billingProfileComplete) {
-            addError(
-                `Complete your billing details in /account before upgrade checkout. Missing: ${billingProfileMissingLabels}.`,
-                'Billing'
-            );
-            return;
-        }
-
-        await performUpgradeSubscription(subscriptionId, payload);
+        await requestCheckoutGate(
+            async () => {
+                await performUpgradeSubscription(subscriptionId, payload);
+            },
+            {
+                resumeAction: { type: 'upgrade', subscriptionId, payload },
+            }
+        );
     };
 
     if (!catalog && catalogLoading) {
@@ -1186,6 +1656,75 @@ export default () => {
                     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.24);
                 }
 
+                .billing-gate-modal {
+                    border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background:
+                        linear-gradient(170deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014) 55%),
+                        rgba(4, 8, 14, 0.94);
+                    padding: 1.25rem;
+                    box-shadow:
+                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                        0 26px 48px -28px rgba(0, 0, 0, 0.9);
+                }
+
+                .billing-gate-eyebrow {
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 0.28em;
+                    text-transform: uppercase;
+                    color: var(--primary);
+                }
+
+                .billing-gate-title {
+                    margin-top: 10px;
+                    font-size: clamp(1.4rem, 3vw, 1.9rem);
+                    line-height: 1.05;
+                    font-weight: 900;
+                    color: #f8f6ef;
+                }
+
+                .billing-gate-copy {
+                    margin-top: 10px;
+                    font-size: 0.9rem;
+                    line-height: 1.75;
+                    color: rgba(174, 183, 194, 0.86);
+                }
+
+                .billing-gate-note {
+                    margin-top: 16px;
+                    border-radius: 16px;
+                    border: 1px solid rgba(var(--primary-rgb), 0.2);
+                    background: rgba(var(--primary-rgb), 0.08);
+                    padding: 12px 14px;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: rgba(230, 252, 180, 0.9);
+                }
+
+                .billing-gate-grid {
+                    display: grid;
+                    gap: 14px;
+                    margin-top: 22px;
+                }
+
+                .billing-gate-footer {
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-top: 22px;
+                    padding-top: 18px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.08);
+                }
+
+                .billing-gate-help {
+                    max-width: 28rem;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: rgba(174, 183, 194, 0.76);
+                }
+
                 @media (max-width: 640px) {
                     .billing-hero {
                         border-radius: 18px;
@@ -1202,6 +1741,10 @@ export default () => {
 
                     .billing-pagination-actions {
                         flex-wrap: wrap;
+                    }
+
+                    .billing-gate-footer {
+                        flex-direction: column;
                     }
                 }
             `}</style>
@@ -1271,20 +1814,6 @@ export default () => {
                 ) : (
                     <div className={'grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] xl:items-start'}>
                         <form onSubmit={submit} className={'billing-panel p-6 md:p-8'}>
-                            {!billingProfileLoading && !billingProfileComplete && (
-                                <div
-                                    className={
-                                        'mb-6 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-4 py-4 text-sm leading-7 text-amber-100'
-                                    }
-                                >
-                                    Complete your billing details in{' '}
-                                    <a href={'/account'} className={'font-bold underline'}>
-                                        /account
-                                    </a>{' '}
-                                    before checkout.
-                                    {billingProfileMissingLabels ? ` Missing: ${billingProfileMissingLabels}.` : ''}
-                                </div>
-                            )}
                             <div className={'grid gap-6 lg:grid-cols-2'}>
                                 <div>
                                     <label
@@ -1498,7 +2027,6 @@ export default () => {
                                     type={'submit'}
                                     disabled={
                                         submitting ||
-                                        !billingProfileComplete ||
                                         !selectedNode ||
                                         !selectedGame ||
                                         !selectedNode.availability.isAvailable
@@ -2072,6 +2600,259 @@ export default () => {
                         <div className={'billing-empty-card'}>No billing orders have been placed yet.</div>
                     )}
                 </section>
+
+                <Modal
+                    visible={addressPromptVisible}
+                    onDismissed={() => setAddressPromptVisible(false)}
+                    showSpinnerOverlay={billingSaving}
+                >
+                    <form
+                        className={'billing-gate-modal'}
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            void saveBillingDetailsFromPrompt();
+                        }}
+                    >
+                        <div className={'billing-gate-eyebrow'}>Checkout Guard</div>
+                        <h2 className={'billing-gate-title'}>Complete Billing Address</h2>
+                        <p className={'billing-gate-copy'}>
+                            Checkout now pauses here instead of sending you to <code>/account</code>. Fill the billing
+                            contact and address fields below, save once, and the current checkout flow will continue.
+                        </p>
+
+                        <div className={'billing-gate-note'}>
+                            Autofill is enabled through browser address fields now. Google Places autocomplete is not
+                            wired in this repo yet, so this modal is prepared for that later without making checkout
+                            depend on an external API first.
+                        </div>
+
+                        {!isBillingProfileComplete(billingForm) && (
+                            <div
+                                className={
+                                    'mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                                }
+                            >
+                                Missing right now: {getMissingBillingProfileLabels(billingForm)}.
+                            </div>
+                        )}
+
+                        <div className={'billing-gate-grid md:grid-cols-2'}>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Legal Name
+                                </label>
+                                <Input
+                                    autoComplete={'name'}
+                                    value={billingForm.legalName}
+                                    onChange={(event) => onBillingFieldChange('legalName', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Invoice Email
+                                </label>
+                                <Input
+                                    autoComplete={'email'}
+                                    type={'email'}
+                                    value={billingForm.email}
+                                    onChange={(event) => onBillingFieldChange('email', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Phone
+                                </label>
+                                <Input
+                                    autoComplete={'tel'}
+                                    inputMode={'tel'}
+                                    value={billingForm.phone ?? ''}
+                                    onChange={(event) => onBillingFieldChange('phone', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Company Name
+                                </label>
+                                <Input
+                                    autoComplete={'organization'}
+                                    value={billingForm.companyName ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('companyName', event.currentTarget.value || null)
+                                    }
+                                />
+                            </div>
+                            <div className={'md:col-span-2'}>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Address Line 1
+                                </label>
+                                <Input
+                                    autoComplete={'address-line1'}
+                                    value={billingForm.addressLine1 ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('addressLine1', event.currentTarget.value)
+                                    }
+                                />
+                            </div>
+                            <div className={'md:col-span-2'}>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Address Line 2
+                                </label>
+                                <Input
+                                    autoComplete={'address-line2'}
+                                    value={billingForm.addressLine2 ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('addressLine2', event.currentTarget.value || null)
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    City
+                                </label>
+                                <Input
+                                    autoComplete={'address-level2'}
+                                    value={billingForm.city ?? ''}
+                                    onChange={(event) => onBillingFieldChange('city', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    State
+                                </label>
+                                <Input
+                                    autoComplete={'address-level1'}
+                                    value={billingForm.state ?? ''}
+                                    onChange={(event) => onBillingFieldChange('state', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Postcode
+                                </label>
+                                <Input
+                                    autoComplete={'postal-code'}
+                                    inputMode={'numeric'}
+                                    value={billingForm.postcode ?? ''}
+                                    onChange={(event) => onBillingFieldChange('postcode', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Country Code
+                                </label>
+                                <Input
+                                    maxLength={2}
+                                    placeholder={'MY'}
+                                    value={billingForm.countryCode}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('countryCode', event.currentTarget.value.toUpperCase())
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className={'billing-gate-footer'}>
+                            <p className={'billing-gate-help'}>
+                                These details are saved to your billing profile and printed on invoices or receipts. The
+                                checkout flow resumes immediately after save if everything required is complete.
+                            </p>
+                            <div className={'flex flex-wrap gap-3'}>
+                                <button
+                                    className={'billing-secondary-btn'}
+                                    onClick={() => setAddressPromptVisible(false)}
+                                    type={'button'}
+                                >
+                                    Close
+                                </button>
+                                <InteractiveHoverButton
+                                    className={'!w-auto !min-w-[13rem] normal-case tracking-normal'}
+                                    disabled={billingSaving}
+                                    text={billingSaving ? 'Saving...' : 'Save & Continue'}
+                                    type={'submit'}
+                                />
+                            </div>
+                        </div>
+                    </form>
+                </Modal>
+
+                <Modal visible={discordPromptVisible} onDismissed={() => setDiscordPromptVisible(false)}>
+                    <div className={'billing-gate-modal'}>
+                        <div className={'billing-gate-eyebrow'}>Discord Required</div>
+                        <h2 className={'billing-gate-title'}>Link Discord Before Checkout</h2>
+                        <p className={'billing-gate-copy'}>
+                            Billing checkout now hands off to your private support ticket flow after invoice creation.
+                            That flow is tied to your Discord identity, so the panel needs your Discord account linked
+                            first.
+                        </p>
+
+                        <div className={'billing-gate-note'}>
+                            Your current order draft is kept in this browser session. After Discord returns you to{' '}
+                            <code>/billing</code>, press Checkout again and continue from the same plan.
+                        </div>
+
+                        <div className={'billing-gate-footer'}>
+                            <p className={'billing-gate-help'}>
+                                If Discord linking fails or is cancelled, the current checkout request is not created
+                                yet. Nothing will be billed until you come back and continue.
+                            </p>
+                            <div className={'flex flex-wrap gap-3'}>
+                                <button
+                                    className={'billing-secondary-btn'}
+                                    onClick={() => setDiscordPromptVisible(false)}
+                                    type={'button'}
+                                >
+                                    Close
+                                </button>
+                                <InteractiveHoverButton
+                                    className={'!w-auto !min-w-[12rem] normal-case tracking-normal'}
+                                    onClick={handleLinkDiscordForCheckout}
+                                    text={'Link Discord'}
+                                    type={'button'}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
             </div>
         </div>
     );

@@ -28,6 +28,9 @@ use Pterodactyl\Http\Requests\Api\Client\Billing\UpgradeBillingSubscriptionReque
 
 class BillingController extends ClientApiController
 {
+    private const MANUAL_BILLING_DISCORD_REQUIRED_MESSAGE =
+        'Link your Discord account before checkout so the panel can open the required billing ticket.';
+
     public function __construct(
         private BillingCatalogService $catalogService,
         private BillingProfileService $profileService,
@@ -114,6 +117,7 @@ class BillingController extends ClientApiController
     public function store(StoreBillingOrderRequest $request): array
     {
         $this->profileCompletenessService->assertCompleteForCheckout($request->user());
+        $this->assertDiscordLinkedForManualCheckout($request);
 
         $order = $this->invoiceService->createNewOrderInvoice($request->user(), $request->validated());
         $payload = $this->transformOrder($order);
@@ -188,6 +192,7 @@ class BillingController extends ClientApiController
     public function renew(Request $request, BillingSubscription $billingSubscription): array
     {
         $this->profileCompletenessService->assertCompleteForCheckout($request->user());
+        $this->assertDiscordLinkedForManualCheckout($request);
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
 
         if (
@@ -220,6 +225,7 @@ class BillingController extends ClientApiController
     public function upgrade(UpgradeBillingSubscriptionRequest $request, BillingSubscription $billingSubscription): array
     {
         $this->profileCompletenessService->assertCompleteForCheckout($request->user());
+        $this->assertDiscordLinkedForManualCheckout($request);
         $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
         $invoice = $this->invoiceService->createUpgradeInvoice($subscription, $request->validated(), true);
         $payload = $this->transformSubscription($subscription->fresh());
@@ -571,6 +577,22 @@ class BillingController extends ClientApiController
     private function manualBillingEnabled(): bool
     {
         return $this->paymentService->manualBillingEnabled();
+    }
+
+    private function assertDiscordLinkedForManualCheckout(Request $request): void
+    {
+        if (!$this->manualBillingEnabled()) {
+            return;
+        }
+
+        $discordAccount = $request->user()
+            ->loadMissing('oauthAccounts')
+            ->oauthAccounts
+            ->first(fn ($account) => $account->provider === 'discord');
+
+        if (!$discordAccount?->provider_id) {
+            throw new DisplayException(self::MANUAL_BILLING_DISCORD_REQUIRED_MESSAGE);
+        }
     }
 
     private function discordInviteUrl(): ?string

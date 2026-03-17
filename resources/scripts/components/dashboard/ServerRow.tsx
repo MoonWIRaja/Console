@@ -6,7 +6,6 @@ import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import getWebsocketToken from '@/api/server/getWebsocketToken';
 import { Websocket } from '@/plugins/Websocket';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
-import { GlowCard } from '@/components/ui/spotlight-card';
 
 const isAlarmState = (current: number, limit: number): boolean => limit > 0 && current / (limit * 1024 * 1024) >= 0.9;
 
@@ -209,130 +208,92 @@ export default ({ server, className }: { server: Server; className?: string }) =
         : 'No allocation';
 
     return (
-        <GlowCard
-            glowColor='green'
-            customSize
-            orbit
-            orbitDurationMs={2800}
-            hoverGlow
-            className={`w-full rounded-xl [--radius:12] [--border:2] [--size:185] ${className || ''}`}
+        <Link
+            to={`/server/${server.id}`}
+            className={`dashboard-server-row group block no-underline ${className || ''}`}
         >
-            <Link to={`/server/${server.id}`} className={'dashboard-server-row group block p-6 no-underline'}>
-                <div className='flex flex-col gap-8 xl:flex-row xl:items-center'>
-                    <div className='flex min-w-[240px] items-center gap-5'>
-                        <div className='relative'>
-                            <div className='dashboard-server-iconbox'>
-                                <span className='material-icons-round dashboard-server-icon text-2xl'>dns</span>
-                            </div>
-                            <div className='absolute -right-1 -top-1 flex h-4 w-4'>
-                                <span
-                                    className='absolute inline-flex h-full w-full rounded-full opacity-40'
-                                    style={{ backgroundColor: statusColor }}
-                                />
-                                <span
-                                    className='relative inline-flex h-4 w-4 rounded-full border-2 border-[color:var(--card)]'
-                                    style={{ backgroundColor: statusColor }}
-                                />
-                            </div>
+            <div className='dashboard-server-grid'>
+                <div className='dashboard-server-summary'>
+                    <div className='relative'>
+                        <div className='dashboard-server-iconbox'>
+                            <span className='material-icons-round dashboard-server-icon text-[1.35rem]'>dns</span>
                         </div>
-                        <div className='min-w-0'>
-                            <h3 className='dashboard-server-name truncate'>{server.name}</h3>
-                            <div className='mt-1 flex flex-wrap items-center gap-2'>
-                                <span
-                                    className='dashboard-neon-glow-text text-[10px] font-bold uppercase italic tracking-widest'
-                                    style={{ color: statusColor }}
-                                >
-                                    {statusLabel}
-                                </span>
-                                <span className='text-[10px] text-[rgba(174,183,194,0.62)]'>•</span>
-                                <span className='truncate text-[10px] text-[rgba(174,183,194,0.74)]'>
-                                    {allocationLabel}
-                                </span>
-                            </div>
+                        <div className='dashboard-server-status-dot-wrap'>
+                            <span
+                                className='dashboard-server-status-dot-glow'
+                                style={{ backgroundColor: statusColor }}
+                            />
+                            <span className='dashboard-server-status-dot' style={{ backgroundColor: statusColor }} />
                         </div>
                     </div>
-
-                    <div className='flex-1 grid-cols-1 gap-6 font-mono md:grid md:grid-cols-3'>
-                        <div className='space-y-2'>
-                            <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
-                                    CPU LOAD
-                                </span>
-                                <span
-                                    className='text-sm font-bold'
-                                    style={{ color: alarms.cpu ? '#ef4444' : 'var(--primary)' }}
-                                >
-                                    {stats ? `${cpuValue.toFixed(1)}%` : '--'}
-                                </span>
-                            </div>
-                            <div className='dashboard-progress-track'>
-                                <div
-                                    className={`h-full transition-all duration-700 ${
-                                        alarms.cpu ? '' : 'dashboard-progress-neon'
-                                    }`}
-                                    style={{
-                                        width: `${stats ? cpuPercent : 0}%`,
-                                        backgroundColor: alarms.cpu ? '#ef4444' : 'var(--primary)',
-                                    }}
-                                />
-                            </div>
-                            <p className='text-right text-[9px] uppercase text-gray-600'>Limit: {cpuLimit}</p>
-                        </div>
-
-                        <div className='space-y-2'>
-                            <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
-                                    MEMORY
-                                </span>
-                                <span
-                                    className='text-sm font-bold'
-                                    style={{ color: alarms.memory ? '#ef4444' : 'var(--primary)' }}
-                                >
-                                    {stats ? bytesToString(memoryValue) : '--'}
-                                </span>
-                            </div>
-                            <div className='dashboard-progress-track'>
-                                <div
-                                    className={`h-full transition-all duration-700 ${
-                                        alarms.memory ? '' : 'dashboard-progress-neon'
-                                    }`}
-                                    style={{
-                                        width: `${stats ? memoryPercent : 0}%`,
-                                        backgroundColor: alarms.memory ? '#ef4444' : 'var(--primary)',
-                                    }}
-                                />
-                            </div>
-                            <p className='text-right text-[9px] uppercase text-gray-600'>Allocation: {memoryLimit}</p>
-                        </div>
-
-                        <div className='space-y-2'>
-                            <div className='flex items-end justify-between'>
-                                <span className='text-[10px] font-bold uppercase tracking-widest text-[rgba(174,183,194,0.68)]'>
-                                    STORAGE
-                                </span>
-                                <span
-                                    className='text-sm font-bold'
-                                    style={{ color: alarms.disk ? '#ef4444' : 'var(--primary)' }}
-                                >
-                                    {stats ? bytesToString(diskValue) : '--'}
-                                </span>
-                            </div>
-                            <div className='dashboard-progress-track'>
-                                <div
-                                    className={`h-full transition-all duration-700 ${
-                                        alarms.disk ? '' : 'dashboard-progress-neon'
-                                    }`}
-                                    style={{
-                                        width: `${stats ? diskPercent : 0}%`,
-                                        backgroundColor: alarms.disk ? '#ef4444' : 'var(--primary)',
-                                    }}
-                                />
-                            </div>
-                            <p className='text-right text-[9px] uppercase text-gray-600'>Capacity: {diskLimit}</p>
+                    <div className='min-w-0'>
+                        <h3 className='dashboard-server-name truncate'>{server.name}</h3>
+                        <div className='dashboard-server-meta-row'>
+                            <span
+                                className='dashboard-neon-glow-text dashboard-server-status'
+                                style={{ color: statusColor }}
+                            >
+                                {statusLabel}
+                            </span>
+                            <span className='dashboard-server-separator'>•</span>
+                            <span className='dashboard-server-address truncate'>{allocationLabel}</span>
                         </div>
                     </div>
                 </div>
-            </Link>
-        </GlowCard>
+
+                <div className='dashboard-server-metrics'>
+                    <div className='dashboard-server-metric'>
+                        <div className='dashboard-server-metric-label'>CPU LOAD</div>
+                        <div className='dashboard-server-metric-value-row'>
+                            <span>{stats ? `${cpuValue.toFixed(1)}%` : '--'}</span>
+                            <span>{stats ? `${cpuPercent.toFixed(0)}%` : '--'}</span>
+                        </div>
+                        <div className='dashboard-progress-track'>
+                            <div
+                                className={`dashboard-progress-fill ${
+                                    alarms.cpu ? 'dashboard-progress-alert' : 'dashboard-progress-cyan'
+                                }`}
+                                style={{ width: `${stats ? cpuPercent : 0}%` }}
+                            />
+                        </div>
+                        <p className='dashboard-server-metric-hint'>Limit: {cpuLimit}</p>
+                    </div>
+
+                    <div className='dashboard-server-metric'>
+                        <div className='dashboard-server-metric-label'>MEMORY</div>
+                        <div className='dashboard-server-metric-value-row'>
+                            <span>{stats ? bytesToString(memoryValue) : '--'}</span>
+                            <span>{stats ? `${memoryPercent.toFixed(0)}%` : '--'}</span>
+                        </div>
+                        <div className='dashboard-progress-track'>
+                            <div
+                                className={`dashboard-progress-fill ${
+                                    alarms.memory ? 'dashboard-progress-alert' : 'dashboard-progress-amber'
+                                }`}
+                                style={{ width: `${stats ? memoryPercent : 0}%` }}
+                            />
+                        </div>
+                        <p className='dashboard-server-metric-hint'>Allocation: {memoryLimit}</p>
+                    </div>
+
+                    <div className='dashboard-server-metric'>
+                        <div className='dashboard-server-metric-label'>STORAGE</div>
+                        <div className='dashboard-server-metric-value-row'>
+                            <span>{stats ? bytesToString(diskValue) : '--'}</span>
+                            <span>{stats ? `${diskPercent.toFixed(0)}%` : '--'}</span>
+                        </div>
+                        <div className='dashboard-progress-track'>
+                            <div
+                                className={`dashboard-progress-fill ${
+                                    alarms.disk ? 'dashboard-progress-alert' : 'dashboard-progress-lime'
+                                }`}
+                                style={{ width: `${stats ? diskPercent : 0}%` }}
+                            />
+                        </div>
+                        <p className='dashboard-server-metric-hint'>Capacity: {diskLimit}</p>
+                    </div>
+                </div>
+            </div>
+        </Link>
     );
 };

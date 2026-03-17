@@ -35,7 +35,7 @@ const SidebarLogo = () => {
         <div
             style={{
                 padding: '16px 14px 12px',
-                overflow: 'hidden',
+                overflow: 'visible',
                 whiteSpace: 'nowrap',
             }}
         >
@@ -49,24 +49,24 @@ const SidebarLogo = () => {
                     width: '100%',
                     maxWidth: '100%',
                     minWidth: 0,
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    background:
-                        'linear-gradient(165deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015) 44%), rgba(4, 8, 14, 0.75)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                    borderRadius: '18px',
+                    overflow: 'visible',
                     justifyContent: expanded ? 'flex-start' : 'center',
-                    padding: expanded ? '12px 14px' : '10px',
+                    padding: expanded ? '10px 14px' : '10px',
                 }}
             >
                 <img
                     src={logo}
                     alt={'System Logo'}
                     style={{
-                        width: expanded ? '42px' : '30px',
-                        height: expanded ? '42px' : '30px',
+                        width: expanded ? '54px' : '45px',
+                        height: expanded ? '54px' : '45px',
                         objectFit: 'contain',
-                        filter: 'brightness(1.15)',
+                        filter: 'brightness(1.12)',
                         flexShrink: 0,
+                        display: 'block',
+                        transform: expanded ? 'none' : 'scale(1.6)',
+                        transformOrigin: 'center',
                     }}
                 />
                 {expanded && (
@@ -75,19 +75,24 @@ const SidebarLogo = () => {
                             flex: 1,
                             minWidth: 0,
                             maxWidth: '100%',
-                            fontSize: '14px',
-                            fontWeight: 900,
-                            color: 'var(--foreground)',
-                            lineHeight: 1,
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            textShadow: '0 0 10px rgba(var(--primary-rgb), 0.18)',
                             whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                         }}
                     >
-                        {name}
+                        <span
+                            style={{
+                                fontSize: '14px',
+                                fontWeight: 900,
+                                color: 'var(--foreground)',
+                                lineHeight: 1,
+                                letterSpacing: '0.05em',
+                                textTransform: 'uppercase',
+                                textShadow: '0 0 10px rgba(var(--primary-rgb), 0.18)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            {name}
+                        </span>
                     </div>
                 )}
             </motion.div>
@@ -182,7 +187,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
             style={{
                 borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                 padding: '14px 12px 12px',
-                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012))',
+                background: 'transparent',
                 position: 'relative',
             }}
         >
@@ -212,21 +217,19 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
             >
                 <div
                     style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '8px',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '999px',
                         overflow: 'hidden',
                         flexShrink: 0,
-                        backgroundColor: 'var(--background)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px solid rgba(var(--primary-rgb), 0.35)',
-                        boxShadow:
-                            '0 0 0 1px rgba(var(--primary-rgb), 0.12), 0 6px 14px -6px rgba(var(--primary-rgb), 0.45)',
+                        background: 'transparent',
+                        boxShadow: 'none',
                     }}
                 >
-                    <Avatar.User size={36} variant={'beam'} />
+                    <Avatar.User size={40} variant={'beam'} />
                 </div>
                 {expanded && (
                     <motion.div
@@ -249,7 +252,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         <span>{userName}</span>
                         <span
                             className='material-icons-round'
-                            style={{ fontSize: '18px', color: 'var(--muted-foreground)' }}
+                            style={{ fontSize: '18px', color: 'rgba(248, 246, 239, 0.56)' }}
                         >
                             {menuOpen ? 'expand_less' : 'expand_more'}
                         </span>
@@ -567,7 +570,7 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                 label: 'Dashboard',
                                 href: '/',
                                 icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                         dashboard
                                     </span>
                                 ),
@@ -580,7 +583,7 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                 label: 'Billing',
                                 href: '/billing',
                                 icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                         payments
                                     </span>
                                 ),
@@ -593,7 +596,7 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                 label: 'Support',
                                 href: '/tickets',
                                 icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                         support_agent
                                     </span>
                                 ),
@@ -612,7 +615,7 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                                         label: 'Admin Panel',
                                         href: '/admin',
                                         icon: (
-                                            <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                            <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                                 admin_panel_settings
                                             </span>
                                         ),
@@ -776,7 +779,7 @@ export const ServerNavigationBar = ({
                                     label: route.name,
                                     href: `/server/${serverId}${route.path.replace('/*', '')}`,
                                     icon: (
-                                        <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                        <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                             {getIconForRoute(route.name)}
                                         </span>
                                     ),
@@ -792,7 +795,7 @@ export const ServerNavigationBar = ({
                                         label: 'Admin Server',
                                         href: `/admin/servers/view/${adminServerId}`,
                                         icon: (
-                                            <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                            <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                                 admin_panel_settings
                                             </span>
                                         ),
@@ -808,7 +811,7 @@ export const ServerNavigationBar = ({
                                 label: 'Back to Dashboard',
                                 href: '/',
                                 icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '20px' }}>
+                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
                                         dashboard
                                     </span>
                                 ),

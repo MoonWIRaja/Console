@@ -341,15 +341,15 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
             <div
                 style={{
                     flexShrink: 0,
-                    width: expanded ? '28px' : '34px',
-                    height: expanded ? '28px' : '34px',
-                    borderRadius: expanded ? '10px' : '12px',
+                    width: expanded ? '32px' : '38px',
+                    height: expanded ? '32px' : '38px',
+                    borderRadius: '999px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: active ? 'rgba(var(--primary-rgb), 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                    background: 'transparent',
                     color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
-                    boxShadow: active ? '0 0 16px rgba(var(--primary-rgb), 0.2)' : 'none',
+                    boxShadow: 'none',
                 }}
             >
                 {link.icon}

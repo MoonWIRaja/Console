@@ -5,6 +5,9 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Modal from '@/components/elements/Modal';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import { ChatBubble, ChatBubbleAvatar, ChatBubbleMessage } from '@/components/ui/chat-bubble';
+import { PromptBox } from '@/components/ui/chatgpt-prompt-input';
+import { ChatMessageList } from '@/components/ui/chat-message-list';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import { joinDiscordCommunity, useDiscordCommunityStatus } from '@/api/account/discordCommunity';
 import { useOAuthAccounts } from '@/api/account/oauth';
@@ -79,16 +82,32 @@ const statusColor = (status: string): string => {
     return 'var(--primary)';
 };
 
-const messageCardClasses = (authorType: string): string => {
+const messageTone = (authorType: string) => {
     if (authorType === 'admin') {
-        return 'rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4';
+        return {
+            variant: 'received' as const,
+            avatarClass: 'border-sky-400/24 bg-sky-500/16 text-sky-100',
+            bubbleClass: 'border-sky-400/22 bg-sky-500/10 text-sky-50',
+            eyebrow: 'Staff',
+        };
     }
 
     if (authorType === 'system') {
-        return 'rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4';
+        return {
+            variant: 'received' as const,
+            avatarClass: 'border-amber-400/24 bg-amber-500/16 text-amber-100',
+            bubbleClass: 'border-amber-400/22 bg-amber-500/10 text-amber-50',
+            eyebrow: 'System',
+        };
     }
 
-    return 'rounded-2xl border border-[color:var(--primary)]/20 bg-[color:var(--primary)]/10 p-4';
+    return {
+        variant: 'sent' as const,
+        avatarClass: 'border-[rgba(var(--primary-rgb),0.24)] bg-[rgba(var(--primary-rgb),0.16)] text-[#efffc8]',
+        bubbleClass:
+            'border-[rgba(var(--primary-rgb),0.28)] bg-[linear-gradient(135deg,rgba(var(--primary-rgb),0.28),rgba(var(--primary-rgb),0.08))] text-[#f8f6ef]',
+        eyebrow: 'You',
+    };
 };
 
 const withReturnTo = (url: string, returnTo: string): string => {
@@ -137,6 +156,7 @@ const BillingTicketsContainer = () => {
     const { addFlash } = useFlash();
     const { clearAndAddHttpError, clearFlashes } = useFlashKey('tickets');
     const composeGuardRef = useRef(false);
+    const replyFileInputRef = useRef<HTMLInputElement | null>(null);
 
     const { data: tickets, error: ticketsError, isValidating: ticketsLoading, mutate: mutateTickets } = useTickets();
     const { data: ticket, error: ticketError, isValidating: ticketLoading, mutate: mutateTicket } = useTicket(ticketId);
@@ -381,6 +401,7 @@ const BillingTicketsContainer = () => {
 
     const submitReply = async () => {
         if (!ticketId) return;
+        if (replyBody.trim() === '' && replyFiles.length === 0) return;
 
         setMessageBusy(true);
         clearFlashes();
@@ -409,6 +430,7 @@ const BillingTicketsContainer = () => {
     };
 
     const selectedTicket = ticket || null;
+    const canSubmitReply = replyBody.trim() !== '' || replyFiles.length > 0;
     const filteredTickets = (tickets || []).filter((item) => {
         if (categoryFilter !== 'all' && item.category !== categoryFilter) {
             return false;
@@ -1057,14 +1079,18 @@ const BillingTicketsContainer = () => {
                                     </div>
                                     <div className={'flex flex-wrap gap-3'}>
                                         {selectedTicket.discordThreadUrl ? (
-                                            <a
-                                                className={'btn btn-default'}
-                                                href={selectedTicket.discordThreadUrl}
-                                                rel={'noreferrer'}
-                                                target={'_blank'}
-                                            >
-                                                Open Discord Thread
-                                            </a>
+                                            <InteractiveHoverButton
+                                                className={'w-full normal-case tracking-normal sm:w-auto'}
+                                                onClick={() =>
+                                                    window.open(
+                                                        selectedTicket.discordThreadUrl || '',
+                                                        '_blank',
+                                                        'noopener,noreferrer'
+                                                    )
+                                                }
+                                                text={'Open Discord Thread'}
+                                                type={'button'}
+                                            />
                                         ) : null}
                                         {selectedTicket.status === 'resolved' || selectedTicket.status === 'closed' ? (
                                             <button
@@ -1078,81 +1104,180 @@ const BillingTicketsContainer = () => {
                                     </div>
                                 </div>
 
-                                <div className={'mt-6 space-y-4'}>
-                                    {selectedTicket.messages.map((message) => (
-                                        <article key={message.id} className={messageCardClasses(message.authorType)}>
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <div className={'text-sm font-bold text-[#f8f6ef]'}>
-                                                    {message.authorDisplayName || message.authorType}
-                                                </div>
-                                                <div className={'text-xs text-[color:var(--muted-foreground)]'}>
-                                                    {message.createdAt?.toLocaleString()}
-                                                </div>
-                                            </div>
-                                            {message.body ? (
-                                                <p
-                                                    className={
-                                                        'mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                                    }
-                                                >
-                                                    {message.body}
-                                                </p>
-                                            ) : null}
-                                            {message.attachments.length > 0 ? (
-                                                <div className={'mt-4 flex flex-wrap gap-3'}>
-                                                    {message.attachments.map((attachment) => (
-                                                        <a
-                                                            key={attachment.id}
-                                                            className={
-                                                                'rounded-full border border-[color:var(--border)] px-3 py-1.5 text-xs text-[#f8f6ef]'
-                                                            }
-                                                            href={attachment.downloadUrl}
-                                                            rel={'noreferrer'}
-                                                            target={'_blank'}
-                                                        >
-                                                            {attachment.name}
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            ) : null}
-                                        </article>
-                                    ))}
-                                </div>
-
                                 <div
                                     className={
-                                        'mt-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5'
+                                        'mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] shadow-[0_34px_80px_-48px_rgba(0,0,0,0.9)]'
                                     }
                                 >
-                                    <h3 className={'text-lg font-black text-[#f8f6ef]'}>Reply</h3>
-                                    <textarea
-                                        className={
-                                            'mt-4 h-40 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
-                                        }
-                                        value={replyBody}
-                                        onChange={(event) => setReplyBody(event.currentTarget.value)}
-                                        placeholder={'Write your message here...'}
-                                    />
                                     <div
                                         className={
-                                            'mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between'
+                                            'h-[32rem] bg-[radial-gradient(circle_at_top,rgba(var(--primary-rgb),0.08),transparent_34%),linear-gradient(180deg,rgba(4,8,14,0.96),rgba(2,4,8,0.96))] md:h-[40rem]'
                                         }
                                     >
-                                        <input
-                                            multiple
-                                            type={'file'}
-                                            onChange={(event) =>
-                                                setReplyFiles(Array.from(event.currentTarget.files || []))
-                                            }
-                                        />
-                                        <button
-                                            className={'btn btn-primary'}
-                                            disabled={messageBusy}
-                                            onClick={() => void submitReply()}
-                                            type={'button'}
+                                        <ChatMessageList smooth>
+                                            {selectedTicket.messages.length > 0 ? (
+                                                selectedTicket.messages.map((message) => {
+                                                    const tone = messageTone(message.authorType);
+                                                    const displayName =
+                                                        message.authorDisplayName || tone.eyebrow || message.authorType;
+
+                                                    return (
+                                                        <ChatBubble
+                                                            key={message.id}
+                                                            variant={tone.variant}
+                                                            className={'items-start'}
+                                                        >
+                                                            <ChatBubbleAvatar
+                                                                className={tone.avatarClass}
+                                                                fallback={displayName}
+                                                                src={message.authorAvatarUrl}
+                                                            />
+                                                            <div
+                                                                className={`flex max-w-[min(84%,46rem)] flex-col gap-2 ${
+                                                                    tone.variant === 'sent'
+                                                                        ? 'items-end'
+                                                                        : 'items-start'
+                                                                }`}
+                                                            >
+                                                                <div
+                                                                    className={`flex flex-wrap items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--muted-foreground)] ${
+                                                                        tone.variant === 'sent'
+                                                                            ? 'justify-end text-right'
+                                                                            : 'justify-start'
+                                                                    }`}
+                                                                >
+                                                                    <span>{displayName}</span>
+                                                                    <span className={'opacity-40'}>•</span>
+                                                                    <span
+                                                                        className={
+                                                                            'text-[10px] font-semibold tracking-[0.12em]'
+                                                                        }
+                                                                    >
+                                                                        {message.createdAt?.toLocaleString() || 'Now'}
+                                                                    </span>
+                                                                </div>
+                                                                <ChatBubbleMessage
+                                                                    className={tone.bubbleClass}
+                                                                    variant={tone.variant}
+                                                                >
+                                                                    {message.body ? (
+                                                                        <p
+                                                                            className={
+                                                                                'whitespace-pre-wrap text-sm leading-7'
+                                                                            }
+                                                                        >
+                                                                            {message.body}
+                                                                        </p>
+                                                                    ) : (
+                                                                        <p className={'text-sm italic opacity-80'}>
+                                                                            Attachment only message
+                                                                        </p>
+                                                                    )}
+
+                                                                    {message.attachments.length > 0 ? (
+                                                                        <div className={'mt-4 flex flex-wrap gap-2'}>
+                                                                            {message.attachments.map((attachment) => (
+                                                                                <a
+                                                                                    key={attachment.id}
+                                                                                    className={
+                                                                                        'inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-semibold text-[#f8f6ef] transition hover:border-[rgba(var(--primary-rgb),0.28)] hover:bg-[rgba(var(--primary-rgb),0.12)]'
+                                                                                    }
+                                                                                    href={attachment.downloadUrl}
+                                                                                    rel={'noreferrer'}
+                                                                                    target={'_blank'}
+                                                                                >
+                                                                                    <Paperclip size={12} />
+                                                                                    <span>{attachment.name}</span>
+                                                                                    <span
+                                                                                        className={
+                                                                                            'text-[color:var(--muted-foreground)]'
+                                                                                        }
+                                                                                    >
+                                                                                        {formatFileSize(
+                                                                                            attachment.sizeBytes
+                                                                                        )}
+                                                                                    </span>
+                                                                                </a>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </ChatBubbleMessage>
+                                                            </div>
+                                                        </ChatBubble>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div
+                                                    className={
+                                                        'flex h-full items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-[rgba(255,255,255,0.02)] px-6 text-center text-sm text-[color:var(--muted-foreground)]'
+                                                    }
+                                                >
+                                                    No replies yet. Start the conversation from the reply box below.
+                                                </div>
+                                            )}
+                                        </ChatMessageList>
+                                    </div>
+
+                                    <div
+                                        className={
+                                            'border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-4 sm:p-5'
+                                        }
+                                    >
+                                        {selectedTicket.status === 'resolved' || selectedTicket.status === 'closed' ? (
+                                            <div className={'mb-4 flex justify-end'}>
+                                                <span
+                                                    className={
+                                                        'rounded-full border border-amber-400/24 bg-amber-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100'
+                                                    }
+                                                >
+                                                    Reopen to reply
+                                                </span>
+                                            </div>
+                                        ) : null}
+
+                                        <form
+                                            onSubmit={(event) => {
+                                                event.preventDefault();
+                                                void submitReply();
+                                            }}
                                         >
-                                            {messageBusy ? 'Sending...' : 'Send Reply'}
-                                        </button>
+                                            <input
+                                                hidden
+                                                multiple
+                                                ref={replyFileInputRef}
+                                                type={'file'}
+                                                onChange={(event) => {
+                                                    const selectedFiles = Array.from(event.currentTarget.files || []);
+                                                    if (selectedFiles.length < 1) {
+                                                        return;
+                                                    }
+
+                                                    setReplyFiles((current) => [...current, ...selectedFiles]);
+                                                    event.currentTarget.value = '';
+                                                }}
+                                            />
+                                            <PromptBox
+                                                value={replyBody}
+                                                onChange={(event) => setReplyBody(event.currentTarget.value)}
+                                                placeholder={'Write your message here...'}
+                                                attachments={replyFiles.map((file, index) => ({
+                                                    id: `${file.name}-${file.size}-${index}`,
+                                                    name: file.name,
+                                                    meta: formatFileSize(file.size),
+                                                }))}
+                                                onAttachClick={() => replyFileInputRef.current?.click()}
+                                                onRemoveAttachment={(attachmentId) =>
+                                                    setReplyFiles((current) =>
+                                                        current.filter(
+                                                            (file, index) =>
+                                                                `${file.name}-${file.size}-${index}` !== attachmentId
+                                                        )
+                                                    )
+                                                }
+                                                statusLabel={messageBusy ? 'Sending Reply' : 'Discord Sync'}
+                                                submitDisabled={messageBusy || !canSubmitReply}
+                                            />
+                                        </form>
                                     </div>
                                 </div>
                             </>
