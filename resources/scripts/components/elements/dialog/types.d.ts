@@ -23,6 +23,7 @@ export interface RenderDialogProps extends DialogProps {
     description?: string | undefined;
     panelClassName?: string;
     contentClassName?: string;
+    scrollWrapperClassName?: string;
     children?: React.ReactNode;
 }
 

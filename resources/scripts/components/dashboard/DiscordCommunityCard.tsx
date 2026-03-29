@@ -155,7 +155,8 @@ export default () => {
                 key: 'account',
                 type: 'success',
                 title: 'Discord Ready',
-                message: 'Your Discord role was applied successfully. Use Open Discord when you want to open the invite.',
+                message:
+                    'Your Discord role was applied successfully. Use Open Discord when you want to open the invite.',
             });
         } catch (error) {
             if (!isMounted.current) {
@@ -171,15 +172,15 @@ export default () => {
     };
 
     return (
-        <section className={cardClass}>
-            <div className={'flex h-full flex-col justify-between gap-4 md:flex-row md:items-center'}>
+        <section className={`${cardClass} min-w-0 overflow-hidden`}>
+            <div className={'flex h-full min-w-0 flex-col justify-between gap-4 xl:flex-row xl:items-center'}>
                 <div className={'flex min-w-0 items-center gap-4'}>
-                    <div className={'flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-[#5865F2]/50 bg-[#5865F2]/10 text-[#5865F2]'}>
-                        <svg
-                            viewBox={'0 0 24 24'}
-                            aria-hidden={'true'}
-                            className={'h-8 w-8 fill-current'}
-                        >
+                    <div
+                        className={
+                            'flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-[#5865F2]/50 bg-[#5865F2]/10 text-[#5865F2]'
+                        }
+                    >
+                        <svg viewBox={'0 0 24 24'} aria-hidden={'true'} className={'h-8 w-8 fill-current'}>
                             <path d={discordLogoPath} />
                         </svg>
                     </div>
@@ -187,11 +188,19 @@ export default () => {
                         <div className={'flex flex-wrap items-center gap-2'}>
                             <h2 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>{title}</h2>
                             {community?.roleAssigned ? (
-                                <span className={'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--primary)]'}>
+                                <span
+                                    className={
+                                        'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--primary)]'
+                                    }
+                                >
                                     Joined
                                 </span>
                             ) : community?.member ? (
-                                <span className={'rounded-lg border border-[#5865F2]/60 bg-[#5865F2]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#95a5ff]'}>
+                                <span
+                                    className={
+                                        'rounded-lg border border-[#5865F2]/60 bg-[#5865F2]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#95a5ff]'
+                                    }
+                                >
                                     In Server
                                 </span>
                             ) : null}
@@ -204,7 +213,9 @@ export default () => {
                     type={'button'}
                     onClick={() => void onClick()}
                     disabled={buttonDisabled}
-                    className={'inline-flex h-11 min-w-[11rem] shrink-0 items-center justify-center rounded-full border border-[#5865F2]/50 bg-[#5865F2]/12 px-5 text-[11px] font-semibold uppercase tracking-wide text-[#f8f6ef] transition-all duration-300 hover:border-[#5865F2] hover:bg-[#5865F2]/18 md:ml-auto disabled:cursor-not-allowed disabled:opacity-50'}
+                    className={
+                        'inline-flex h-11 w-full min-w-0 items-center justify-center rounded-full border border-[#5865F2]/50 bg-[#5865F2]/12 px-5 text-[11px] font-semibold uppercase tracking-wide text-[#f8f6ef] transition-all duration-300 hover:border-[#5865F2] hover:bg-[#5865F2]/18 xl:ml-auto xl:w-auto xl:min-w-[11rem] xl:shrink-0 disabled:cursor-not-allowed disabled:opacity-50'
+                    }
                 >
                     {buttonLabel}
                 </button>

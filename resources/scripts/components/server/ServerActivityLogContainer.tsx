@@ -32,11 +32,8 @@ export default () => {
     }, [error]);
 
     return (
-        <ServerContentBlock
-            title={'Activity Log'}
-            className={'content-container-full px-4 py-4 xl:px-6 xl:py-4'}
-        >
-            <div className={'flex h-[calc(100dvh-8.75rem)] min-h-[420px] flex-col lg:h-[calc(100dvh-9.5rem)]'}>
+        <ServerContentBlock title={'Activity Log'} className={'content-container-full px-4 py-4 xl:px-6 xl:py-4'}>
+            <div className={'flex min-h-0 flex-1 flex-col lg:h-[calc(100dvh-9.5rem)] lg:min-h-[420px]'}>
                 <FlashMessageRender byKey={'server:activity'} />
                 {(filters.filters?.event || filters.filters?.ip) && (
                     <div className={'flex justify-end mb-2'}>
@@ -50,17 +47,16 @@ export default () => {
                     </div>
                 )}
                 {!data && isValidating ? (
-                    <PageLoadingSkeleton
-                        showChrome={false}
-                        showSpinner={false}
-                        rows={7}
-                        className='min-h-0 flex-1'
-                    />
+                    <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-0 flex-1' />
                 ) : !data?.items.length ? (
-                    <p className={'text-center text-sm text-neutral-400'}>No activity logs available for this server.</p>
+                    <p className={'text-center text-sm text-neutral-400'}>
+                        No activity logs available for this server.
+                    </p>
                 ) : (
                     <div
-                        className={'min-h-0 flex-1 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4'}
+                        className={
+                            'min-h-0 flex-1 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4'
+                        }
                     >
                         <div className={'h-full overflow-y-auto pr-1'}>
                             {data?.items.map((activity) => (

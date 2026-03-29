@@ -13,6 +13,8 @@ import LinkedAccountsContainer from '@/components/dashboard/LinkedAccountsContai
 import DiscordCommunityCard from '@/components/dashboard/DiscordCommunityCard';
 import BillingDetailsCard from '@/components/dashboard/BillingDetailsCard';
 import { ActivityLogFilters, useActivityLogs } from '@/api/account/activity';
+import { useBillingProfile } from '@/api/account/billing';
+import { getMissingBillingProfileLabels, isBillingProfileComplete } from '@/components/billing/billingProfileUtils';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import Spinner from '@/components/elements/Spinner';
 import ActivityLogEntry from '@/components/elements/activity/ActivityLogEntry';
@@ -25,10 +27,10 @@ import removeAccountAvatar from '@/api/account/removeAccountAvatar';
 import { useHistory, useLocation } from 'react-router-dom';
 
 type Tab = 'API' | 'SSH';
-type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | null;
+type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | 'BILLING' | null;
 
 const cardClass =
-    'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
+    'min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
 
 export default () => {
     const history = useHistory();
@@ -47,6 +49,9 @@ export default () => {
         page: 1,
         sorts: { timestamp: -1 },
     });
+    const { data: billingProfile } = useBillingProfile();
+    const billingReady = billingProfile ? isBillingProfileComplete(billingProfile) : false;
+    const billingMissingLabels = billingProfile ? getMissingBillingProfileLabels(billingProfile) : '';
 
     const {
         data: activityData,
@@ -167,11 +172,23 @@ export default () => {
     };
 
     return (
-        <div className={'account-theme account-auth-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
+        <div
+            className={
+                'account-theme account-auth-shell flex-1 h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'
+            }
+        >
             <style>{`
                 .account-auth-shell {
                     position: relative;
-                    overflow: hidden;
+                    display: flex;
+                    flex: 1;
+                    flex-direction: column;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    height: 100%;
+                    min-height: 0;
+                    min-width: 0;
+                    -webkit-overflow-scrolling: touch;
                     background:
                         radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
                         radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
@@ -397,6 +414,23 @@ export default () => {
                 .account-theme .account-tabs-shell button:hover svg {
                     color: #ef4444 !important;
                 }
+
+                .account-billing-dialog-wrapper,
+                .account-billing-dialog-panel,
+                .account-billing-dialog-panel > div,
+                .account-billing-dialog-panel .account-billing-dialog-scroll {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+
+                .account-billing-dialog-wrapper::-webkit-scrollbar,
+                .account-billing-dialog-panel::-webkit-scrollbar,
+                .account-billing-dialog-panel > div::-webkit-scrollbar,
+                .account-billing-dialog-panel .account-billing-dialog-scroll::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
+                    height: 0;
+                }
             `}</style>
 
             <Dialog open={modal === 'EMAIL'} onClose={() => setModal(null)} title={'Update Email Address'}>
@@ -408,15 +442,26 @@ export default () => {
             <Dialog open={modal === '2FA'} onClose={() => setModal(null)} title={'Two-Step Verification'}>
                 <ConfigureTwoFactorForm />
             </Dialog>
+            <Dialog
+                open={modal === 'BILLING'}
+                onClose={() => setModal(null)}
+                title={'Billing Details'}
+                description={'Update the details used on invoices and receipts.'}
+                panelClassName={'account-billing-dialog-panel !max-w-4xl overflow-hidden'}
+                contentClassName={'account-billing-dialog-scroll max-h-[78vh] overflow-y-auto'}
+                scrollWrapperClassName={'account-billing-dialog-wrapper'}
+            >
+                <BillingDetailsCard variant={'dialog'} onSaved={() => setModal(null)} />
+            </Dialog>
 
             <FlashMessageRender byKey={'account'} />
-            <div className={'mb-6 flex w-full flex-col gap-6 xl:flex-row xl:items-stretch xl:justify-between'}>
+            <div className={'mb-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]'}>
                 <section
                     className={
-                        'h-full min-h-[96px] w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] xl:max-w-[620px] xl:flex-none'
+                        'min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                     }
                 >
-                    <div className={'flex h-full flex-wrap items-center gap-4'}>
+                    <div className={'flex h-full min-w-0 flex-wrap items-center gap-4'}>
                         <div ref={avatarMenuRef} className={'relative'}>
                             <button
                                 type={'button'}
@@ -469,7 +514,7 @@ export default () => {
                                 </div>
                             )}
                         </div>
-                        <div className={'min-w-0'}>
+                        <div className={'min-w-0 flex-1'}>
                             <div className={'flex flex-wrap items-center gap-2'}>
                                 <h1 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>
                                     {user.username}
@@ -489,74 +534,141 @@ export default () => {
                     </div>
                 </section>
 
-                <div className={'w-full xl:ml-auto xl:max-w-[620px] xl:flex-none'}>
+                <div className={'min-w-0'}>
                     <DiscordCommunityCard />
                 </div>
             </div>
 
-            <div className={'grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
-                <div className={'flex flex-col gap-6'}>
+            <div className={'grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
+                <div className={'flex min-w-0 flex-col gap-6'}>
                     <section className={cardClass}>
                         <h2 className={'mb-5 text-lg font-bold tracking-tight text-[#f8f6ef]'}>Account Information</h2>
 
-                        <div
-                            className={
-                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--border)] pb-4'
-                            }
-                        >
-                            <div className={'min-w-[220px]'}>
-                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Email</p>
-                                <p className={'text-sm text-gray-100'}>{user.email}</p>
+                        <div className={'grid min-w-0 items-start gap-4 lg:grid-cols-2'}>
+                            <div
+                                className={
+                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                }
+                            >
+                                <div className={'min-w-0'}>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Email</p>
+                                    <p className={'break-all text-sm text-gray-100'}>{user.email}</p>
+                                </div>
+                                <InteractiveHoverButton
+                                    onClick={() => setModal('EMAIL')}
+                                    type={'button'}
+                                    text={'Edit'}
+                                    className={
+                                        'mt-4 w-full sm:w-auto !h-9 !min-w-0 sm:!min-w-[8rem] !px-4 !text-[10px] sm:self-start'
+                                    }
+                                />
                             </div>
-                            <InteractiveHoverButton
-                                onClick={() => setModal('EMAIL')}
-                                type={'button'}
-                                text={'Edit'}
-                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
-                            />
-                        </div>
 
-                        <div
-                            className={
-                                'mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--border)] pb-4'
-                            }
-                        >
-                            <div>
-                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Password</p>
-                                <p className={'text-sm text-gray-100'}>********</p>
+                            <div
+                                className={
+                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                }
+                            >
+                                <div className={'min-w-0'}>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                        Password
+                                    </p>
+                                    <p className={'text-sm text-gray-100'}>********</p>
+                                </div>
+                                <InteractiveHoverButton
+                                    onClick={() => setModal('PASSWORD')}
+                                    type={'button'}
+                                    text={'Change'}
+                                    className={
+                                        'mt-4 w-full sm:w-auto !h-9 !min-w-0 sm:!min-w-[8rem] !px-4 !text-[10px] sm:self-start'
+                                    }
+                                />
                             </div>
-                            <InteractiveHoverButton
-                                onClick={() => setModal('PASSWORD')}
-                                type={'button'}
-                                text={'Change'}
-                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
-                            />
-                        </div>
 
-                        <div className={'flex flex-wrap items-center justify-between gap-4'}>
-                            <div>
-                                <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
-                                    Two-Step Verification
-                                </p>
-                                <p
-                                    className={`text-sm font-bold ${
-                                        user.useTotp ? 'text-[color:var(--primary)]' : 'text-red-400'
-                                    }`}
-                                >
-                                    {user.useTotp ? 'Currently enabled' : 'Currently disabled'}
-                                </p>
+                            <div
+                                className={
+                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                }
+                            >
+                                <div className={'flex min-w-0 flex-wrap items-start justify-between gap-3'}>
+                                    <div className={'min-w-0 flex-1'}>
+                                        <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                            Billing Details
+                                        </p>
+                                        <p
+                                            className={`text-sm font-bold ${
+                                                billingProfile
+                                                    ? billingReady
+                                                        ? 'text-[color:var(--primary)]'
+                                                        : 'text-amber-300'
+                                                    : 'text-gray-300'
+                                            }`}
+                                        >
+                                            {billingProfile
+                                                ? billingReady
+                                                    ? 'Checkout ready'
+                                                    : 'Billing profile incomplete'
+                                                : 'Checking billing profile...'}
+                                        </p>
+                                        {billingProfile && !billingReady && billingMissingLabels && (
+                                            <p className={'mt-1 break-words text-xs text-amber-100/90'}>
+                                                Missing: {billingMissingLabels}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {billingProfile && (
+                                        <span
+                                            className={`shrink-0 rounded-xl border px-3 py-2 text-center text-[11px] font-bold uppercase tracking-[0.18em] ${
+                                                billingReady
+                                                    ? 'border-[color:var(--primary)] bg-[rgba(var(--primary-rgb),0.08)] text-[color:var(--primary)]'
+                                                    : 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+                                            }`}
+                                        >
+                                            {billingReady ? 'Ready' : 'Incomplete'}
+                                        </span>
+                                    )}
+                                </div>
+                                <InteractiveHoverButton
+                                    onClick={() => setModal('BILLING')}
+                                    type={'button'}
+                                    text={'Change'}
+                                    className={
+                                        'mt-4 w-full sm:w-auto !h-9 !min-w-0 sm:!min-w-[8rem] !px-4 !text-[10px] sm:self-start'
+                                    }
+                                />
                             </div>
-                            <InteractiveHoverButton
-                                onClick={() => setModal('2FA')}
-                                type={'button'}
-                                text={user.useTotp ? 'Disable' : 'Enable'}
-                                variant={user.useTotp ? 'danger' : 'success'}
-                                className={'!h-9 !min-w-[8rem] !px-4 !text-[10px]'}
-                            />
+
+                            <div
+                                className={
+                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                }
+                            >
+                                <div className={'min-w-0'}>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                        Two-Step Verification
+                                    </p>
+                                    <p
+                                        className={`text-sm font-bold ${
+                                            user.useTotp ? 'text-[color:var(--primary)]' : 'text-red-400'
+                                        }`}
+                                    >
+                                        {user.useTotp ? 'Currently enabled' : 'Currently disabled'}
+                                    </p>
+                                </div>
+                                <InteractiveHoverButton
+                                    onClick={() => setModal('2FA')}
+                                    type={'button'}
+                                    text={user.useTotp ? 'Disable' : 'Enable'}
+                                    variant={user.useTotp ? 'danger' : 'success'}
+                                    className={
+                                        'mt-4 w-full sm:w-auto !h-9 !min-w-0 sm:!min-w-[8rem] !px-4 !text-[10px] sm:self-start'
+                                    }
+                                />
+                            </div>
                         </div>
                     </section>
 
-                    <section className={cardClass}>
+                    <section className={`${cardClass} overflow-hidden`}>
                         <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                             <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Recent Activity</h2>
                             {activityData && (
@@ -600,11 +712,13 @@ export default () => {
                             </div>
                         )}
                     </section>
-
-                    <BillingDetailsCard cardClass={cardClass} />
                 </div>
 
-                <section className={'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'}>
+                <section
+                    className={
+                        'min-w-0 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'
+                    }
+                >
                     <div className={'grid grid-cols-2 border-b border-[color:var(--border)]'}>
                         <button
                             onClick={() => setActiveTab('API')}

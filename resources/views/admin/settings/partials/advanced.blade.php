@@ -239,6 +239,15 @@
                     </div>
                 </div>
             </div>
+            <div class="row">
+                <div class="form-group col-md-12">
+                    <label class="control-label">Dashboard Website Shortcut URL</label>
+                    <div>
+                        <input type="text" class="form-control" name="app:website" value="{{ old('app:website', config('app.website', config('app.url'))) }}">
+                        <p class="text-muted small">This URL is used by the Website shortcut card on the dashboard header.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="box box-primary">

@@ -8,6 +8,7 @@ import { Form, Formik, FormikHelpers, FormikProps } from 'formik';
 import { object, ref as yupRef, string } from 'yup';
 import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
+import AuthTopbar from '@/components/auth/AuthTopbar';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import useSiteBranding from '@/hooks/useSiteBranding';
@@ -427,6 +428,76 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                     z-index: 1;
                 }
 
+                .burhan-auth-topbar {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    left: 0;
+                    z-index: 4;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    background: linear-gradient(180deg, rgba(4, 6, 10, 0.94), rgba(4, 6, 10, 0.76));
+                    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+                    backdrop-filter: blur(18px);
+                }
+
+                .burhan-auth-topbar-inner {
+                    display: flex;
+                    min-height: 5.25rem;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1rem;
+                    padding: 0 1.25rem;
+                }
+
+                .burhan-auth-topbar-brand {
+                    display: flex;
+                    min-width: 0;
+                    align-items: center;
+                    text-decoration: none;
+                }
+
+                .burhan-auth-topbar-logo {
+                    height: 2.5rem;
+                    width: 2.5rem;
+                    flex-shrink: 0;
+                    margin-right: 0.5rem;
+                    border-radius: 0.75rem;
+                    background-size: cover;
+                    background-repeat: no-repeat;
+                    background-position: center;
+                }
+
+                .burhan-auth-topbar-name {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    color: var(--foreground);
+                    font-size: 1.1rem;
+                    font-weight: 500;
+                }
+
+                .burhan-auth-topbar-button {
+                    display: inline-flex;
+                    height: 2.8rem;
+                    width: 2.8rem;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.04);
+                    color: rgba(248, 246, 239, 0.72);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+                    transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+                }
+
+                .burhan-auth-topbar-button:hover {
+                    color: var(--foreground);
+                    opacity: 0.88;
+                    transform: rotate(12deg);
+                    background: rgba(255, 255, 255, 0.08);
+                }
+
                 .burhan-auth-glow {
                     --radius: 32;
                     --border: 1.5;
@@ -836,16 +907,36 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                     }
                 }
 
+                @media (max-width: 640px) {
+                    .burhan-auth-topbar-inner {
+                        min-height: 4.75rem;
+                        padding: 0 1rem;
+                    }
+
+                    .burhan-auth-topbar-name {
+                        font-size: 1rem;
+                    }
+                }
+
+                @media (min-width: 640px) {
+                    .burhan-auth-topbar-inner {
+                        padding: 0 1.5rem;
+                    }
+                }
+
+                @media (min-width: 1024px) {
+                    .burhan-auth-topbar-inner {
+                        padding: 0 2rem;
+                    }
+                }
+
             `}</style>
+            <AuthTopbar />
             <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
                 <span className='sr-only'>Dark neon background area.</span>
             </div>
-            <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 py-5 sm:px-10 sm:py-6 md:px-14 lg:w-[30%] lg:overflow-y-auto lg:px-8 lg:py-4 xl:px-10'>
-                <div
-                    className={`burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col py-0 ${
-                        mode === 'signup' ? 'justify-start' : 'justify-center'
-                    }`}
-                >
+            <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
+                <div className='burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
                     <FlashMessageRender className='burhan-auth-flash mb-4 px-1' />
 
                     <GlowCard

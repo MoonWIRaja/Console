@@ -29,6 +29,7 @@ interface State {
 
 class DropdownMenu extends React.PureComponent<Props, State> {
     menu = createRef<HTMLDivElement>();
+    ignoreContextMenuUntil = 0;
 
     state: State = {
         posX: 0,
@@ -43,23 +44,28 @@ class DropdownMenu extends React.PureComponent<Props, State> {
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
         const menu = this.menu.current;
 
-        if (this.state.visible && menu && (!prevState.visible || prevState.posX !== this.state.posX || prevState.posY !== this.state.posY)) {
+        if (
+            this.state.visible &&
+            menu &&
+            (!prevState.visible || prevState.posX !== this.state.posX || prevState.posY !== this.state.posY)
+        ) {
             document.addEventListener('click', this.windowListener);
             document.addEventListener('contextmenu', this.contextMenuListener);
             const margin = 8;
+            const cursorOffset = 6;
             const menuWidth = menu.clientWidth;
             const menuHeight = menu.clientHeight;
 
-            let left = Math.round(this.state.posX - menuWidth);
-            let top = Math.round(this.state.posY);
+            let left = Math.round(this.state.posX + cursorOffset);
+            let top = Math.round(this.state.posY + cursorOffset);
 
-            if (left < margin) left = margin;
             if (left + menuWidth > window.innerWidth - margin) {
-                left = Math.max(margin, window.innerWidth - menuWidth - margin);
+                left = Math.max(margin, this.state.posX - menuWidth - cursorOffset);
             }
+            if (left < margin) left = margin;
 
             if (top + menuHeight > window.innerHeight - margin) {
-                top = Math.max(margin, this.state.posY - menuHeight);
+                top = Math.max(margin, this.state.posY - menuHeight - cursorOffset);
             }
             if (top < margin) top = margin;
 
@@ -82,7 +88,18 @@ class DropdownMenu extends React.PureComponent<Props, State> {
         this.triggerMenu(e.clientX, e.clientY, 'toggle');
     };
 
-    contextMenuListener = () => this.setState({ visible: false });
+    contextMenuListener = (e: MouseEvent) => {
+        if (Date.now() < this.ignoreContextMenuUntil) {
+            return;
+        }
+
+        const menu = this.menu.current;
+        if (menu && (e.target === menu || menu.contains(e.target as Node))) {
+            return;
+        }
+
+        this.setState({ visible: false });
+    };
 
     windowListener = (e: MouseEvent) => {
         const menu = this.menu.current;
@@ -101,11 +118,19 @@ class DropdownMenu extends React.PureComponent<Props, State> {
     };
 
     triggerMenu = (posX: number, posY: number, mode: 'toggle' | 'open' = 'toggle') =>
-        this.setState((s) => ({
-            posX,
-            posY,
-            visible: mode === 'open' ? true : !s.visible,
-        }));
+        this.setState((s) => {
+            const visible = mode === 'open' ? true : !s.visible;
+
+            if (visible) {
+                this.ignoreContextMenuUntil = Date.now() + 150;
+            }
+
+            return {
+                posX,
+                posY,
+                visible,
+            };
+        });
 
     render() {
         const menu = (

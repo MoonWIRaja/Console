@@ -5,7 +5,7 @@ import Fade from '@/components/elements/Fade';
 import styled from 'styled-components/macro';
 import tw from 'twin.macro';
 
-const StyledSwitchTransition = styled(SwitchTransition)`
+const TransitionWrapper = styled.div`
     ${tw`relative flex min-h-0 flex-1 flex-col`};
 
     & > div {
@@ -21,11 +21,13 @@ const TransitionRouter: React.FC = ({ children }) => {
     return (
         <Route
             render={({ location }) => (
-                <StyledSwitchTransition>
-                    <Fade timeout={150} key={location.pathname + location.search} in appear unmountOnExit>
-                        <section>{children}</section>
-                    </Fade>
-                </StyledSwitchTransition>
+                <TransitionWrapper>
+                    <SwitchTransition>
+                        <Fade timeout={150} key={location.pathname + location.search} in appear unmountOnExit>
+                            <section>{children}</section>
+                        </Fade>
+                    </SwitchTransition>
+                </TransitionWrapper>
             )}
         />
     );

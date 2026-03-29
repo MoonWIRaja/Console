@@ -16,11 +16,45 @@ import { usePersistedState } from '@/plugins/usePersistedState';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
 import useSiteBranding from '@/hooks/useSiteBranding';
+import { useLocation } from 'react-router-dom';
 
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
 
+type ConsoleVariant = 'default' | 'sidebar';
+type ConsoleSyncMode = 'full' | 'live-only';
+
+interface ConsoleProps {
+    variant?: ConsoleVariant;
+    onRequestClose?: () => void;
+    syncMode?: ConsoleSyncMode;
+    contributeToSharedTranscript?: boolean;
+}
+
+type TranscriptEntry = {
+    plain: string;
+    rendered: string;
+};
+
 const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false;
+const MAX_TRANSCRIPT_LINES = 25000;
+const MAX_SHARE_CHARACTERS = 9_500_000;
+const sharedTranscriptByServer = new Map<string, TranscriptEntry[]>();
+
+const clampTranscriptEntries = (entries: TranscriptEntry[]): TranscriptEntry[] =>
+    entries.length > MAX_TRANSCRIPT_LINES ? entries.slice(entries.length - MAX_TRANSCRIPT_LINES) : entries;
+
+const readSharedTranscript = (serverId: string): TranscriptEntry[] =>
+    (sharedTranscriptByServer.get(serverId) || []).slice();
+
+const appendSharedTranscript = (serverId: string, entry: TranscriptEntry): void => {
+    const current = sharedTranscriptByServer.get(serverId) || [];
+    sharedTranscriptByServer.set(serverId, clampTranscriptEntries([...current, entry]));
+};
+
+const clearSharedTranscript = (serverId: string): void => {
+    sharedTranscriptByServer.delete(serverId);
+};
 
 const theme = isDark
     ? {
@@ -83,7 +117,13 @@ const terminalProps: ITerminalOptions = {
     allowProposedApi: true,
 };
 
-export default () => {
+export default ({
+    variant = 'default',
+    onRequestClose,
+    syncMode = 'full',
+    contributeToSharedTranscript = true,
+}: ConsoleProps) => {
+    const location = useLocation();
     const ref = useRef<HTMLDivElement>(null);
     const terminal = useMemo(() => new Terminal({ ...terminalProps }), []);
     const fitAddon = new FitAddon();
@@ -99,6 +139,15 @@ export default () => {
     const { name: siteName } = useSiteBranding();
     const [history, setHistory] = usePersistedState<string[]>(`${serverId}:command_history`, []);
     const [historyIndex, setHistoryIndex] = useState(-1);
+    const [isPaused, setIsPaused] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [shareNotice, setShareNotice] = useState<string | null>(null);
+    const shareNoticeTimeout = useRef<number | null>(null);
+    const transcriptEntries = useRef<TranscriptEntry[]>([]);
+    const bufferedEntries = useRef<TranscriptEntry[]>([]);
+    const isSidebar = variant === 'sidebar';
+    const isStandaloneConsole = location.pathname.startsWith('/console/');
+    const standaloneConsoleHref = `/console/${serverId}`;
     // SearchBarAddon has hardcoded z-index: 999 :(
     const zIndex = `
     .xterm-search-bar__addon {
@@ -109,47 +158,171 @@ export default () => {
         fitAddon.fit();
     }, [terminal, fitAddon]);
 
-    const terminalPrelude = useMemo(
-        () => `\u001b[1m\u001b[33mcontainer@${siteName}~ \u001b[0m`,
-        [siteName]
-    );
+    const terminalPrelude = useMemo(() => `\u001b[1m\u001b[33mcontainer@${siteName}~ \u001b[0m`, [siteName]);
+    const terminalPlainPrelude = useMemo(() => `container@${siteName}~ `, [siteName]);
 
     const brandDaemonLine = useCallback(
         (line: string) => line.replace(/\[Pterodactyl Daemon\]:/g, `[${siteName} Daemon]:`),
         [siteName]
     );
 
-    const handleConsoleOutput = useCallback(
-        (line: string, prelude = false) =>
-            terminal.writeln(
-                (prelude ? terminalPrelude : '') +
-                    brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '') +
-                    '\u001b[0m'
-            ),
-        [terminal, terminalPrelude, brandDaemonLine]
+    const setEphemeralShareNotice = useCallback((message: string) => {
+        setShareNotice(message);
+
+        if (shareNoticeTimeout.current) {
+            window.clearTimeout(shareNoticeTimeout.current);
+        }
+
+        shareNoticeTimeout.current = window.setTimeout(() => {
+            setShareNotice(null);
+            shareNoticeTimeout.current = null;
+        }, 2400);
+    }, []);
+
+    const buildTranscriptEntry = useCallback(
+        (line: string, options?: { prelude?: boolean; tone?: 'normal' | 'error' }) => {
+            const cleaned = brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '');
+            const prelude = options?.prelude ? terminalPrelude : '';
+            const plainPrelude = options?.prelude ? terminalPlainPrelude : '';
+
+            return {
+                plain: `${plainPrelude}${cleaned}`,
+                rendered:
+                    options?.tone === 'error'
+                        ? `${terminalPrelude}\u001b[1m\u001b[41m${cleaned}\u001b[0m`
+                        : `${prelude}${cleaned}\u001b[0m`,
+            };
+        },
+        [brandDaemonLine, terminalPrelude, terminalPlainPrelude]
     );
 
-    const handleTransferStatus = useCallback((status: string) => {
-        switch (status) {
-            // Sent by either the source or target node if a failure occurs.
-            case 'failure':
-                terminal.writeln(terminalPrelude + 'Transfer has failed.\u001b[0m');
-                return;
-        }
-    }, [terminal, terminalPrelude]);
+    const persistTranscriptEntry = useCallback(
+        (entry: TranscriptEntry) => {
+            transcriptEntries.current = clampTranscriptEntries([...transcriptEntries.current, entry]);
 
-    const handleDaemonErrorOutput = useCallback((line: string) =>
-        terminal.writeln(
-            terminalPrelude +
-                '\u001b[1m\u001b[41m' +
-                brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '') +
-                '\u001b[0m'
-        ), [terminal, terminalPrelude, brandDaemonLine]
+            if (contributeToSharedTranscript) {
+                appendSharedTranscript(serverId, entry);
+            }
+        },
+        [serverId, contributeToSharedTranscript]
+    );
+
+    const pushTranscriptEntry = useCallback(
+        (entry: TranscriptEntry) => {
+            persistTranscriptEntry(entry);
+
+            if (isPaused) {
+                bufferedEntries.current = clampTranscriptEntries([...bufferedEntries.current, entry]);
+                return;
+            }
+
+            terminal.writeln(entry.rendered);
+        },
+        [persistTranscriptEntry, isPaused, terminal]
+    );
+
+    const clearConsoleOutput = useCallback(() => {
+        terminal.clear();
+        transcriptEntries.current = [];
+        bufferedEntries.current = [];
+
+        if (contributeToSharedTranscript) {
+            clearSharedTranscript(serverId);
+        }
+
+        setEphemeralShareNotice('Console cleared.');
+    }, [terminal, contributeToSharedTranscript, serverId, setEphemeralShareNotice]);
+
+    const hydrateFromSharedTranscript = useCallback(() => {
+        const sharedTranscript = readSharedTranscript(serverId);
+        if (!sharedTranscript.length) {
+            return false;
+        }
+
+        transcriptEntries.current = sharedTranscript;
+        bufferedEntries.current = [];
+        terminal.clear();
+        sharedTranscript.forEach((entry) => terminal.writeln(entry.rendered));
+
+        return true;
+    }, [serverId, terminal]);
+
+    const shareConsoleOutput = useCallback(async () => {
+        if (isSharing) {
+            return;
+        }
+
+        const lines = transcriptEntries.current.map((entry) => entry.plain);
+        if (!lines.length) {
+            setEphemeralShareNotice('Console is empty.');
+            return;
+        }
+
+        setIsSharing(true);
+
+        try {
+            let sharedLines = lines.slice(-MAX_TRANSCRIPT_LINES);
+            let content = sharedLines.join('\n');
+
+            while (content.length > MAX_SHARE_CHARACTERS && sharedLines.length > 1) {
+                sharedLines = sharedLines.slice(1);
+                content = sharedLines.join('\n');
+            }
+
+            const response = await fetch('https://api.mclo.gs/1/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content,
+                    source: typeof window !== 'undefined' ? window.location.hostname : siteName,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data?.url) {
+                throw new Error(data?.error || data?.message || 'Unable to share logs right now.');
+            }
+
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(data.url).catch(() => undefined);
+            }
+
+            window.open(data.url, '_blank', 'noopener,noreferrer');
+            setEphemeralShareNotice('Shared to mclo.gs.');
+        } catch (error) {
+            setEphemeralShareNotice(error instanceof Error ? error.message : 'Unable to share logs right now.');
+        } finally {
+            setIsSharing(false);
+        }
+    }, [isSharing, setEphemeralShareNotice, siteName]);
+
+    const handleConsoleOutput = useCallback(
+        (line: string, prelude = false) => pushTranscriptEntry(buildTranscriptEntry(line, { prelude })),
+        [pushTranscriptEntry, buildTranscriptEntry]
+    );
+
+    const handleTransferStatus = useCallback(
+        (status: string) => {
+            switch (status) {
+                // Sent by either the source or target node if a failure occurs.
+                case 'failure':
+                    pushTranscriptEntry(buildTranscriptEntry('Transfer has failed.', { prelude: true }));
+                    return;
+            }
+        },
+        [pushTranscriptEntry, buildTranscriptEntry]
+    );
+
+    const handleDaemonErrorOutput = useCallback(
+        (line: string) => pushTranscriptEntry(buildTranscriptEntry(line, { prelude: true, tone: 'error' })),
+        [pushTranscriptEntry, buildTranscriptEntry]
     );
 
     const handlePowerChangeEvent = useCallback(
-        (state: string) => terminal.writeln(terminalPrelude + 'Server marked as ' + state + '...\u001b[0m'),
-        [terminal, terminalPrelude]
+        (state: string) => pushTranscriptEntry(buildTranscriptEntry(`Server marked as ${state}...`, { prelude: true })),
+        [pushTranscriptEntry, buildTranscriptEntry]
     );
 
     const handleCommandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -219,6 +392,15 @@ export default () => {
 
     useEventListener('resize', debounce(fitTerminal, 100));
 
+    useEffect(
+        () => () => {
+            if (shareNoticeTimeout.current) {
+                window.clearTimeout(shareNoticeTimeout.current);
+            }
+        },
+        []
+    );
+
     useEffect(() => {
         if (!ref.current || !terminal.element) return;
 
@@ -259,6 +441,13 @@ export default () => {
     }, [terminal, fitTerminal]);
 
     useEffect(() => {
+        if (!isPaused && bufferedEntries.current.length > 0) {
+            bufferedEntries.current.forEach((entry) => terminal.writeln(entry.rendered));
+            bufferedEntries.current = [];
+        }
+    }, [isPaused, terminal]);
+
+    useEffect(() => {
         const listeners: Record<string, (s: string) => void> = {
             [SocketEvent.STATUS]: handlePowerChangeEvent,
             [SocketEvent.CONSOLE_OUTPUT]: handleConsoleOutput,
@@ -270,15 +459,25 @@ export default () => {
         };
 
         if (connected && instance) {
-            // Do not clear the console if the server is being transferred.
-            if (!isTransferring) {
-                terminal.clear();
+            const hasSharedTranscript = hydrateFromSharedTranscript();
+
+            if (!hasSharedTranscript) {
+                transcriptEntries.current = [];
+                bufferedEntries.current = [];
+
+                // Do not clear the console if the server is being transferred.
+                if (!isTransferring) {
+                    terminal.clear();
+                }
             }
 
             Object.keys(listeners).forEach((key: string) => {
                 instance.addListener(key, listeners[key]);
             });
-            instance.send(SocketRequest.SEND_LOGS);
+
+            if (!hasSharedTranscript && syncMode === 'full') {
+                instance.send(SocketRequest.SEND_LOGS);
+            }
         }
 
         return () => {
@@ -291,8 +490,10 @@ export default () => {
     }, [
         connected,
         instance,
+        syncMode,
         isTransferring,
         terminal,
+        hydrateFromSharedTranscript,
         handleConsoleOutput,
         handleDaemonErrorOutput,
         handlePowerChangeEvent,
@@ -300,8 +501,62 @@ export default () => {
     ]);
 
     return (
-        <div className={classNames(styles.terminal, 'relative')}>
+        <div className={classNames(styles.terminal, styles[`terminal_${variant}`], 'relative')}>
             {!connected && <SpinnerOverlay visible size={'large'} />}
+            {isSidebar && (
+                <div className={styles.sidebar_header}>
+                    <div className={styles.sidebar_header_left}>
+                        <h3 className={styles.sidebar_title}>
+                            <span className={'material-icons-round text-[18px]'}>terminal</span>
+                            Console
+                        </h3>
+                        {shareNotice && <p className={styles.sidebar_notice}>{shareNotice}</p>}
+                    </div>
+                    <div className={styles.sidebar_actions}>
+                        <button
+                            type={'button'}
+                            title={isPaused ? 'Resume logs' : 'Pause logs'}
+                            aria-label={isPaused ? 'Resume logs' : 'Pause logs'}
+                            className={styles.sidebar_action}
+                            onClick={() => setIsPaused((value) => !value)}
+                        >
+                            <span className={'material-icons-round text-[18px]'}>
+                                {isPaused ? 'play_arrow' : 'pause'}
+                            </span>
+                        </button>
+                        <button
+                            type={'button'}
+                            title={'Share log to mclo.gs'}
+                            aria-label={'Share log to mclo.gs'}
+                            className={styles.sidebar_action}
+                            onClick={() => void shareConsoleOutput()}
+                            disabled={isSharing}
+                        >
+                            <span className={'material-icons-round text-[18px]'}>{isSharing ? 'sync' : 'share'}</span>
+                        </button>
+                        <button
+                            type={'button'}
+                            title={'Clear log'}
+                            aria-label={'Clear log'}
+                            className={styles.sidebar_action}
+                            onClick={clearConsoleOutput}
+                        >
+                            <span className={'material-icons-round text-[18px]'}>delete</span>
+                        </button>
+                        {onRequestClose && (
+                            <button
+                                type={'button'}
+                                title={'Close console'}
+                                aria-label={'Close console'}
+                                className={styles.sidebar_action}
+                                onClick={onRequestClose}
+                            >
+                                <span className={'material-icons-round text-[18px]'}>close</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
             <div
                 className={classNames(styles.container, styles.overflows_container, { 'rounded-b': !canSendCommands })}
             >
@@ -315,17 +570,40 @@ export default () => {
                         className={classNames('relative flex items-center', styles.command_shell)}
                         style={{ backgroundColor: '#0C0C0C' }}
                     >
-                        <input
-                            className={classNames(styles.command_input)}
-                            type={'text'}
-                            placeholder={'Type a command...'}
-                            aria-label={'Console command input.'}
-                            style={{ backgroundColor: '#0C0C0C' }}
-                            disabled={!instance || !connected}
-                            onKeyDown={handleCommandKeyDown}
-                            autoCorrect={'off'}
-                            autoCapitalize={'none'}
-                        />
+                        <div className={styles.command_input_wrap}>
+                            <input
+                                className={classNames(styles.command_input)}
+                                type={'text'}
+                                placeholder={'Type a command...'}
+                                aria-label={'Console command input.'}
+                                style={{ backgroundColor: '#0C0C0C' }}
+                                disabled={!instance || !connected}
+                                onKeyDown={handleCommandKeyDown}
+                                autoCorrect={'off'}
+                                autoCapitalize={'none'}
+                            />
+                        </div>
+                        {!isStandaloneConsole && !isSidebar && (
+                            <a
+                                className={styles.command_external}
+                                target='_blank'
+                                rel='noreferrer'
+                                href={standaloneConsoleHref}
+                                title={'Open standalone console'}
+                                aria-label={'Open standalone console'}
+                            >
+                                <svg
+                                    aria-hidden='true'
+                                    focusable='false'
+                                    width='16'
+                                    height='16'
+                                    viewBox='0 0 512 512'
+                                    fill='currentColor'
+                                >
+                                    <path d='M432 320H400a16 16 0 0 0-16 16V448H64V128H208a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16H48A48 48 0 0 0 0 112V464a48 48 0 0 0 48 48H400a48 48 0 0 0 48-48V336a16 16 0 0 0-16-16ZM488 0H360c-21.37 0-32.05 25.91-17 41l35.73 35.73L135 320.37a24 24 0 0 0 0 34L157.67 377a24 24 0 0 0 34 0L435.28 133.32 471 169c15 15 41 4.5 41-17V24a24 24 0 0 0-24-24Z' />
+                                </svg>
+                            </a>
+                        )}
                     </div>
                 </div>
             )}

@@ -106,11 +106,7 @@ const mergeStablePlayerNames = (
     if (!previous) return next;
 
     const previousById = new Map(previous.items.map((item) => [item.id, item]));
-    const previousByUuid = new Map(
-        previous.items
-            .filter((item) => item.uuid)
-            .map((item) => [item.uuid, item])
-    );
+    const previousByUuid = new Map(previous.items.filter((item) => item.uuid).map((item) => [item.uuid, item]));
 
     const items = next.items.map((item) => {
         const prior = previousById.get(item.id) || (item.uuid ? previousByUuid.get(item.uuid) : undefined);
@@ -119,9 +115,7 @@ const mergeStablePlayerNames = (
         const nextName = (item.name || '').trim();
         const priorName = (prior.name || '').trim();
         const keepPriorName =
-            (!nextName || isGenericPlayerName(nextName)) &&
-            !!priorName &&
-            !isGenericPlayerName(priorName);
+            (!nextName || isGenericPlayerName(nextName)) && !!priorName && !isGenericPlayerName(priorName);
 
         return {
             ...item,
@@ -439,7 +433,9 @@ const PlayerAvatar = ({ player, size = 36 }: { player: ServerPlayer; size?: numb
 
     return (
         <div
-            className={'flex items-center justify-center rounded-lg bg-[color:var(--accent)] text-xs font-bold text-[color:var(--foreground)]'}
+            className={
+                'flex items-center justify-center rounded-lg bg-[color:var(--accent)] text-xs font-bold text-[color:var(--foreground)]'
+            }
             style={{ width: size, height: size }}
         >
             {player.name.charAt(0).toUpperCase()}
@@ -515,9 +511,7 @@ const PlayerItemIcon = ({
     }
 
     return (
-        <span className={classNames('material-icons-round text-sm text-gray-500', emptyClassName)}>
-            inventory_2
-        </span>
+        <span className={classNames('material-icons-round text-sm text-gray-500', emptyClassName)}>inventory_2</span>
     );
 };
 
@@ -529,10 +523,7 @@ const parseSlotNumber = (slot: string): number | null => {
     return Number.isNaN(value) ? null : value;
 };
 
-const findSectionById = (
-    sections: PlayerInventorySection[],
-    ids: string[]
-): PlayerInventorySection | undefined => {
+const findSectionById = (sections: PlayerInventorySection[], ids: string[]): PlayerInventorySection | undefined => {
     const wanted = ids.map((id) => id.toLowerCase());
 
     return sections.find((section) => wanted.includes((section.id || '').toLowerCase()));
@@ -541,9 +532,7 @@ const findSectionById = (
 const findNamedSlot = (slots: PlayerInventorySlot[], names: string[]): PlayerInventorySlot | null => {
     const wanted = names.map((name) => name.toLowerCase());
 
-    const found = slots.find((slot) =>
-        wanted.some((name) => (slot.slot || '').toLowerCase().includes(name))
-    );
+    const found = slots.find((slot) => wanted.some((name) => (slot.slot || '').toLowerCase().includes(name)));
 
     return found || null;
 };
@@ -631,6 +620,7 @@ const ServerConsoleContainer = () => {
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerProfileResponse | null>(null);
     const [selectedInventory, setSelectedInventory] = useState<PlayerInventoryResponse | null>(null);
     const [selectedStatistics, setSelectedStatistics] = useState<PlayerStatisticsResponse | null>(null);
+    const [sideConsoleOpen, setSideConsoleOpen] = useState(false);
 
     useEffect(() => {
         document.title = `${name} | Console`;
@@ -766,11 +756,14 @@ const ServerConsoleContainer = () => {
     );
 
     const playerFilterOptions = useMemo<TSelectData[]>(() => {
-        const source = (playersData?.capabilities.filters || defaultPlayerFilters.map((item) => ({
-            id: item.id,
-            label: item.label,
-            description: item.description,
-        }))).filter((item) => allowedPlayerScopes.includes(item.id as PlayerScope));
+        const source = (
+            playersData?.capabilities.filters ||
+            defaultPlayerFilters.map((item) => ({
+                id: item.id,
+                label: item.label,
+                description: item.description,
+            }))
+        ).filter((item) => allowedPlayerScopes.includes(item.id as PlayerScope));
 
         const normalized = source.length
             ? source
@@ -790,7 +783,11 @@ const ServerConsoleContainer = () => {
                 value: item.id,
                 description: undefined,
                 icon: (
-                    <span className={'inline-flex items-center justify-center text-[11px] font-bold leading-none tracking-tight'}>
+                    <span
+                        className={
+                            'inline-flex items-center justify-center text-[11px] font-bold leading-none tracking-tight'
+                        }
+                    >
                         {count > 99 ? '99+' : count}
                     </span>
                 ),
@@ -816,8 +813,7 @@ const ServerConsoleContainer = () => {
     }, [playerTabs, playerDialogTab]);
 
     const activeGameType = (selectedPlayer?.game?.type || selectedInventory?.game?.type || '').toLowerCase();
-    const useMinecraftInventoryLayout =
-        activeGameType === 'minecraft_java' || activeGameType === 'minecraft_bedrock';
+    const useMinecraftInventoryLayout = activeGameType === 'minecraft_java' || activeGameType === 'minecraft_bedrock';
 
     const minecraftInventoryLayout = useMemo(() => {
         if (!selectedInventory?.available || !useMinecraftInventoryLayout) return null;
@@ -862,7 +858,10 @@ const ServerConsoleContainer = () => {
         };
     }, [selectedInventory, useMinecraftInventoryLayout]);
 
-    const currentGamemodeFromStats = useMemo(() => extractGamemodeFromStatistics(selectedStatistics), [selectedStatistics]);
+    const currentGamemodeFromStats = useMemo(
+        () => extractGamemodeFromStatistics(selectedStatistics),
+        [selectedStatistics]
+    );
     const currentGamemode = playerGamemodeHint || currentGamemodeFromStats;
 
     const actionDialogFields = useMemo(
@@ -870,7 +869,7 @@ const ServerConsoleContainer = () => {
         [playerActionTarget]
     );
 
-const renderMinecraftSlot = (
+    const renderMinecraftSlot = (
         slot: PlayerInventorySlot | null,
         options?: { indexLabel?: string; titlePrefix?: string }
     ) => (
@@ -1084,20 +1083,31 @@ const renderMinecraftSlot = (
                     }}
                 >
                     <div className={'absolute inset-0 bg-[color:var(--card)]/75'} />
-                    <div className={'relative z-[81] w-[92vw] max-w-[640px] rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-[0_24px_54px_rgba(0,0,0,0.45)]'}>
+                    <div
+                        className={
+                            'relative z-[81] w-[92vw] max-w-[640px] rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-[0_24px_54px_rgba(0,0,0,0.45)]'
+                        }
+                    >
                         <div className={'mb-3 flex items-start justify-between gap-3'}>
                             <div>
-                                <h3 className={'text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]'}>
+                                <h3
+                                    className={
+                                        'text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]'
+                                    }
+                                >
                                     {playerActionTarget ? `Run: ${playerActionTarget.label}` : 'Run Action'}
                                 </h3>
                                 <p className={'mt-1 text-xs text-gray-400'}>
-                                    {playerActionTarget?.description || 'Configure action details and confirm execution.'}
+                                    {playerActionTarget?.description ||
+                                        'Configure action details and confirm execution.'}
                                 </p>
                             </div>
                             <button
                                 type={'button'}
                                 onClick={closePlayerActionDialog}
-                                className={'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-semibold text-gray-200 transition-colors hover:border-[color:var(--primary)]'}
+                                className={
+                                    'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-semibold text-gray-200 transition-colors hover:border-[color:var(--primary)]'
+                                }
                             >
                                 Close
                             </button>
@@ -1105,8 +1115,14 @@ const renderMinecraftSlot = (
 
                         <div className={'max-h-[76vh] space-y-4 overflow-y-auto pr-1'}>
                             {playerActionTarget?.id === 'minecraft.gamemode' && (
-                                <div className={'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'}>
-                                    <p className={'text-[11px] uppercase tracking-wide text-gray-500'}>Current Gamemode</p>
+                                <div
+                                    className={
+                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'
+                                    }
+                                >
+                                    <p className={'text-[11px] uppercase tracking-wide text-gray-500'}>
+                                        Current Gamemode
+                                    </p>
                                     <p className={'mt-1 text-sm font-semibold text-[color:var(--foreground)]'}>
                                         {currentGamemode || '-'}
                                     </p>
@@ -1115,7 +1131,9 @@ const renderMinecraftSlot = (
 
                             {actionDialogFields.map((field) => (
                                 <div key={field.key} className={'space-y-1.5'}>
-                                    <label className={'block text-[11px] font-bold uppercase tracking-wide text-gray-300'}>
+                                    <label
+                                        className={'block text-[11px] font-bold uppercase tracking-wide text-gray-300'}
+                                    >
                                         {field.label}
                                     </label>
                                     {field.type === 'select' ? (
@@ -1125,7 +1143,10 @@ const renderMinecraftSlot = (
                                             title={field.label}
                                             compact
                                             onChange={(value) =>
-                                                setPlayerActionContext((current) => ({ ...current, [field.key]: value }))
+                                                setPlayerActionContext((current) => ({
+                                                    ...current,
+                                                    [field.key]: value,
+                                                }))
                                             }
                                         />
                                     ) : field.type === 'textarea' ? (
@@ -1172,13 +1193,21 @@ const renderMinecraftSlot = (
                             ))}
 
                             {actionDialogFields.length === 0 && (
-                                <div className={'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs text-gray-300'}>
+                                <div
+                                    className={
+                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs text-gray-300'
+                                    }
+                                >
                                     This action does not require additional input.
                                 </div>
                             )}
 
                             {playerActionFormError && (
-                                <div className={'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'}>
+                                <div
+                                    className={
+                                        'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'
+                                    }
+                                >
                                     {playerActionFormError}
                                 </div>
                             )}
@@ -1202,7 +1231,9 @@ const renderMinecraftSlot = (
                                     onClick={() => void runPlayerAction()}
                                     disabled={!!playerActionLoading}
                                 >
-                                    {playerActionLoading && playerActionTarget && playerActionLoading === playerActionTarget.id
+                                    {playerActionLoading &&
+                                    playerActionTarget &&
+                                    playerActionLoading === playerActionTarget.id
                                         ? 'Processing...'
                                         : 'Run Action'}
                                 </button>
@@ -1228,22 +1259,38 @@ const renderMinecraftSlot = (
                     )}
 
                     {!playerDialogLoading && playerDialogError && (
-                        <div className={'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'}>
+                        <div
+                            className={
+                                'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'
+                            }
+                        >
                             {playerDialogError}
                         </div>
                     )}
 
                     {!playerDialogLoading && !playerDialogError && selectedPlayer && (
                         <>
-                            <div className={'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'}>
+                            <div
+                                className={
+                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                }
+                            >
                                 <div className={'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
                                     <div className={'flex items-start gap-3'}>
-                                        <div className={'flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'}>
+                                        <div
+                                            className={
+                                                'flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'
+                                            }
+                                        >
                                             <PlayerAvatar player={selectedPlayer.player} size={72} />
                                         </div>
                                         <div className={'min-w-0'}>
                                             <div className={'flex flex-wrap items-center gap-2'}>
-                                                <h3 className={'truncate text-xl font-bold text-[color:var(--foreground)]'}>
+                                                <h3
+                                                    className={
+                                                        'truncate text-xl font-bold text-[color:var(--foreground)]'
+                                                    }
+                                                >
                                                     {selectedPlayer.player.name}
                                                 </h3>
                                                 <span
@@ -1257,27 +1304,49 @@ const renderMinecraftSlot = (
                                                     {selectedPlayer.player.status}
                                                 </span>
                                                 {selectedPlayer.player.is_operator && (
-                                                    <span className={'rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200'}>
+                                                    <span
+                                                        className={
+                                                            'rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200'
+                                                        }
+                                                    >
                                                         Operator
                                                     </span>
                                                 )}
                                                 {selectedPlayer.player.is_admin && (
-                                                    <span className={'rounded-md border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-200'}>
+                                                    <span
+                                                        className={
+                                                            'rounded-md border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-200'
+                                                        }
+                                                    >
                                                         Admin
                                                     </span>
                                                 )}
                                                 {selectedPlayer.player.banned && (
-                                                    <span className={'rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200'}>
+                                                    <span
+                                                        className={
+                                                            'rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200'
+                                                        }
+                                                    >
                                                         Banned
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className={'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-400'}>
-                                                <code className={'rounded border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-[10px] text-[color:var(--foreground)]'}>
+                                            <div
+                                                className={
+                                                    'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-400'
+                                                }
+                                            >
+                                                <code
+                                                    className={
+                                                        'rounded border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-[10px] text-[color:var(--foreground)]'
+                                                    }
+                                                >
                                                     {selectedPlayer.player.uuid || selectedPlayer.player.id}
                                                 </code>
                                                 <span>Ping: {selectedPlayer.player.ping}ms</span>
-                                                {selectedPlayer.player.country ? <span>Country: {selectedPlayer.player.country}</span> : null}
+                                                {selectedPlayer.player.country ? (
+                                                    <span>Country: {selectedPlayer.player.country}</span>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>
@@ -1292,7 +1361,9 @@ const renderMinecraftSlot = (
                                     <button
                                         key={tab}
                                         type={'button'}
-                                        onClick={() => setPlayerDialogTab(tab as 'overview' | 'inventory' | 'statistics')}
+                                        onClick={() =>
+                                            setPlayerDialogTab(tab as 'overview' | 'inventory' | 'statistics')
+                                        }
                                         className={classNames(
                                             'rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors',
                                             playerDialogTab === tab
@@ -1306,7 +1377,11 @@ const renderMinecraftSlot = (
                             </div>
 
                             {playerActionNotice && (
-                                <div className={'whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-200'}>
+                                <div
+                                    className={
+                                        'whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-200'
+                                    }
+                                >
                                     {playerActionNotice}
                                 </div>
                             )}
@@ -1377,7 +1452,8 @@ const renderMinecraftSlot = (
                                                     'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-gray-400'
                                                 }
                                             >
-                                                {selectedInventory?.message || 'Inventory information is unavailable for this game.'}
+                                                {selectedInventory?.message ||
+                                                    'Inventory information is unavailable for this game.'}
                                             </div>
                                         )}
                                         {selectedInventory?.available && (
@@ -1388,10 +1464,18 @@ const renderMinecraftSlot = (
                                                             'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
                                                         }
                                                     >
-                                                        <h4 className={'mb-3 text-sm font-bold text-[color:var(--foreground)]'}>
+                                                        <h4
+                                                            className={
+                                                                'mb-3 text-sm font-bold text-[color:var(--foreground)]'
+                                                            }
+                                                        >
                                                             Inventory Summary
                                                         </h4>
-                                                        <div className={'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3'}>
+                                                        <div
+                                                            className={
+                                                                'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3'
+                                                            }
+                                                        >
                                                             {(selectedInventory.summary || []).map((entry) => (
                                                                 <div
                                                                     key={`${entry.label}-${entry.value}`}
@@ -1399,10 +1483,18 @@ const renderMinecraftSlot = (
                                                                         'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'
                                                                     }
                                                                 >
-                                                                    <p className={'text-[10px] uppercase tracking-wide text-gray-500'}>
+                                                                    <p
+                                                                        className={
+                                                                            'text-[10px] uppercase tracking-wide text-gray-500'
+                                                                        }
+                                                                    >
                                                                         {entry.label}
                                                                     </p>
-                                                                    <p className={'mt-1 text-sm font-semibold text-gray-100'}>
+                                                                    <p
+                                                                        className={
+                                                                            'mt-1 text-sm font-semibold text-gray-100'
+                                                                        }
+                                                                    >
                                                                         {entry.value}
                                                                     </p>
                                                                 </div>
@@ -1441,7 +1533,11 @@ const renderMinecraftSlot = (
                                                                                     'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-400'
                                                                                 }
                                                                             >
-                                                                                <span className={'material-icons-round text-sm'}>
+                                                                                <span
+                                                                                    className={
+                                                                                        'material-icons-round text-sm'
+                                                                                    }
+                                                                                >
                                                                                     shield
                                                                                 </span>
                                                                                 Armor
@@ -1453,19 +1549,23 @@ const renderMinecraftSlot = (
                                                                             >
                                                                                 <div className={'flex flex-col gap-2'}>
                                                                                     {renderMinecraftSlot(
-                                                                                        minecraftInventoryLayout.armor.helmet,
+                                                                                        minecraftInventoryLayout.armor
+                                                                                            .helmet,
                                                                                         { titlePrefix: 'Helmet' }
                                                                                     )}
                                                                                     {renderMinecraftSlot(
-                                                                                        minecraftInventoryLayout.armor.chestplate,
+                                                                                        minecraftInventoryLayout.armor
+                                                                                            .chestplate,
                                                                                         { titlePrefix: 'Chestplate' }
                                                                                     )}
                                                                                     {renderMinecraftSlot(
-                                                                                        minecraftInventoryLayout.armor.leggings,
+                                                                                        minecraftInventoryLayout.armor
+                                                                                            .leggings,
                                                                                         { titlePrefix: 'Leggings' }
                                                                                     )}
                                                                                     {renderMinecraftSlot(
-                                                                                        minecraftInventoryLayout.armor.boots,
+                                                                                        minecraftInventoryLayout.armor
+                                                                                            .boots,
                                                                                         { titlePrefix: 'Boots' }
                                                                                     )}
                                                                                 </div>
@@ -1485,9 +1585,12 @@ const renderMinecraftSlot = (
                                                                                     'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-2'
                                                                                 }
                                                                             >
-                                                                                {renderMinecraftSlot(minecraftInventoryLayout.offhandSlot, {
-                                                                                    titlePrefix: 'Offhand',
-                                                                                })}
+                                                                                {renderMinecraftSlot(
+                                                                                    minecraftInventoryLayout.offhandSlot,
+                                                                                    {
+                                                                                        titlePrefix: 'Offhand',
+                                                                                    }
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -1498,7 +1601,11 @@ const renderMinecraftSlot = (
                                                                                 'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-400'
                                                                             }
                                                                         >
-                                                                            <span className={'material-icons-round text-sm'}>
+                                                                            <span
+                                                                                className={
+                                                                                    'material-icons-round text-sm'
+                                                                                }
+                                                                            >
                                                                                 grid_view
                                                                             </span>
                                                                             Main Inventory
@@ -1509,16 +1616,24 @@ const renderMinecraftSlot = (
                                                                             }
                                                                         >
                                                                             <div className={'grid grid-cols-9 gap-2'}>
-                                                                                {minecraftInventoryLayout.mainSlots.map((slot, index) => (
-                                                                                    <div key={`inventory-${index}`}>
-                                                                                        {renderMinecraftSlot(slot, {
-                                                                                            titlePrefix: `Inventory Slot ${index + 1}`,
-                                                                                        })}
-                                                                                    </div>
-                                                                                ))}
+                                                                                {minecraftInventoryLayout.mainSlots.map(
+                                                                                    (slot, index) => (
+                                                                                        <div key={`inventory-${index}`}>
+                                                                                            {renderMinecraftSlot(slot, {
+                                                                                                titlePrefix: `Inventory Slot ${
+                                                                                                    index + 1
+                                                                                                }`,
+                                                                                            })}
+                                                                                        </div>
+                                                                                    )
+                                                                                )}
                                                                             </div>
 
-                                                                            <div className={'mt-4 border-t border-[color:var(--border)] pt-4'}>
+                                                                            <div
+                                                                                className={
+                                                                                    'mt-4 border-t border-[color:var(--border)] pt-4'
+                                                                                }
+                                                                            >
                                                                                 <span
                                                                                     className={
                                                                                         'mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400'
@@ -1526,14 +1641,25 @@ const renderMinecraftSlot = (
                                                                                 >
                                                                                     Hotbar
                                                                                 </span>
-                                                                                <div className={'grid grid-cols-9 gap-2'}>
+                                                                                <div
+                                                                                    className={'grid grid-cols-9 gap-2'}
+                                                                                >
                                                                                     {minecraftInventoryLayout.hotbarSlots.map(
                                                                                         (slot, index) => (
-                                                                                            <div key={`hotbar-${index}`}>
-                                                                                                {renderMinecraftSlot(slot, {
-                                                                                                    titlePrefix: `Hotbar ${index + 1}`,
-                                                                                                    indexLabel: `${index + 1}`,
-                                                                                                })}
+                                                                                            <div
+                                                                                                key={`hotbar-${index}`}
+                                                                                            >
+                                                                                                {renderMinecraftSlot(
+                                                                                                    slot,
+                                                                                                    {
+                                                                                                        titlePrefix: `Hotbar ${
+                                                                                                            index + 1
+                                                                                                        }`,
+                                                                                                        indexLabel: `${
+                                                                                                            index + 1
+                                                                                                        }`,
+                                                                                                    }
+                                                                                                )}
                                                                                             </div>
                                                                                         )
                                                                                     )}
@@ -1553,8 +1679,16 @@ const renderMinecraftSlot = (
                                                                 'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
                                                             }
                                                         >
-                                                            <div className={'mb-3 flex items-center justify-between gap-2'}>
-                                                                <h4 className={'text-sm font-bold text-[color:var(--foreground)]'}>
+                                                            <div
+                                                                className={
+                                                                    'mb-3 flex items-center justify-between gap-2'
+                                                                }
+                                                            >
+                                                                <h4
+                                                                    className={
+                                                                        'text-sm font-bold text-[color:var(--foreground)]'
+                                                                    }
+                                                                >
                                                                     {section.title}
                                                                 </h4>
                                                                 <span
@@ -1593,7 +1727,10 @@ const renderMinecraftSlot = (
                                                                                         'flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-[color:var(--border)] bg-[color:var(--background)]'
                                                                                     }
                                                                                 >
-                                                                                    <PlayerItemIcon slot={slot} className={'h-7 w-7'} />
+                                                                                    <PlayerItemIcon
+                                                                                        slot={slot}
+                                                                                        className={'h-7 w-7'}
+                                                                                    />
                                                                                 </div>
                                                                                 <div className={'min-w-0 flex-1'}>
                                                                                     <p
@@ -1654,7 +1791,11 @@ const renderMinecraftSlot = (
                                                         'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
                                                     }
                                                 >
-                                                    <h4 className={'mb-3 text-sm font-bold text-[color:var(--foreground)]'}>
+                                                    <h4
+                                                        className={
+                                                            'mb-3 text-sm font-bold text-[color:var(--foreground)]'
+                                                        }
+                                                    >
                                                         {category.title}
                                                     </h4>
                                                     <div className={'space-y-2'}>
@@ -1750,6 +1891,39 @@ const renderMinecraftSlot = (
                         linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
                         rgba(5, 8, 14, 0.62);
                 }
+
+                .server-console-inline-toggle {
+                    position: absolute;
+                    top: 50%;
+                    right: 0;
+                    z-index: 25;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 84px;
+                    transform: translateY(-50%);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-right: 0;
+                    border-radius: 0.75rem 0 0 0.75rem;
+                    background: rgba(12, 12, 12, 0.92);
+                    color: rgba(209, 213, 219, 0.92);
+                    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.28);
+                    backdrop-filter: blur(12px);
+                    transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+                }
+
+                .server-console-inline-toggle:hover {
+                    color: var(--primary);
+                    border-color: rgba(var(--primary-rgb), 0.5);
+                    box-shadow: -10px 0 28px rgba(var(--primary-rgb), 0.14);
+                }
+
+                @media (min-width: 1280px) {
+                    .server-console-inline-toggle {
+                        display: inline-flex;
+                    }
+                }
             `}</style>
 
             <div
@@ -1760,6 +1934,17 @@ const renderMinecraftSlot = (
                 }}
             >
                 <div className={'server-console-layout'}>
+                    {!sideConsoleOpen && (
+                        <button
+                            type={'button'}
+                            title={'Open console'}
+                            aria-label={'Open console'}
+                            className={'server-console-inline-toggle'}
+                            onClick={() => setSideConsoleOpen(true)}
+                        >
+                            <span className={'material-icons-round text-[18px]'}>chevron_left</span>
+                        </button>
+                    )}
                     <div
                         className={
                             'server-console-main flex min-h-0 w-full min-w-0 flex-1 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[77%] xl:flex-none'
@@ -1774,17 +1959,17 @@ const renderMinecraftSlot = (
                                     : 'This server is currently being transferred to another node and all actions are unavailable.'}
                             </Alert>
                         )}
-                        <div
-                            className={
-                                'server-console-panel flex min-h-0 min-w-0 flex-1 flex-col shadow-none'
-                            }
-                        >
+                        <div className={'server-console-panel flex min-h-0 min-w-0 flex-1 flex-col shadow-none'}>
                             <div
                                 className={
                                     'server-console-panel-head flex items-center justify-between border-b border-[color:var(--border)] px-4 py-3'
                                 }
                             >
-                                <h2 className={'flex items-center text-sm font-bold uppercase tracking-wide text-[#f8f6ef]'}>
+                                <h2
+                                    className={
+                                        'flex items-center text-sm font-bold uppercase tracking-wide text-[#f8f6ef]'
+                                    }
+                                >
                                     <span
                                         className={classNames('mr-2 h-2 w-2 rounded-full', {
                                             'animate-pulse bg-green-500': status === 'running',
@@ -1803,11 +1988,7 @@ const renderMinecraftSlot = (
                             </div>
                         </div>
 
-                        <div
-                            className={
-                                'server-console-panel p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.06)]'
-                            }
-                        >
+                        <div className={'server-console-panel p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.06)]'}>
                             <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
                                 Server Statistics
                             </h3>
@@ -1888,210 +2069,251 @@ const renderMinecraftSlot = (
                         <Features enabled={eggFeatures} />
                     </div>
 
-                    <aside
-                        className={
-                            'server-console-side flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[23%] xl:flex-none xl:pl-0'
-                        }
-                    >
-                        <div
+                    {sideConsoleOpen ? (
+                        <aside
                             className={
-                                'server-console-panel flex items-center p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
+                                'server-console-side flex min-h-0 w-full min-w-0 flex-col overflow-hidden p-4 md:p-6 xl:w-[23%] xl:flex-none xl:pl-0'
+                            }
+                        >
+                            <Console
+                                variant={'sidebar'}
+                                onRequestClose={() => setSideConsoleOpen(false)}
+                                syncMode={'live-only'}
+                                contributeToSharedTranscript={false}
+                            />
+                        </aside>
+                    ) : (
+                        <aside
+                            className={
+                                'server-console-side flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[23%] xl:flex-none xl:pl-0'
                             }
                         >
                             <div
                                 className={
-                                    'mr-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] shadow-[0_0_12px_rgba(var(--primary-rgb), 0.25)]'
+                                    'server-console-panel flex items-center p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
                                 }
                             >
-                                <Avatar.User size={40} />
+                                <div
+                                    className={
+                                        'mr-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] shadow-[0_0_12px_rgba(var(--primary-rgb), 0.25)]'
+                                    }
+                                >
+                                    <Avatar.User size={40} />
+                                </div>
+                                <div className={'min-w-0'}>
+                                    <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
+                                    <p className={'truncate text-xs text-gray-400'}>{email}</p>
+                                </div>
                             </div>
-                            <div className={'min-w-0'}>
-                                <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
-                                <p className={'truncate text-xs text-gray-400'}>{email}</p>
-                            </div>
-                        </div>
 
-                        <div
-                            className={
-                                'server-console-panel p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
-                            }
-                        >
-                            <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
-                                Server Control
-                            </h3>
-                            <div className={'mb-6 space-y-3 text-sm'}>
-                                <div className={'flex items-start justify-between gap-3'}>
-                                    <span className={'text-gray-400'}>IP:</span>
+                            <div
+                                className={'server-console-panel p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'}
+                            >
+                                <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
+                                    Server Control
+                                </h3>
+                                <div className={'mb-6 space-y-3 text-sm'}>
+                                    <div className={'flex items-start justify-between gap-3'}>
+                                        <span className={'text-gray-400'}>IP:</span>
+                                        <span
+                                            className={
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
+                                            }
+                                        >
+                                            {allocation}
+                                        </span>
+                                    </div>
+                                    <div className={'flex items-start justify-between gap-3'}>
+                                        <span className={'text-gray-400'}>Status:</span>
+                                        <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
+                                    </div>
+                                    <div className={'flex items-start justify-between gap-3'}>
+                                        <span className={'text-gray-400'}>Node:</span>
+                                        <code
+                                            className={
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                            }
+                                        >
+                                            {node}
+                                        </code>
+                                    </div>
+                                    <div className={'flex items-start justify-between gap-3'}>
+                                        <span className={'text-gray-400'}>Server ID:</span>
+                                        <code
+                                            title={uuid}
+                                            className={
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                            }
+                                        >
+                                            {uuid.slice(0, 8)}
+                                        </code>
+                                    </div>
+                                </div>
+                                <PowerButtons className={'space-y-3'} variant={'glass'} />
+                            </div>
+
+                            <div
+                                className={
+                                    'server-console-panel flex min-h-0 flex-1 flex-col p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
+                                }
+                            >
+                                <div className={'mb-4 flex flex-col gap-3'}>
+                                    <div className={'flex items-start justify-between gap-3'}>
+                                        <div>
+                                            <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
+                                            <p className={'text-[11px] text-gray-400'}>
+                                                {playersData?.game.label || 'Loading player provider...'}
+                                            </p>
+                                        </div>
+                                        <div className={'w-[172px] min-w-[172px]'}>
+                                            <Select
+                                                data={playerFilterOptions}
+                                                defaultValue={playerScope}
+                                                title={'Player Filter'}
+                                                compact
+                                                onChange={(value) => setPlayerScope(value as PlayerScope)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={'relative mb-4'}>
+                                    <input
+                                        className={
+                                            'w-full rounded-lg border border-gray-800 bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                        }
+                                        placeholder={'Filter by Name, UUID, or ID...'}
+                                        type={'text'}
+                                        value={playerSearch}
+                                        onChange={(event) => setPlayerSearch(event.currentTarget.value)}
+                                    />
                                     <span
                                         className={
-                                            'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
+                                            'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-500'
                                         }
                                     >
-                                        {allocation}
+                                        search
                                     </span>
                                 </div>
-                                <div className={'flex items-start justify-between gap-3'}>
-                                    <span className={'text-gray-400'}>Status:</span>
-                                    <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
-                                </div>
-                                <div className={'flex items-start justify-between gap-3'}>
-                                    <span className={'text-gray-400'}>Node:</span>
-                                    <code
-                                        className={
-                                            'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
-                                        }
-                                    >
-                                        {node}
-                                    </code>
-                                </div>
-                                <div className={'flex items-start justify-between gap-3'}>
-                                    <span className={'text-gray-400'}>Server ID:</span>
-                                    <code
-                                        title={uuid}
-                                        className={
-                                            'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
-                                        }
-                                    >
-                                        {uuid.slice(0, 8)}
-                                    </code>
-                                </div>
-                            </div>
-                            <PowerButtons className={'space-y-3'} variant={'glass'} />
-                        </div>
 
-                        <div
-                            className={
-                                'server-console-panel flex min-h-0 flex-1 flex-col p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
-                            }
-                        >
-                            <div className={'mb-4 flex flex-col gap-3'}>
-                                <div className={'flex items-start justify-between gap-3'}>
-                                    <div>
-                                        <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
-                                        <p className={'text-[11px] text-gray-400'}>
-                                            {playersData?.game.label || 'Loading player provider...'}
-                                        </p>
-                                    </div>
-                                    <div className={'w-[172px] min-w-[172px]'}>
-                                        <Select
-                                            data={playerFilterOptions}
-                                            defaultValue={playerScope}
-                                            title={'Player Filter'}
-                                            compact
-                                            onChange={(value) => setPlayerScope(value as PlayerScope)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={'relative mb-4'}>
-                                <input
-                                    className={
-                                        'w-full rounded-lg border border-gray-800 bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
-                                    }
-                                    placeholder={'Filter by Name, UUID, or ID...'}
-                                    type={'text'}
-                                    value={playerSearch}
-                                    onChange={(event) => setPlayerSearch(event.currentTarget.value)}
-                                />
-                                <span
-                                    className={'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-500'}
-                                >
-                                    search
-                                </span>
-                            </div>
-
-                            <div className={'space-y-3 overflow-hidden pr-1'}>
-                                {playersLoading && (
-                                    <div className={'py-8'}>
-                                        <Spinner size={'small'} centered />
-                                        <p className={'mt-2 text-center text-xs text-gray-500'}>Loading players...</p>
-                                    </div>
-                                )}
-
-                                {!playersLoading && playersError && (
-                                    <p className={'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'}>
-                                        {playersError}
-                                    </p>
-                                )}
-
-                                {!playersLoading && !playersError && (playersData?.items || []).length === 0 && (
-                                    <p className={'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-400'}>
-                                        {debouncedPlayerSearch
-                                            ? 'No players matched current filter.'
-                                            : 'No live player data available for this server yet.'}
-                                    </p>
-                                )}
-
-                                {!playersLoading &&
-                                    !playersError &&
-                                    (playersData?.items || []).map((player) => (
-                                        <div
-                                            key={player.id}
-                                            className={
-                                                'flex cursor-pointer items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--card)]/40'
-                                            }
-                                            role={'button'}
-                                            tabIndex={0}
-                                            onClick={() => void openPlayerDetails(player.id)}
-                                            onKeyDown={(event) => {
-                                                if (event.key === 'Enter' || event.key === ' ') {
-                                                    event.preventDefault();
-                                                    void openPlayerDetails(player.id);
-                                                }
-                                            }}
-                                        >
-                                            <div className={'flex min-w-0 items-center gap-3'}>
-                                                <div className={'flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--background)]'}>
-                                                    <PlayerAvatar player={player} size={36} />
-                                                </div>
-                                                <div className={'min-w-0'}>
-                                                    <div className={'flex flex-wrap items-center gap-1'}>
-                                                        <p className={'truncate text-sm font-bold text-gray-100'}>
-                                                            {player.name}
-                                                        </p>
-                                                        {player.is_operator && (
-                                                            <span className={'rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-200'}>
-                                                                OP
-                                                            </span>
-                                                        )}
-                                                        {player.is_admin && (
-                                                            <span className={'rounded border border-purple-500/40 bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-purple-200'}>
-                                                                Admin
-                                                            </span>
-                                                        )}
-                                                        {player.banned && (
-                                                            <span className={'rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-200'}>
-                                                                Banned
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className={'text-[10px] text-gray-500'}>
-                                                        {player.status === 'online'
-                                                            ? `Ping: ${player.ping}ms`
-                                                            : 'Offline'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className={'flex gap-1'}>
-                                                <button
-                                                    className={
-                                                        'rounded p-1 text-gray-500 hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
-                                                    }
-                                                    type={'button'}
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        void openPlayerDetails(player.id);
-                                                    }}
-                                                >
-                                                    <span className={'material-icons-round text-sm'}>settings</span>
-                                                </button>
-                                            </div>
+                                <div className={'space-y-3 overflow-hidden pr-1'}>
+                                    {playersLoading && (
+                                        <div className={'py-8'}>
+                                            <Spinner size={'small'} centered />
+                                            <p className={'mt-2 text-center text-xs text-gray-500'}>
+                                                Loading players...
+                                            </p>
                                         </div>
-                                    ))}
+                                    )}
+
+                                    {!playersLoading && playersError && (
+                                        <p
+                                            className={
+                                                'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'
+                                            }
+                                        >
+                                            {playersError}
+                                        </p>
+                                    )}
+
+                                    {!playersLoading && !playersError && (playersData?.items || []).length === 0 && (
+                                        <p
+                                            className={
+                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-400'
+                                            }
+                                        >
+                                            {debouncedPlayerSearch
+                                                ? 'No players matched current filter.'
+                                                : 'No live player data available for this server yet.'}
+                                        </p>
+                                    )}
+
+                                    {!playersLoading &&
+                                        !playersError &&
+                                        (playersData?.items || []).map((player) => (
+                                            <div
+                                                key={player.id}
+                                                className={
+                                                    'flex cursor-pointer items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--card)]/40'
+                                                }
+                                                role={'button'}
+                                                tabIndex={0}
+                                                onClick={() => void openPlayerDetails(player.id)}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        void openPlayerDetails(player.id);
+                                                    }
+                                                }}
+                                            >
+                                                <div className={'flex min-w-0 items-center gap-3'}>
+                                                    <div
+                                                        className={
+                                                            'flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--background)]'
+                                                        }
+                                                    >
+                                                        <PlayerAvatar player={player} size={36} />
+                                                    </div>
+                                                    <div className={'min-w-0'}>
+                                                        <div className={'flex flex-wrap items-center gap-1'}>
+                                                            <p className={'truncate text-sm font-bold text-gray-100'}>
+                                                                {player.name}
+                                                            </p>
+                                                            {player.is_operator && (
+                                                                <span
+                                                                    className={
+                                                                        'rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-200'
+                                                                    }
+                                                                >
+                                                                    OP
+                                                                </span>
+                                                            )}
+                                                            {player.is_admin && (
+                                                                <span
+                                                                    className={
+                                                                        'rounded border border-purple-500/40 bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-purple-200'
+                                                                    }
+                                                                >
+                                                                    Admin
+                                                                </span>
+                                                            )}
+                                                            {player.banned && (
+                                                                <span
+                                                                    className={
+                                                                        'rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-200'
+                                                                    }
+                                                                >
+                                                                    Banned
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className={'text-[10px] text-gray-500'}>
+                                                            {player.status === 'online'
+                                                                ? `Ping: ${player.ping}ms`
+                                                                : 'Offline'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={'flex gap-1'}>
+                                                    <button
+                                                        className={
+                                                            'rounded p-1 text-gray-500 hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
+                                                        }
+                                                        type={'button'}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            void openPlayerDetails(player.id);
+                                                        }}
+                                                    >
+                                                        <span className={'material-icons-round text-sm'}>settings</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
                             </div>
-                        </div>
-                    </aside>
+                        </aside>
+                    )}
                 </div>
             </div>
         </>

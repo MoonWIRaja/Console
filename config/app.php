@@ -27,6 +27,8 @@ return [
 
     'logo' => env('APP_LOGO'),
 
+    'website' => env('APP_WEBSITE', env('APP_URL', 'http://localhost')),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

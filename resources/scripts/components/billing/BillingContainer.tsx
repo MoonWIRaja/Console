@@ -1,17 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useStoreState } from 'easy-peasy';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ApplicationStore } from '@/state';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import Input from '@/components/elements/Input';
 import Modal from '@/components/elements/Modal';
-import Select from '@/components/elements/Select';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
+    BillingGame,
+    BillingGameVariable,
     BillingInvoice,
     BillingNodeCatalog,
+    BillingOrder,
     BillingOrderActionResponse,
+    BillingProfile,
     BillingSubscriptionActionResponse,
     createBillingOrder,
     toggleBillingSubscriptionAutoRenew,
@@ -72,6 +73,9 @@ type BillingPendingResumeAction =
     | { type: 'renew'; subscriptionId: number }
     | { type: 'upgrade'; subscriptionId: number; payload: UpgradePayload };
 
+type BillingSection = 'plan' | 'subscriptions' | 'invoices' | 'receipts' | 'orders';
+type PlanWizardStep = 'node' | 'nest' | 'game' | 'name' | 'resources' | 'variables' | 'billing' | 'summary';
+
 type BillingCheckoutGateOptions = {
     persistDraft?: boolean;
     resumeAction?: BillingPendingResumeAction;
@@ -82,6 +86,72 @@ const BILLING_PENDING_ACTION_STORAGE_KEY = 'billing-pending-action';
 const BILLING_PENDING_ACTION_QUERY_KEY = 'billing_resume';
 const MANUAL_BILLING_DISCORD_REQUIRED_ERROR =
     'Link your Discord account before checkout so the panel can open the required billing ticket.';
+const BILLING_SECTIONS: BillingSection[] = ['plan', 'subscriptions', 'invoices', 'receipts', 'orders'];
+const PLAN_WIZARD_STEP_ORDER: PlanWizardStep[] = [
+    'node',
+    'nest',
+    'game',
+    'name',
+    'resources',
+    'variables',
+    'billing',
+    'summary',
+];
+const PLAN_WIZARD_STEP_CONTENT: Record<
+    PlanWizardStep,
+    {
+        eyebrow: string;
+        title: string;
+        copy: string;
+        continueLabel?: string;
+    }
+> = {
+    node: {
+        eyebrow: 'Step 1',
+        title: 'Choose A Node',
+        copy: 'Pick the billing node with stock that matches the region and capacity you want to deploy on.',
+    },
+    nest: {
+        eyebrow: 'Step 2',
+        title: 'Choose A Nest',
+        copy: 'Select the software family first so only compatible eggs appear in the next step.',
+    },
+    game: {
+        eyebrow: 'Step 3',
+        title: 'Choose Server Type',
+        copy: 'Pick the exact egg or server type that should be provisioned after payment approval.',
+    },
+    name: {
+        eyebrow: 'Step 4',
+        title: 'Name Your Server',
+        copy: 'This is the server name staff and the panel will use once the order is provisioned.',
+    },
+    resources: {
+        eyebrow: 'Step 5',
+        title: 'Select Resources',
+        copy: 'Adjust CPU, RAM, and storage based on live node stock before you continue to startup configuration.',
+    },
+    variables: {
+        eyebrow: 'Step 6',
+        title: 'Review Startup Variables',
+        copy: 'Check the egg variables now so the order is ready for provisioning without manual fixes later.',
+    },
+    billing: {
+        eyebrow: 'Step 7',
+        title: 'Confirm Billing Details',
+        copy: 'Fill or update the billing address that will be printed on invoices, receipts, and payment records.',
+        continueLabel: 'Save & Continue',
+    },
+    summary: {
+        eyebrow: 'Step 8',
+        title: 'Review Summary',
+        copy: 'Confirm the full plan, billing address, and pricing summary before manual invoice checkout is created.',
+        continueLabel: 'Checkout',
+    },
+};
+
+const isBillingSection = (value: string | null): value is BillingSection =>
+    !!value && BILLING_SECTIONS.includes(value as BillingSection);
 
 const moneyFormatter = new Intl.NumberFormat('ms-MY', {
     style: 'currency',
@@ -263,7 +333,7 @@ const getNestOptions = (node: BillingNodeCatalog | null): NestOption[] => {
 const getOrderStatusLabel = (status: string): string =>
     status.replace(/_/g, ' ').replace(/\b\w/g, (value) => value.toUpperCase());
 
-const ACTIVE_SUBSCRIPTIONS_PAGE_SIZE = 1;
+const ACTIVE_SUBSCRIPTIONS_PAGE_SIZE = 5;
 const INVOICES_PAGE_SIZE = 4;
 const ORDERS_PAGE_SIZE = 6;
 
@@ -411,6 +481,12 @@ const BillingPagination = ({ currentPage, onPageChange, pageSize, totalItems }: 
 
 export default () => {
     const location = useLocation();
+    const billingSearch = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const currentSection: BillingSection = isBillingSection(billingSearch.get('section'))
+        ? (billingSearch.get('section') as BillingSection)
+        : 'plan';
+    const isPlanSection = currentSection === 'plan';
+    const isListSection = !isPlanSection;
     const { addFlash } = useFlash();
     const { clearFlashes, clearAndAddHttpError, addError } = useFlashKey('billing');
     const {
@@ -439,7 +515,6 @@ export default () => {
         mutate: mutateInvoices,
     } = useBillingInvoices();
     const { data: providers } = useOAuthAccounts();
-    const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
     const discordProvider = (providers || []).find((provider) => provider.provider === 'discord') || null;
 
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
@@ -456,12 +531,14 @@ export default () => {
     const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
     const [subscriptionsPage, setSubscriptionsPage] = useState(1);
     const [invoicesPage, setInvoicesPage] = useState(1);
+    const [receiptsPage, setReceiptsPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
     const [followUpAction, setFollowUpAction] = useState<BillingFollowUpAction | null>(null);
     const [addressPromptVisible, setAddressPromptVisible] = useState(false);
     const [discordPromptVisible, setDiscordPromptVisible] = useState(false);
     const [billingForm, setBillingForm] = useState(emptyBillingProfile);
     const [billingSaving, setBillingSaving] = useState(false);
+    const [planStep, setPlanStep] = useState<PlanWizardStep>('node');
     const pendingCheckoutAction = useRef<(() => Promise<void>) | null>(null);
     const pendingCheckoutResumeAction = useRef<BillingPendingResumeAction | null>(null);
     const oauthResumeHandled = useRef(false);
@@ -538,9 +615,30 @@ export default () => {
         );
     }, [subscriptions?.length]);
 
+    const isReceiptInvoice = useCallback(
+        (invoice: BillingInvoice) =>
+            !!invoice.paidAt ||
+            invoice.payments.some((payment) => !!payment.receiptPdfUrl || payment.refunds.length > 0),
+        []
+    );
+
+    const sectionInvoices = useMemo(
+        () => (invoices || []).filter((invoice) => !isReceiptInvoice(invoice)),
+        [invoices, isReceiptInvoice]
+    );
+
     useEffect(() => {
-        setInvoicesPage((current) => clampPage(current, invoices?.length ?? 0, INVOICES_PAGE_SIZE));
-    }, [invoices?.length]);
+        setInvoicesPage((current) => clampPage(current, sectionInvoices.length, INVOICES_PAGE_SIZE));
+    }, [sectionInvoices.length]);
+
+    const receiptInvoices = useMemo(
+        () => (invoices || []).filter((invoice) => isReceiptInvoice(invoice)),
+        [invoices, isReceiptInvoice]
+    );
+
+    useEffect(() => {
+        setReceiptsPage((current) => clampPage(current, receiptInvoices.length, INVOICES_PAGE_SIZE));
+    }, [receiptInvoices.length]);
 
     useEffect(() => {
         setOrdersPage((current) => clampPage(current, orders?.length ?? 0, ORDERS_PAGE_SIZE));
@@ -562,11 +660,21 @@ export default () => {
     const selectedNode = (catalog || []).find((node) => node.id === selectedNodeId) || null;
     const billingProfileComplete = billingProfile?.isComplete ?? false;
     const billingProfileMissingLabels = billingProfile ? getMissingBillingProfileLabels(billingProfile) : '';
+    const normalizedBillingForm = useMemo(() => normalizeBillingProfile(billingForm), [billingForm]);
+    const currentBillingMissingLabels = getMissingBillingProfileLabels(normalizedBillingForm);
+    const currentBillingComplete = isBillingProfileComplete(normalizedBillingForm);
     const nestOptions = getNestOptions(selectedNode);
     const availableGames = (selectedNode?.games || []).filter(
         (game) => !selectedNestId || game.nestId === selectedNestId
     );
     const selectedGame = availableGames.find((game) => game.id === selectedGameId) || null;
+    const currentPlanStepIndex = PLAN_WIZARD_STEP_ORDER.indexOf(planStep);
+    const currentPlanStepContent = PLAN_WIZARD_STEP_CONTENT[planStep];
+    const previousPlanStep = currentPlanStepIndex > 0 ? PLAN_WIZARD_STEP_ORDER[currentPlanStepIndex - 1] : null;
+    const nextPlanStep =
+        currentPlanStepIndex < PLAN_WIZARD_STEP_ORDER.length - 1
+            ? PLAN_WIZARD_STEP_ORDER[currentPlanStepIndex + 1]
+            : null;
 
     useEffect(() => {
         if (!selectedNode) {
@@ -673,6 +781,9 @@ export default () => {
         return null;
     })();
 
+    const getGamesForNest = (nestId: number): BillingGame[] =>
+        (selectedNode?.games || []).filter((game) => game.nestId === nestId);
+
     const onBillingFieldChange = <K extends keyof typeof billingForm>(key: K, value: (typeof billingForm)[K]) =>
         setBillingForm((current) => ({ ...current, [key]: value }));
 
@@ -766,47 +877,69 @@ export default () => {
         return false;
     };
 
-    const saveBillingDetailsFromPrompt = async () => {
+    const persistBillingDetails = async (
+        profile: BillingProfile = normalizedBillingForm,
+        options?: { successMessage?: string }
+    ): Promise<BillingProfile | null> => {
         setBillingSaving(true);
         clearAndAddHttpError();
 
         try {
-            const updated = await updateBillingProfile(normalizeBillingProfile(billingForm));
+            const updated = await updateBillingProfile(profile);
             await mutateBillingProfile(updated, false);
             setBillingForm(updated);
 
-            if (!isBillingProfileComplete(updated)) {
+            if (options?.successMessage) {
                 addFlash({
                     key: 'billing',
-                    type: 'warning',
-                    title: 'More Billing Details Needed',
-                    message: `Checkout is still blocked until these fields are completed: ${getMissingBillingProfileLabels(
-                        updated
-                    )}.`,
+                    type: 'success',
+                    title: 'Billing Details Saved',
+                    message: options.successMessage,
                 });
-                return;
             }
 
-            addFlash({
-                key: 'billing',
-                type: 'success',
-                title: 'Billing Details Saved',
-                message: 'Your billing details were updated. Checkout can continue now.',
-            });
-
-            setAddressPromptVisible(false);
-
-            if (!discordProvider?.linked) {
-                setDiscordPromptVisible(true);
-                return;
-            }
-
-            await continuePendingCheckout();
+            return updated;
         } catch (error) {
             clearAndAddHttpError(error as Error);
+            return null;
         } finally {
             setBillingSaving(false);
         }
+    };
+
+    const saveBillingDetailsFromPrompt = async () => {
+        const updated = await persistBillingDetails(normalizedBillingForm);
+        if (!updated) {
+            return;
+        }
+
+        if (!isBillingProfileComplete(updated)) {
+            addFlash({
+                key: 'billing',
+                type: 'warning',
+                title: 'More Billing Details Needed',
+                message: `Checkout is still blocked until these fields are completed: ${getMissingBillingProfileLabels(
+                    updated
+                )}.`,
+            });
+            return;
+        }
+
+        addFlash({
+            key: 'billing',
+            type: 'success',
+            title: 'Billing Details Saved',
+            message: 'Your billing details were updated. Checkout can continue now.',
+        });
+
+        setAddressPromptVisible(false);
+
+        if (!discordProvider?.linked) {
+            setDiscordPromptVisible(true);
+            return;
+        }
+
+        await continuePendingCheckout();
     };
 
     const handleLinkDiscordForCheckout = () => {
@@ -1164,8 +1297,148 @@ export default () => {
         }
     };
 
-    const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const validatePlanStep = (step: PlanWizardStep): boolean => {
+        clearFlashes();
+
+        switch (step) {
+            case 'node':
+                if (!selectedNode) {
+                    addError('Choose a billing node first.', 'Billing');
+                    return false;
+                }
+
+                if (!selectedNode.availability.isAvailable) {
+                    addError(soldOutReason || 'This billing node is not available right now.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'nest':
+                if (!selectedNode) {
+                    addError('Choose a billing node first.', 'Billing');
+                    return false;
+                }
+
+                if (nestOptions.length < 1 || !selectedNestId) {
+                    addError('Choose a nest before continuing.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'game':
+                if (!selectedGame) {
+                    addError('Choose a server type before continuing.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'name':
+                if (!serverName.trim()) {
+                    addError('Enter a server name before continuing.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'resources':
+                if (!selectedNode) {
+                    addError('Choose a billing node first.', 'Billing');
+                    return false;
+                }
+
+                if (!selectedNode.availability.isAvailable) {
+                    addError(soldOutReason || 'This billing node is not available right now.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'variables':
+                if (!selectedGame) {
+                    addError('Choose a server type before reviewing startup variables.', 'Billing');
+                    return false;
+                }
+
+                return true;
+            case 'billing':
+                if (!currentBillingComplete) {
+                    addError(
+                        `Complete your billing details before continuing: ${currentBillingMissingLabels}.`,
+                        'Billing'
+                    );
+                    return false;
+                }
+
+                return true;
+            case 'summary':
+                return true;
+        }
+    };
+
+    const resetPlanWizard = () => {
+        clearFlashes();
+        writeBillingCheckoutDraft(null);
+        setFollowUpAction(null);
+        setPlanStep('node');
+        setServerName('');
+        setCpuCores(1);
+        setMemoryGb(1);
+        setDiskGb(10);
+        setVariables({});
+        setBillingForm(normalizeBillingProfile(billingProfile || emptyBillingProfile));
+
+        if (!catalog || catalog.length < 1) {
+            setSelectedNodeId(null);
+            setSelectedNestId(null);
+            setSelectedGameId(null);
+            return;
+        }
+
+        const fallback = catalog.find((node) => node.availability.isAvailable) || catalog[0];
+        setSelectedNodeId(fallback.id);
+        setSelectedNestId(null);
+        setSelectedGameId(null);
+    };
+
+    const goToPreviousPlanStep = () => {
+        if (currentPlanStepIndex <= 0) {
+            return;
+        }
+
+        setPlanStep(PLAN_WIZARD_STEP_ORDER[currentPlanStepIndex - 1]);
+    };
+
+    const goToNextPlanStep = async () => {
+        if (planStep === 'summary') {
+            return;
+        }
+
+        if (!validatePlanStep(planStep)) {
+            return;
+        }
+
+        if (planStep === 'billing') {
+            const updated = await persistBillingDetails(normalizedBillingForm);
+            if (!updated) {
+                return;
+            }
+
+            if (!isBillingProfileComplete(updated)) {
+                addFlash({
+                    key: 'billing',
+                    type: 'warning',
+                    title: 'More Billing Details Needed',
+                    message: `Complete these fields before continuing: ${getMissingBillingProfileLabels(updated)}.`,
+                });
+                return;
+            }
+        }
+
+        const nextStep = PLAN_WIZARD_STEP_ORDER[currentPlanStepIndex + 1];
+        if (nextStep) {
+            setPlanStep(nextStep);
+        }
+    };
+
+    const submitPlanCheckout = async () => {
         clearFlashes();
 
         if (!selectedNode) {
@@ -1185,6 +1458,12 @@ export default () => {
 
         if (!selectedNode.availability.isAvailable) {
             addError(soldOutReason || 'This billing node is not available right now.', 'Billing');
+            return;
+        }
+
+        if (!currentBillingComplete) {
+            setPlanStep('billing');
+            addError(`Complete your billing details before checkout: ${currentBillingMissingLabels}.`, 'Billing');
             return;
         }
 
@@ -1218,7 +1497,1327 @@ export default () => {
         );
     };
 
-    if (!catalog && catalogLoading) {
+    const renderPlanWizardActions = ({
+        continueLabel,
+        onContinue,
+        continueDisabled = false,
+    }: {
+        continueLabel?: string;
+        onContinue: () => void | Promise<void>;
+        continueDisabled?: boolean;
+    }) => (
+        <div className={'billing-wizard-actions'}>
+            <div className={'flex flex-wrap gap-3'}>
+                {currentPlanStepIndex > 0 ? (
+                    <button type={'button'} className={'billing-secondary-btn'} onClick={goToPreviousPlanStep}>
+                        Back
+                    </button>
+                ) : null}
+                <button type={'button'} className={'billing-ghost-btn'} onClick={resetPlanWizard}>
+                    Cancel
+                </button>
+            </div>
+            <button
+                type={'button'}
+                className={'billing-primary-btn'}
+                disabled={continueDisabled}
+                onClick={() => void onContinue()}
+            >
+                {continueLabel || currentPlanStepContent.continueLabel || 'Continue'}
+            </button>
+        </div>
+    );
+
+    const renderPlanStepNavigator = () => {
+        const previousStepContent = previousPlanStep ? PLAN_WIZARD_STEP_CONTENT[previousPlanStep] : null;
+        const nextStepContent = nextPlanStep ? PLAN_WIZARD_STEP_CONTENT[nextPlanStep] : null;
+        const progressWidth = `${(((currentPlanStepIndex + 1) / PLAN_WIZARD_STEP_ORDER.length) * 100).toFixed(2)}%`;
+
+        return (
+            <div className={'grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px_minmax(0,1fr)]'}>
+                <button
+                    type={'button'}
+                    disabled={!previousStepContent}
+                    onClick={goToPreviousPlanStep}
+                    className={
+                        'flex min-w-0 items-center gap-3 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-4 text-left transition-all duration-200 hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[rgba(255,255,255,0.08)] disabled:hover:bg-[rgba(255,255,255,0.02)]'
+                    }
+                >
+                    <span
+                        className={
+                            'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[color:var(--primary)]'
+                        }
+                    >
+                        <svg
+                            xmlns={'http://www.w3.org/2000/svg'}
+                            viewBox={'0 0 16 16'}
+                            fill={'currentColor'}
+                            className={'h-4 w-4'}
+                        >
+                            <path
+                                fillRule={'evenodd'}
+                                clipRule={'evenodd'}
+                                d={
+                                    'M10.5 14.0607L9.96966 13.5303L5.14644 8.7071C4.75592 8.31658 4.75592 7.68341 5.14644 7.29289L9.96966 2.46966L10.5 1.93933L11.5607 2.99999L11.0303 3.53032L6.56065 7.99999L11.0303 12.4697L11.5607 13L10.5 14.0607Z'
+                                }
+                            />
+                        </svg>
+                    </span>
+                    <div className={'min-w-0'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Previous
+                        </p>
+                        <p className={'mt-2 truncate text-sm font-black text-[#f8f6ef]'}>
+                            {previousStepContent?.title || 'Start Here'}
+                        </p>
+                        <p
+                            className={
+                                'mt-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            {previousStepContent?.eyebrow || 'Wizard Entry'}
+                        </p>
+                    </div>
+                </button>
+
+                <div
+                    className={
+                        'rounded-[20px] border border-[rgba(var(--primary-rgb),0.26)] bg-[linear-gradient(160deg,rgba(var(--primary-rgb),0.18),rgba(var(--primary-rgb),0.05))] px-4 py-4 text-center shadow-[0_0_24px_rgba(var(--primary-rgb),0.12)]'
+                    }
+                >
+                    <p className={'text-[10px] font-bold uppercase tracking-[0.3em] text-[color:var(--primary)]'}>
+                        {currentPlanStepContent.eyebrow} of {PLAN_WIZARD_STEP_ORDER.length}
+                    </p>
+                    <p className={'mt-2 text-base font-black tracking-tight text-[#f8f6ef]'}>
+                        {currentPlanStepContent.title}
+                    </p>
+                    <div className={'mt-4 h-2 overflow-hidden rounded-full bg-[rgba(var(--primary-rgb),0.14)]'}>
+                        <div
+                            className={'h-full rounded-full bg-[color:var(--primary)] transition-all duration-300'}
+                            style={{ width: progressWidth }}
+                        />
+                    </div>
+                </div>
+
+                {nextStepContent ? (
+                    <button
+                        type={'button'}
+                        onClick={() => void goToNextPlanStep()}
+                        className={
+                            'flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-4 text-left transition-all duration-200 hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)]'
+                        }
+                    >
+                        <div className={'min-w-0'}>
+                            <p
+                                className={
+                                    'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
+                                Next
+                            </p>
+                            <p className={'mt-2 truncate text-sm font-black text-[#f8f6ef]'}>{nextStepContent.title}</p>
+                            <p
+                                className={
+                                    'mt-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
+                                {nextStepContent.eyebrow}
+                            </p>
+                        </div>
+                        <span
+                            className={
+                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(var(--primary-rgb),0.28)] bg-[rgba(var(--primary-rgb),0.12)] text-[color:var(--primary)]'
+                            }
+                        >
+                            <svg
+                                xmlns={'http://www.w3.org/2000/svg'}
+                                viewBox={'0 0 16 16'}
+                                fill={'currentColor'}
+                                className={'h-4 w-4'}
+                            >
+                                <path
+                                    fillRule={'evenodd'}
+                                    clipRule={'evenodd'}
+                                    d={
+                                        'M5.50001 1.93933L6.03034 2.46966L10.8536 7.29288C11.2441 7.68341 11.2441 8.31657 10.8536 8.7071L6.03034 13.5303L5.50001 14.0607L4.43935 13L4.96968 12.4697L9.43935 7.99999L4.96968 3.53032L4.43935 2.99999L5.50001 1.93933Z'
+                                    }
+                                />
+                            </svg>
+                        </span>
+                    </button>
+                ) : (
+                    <div
+                        className={
+                            'flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-left'
+                        }
+                    >
+                        <div className={'min-w-0'}>
+                            <p className={'text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-200/70'}>
+                                Final Step
+                            </p>
+                            <p className={'mt-2 truncate text-sm font-black text-emerald-100'}>Ready To Checkout</p>
+                            <p className={'mt-1 text-[11px] uppercase tracking-[0.18em] text-emerald-200/70'}>
+                                Create Invoice
+                            </p>
+                        </div>
+                        <span
+                            className={
+                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-400/15 text-emerald-100'
+                            }
+                        >
+                            <svg
+                                xmlns={'http://www.w3.org/2000/svg'}
+                                viewBox={'0 0 20 20'}
+                                fill={'currentColor'}
+                                className={'h-4 w-4'}
+                            >
+                                <path
+                                    fillRule={'evenodd'}
+                                    d={
+                                        'M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
+                                    }
+                                    clipRule={'evenodd'}
+                                />
+                            </svg>
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderPlanStepContent = () => {
+        switch (planStep) {
+            case 'node':
+                return (
+                    <>
+                        <div className={'billing-choice-grid'}>
+                            {(catalog || []).map((node) => {
+                                const isSelected = selectedNode?.id === node.id;
+                                const isAvailable = node.availability.isAvailable;
+
+                                return (
+                                    <button
+                                        key={node.id}
+                                        type={'button'}
+                                        className={`billing-choice-card ${
+                                            isSelected ? 'billing-choice-card-selected' : ''
+                                        } ${!isAvailable ? 'billing-choice-card-disabled' : ''}`}
+                                        disabled={!isAvailable}
+                                        onClick={() => setSelectedNodeId(node.id)}
+                                    >
+                                        <div className={'flex items-start justify-between gap-3'}>
+                                            <div>
+                                                <p className={'billing-choice-title'}>{node.displayName}</p>
+                                                <p className={'billing-choice-copy'}>
+                                                    {node.description || 'Node stock is available for manual billing.'}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${
+                                                    isAvailable
+                                                        ? 'billing-status billing-status-active'
+                                                        : 'billing-status billing-status-rejected'
+                                                }`}
+                                            >
+                                                {isAvailable ? 'Available' : 'Sold Out'}
+                                            </span>
+                                        </div>
+                                        <div className={'billing-choice-meta-grid'}>
+                                            <div>
+                                                <span>Eggs</span>
+                                                <strong>{node.games.length}</strong>
+                                            </div>
+                                            <div>
+                                                <span>Free Ports</span>
+                                                <strong>{node.availability.freeAllocations}</strong>
+                                            </div>
+                                            <div>
+                                                <span>RAM Left</span>
+                                                <strong>
+                                                    {node.showRemainingCapacity
+                                                        ? `${node.availability.memoryRemainingGb} GB`
+                                                        : 'Hidden'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span>Storage Left</span>
+                                                <strong>
+                                                    {node.showRemainingCapacity
+                                                        ? `${node.availability.diskRemainingGb} GB`
+                                                        : 'Hidden'}
+                                                </strong>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </>
+                );
+            case 'nest':
+                return (
+                    <>
+                        <div className={'billing-choice-grid'}>
+                            {nestOptions.map((nest) => {
+                                const gamesForNest = getGamesForNest(nest.id);
+                                const isSelected = selectedNestId === nest.id;
+
+                                return (
+                                    <button
+                                        key={nest.id}
+                                        type={'button'}
+                                        className={`billing-choice-card ${
+                                            isSelected ? 'billing-choice-card-selected' : ''
+                                        }`}
+                                        onClick={() => {
+                                            setSelectedNestId(nest.id);
+                                            setSelectedGameId(null);
+                                        }}
+                                    >
+                                        <div className={'flex items-start justify-between gap-3'}>
+                                            <div>
+                                                <p className={'billing-choice-title'}>{nest.name}</p>
+                                                <p className={'billing-choice-copy'}>
+                                                    {gamesForNest.length} server types are available in this nest.
+                                                </p>
+                                            </div>
+                                            <span className={'billing-chip !px-3 !py-1'}>
+                                                {gamesForNest.length} Eggs
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {nestOptions.length < 1 ? (
+                            <div className={'billing-empty-card'}>
+                                This node does not have any nests available for billing yet.
+                            </div>
+                        ) : null}
+                    </>
+                );
+            case 'game':
+                return (
+                    <>
+                        <div className={'billing-choice-grid'}>
+                            {availableGames.map((game) => {
+                                const isSelected = selectedGame?.id === game.id;
+
+                                return (
+                                    <button
+                                        key={game.id}
+                                        type={'button'}
+                                        className={`billing-choice-card ${
+                                            isSelected ? 'billing-choice-card-selected' : ''
+                                        }`}
+                                        onClick={() => setSelectedGameId(game.id)}
+                                    >
+                                        <div className={'flex items-start justify-between gap-3'}>
+                                            <div>
+                                                <p className={'billing-choice-title'}>{game.displayName}</p>
+                                                <p className={'billing-choice-copy'}>
+                                                    {game.description ||
+                                                        'No description is available for this egg yet.'}
+                                                </p>
+                                            </div>
+                                            <span className={'billing-chip !px-3 !py-1'}>{game.eggName}</span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {availableGames.length < 1 ? (
+                            <div className={'billing-empty-card'}>
+                                There are no server types available in this nest on the selected node.
+                            </div>
+                        ) : null}
+                    </>
+                );
+            case 'name':
+                return (
+                    <>
+                        <div className={'billing-soft-card !rounded-[20px] !p-5'}>
+                            <label
+                                className={
+                                    'mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
+                                Server Name
+                            </label>
+                            <Input
+                                value={serverName}
+                                onChange={(event) => setServerName(event.currentTarget.value)}
+                                placeholder={'My Billing Server'}
+                                maxLength={191}
+                            />
+                            <p className={'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
+                                Use a clear name so billing staff can identify this order quickly once the invoice is
+                                paid and the server is provisioned.
+                            </p>
+                        </div>
+                    </>
+                );
+            case 'resources':
+                return (
+                    <>
+                        <div className={'mb-4 flex flex-wrap items-center justify-between gap-3'}>
+                            <div>
+                                <h2 className={'text-xl font-black tracking-tight text-[#f8f6ef]'}>Plan Resources</h2>
+                                <p className={'mt-1 text-xs text-[color:var(--muted-foreground)]'}>
+                                    RAM and storage are tied to live billing stock on the selected node.
+                                </p>
+                            </div>
+                            {selectedNode && selectedNode.showRemainingCapacity ? (
+                                <div className={'billing-chip'}>
+                                    {selectedNode.availability.memoryRemainingGb} GB RAM Left /{' '}
+                                    {selectedNode.availability.diskRemainingGb} GB Storage Left
+                                </div>
+                            ) : selectedNode ? (
+                                <div className={'billing-chip'}>Remaining stock hidden</div>
+                            ) : null}
+                        </div>
+
+                        <div className={'grid gap-4 xl:grid-cols-3'}>
+                            <BillingResourceSlider
+                                label={'vCore'}
+                                value={cpuCores}
+                                min={selectedNode && selectedNode.limits.maxCpu > 0 ? 1 : 0}
+                                max={selectedNode?.limits.maxCpu ?? 0}
+                                unit={'vCore'}
+                                helper={'Selectable per order only. This does not reduce node stock.'}
+                                disabled={!selectedNode || selectedNode.limits.maxCpu < 1}
+                                onChange={setCpuCores}
+                            />
+                            <BillingResourceSlider
+                                label={'RAM'}
+                                value={memoryGb}
+                                min={selectedNode && selectedNode.limits.maxMemoryGb > 0 ? 1 : 0}
+                                max={selectedNode?.limits.maxMemoryGb ?? 0}
+                                unit={'GB'}
+                                helper={'Live stock based on the node setup and current usage.'}
+                                disabled={!selectedNode || selectedNode.limits.maxMemoryGb < 1}
+                                onChange={setMemoryGb}
+                            />
+                            <BillingResourceSlider
+                                label={'Storage'}
+                                value={diskGb}
+                                min={
+                                    selectedNode &&
+                                    selectedNode.limits.maxDiskGb >= (selectedNode.limits.diskStepGb ?? 10)
+                                        ? selectedNode.limits.diskStepGb
+                                        : 0
+                                }
+                                max={selectedNode?.limits.maxDiskGb ?? 0}
+                                step={selectedNode?.limits.diskStepGb ?? 10}
+                                unit={'GB'}
+                                helper={'Billed in 10 GB steps and tied to the node storage stock.'}
+                                disabled={
+                                    !selectedNode ||
+                                    selectedNode.limits.maxDiskGb < (selectedNode?.limits.diskStepGb ?? 10)
+                                }
+                                onChange={setDiskGb}
+                            />
+                        </div>
+
+                        {soldOutReason ? (
+                            <div
+                                className={
+                                    'mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                                }
+                            >
+                                {soldOutReason}
+                            </div>
+                        ) : null}
+                    </>
+                );
+            case 'variables':
+                return (
+                    <>
+                        {selectedGame && selectedGame.variables.length > 0 ? (
+                            <div className={'grid gap-4 xl:grid-cols-2'}>
+                                {selectedGame.variables.map((variable) => (
+                                    <BillingVariableBox
+                                        key={`${selectedGame.id}:${variable.envVariable}`}
+                                        variable={variable}
+                                        value={
+                                            variables[variable.envVariable] ??
+                                            variable.serverValue ??
+                                            variable.defaultValue ??
+                                            ''
+                                        }
+                                        onChange={(value) =>
+                                            setVariables((current) => ({
+                                                ...current,
+                                                [variable.envVariable]: value,
+                                            }))
+                                        }
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className={'billing-empty-card text-sm'}>
+                                {selectedGame
+                                    ? 'This server type does not expose any startup variables that need review.'
+                                    : 'Choose a server type first to load startup variables.'}
+                            </div>
+                        )}
+                    </>
+                );
+            case 'billing':
+                return (
+                    <>
+                        {currentBillingComplete ? (
+                            <div
+                                className={
+                                    'mb-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100'
+                                }
+                            >
+                                Billing details are complete. You can still edit anything below before moving to the
+                                summary step.
+                            </div>
+                        ) : (
+                            <div
+                                className={
+                                    'mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                                }
+                            >
+                                Missing right now: {currentBillingMissingLabels}.
+                            </div>
+                        )}
+
+                        <div className={'grid gap-4 md:grid-cols-2'}>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Legal Name
+                                </label>
+                                <Input
+                                    autoComplete={'name'}
+                                    value={billingForm.legalName}
+                                    onChange={(event) => onBillingFieldChange('legalName', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Invoice Email
+                                </label>
+                                <Input
+                                    autoComplete={'email'}
+                                    type={'email'}
+                                    value={billingForm.email}
+                                    onChange={(event) => onBillingFieldChange('email', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Phone
+                                </label>
+                                <Input
+                                    autoComplete={'tel'}
+                                    inputMode={'tel'}
+                                    value={billingForm.phone ?? ''}
+                                    onChange={(event) => onBillingFieldChange('phone', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Company Name
+                                </label>
+                                <Input
+                                    autoComplete={'organization'}
+                                    value={billingForm.companyName ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('companyName', event.currentTarget.value || null)
+                                    }
+                                />
+                            </div>
+                            <div className={'md:col-span-2'}>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Address Line 1
+                                </label>
+                                <Input
+                                    autoComplete={'address-line1'}
+                                    value={billingForm.addressLine1 ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('addressLine1', event.currentTarget.value)
+                                    }
+                                />
+                            </div>
+                            <div className={'md:col-span-2'}>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Address Line 2
+                                </label>
+                                <Input
+                                    autoComplete={'address-line2'}
+                                    value={billingForm.addressLine2 ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('addressLine2', event.currentTarget.value || null)
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    City
+                                </label>
+                                <Input
+                                    autoComplete={'address-level2'}
+                                    value={billingForm.city ?? ''}
+                                    onChange={(event) => onBillingFieldChange('city', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    State
+                                </label>
+                                <Input
+                                    autoComplete={'address-level1'}
+                                    value={billingForm.state ?? ''}
+                                    onChange={(event) => onBillingFieldChange('state', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Postcode
+                                </label>
+                                <Input
+                                    autoComplete={'postal-code'}
+                                    inputMode={'numeric'}
+                                    value={billingForm.postcode ?? ''}
+                                    onChange={(event) => onBillingFieldChange('postcode', event.currentTarget.value)}
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Country Code
+                                </label>
+                                <Input
+                                    maxLength={2}
+                                    placeholder={'MY'}
+                                    value={billingForm.countryCode}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('countryCode', event.currentTarget.value.toUpperCase())
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    className={
+                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Tax ID
+                                </label>
+                                <Input
+                                    value={billingForm.taxId ?? ''}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('taxId', event.currentTarget.value || null)
+                                    }
+                                />
+                            </div>
+                            <label
+                                className={
+                                    'md:col-span-2 flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-gray-200'
+                                }
+                            >
+                                <input
+                                    type={'checkbox'}
+                                    checked={billingForm.isBusiness}
+                                    onChange={(event) =>
+                                        onBillingFieldChange('isBusiness', event.currentTarget.checked)
+                                    }
+                                />
+                                Business billing entity
+                            </label>
+                        </div>
+                    </>
+                );
+            case 'summary':
+                return (
+                    <>
+                        <div className={'grid gap-4 xl:grid-cols-2'}>
+                            <div className={'billing-soft-card !rounded-[20px] !p-5'}>
+                                <p
+                                    className={
+                                        'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Deployment
+                                </p>
+                                <div className={'billing-summary-grid'}>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Node</span>
+                                        <strong>{selectedNode?.displayName || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Nest</span>
+                                        <strong>{selectedGame?.nestName || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Server Type</span>
+                                        <strong>{selectedGame?.displayName || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Server Name</span>
+                                        <strong>{serverName || '-'}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={'billing-soft-card !rounded-[20px] !p-5'}>
+                                <p
+                                    className={
+                                        'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Resources
+                                </p>
+                                <div className={'billing-summary-grid'}>
+                                    <div className={'billing-summary-row'}>
+                                        <span>vCore</span>
+                                        <strong>{cpuCores}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>RAM</span>
+                                        <strong>{memoryGb} GB</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Storage</span>
+                                        <strong>{diskGb} GB</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Total</span>
+                                        <strong className={'text-[color:var(--primary)]'}>{formatMoney(total)}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={'billing-soft-card !rounded-[20px] !p-5 xl:col-span-2'}>
+                                <p
+                                    className={
+                                        'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Billing Details
+                                </p>
+                                <div className={'billing-summary-grid mt-4'}>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Legal Name</span>
+                                        <strong>{normalizedBillingForm.legalName || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Email</span>
+                                        <strong>{normalizedBillingForm.email || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Phone</span>
+                                        <strong>{normalizedBillingForm.phone || '-'}</strong>
+                                    </div>
+                                    <div className={'billing-summary-row'}>
+                                        <span>Address</span>
+                                        <strong>
+                                            {[
+                                                normalizedBillingForm.addressLine1,
+                                                normalizedBillingForm.addressLine2,
+                                                normalizedBillingForm.city,
+                                                normalizedBillingForm.state,
+                                                normalizedBillingForm.postcode,
+                                                normalizedBillingForm.countryCode,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(', ') || '-'}
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={'billing-soft-card !rounded-[20px] !p-5 xl:col-span-2'}>
+                                <p
+                                    className={
+                                        'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Startup Variables
+                                </p>
+                                {selectedGame && selectedGame.variables.length > 0 ? (
+                                    <div className={'mt-4 grid gap-3 md:grid-cols-2'}>
+                                        {selectedGame.variables.map((variable: BillingGameVariable) => (
+                                            <div
+                                                key={variable.envVariable}
+                                                className={'billing-summary-row !items-start'}
+                                            >
+                                                <span>{variable.name}</span>
+                                                <strong className={'text-right'}>
+                                                    {variables[variable.envVariable] ||
+                                                        variable.serverValue ||
+                                                        variable.defaultValue ||
+                                                        '-'}
+                                                </strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className={'mt-4 text-sm text-[color:var(--muted-foreground)]'}>
+                                        No startup variables need to be reviewed for this server type.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div
+                            className={
+                                'mt-6 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Checkout creates a manual invoice immediately. Provisioning starts only after billing staff
+                            marks the invoice as paid.
+                        </div>
+                    </>
+                );
+        }
+    };
+
+    const renderPlanFooterActions = () => {
+        if (planStep === 'billing') {
+            return renderPlanWizardActions({
+                continueLabel: 'Save & Continue',
+                continueDisabled: billingSaving,
+                onContinue: goToNextPlanStep,
+            });
+        }
+
+        if (planStep === 'summary') {
+            return renderPlanWizardActions({
+                continueLabel: submitting ? 'Creating Invoice...' : 'Checkout',
+                continueDisabled: submitting,
+                onContinue: submitPlanCheckout,
+            });
+        }
+
+        return renderPlanWizardActions({ onContinue: goToNextPlanStep });
+    };
+
+    const renderPlanSidebar = () => (
+        <aside className={'w-full min-w-0 space-y-0'}>
+            <section className={'billing-panel p-4 xl:p-3.5'}>
+                <div className={'flex items-start justify-between gap-3'}>
+                    <div>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Live Preview
+                        </p>
+                        <h2 className={'mt-1 text-lg font-black tracking-tight text-[#f8f6ef] xl:text-[1.05rem]'}>
+                            {selectedGame?.displayName || 'Plan Preview'}
+                        </h2>
+                        <p className={'mt-1 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
+                            {selectedNode?.displayName || 'No node selected'} {'•'}{' '}
+                            {selectedGame?.nestName || 'No software family selected'}
+                        </p>
+                    </div>
+                    <div
+                        className={
+                            'rounded-2xl border border-[rgba(var(--primary-rgb),0.42)] bg-[rgba(var(--primary-rgb),0.14)] px-3 py-2 text-right'
+                        }
+                    >
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Total
+                        </p>
+                        <p className={'mt-0.5 text-lg font-black text-[color:var(--primary)] xl:text-[1.1rem]'}>
+                            {formatMoney(total)}
+                        </p>
+                    </div>
+                </div>
+
+                <div className={'mt-3 grid gap-2'}>
+                    <div className={'billing-soft-card !rounded-[16px] !p-3'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            vCore
+                        </p>
+                        <div className={'mt-1.5 flex items-center justify-between gap-3'}>
+                            <strong className={'text-sm text-[#f8f6ef]'}>{cpuCores} vCore</strong>
+                        </div>
+                        <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
+                            {formatMoney(cpuTotal)}
+                        </div>
+                    </div>
+                    <div className={'billing-soft-card !rounded-[16px] !p-3'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            RAM
+                        </p>
+                        <div className={'mt-1.5 flex items-center justify-between gap-3'}>
+                            <strong className={'text-sm text-[#f8f6ef]'}>{memoryGb} GB</strong>
+                        </div>
+                        <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
+                            {formatMoney(memoryTotal)}
+                        </div>
+                    </div>
+                    <div className={'billing-soft-card !rounded-[16px] !p-3'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Storage
+                        </p>
+                        <div className={'mt-1.5 flex items-center justify-between gap-3'}>
+                            <strong className={'text-sm text-[#f8f6ef]'}>{diskGb} GB</strong>
+                        </div>
+                        <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
+                            {formatMoney(diskTotal)} {'•'} {diskUnits} x 10 GB block
+                        </div>
+                    </div>
+
+                    <div className={'mt-3 billing-soft-card !rounded-2xl !p-3.5'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Plan Defaults
+                        </p>
+                        <div className={'mt-2.5 grid gap-2 text-[12px]'}>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Allocations</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.allocationLimit ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Databases</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.databaseLimit ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Backups</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.backupLimit ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Swap</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode ? `${selectedNode.defaults.swapMb} MB` : '0 MB'}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>IO Weight</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.ioWeight ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>OOM Killer</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.oomDisabled ? 'Disabled' : 'Enabled'}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Start On Completion</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.startOnCompletion ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={'mt-3 billing-soft-card !rounded-2xl !p-3.5'}>
+                        <div className={'flex items-start justify-between gap-3'}>
+                            <p
+                                className={
+                                    'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
+                                Node Availability
+                            </p>
+                            <span
+                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.22em] ${
+                                    selectedNode?.availability.isAvailable
+                                        ? 'billing-status billing-status-active'
+                                        : 'billing-status billing-status-rejected'
+                                }`}
+                            >
+                                {selectedNode?.availability.isAvailable ? 'Available' : 'Sold Out'}
+                            </span>
+                        </div>
+                        <div className={'mt-2.5 grid gap-2 text-[12px]'}>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Max vCore / Order</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.limits.maxCpu ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>RAM Remaining</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.showRemainingCapacity
+                                        ? `${selectedNode.availability.memoryRemainingGb} GB`
+                                        : 'Hidden'}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Storage Remaining</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.showRemainingCapacity
+                                        ? `${selectedNode.availability.diskRemainingGb} GB`
+                                        : 'Hidden'}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Free Allocations</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.availability.freeAllocations ?? 0}
+                                </span>
+                            </div>
+                        </div>
+                        {!selectedNode?.showRemainingCapacity && selectedNode ? (
+                            <p className={'mt-2.5 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
+                                This billing node hides live RAM and storage remaining. Stock is still enforced during
+                                checkout.
+                            </p>
+                        ) : null}
+                    </div>
+                </div>
+
+                {soldOutReason ? (
+                    <div
+                        className={
+                            'mt-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-100'
+                        }
+                    >
+                        {soldOutReason}
+                    </div>
+                ) : null}
+            </section>
+        </aside>
+    );
+
+    const renderInvoiceCard = (invoice: BillingInvoice, receiptMode = false) => {
+        const latestPayment = invoice.payments[0] || null;
+        const latestRefund = latestPayment?.refunds[0] || null;
+        const canRetryPayment =
+            invoice.provider !== 'manual' &&
+            !invoice.paidAt &&
+            ['open', 'draft', 'failed', 'processing'].includes(invoice.status);
+
+        return (
+            <article key={invoice.id} className={'billing-subscription-card'}>
+                <div className={'flex flex-wrap items-start justify-between gap-4'}>
+                    <div>
+                        <div className={'flex flex-wrap items-center gap-3'}>
+                            <h3 className={'billing-subscription-title'}>{invoice.invoiceNumber}</h3>
+                            <span
+                                className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getInvoiceStatusClasses(
+                                    invoice.status
+                                )}`}
+                            >
+                                {getOrderStatusLabel(invoice.status)}
+                            </span>
+                        </div>
+                        <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
+                            {receiptMode ? 'Payment Receipt' : getOrderStatusLabel(invoice.type)} {'•'} Issued{' '}
+                            {invoice.issuedAt ? invoice.issuedAt.toLocaleString() : 'Unknown'}
+                        </p>
+                    </div>
+                    <div className={'text-right'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            {receiptMode ? 'Receipt Total' : 'Invoice Total'}
+                        </p>
+                        <p className={'mt-2 text-2xl font-black text-[color:var(--primary)]'}>
+                            {formatMoney(invoice.grandTotal)}
+                        </p>
+                    </div>
+                </div>
+
+                <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)] lg:grid-cols-2'}>
+                    <div className={'flex items-center justify-between gap-3'}>
+                        <span>Due At</span>
+                        <span className={'font-semibold text-[#f8f6ef]'}>
+                            {invoice.dueAt ? invoice.dueAt.toLocaleString() : 'Unknown'}
+                        </span>
+                    </div>
+                    <div className={'flex items-center justify-between gap-3'}>
+                        <span>Paid At</span>
+                        <span className={'font-semibold text-[#f8f6ef]'}>
+                            {invoice.paidAt ? invoice.paidAt.toLocaleString() : 'Not paid yet'}
+                        </span>
+                    </div>
+                    <div className={'flex items-center justify-between gap-3'}>
+                        <span>Amount</span>
+                        <span className={'font-semibold text-[color:var(--primary)]'}>
+                            {formatMoney(invoice.grandTotal)}
+                        </span>
+                    </div>
+                    <div className={'flex items-center justify-between gap-3'}>
+                        <span>Provider</span>
+                        <span className={'font-semibold text-[#f8f6ef]'}>
+                            {invoice.provider ? invoice.provider.toUpperCase() : 'Manual'}
+                        </span>
+                    </div>
+                    {receiptMode && latestPayment && (
+                        <div className={'flex items-center justify-between gap-3'}>
+                            <span>Payment Method</span>
+                            <span className={'font-semibold text-[#f8f6ef]'}>
+                                {latestPayment.paymentMethodBrand && latestPayment.paymentMethodLast4
+                                    ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${
+                                          latestPayment.paymentMethodLast4
+                                      }`
+                                    : latestPayment.providerPaymentMethod || latestPayment.provider || 'Recorded'}
+                            </span>
+                        </div>
+                    )}
+                    {invoice.providerStatus && (
+                        <div className={'flex items-center justify-between gap-3'}>
+                            <span>Gateway Status</span>
+                            <span className={'font-semibold text-[#f8f6ef]'}>
+                                {getOrderStatusLabel(invoice.providerStatus)}
+                            </span>
+                        </div>
+                    )}
+                    {receiptMode && latestRefund && (
+                        <div className={'flex items-center justify-between gap-3 lg:col-span-2'}>
+                            <span>Latest Refund</span>
+                            <span className={'font-semibold text-amber-200'}>
+                                {latestRefund.refundNumber} • {getOrderStatusLabel(latestRefund.status)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {!receiptMode && !latestPayment && !invoice.paidAt && (
+                    <div
+                        className={
+                            'mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100'
+                        }
+                    >
+                        Waiting for billing admin to confirm manual payment before this invoice can be marked paid.
+                    </div>
+                )}
+
+                <div className={'mt-5 flex flex-wrap items-center gap-3'}>
+                    {!receiptMode && canRetryPayment && (
+                        <span className={'text-xs leading-6 text-amber-200'}>
+                            Online retry is unavailable while manual billing mode is active.
+                        </span>
+                    )}
+                    {invoice.hostedInvoiceUrl && !receiptMode && (
+                        <a href={invoice.hostedInvoiceUrl} className={'billing-secondary-btn'}>
+                            Open Hosted Invoice
+                        </a>
+                    )}
+                    {invoice.invoicePdfUrl && !receiptMode && (
+                        <a
+                            href={invoice.invoicePdfUrl}
+                            className={'billing-ghost-btn'}
+                            target={'_blank'}
+                            rel={'noreferrer'}
+                        >
+                            Invoice PDF
+                        </a>
+                    )}
+                    {receiptMode && latestPayment?.receiptPdfUrl && (
+                        <a
+                            href={latestPayment.receiptPdfUrl}
+                            className={'billing-secondary-btn'}
+                            target={'_blank'}
+                            rel={'noreferrer'}
+                        >
+                            Receipt PDF
+                        </a>
+                    )}
+                    {receiptMode && !latestPayment?.receiptPdfUrl && (
+                        <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                            Receipt PDF is not available yet, but this invoice has recorded payment activity.
+                        </p>
+                    )}
+                </div>
+            </article>
+        );
+    };
+
+    const renderBillingOrderCard = (order: BillingOrder) => (
+        <article key={order.id} className={'billing-subscription-card'}>
+            <div className={'flex flex-wrap items-start justify-between gap-4'}>
+                <div>
+                    <div className={'flex flex-wrap items-center gap-3'}>
+                        <h3 className={'billing-subscription-title'}>{order.serverName}</h3>
+                        <span
+                            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getOrderStatusClasses(
+                                order.status
+                            )}`}
+                        >
+                            {getOrderStatusLabel(order.status)}
+                        </span>
+                    </div>
+                    <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
+                        Order #{order.id} {'•'} {order.nodeName} {'•'} {order.gameName}
+                    </p>
+                </div>
+                <div className={'text-right'}>
+                    <p
+                        className={
+                            'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
+                        }
+                    >
+                        Order Total
+                    </p>
+                    <p className={'mt-2 text-2xl font-black text-[color:var(--primary)]'}>{formatMoney(order.total)}</p>
+                </div>
+            </div>
+
+            <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)] lg:grid-cols-2'}>
+                <div className={'flex items-center justify-between gap-3'}>
+                    <span>Resources</span>
+                    <span className={'font-semibold text-[#f8f6ef]'}>
+                        {order.cpuCores} vCore / {order.memoryGb} GB / {order.diskGb} GB
+                    </span>
+                </div>
+                <div className={'flex items-center justify-between gap-3'}>
+                    <span>Placed</span>
+                    <span className={'font-semibold text-[#f8f6ef]'}>
+                        {order.createdAt ? order.createdAt.toLocaleString() : 'Unknown'}
+                    </span>
+                </div>
+                <div className={'flex items-center justify-between gap-3'}>
+                    <span>Payment Verified</span>
+                    <span className={'font-semibold text-[#f8f6ef]'}>
+                        {order.paymentVerifiedAt ? order.paymentVerifiedAt.toLocaleString() : 'Pending'}
+                    </span>
+                </div>
+                <div className={'flex items-center justify-between gap-3'}>
+                    <span>Provisioned</span>
+                    <span className={'font-semibold text-[#f8f6ef]'}>
+                        {order.provisionedAt ? order.provisionedAt.toLocaleString() : 'Not provisioned yet'}
+                    </span>
+                </div>
+            </div>
+
+            {order.adminNotes && (
+                <div
+                    className={
+                        'mt-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3 text-sm leading-6 text-[color:var(--muted-foreground)]'
+                    }
+                >
+                    {order.adminNotes}
+                </div>
+            )}
+
+            {order.provisionFailureMessage && (
+                <div
+                    className={
+                        'mt-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100'
+                    }
+                >
+                    {order.provisionFailureCode ? `${order.provisionFailureCode}: ` : ''}
+                    {order.provisionFailureMessage}
+                </div>
+            )}
+        </article>
+    );
+
+    const renderInvoiceSection = (
+        title: string,
+        copy: string,
+        items: BillingInvoice[],
+        currentPage: number,
+        onPageChange: (page: number) => void,
+        loading: boolean,
+        emptyMessage: string,
+        receiptMode = false
+    ) => (
+        <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
+            <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
+                <div>
+                    <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>{title}</h2>
+                    <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>{copy}</p>
+                </div>
+                {items.length > 0 ? (
+                    <BillingPagination
+                        currentPage={currentPage}
+                        onPageChange={onPageChange}
+                        pageSize={INVOICES_PAGE_SIZE}
+                        totalItems={items.length}
+                    />
+                ) : loading && items ? (
+                    <Spinner size={Spinner.Size.SMALL} />
+                ) : null}
+            </div>
+
+            <div className={'billing-section-scroll'}>
+                {!invoices && loading ? (
+                    <Spinner centered />
+                ) : items.length > 0 ? (
+                    <div className={'grid gap-4'}>
+                        {paginateItems(items, currentPage, INVOICES_PAGE_SIZE).map((invoice) =>
+                            renderInvoiceCard(invoice, receiptMode)
+                        )}
+                    </div>
+                ) : (
+                    <div className={'billing-empty-card'}>{emptyMessage}</div>
+                )}
+            </div>
+        </section>
+    );
+
+    if (currentSection === 'plan' && !catalog && catalogLoading) {
         return (
             <div
                 className={
@@ -1231,11 +2830,21 @@ export default () => {
     }
 
     return (
-        <div className={'billing-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
+        <div
+            className={`billing-shell h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8 ${
+                isPlanSection ? 'billing-shell-plan' : ''
+            } ${isListSection ? 'billing-shell-list' : ''}`}
+        >
             <style>{`
                 .billing-shell {
                     position: relative;
-                    overflow: hidden;
+                    height: 100%;
+                    min-height: 0;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    -webkit-overflow-scrolling: touch;
+                    display: flex;
+                    flex-direction: column;
                     background:
                         radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
                         radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
@@ -1281,75 +2890,243 @@ export default () => {
                     position: relative;
                     z-index: 2;
                     width: 100%;
+                    min-height: 0;
                 }
 
-                .billing-hero {
-                    margin-bottom: 18px;
-                    border-radius: 24px;
+                .billing-wrap-plan {
+                    display: flex;
+                    flex: 1 1 0%;
+                    flex-direction: column;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .billing-wrap-list {
+                    display: flex;
+                    flex: 1 1 0%;
+                    flex-direction: column;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .billing-plan-layout {
+                    display: grid;
+                    min-height: 0;
+                    gap: 1.5rem;
+                    height: 100%;
+                }
+
+                .billing-plan-main {
+                    min-width: 0;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0;
+                }
+
+                .billing-plan-main-body {
+                    flex: 1 1 0%;
+                    min-height: 0;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .billing-plan-aside {
+                    min-width: 0;
+                    min-height: 0;
+                    align-self: stretch;
+                }
+
+                .billing-plan-aside > aside {
+                    height: 100%;
+                }
+
+                .billing-plan-aside .billing-panel {
+                    height: 100%;
+                }
+
+                .billing-section-shell {
+                    display: flex;
+                    flex: 1 1 0%;
+                    flex-direction: column;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .billing-section-scroll {
+                    flex: 1 1 0%;
+                    min-height: 0;
+                    overflow-x: hidden;
+                    overflow-y: auto;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+
+                .billing-section-scroll::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
+                    height: 0;
+                }
+
+                .billing-choice-grid {
+                    display: grid;
+                    gap: 1rem;
+                }
+
+                .billing-choice-card {
+                    width: 100%;
+                    border-radius: 20px;
                     border: 1px solid rgba(255, 255, 255, 0.09);
                     background:
-                        linear-gradient(160deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%),
+                        linear-gradient(170deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 54%),
                         rgba(4, 8, 14, 0.76);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                        0 30px 46px -32px rgba(0, 0, 0, 0.82),
-                        0 0 56px rgba(var(--primary-rgb), 0.1);
-                    padding: 18px 20px;
-                    backdrop-filter: blur(8px);
+                    padding: 1.15rem;
+                    text-align: left;
+                    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
                 }
 
-                .billing-hero-pill-row {
+                .billing-choice-card:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    border-color: rgba(var(--primary-rgb), 0.26);
+                    box-shadow: 0 0 26px rgba(var(--primary-rgb), 0.08);
+                }
+
+                .billing-choice-card-selected {
+                    border-color: rgba(var(--primary-rgb), 0.4);
+                    box-shadow: 0 0 30px rgba(var(--primary-rgb), 0.12);
+                }
+
+                .billing-choice-card-disabled {
+                    cursor: not-allowed;
+                    opacity: 0.52;
+                }
+
+                .billing-choice-title {
+                    font-size: 1rem;
+                    font-weight: 900;
+                    color: #f8f6ef;
+                }
+
+                .billing-choice-copy {
+                    margin-top: 0.45rem;
+                    font-size: 0.86rem;
+                    line-height: 1.7;
+                    color: rgba(174, 183, 194, 0.82);
+                }
+
+                .billing-choice-meta-grid {
+                    display: grid;
+                    gap: 0.75rem;
+                    margin-top: 1rem;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                .billing-choice-meta-grid > div {
+                    border-radius: 14px;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(255, 255, 255, 0.025);
+                    padding: 0.75rem;
+                }
+
+                .billing-choice-meta-grid span {
+                    display: block;
+                    font-size: 0.62rem;
+                    font-weight: 800;
+                    letter-spacing: 0.16em;
+                    text-transform: uppercase;
+                    color: rgba(174, 183, 194, 0.7);
+                }
+
+                .billing-choice-meta-grid strong {
+                    display: block;
+                    margin-top: 0.35rem;
+                    font-size: 0.92rem;
+                    color: #f8f6ef;
+                }
+
+                .billing-plan-footer {
+                    flex-shrink: 0;
+                    margin-top: 0;
+                    padding-top: 0.25rem;
+                }
+
+                .billing-wizard-actions {
                     display: flex;
                     flex-wrap: wrap;
                     align-items: center;
                     justify-content: space-between;
-                    gap: 10px;
-                    margin-bottom: 12px;
+                    gap: 0.9rem;
+                    margin-top: 0;
+                    padding-top: 1.25rem;
+                    border-top: 1px solid rgba(255, 255, 255, 0.08);
                 }
 
-                .billing-hero-pill {
+                .billing-step-row {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 0.85rem;
+                    border-radius: 18px;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(255, 255, 255, 0.02);
+                    padding: 0.85rem 0.9rem;
+                }
+
+                .billing-step-row-active {
+                    border-color: rgba(var(--primary-rgb), 0.34);
+                    background: rgba(var(--primary-rgb), 0.08);
+                }
+
+                .billing-step-row-complete {
+                    box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.08);
+                }
+
+                .billing-step-index {
                     display: inline-flex;
+                    height: 2rem;
+                    width: 2rem;
+                    flex-shrink: 0;
                     align-items: center;
                     justify-content: center;
-                    min-height: 34px;
                     border-radius: 999px;
-                    border: 1px solid rgba(var(--primary-rgb), 0.52);
-                    background: linear-gradient(120deg, rgba(var(--primary-rgb), 0.36), rgba(var(--primary-rgb), 0.14));
-                    color: rgba(230, 252, 180, 0.95);
-                    font-size: 0.7rem;
-                    font-weight: 800;
-                    letter-spacing: 0.2em;
-                    text-transform: uppercase;
-                    padding: 0 14px;
-                    text-shadow: 0 0 10px rgba(var(--primary-rgb), 0.58);
-                }
-
-                .billing-hero-route {
-                    color: rgba(248, 246, 239, 0.56);
-                    font-size: 0.7rem;
-                    letter-spacing: 0.18em;
-                    text-transform: uppercase;
-                    font-weight: 700;
-                }
-
-                .billing-hero-title {
-                    margin: 0;
-                    font-size: clamp(1.4rem, 3.2vw, 2rem);
-                    line-height: 1.04;
-                    letter-spacing: 0.02em;
-                    text-transform: uppercase;
+                    border: 1px solid rgba(var(--primary-rgb), 0.28);
+                    background: rgba(var(--primary-rgb), 0.12);
+                    font-size: 0.75rem;
                     font-weight: 900;
-                    color: rgba(248, 246, 239, 0.97);
-                    text-shadow: 0 0 18px rgba(248, 246, 239, 0.19);
+                    color: var(--primary);
                 }
 
-                .billing-hero-copy {
-                    margin-top: 8px;
-                    max-width: 70ch;
-                    font-size: 0.82rem;
+                .billing-step-label {
+                    font-size: 0.9rem;
+                    font-weight: 800;
+                    color: #f8f6ef;
+                }
+
+                .billing-step-copy {
+                    margin-top: 0.25rem;
+                    font-size: 0.72rem;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    color: rgba(174, 183, 194, 0.72);
+                }
+
+                .billing-summary-grid {
+                    display: grid;
+                    gap: 0.75rem;
+                }
+
+                .billing-summary-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1rem;
+                    border-radius: 14px;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(255, 255, 255, 0.02);
+                    padding: 0.85rem 0.95rem;
                     color: rgba(174, 183, 194, 0.82);
-                    letter-spacing: 0.03em;
-                    line-height: 1.7;
+                }
+
+                .billing-summary-row strong {
+                    color: #f8f6ef;
                 }
 
                 .billing-panel {
@@ -1725,14 +3502,55 @@ export default () => {
                     color: rgba(174, 183, 194, 0.76);
                 }
 
-                @media (max-width: 640px) {
-                    .billing-hero {
-                        border-radius: 18px;
-                        padding: 14px 14px 12px;
+                @media (min-width: 1280px) {
+                    .billing-shell-list {
+                        overflow: hidden;
                     }
 
-                    .billing-hero-pill-row {
-                        margin-bottom: 10px;
+                    .billing-shell-plan {
+                        overflow: hidden;
+                        padding-top: 1rem;
+                        padding-bottom: 1rem;
+                    }
+
+                    .billing-plan-layout {
+                        grid-template-columns: minmax(0, 1fr) 320px;
+                        align-items: stretch;
+                        flex: 1 1 0%;
+                        gap: 1rem;
+                    }
+
+                    .billing-plan-main {
+                        overflow: hidden;
+                    }
+
+                    .billing-plan-main-body {
+                        overflow-x: hidden;
+                        overflow-y: auto;
+                        scrollbar-width: none;
+                        -ms-overflow-style: none;
+                    }
+
+                    .billing-plan-main-body::-webkit-scrollbar {
+                        display: none;
+                        width: 0;
+                        height: 0;
+                    }
+
+                    .billing-plan-aside {
+                        overflow: hidden;
+                    }
+                }
+
+                @media (min-width: 1536px) {
+                    .billing-plan-layout {
+                        grid-template-columns: minmax(0, 1fr) 330px;
+                    }
+                }
+
+                @media (max-width: 640px) {
+                    .billing-choice-meta-grid {
+                        grid-template-columns: minmax(0, 1fr);
                     }
 
                     .billing-pagination-bar {
@@ -1746,28 +3564,19 @@ export default () => {
                     .billing-gate-footer {
                         flex-direction: column;
                     }
+
+                    .billing-wizard-actions {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
                 }
             `}</style>
-            <div className={'billing-wrap'}>
+            <div
+                className={`billing-wrap ${isPlanSection ? 'billing-wrap-plan' : ''} ${
+                    isListSection ? 'billing-wrap-list' : ''
+                }`}
+            >
                 <FlashMessageRender byKey={'billing'} />
-                <div className={'billing-hero'}>
-                    <div className={'billing-hero-pill-row'}>
-                        <span className={'billing-hero-pill'}>Secure billing panel</span>
-                        <span className={'billing-hero-route'}>Route /billing</span>
-                    </div>
-                    <h1 className={'billing-hero-title'}>Billing</h1>
-                    <p className={'billing-hero-copy'}>
-                        Build a server plan from the node stock that is currently available. New orders, renewals, and
-                        upgrades now create manual billing invoices inside the panel first. After checkout, the panel
-                        opens or prepares your private support ticket so payment proof, staff replies, and approval
-                        updates stay in one place.
-                    </p>
-                    <div className={'mt-5 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                        Every invoice stays pending until billing staff confirms payment manually through your support
-                        ticket workflow.
-                    </div>
-                </div>
-
                 {followUpAction ? (
                     <section className={'billing-panel mb-6 p-6'}>
                         <div className={'flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between'}>
@@ -1803,803 +3612,167 @@ export default () => {
                     </section>
                 ) : null}
 
-                {!catalog || catalog.length < 1 ? (
-                    <section className={'billing-panel p-8'}>
-                        <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>No Billing Nodes</h2>
-                        <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
-                            Billing has not been enabled on any node yet. Ask an administrator to finish the node setup
-                            first.
-                        </p>
-                    </section>
-                ) : (
-                    <div className={'grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] xl:items-start'}>
-                        <form onSubmit={submit} className={'billing-panel p-6 md:p-8'}>
-                            <div className={'grid gap-6 lg:grid-cols-2'}>
-                                <div>
-                                    <label
-                                        className={
-                                            'mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Choose A Node
-                                    </label>
-                                    <Select
-                                        value={selectedNode?.id ?? ''}
-                                        onChange={(event) => setSelectedNodeId(parseInt(event.currentTarget.value, 10))}
-                                    >
-                                        {(catalog || []).map((node) => (
-                                            <option key={node.id} value={node.id}>
-                                                {node.displayName}
-                                            </option>
-                                        ))}
-                                    </Select>
-                                    <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
-                                        {selectedNode?.description ||
-                                            'Choose the node that matches the region and billing stock you want to use.'}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label
-                                        className={
-                                            'mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Server Name
-                                    </label>
-                                    <Input
-                                        value={serverName}
-                                        onChange={(event) => setServerName(event.currentTarget.value)}
-                                        placeholder={'My Billing Server'}
-                                        maxLength={191}
-                                    />
-                                    <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
-                                        This name will be used when the order is approved and provisioned.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className={'mt-8 grid gap-6 lg:grid-cols-2'}>
-                                <div>
-                                    <label
-                                        className={
-                                            'mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Choose A Nest
-                                    </label>
-                                    <Select
-                                        value={selectedNestId ?? ''}
-                                        onChange={(event) => setSelectedNestId(parseInt(event.currentTarget.value, 10))}
-                                        disabled={!selectedNode || nestOptions.length < 1}
-                                    >
-                                        {nestOptions.map((nest) => (
-                                            <option key={nest.id} value={nest.id}>
-                                                {nest.name}
-                                            </option>
-                                        ))}
-                                    </Select>
-                                </div>
-
-                                <div>
-                                    <label
-                                        className={
-                                            'mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Choose A Game
-                                    </label>
-                                    <Select
-                                        value={selectedGame?.id ?? ''}
-                                        onChange={(event) => setSelectedGameId(parseInt(event.currentTarget.value, 10))}
-                                        disabled={!selectedNode || availableGames.length < 1}
-                                    >
-                                        {availableGames.map((game) => (
-                                            <option key={game.id} value={game.id}>
-                                                {game.displayName}
-                                            </option>
-                                        ))}
-                                    </Select>
-                                    <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
-                                        {selectedGame?.description ||
-                                            'The selected nest controls which eggs can be ordered on this node.'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className={'mt-8'}>
-                                <div className={'mb-4 flex flex-wrap items-center justify-between gap-3'}>
-                                    <div>
-                                        <h2 className={'text-xl font-black tracking-tight text-[#f8f6ef]'}>
-                                            Plan Resources
-                                        </h2>
-                                        <p className={'mt-1 text-xs text-[color:var(--muted-foreground)]'}>
-                                            RAM and storage are live node stock. If either one runs out, the node is
-                                            treated as sold out.
-                                        </p>
-                                    </div>
-                                    {selectedNode && selectedNode.showRemainingCapacity ? (
-                                        <div className={'billing-chip'}>
-                                            {selectedNode.availability.memoryRemainingGb} GB RAM Left /{' '}
-                                            {selectedNode.availability.diskRemainingGb} GB Storage Left
-                                        </div>
-                                    ) : selectedNode ? (
-                                        <div className={'billing-chip'}>Remaining stock hidden</div>
-                                    ) : (
-                                        <div className={'billing-chip'}>Waiting for node selection</div>
-                                    )}
-                                </div>
-
-                                <div className={'grid gap-4 xl:grid-cols-3'}>
-                                    <BillingResourceSlider
-                                        label={'vCore'}
-                                        value={cpuCores}
-                                        min={selectedNode && selectedNode.limits.maxCpu > 0 ? 1 : 0}
-                                        max={selectedNode?.limits.maxCpu ?? 0}
-                                        unit={'vCore'}
-                                        helper={'Selectable per order only. This does not reduce node stock.'}
-                                        disabled={!selectedNode || selectedNode.limits.maxCpu < 1}
-                                        onChange={setCpuCores}
-                                    />
-                                    <BillingResourceSlider
-                                        label={'RAM'}
-                                        value={memoryGb}
-                                        min={selectedNode && selectedNode.limits.maxMemoryGb > 0 ? 1 : 0}
-                                        max={selectedNode?.limits.maxMemoryGb ?? 0}
-                                        unit={'GB'}
-                                        helper={'Live stock based on the node setup and current usage.'}
-                                        disabled={!selectedNode || selectedNode.limits.maxMemoryGb < 1}
-                                        onChange={setMemoryGb}
-                                    />
-                                    <BillingResourceSlider
-                                        label={'Storage'}
-                                        value={diskGb}
-                                        min={
-                                            selectedNode &&
-                                            selectedNode.limits.maxDiskGb >= (selectedNode.limits.diskStepGb ?? 10)
-                                                ? selectedNode.limits.diskStepGb
-                                                : 0
-                                        }
-                                        max={selectedNode?.limits.maxDiskGb ?? 0}
-                                        step={selectedNode?.limits.diskStepGb ?? 10}
-                                        unit={'GB'}
-                                        helper={'Billed in 10 GB steps and tied to the node storage stock.'}
-                                        disabled={
-                                            !selectedNode ||
-                                            selectedNode.limits.maxDiskGb < (selectedNode?.limits.diskStepGb ?? 10)
-                                        }
-                                        onChange={setDiskGb}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className={'mt-8'}>
-                                <div className={'mb-4'}>
-                                    <h2 className={'text-xl font-black tracking-tight text-[#f8f6ef]'}>
-                                        Startup Variables
-                                    </h2>
-                                    <p className={'mt-1 text-xs text-[color:var(--muted-foreground)]'}>
-                                        Variables are loaded from the selected egg. Read-only items are shown for review
-                                        and cannot be changed.
-                                    </p>
-                                </div>
-
-                                {selectedGame && selectedGame.variables.length > 0 ? (
-                                    <div className={'grid gap-4 xl:grid-cols-2'}>
-                                        {selectedGame.variables.map((variable) => (
-                                            <BillingVariableBox
-                                                key={`${selectedGame.id}:${variable.envVariable}`}
-                                                variable={variable}
-                                                value={
-                                                    variables[variable.envVariable] ??
-                                                    variable.serverValue ??
-                                                    variable.defaultValue ??
-                                                    ''
-                                                }
-                                                onChange={(value) =>
-                                                    setVariables((current) => ({
-                                                        ...current,
-                                                        [variable.envVariable]: value,
-                                                    }))
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className={'billing-empty-card text-sm'}>
-                                        {selectedGame
-                                            ? 'This egg does not expose any user-viewable startup variables.'
-                                            : 'Choose a game to load its startup variables.'}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div
-                                className={
-                                    'mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--border)] pt-6'
-                                }
-                            >
-                                <div className={'text-xs text-[color:var(--muted-foreground)]'}>
-                                    Orders create a manual invoice in RM immediately. Provisioning starts only after
-                                    billing admin marks the first invoice as paid.
-                                </div>
-                                <button
-                                    type={'submit'}
-                                    disabled={
-                                        submitting ||
-                                        !selectedNode ||
-                                        !selectedGame ||
-                                        !selectedNode.availability.isAvailable
-                                    }
-                                    className={'billing-primary-btn min-w-[13rem] px-6 py-3 text-xs'}
-                                >
-                                    {submitting ? 'Creating Invoice...' : 'Checkout'}
-                                </button>
-                            </div>
-                        </form>
-
-                        <aside className={'space-y-6 xl:sticky xl:top-8'}>
-                            <section className={'billing-panel p-6'}>
-                                <div className={'flex items-start justify-between gap-4'}>
+                {currentSection === 'plan' &&
+                    (!catalog || catalog.length < 1 ? (
+                        <section className={'billing-panel p-8'}>
+                            <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>No Billing Nodes</h2>
+                            <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
+                                Billing has not been enabled on any node yet. Ask an administrator to finish the node
+                                setup first.
+                            </p>
+                        </section>
+                    ) : (
+                        <div className={'billing-plan-layout'}>
+                            <section className={'billing-panel billing-plan-main h-full min-w-0 p-6 md:p-8'}>
+                                <div className={'mb-6 space-y-5'}>
+                                    {renderPlanStepNavigator()}
                                     <div>
                                         <p
                                             className={
-                                                'text-[10px] font-bold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]'
+                                                'text-[10px] font-bold uppercase tracking-[0.3em] text-[color:var(--primary)]'
                                             }
                                         >
-                                            Live Preview
+                                            {currentPlanStepContent.eyebrow}
                                         </p>
-                                        <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#f8f6ef]'}>
-                                            {selectedGame?.displayName || 'Choose A Plan'}
+                                        <h2 className={'mt-3 text-3xl font-black tracking-tight text-[#f8f6ef]'}>
+                                            {currentPlanStepContent.title}
                                         </h2>
-                                        <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
-                                            {selectedNode?.displayName || 'Select a node first.'}
-                                            {selectedGame ? ` • ${selectedGame.nestName}` : ''}
-                                        </p>
-                                    </div>
-                                    <div
-                                        className={
-                                            'rounded-2xl border border-[rgba(var(--primary-rgb),0.42)] bg-[rgba(var(--primary-rgb),0.14)] px-4 py-3 text-right'
-                                        }
-                                    >
                                         <p
                                             className={
-                                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                                                'mt-3 max-w-3xl text-sm leading-7 text-[color:var(--muted-foreground)]'
                                             }
                                         >
-                                            Total
-                                        </p>
-                                        <p className={'mt-1 text-2xl font-black text-[color:var(--primary)]'}>
-                                            {formatMoney(total)}
+                                            {currentPlanStepContent.copy}
                                         </p>
                                     </div>
                                 </div>
-
-                                <div className={'mt-6 grid gap-3'}>
-                                    <div className={'billing-soft-card'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span
-                                                className={
-                                                    'text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                vCore
-                                            </span>
-                                            <strong className={'text-sm text-[#f8f6ef]'}>{cpuCores} vCore</strong>
-                                        </div>
-                                        <div className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                            {formatMoney(cpuTotal)}
-                                        </div>
-                                    </div>
-                                    <div className={'billing-soft-card'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span
-                                                className={
-                                                    'text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                RAM
-                                            </span>
-                                            <strong className={'text-sm text-[#f8f6ef]'}>{memoryGb} GB</strong>
-                                        </div>
-                                        <div className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                            {formatMoney(memoryTotal)}
-                                        </div>
-                                    </div>
-                                    <div className={'billing-soft-card'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span
-                                                className={
-                                                    'text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                Storage
-                                            </span>
-                                            <strong className={'text-sm text-[#f8f6ef]'}>{diskGb} GB</strong>
-                                        </div>
-                                        <div className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                            {formatMoney(diskTotal)} • {diskUnits} x 10 GB block
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className={'mt-6 billing-soft-card !rounded-2xl !p-5'}>
-                                    <p
-                                        className={
-                                            'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Plan Defaults
-                                    </p>
-                                    <div className={'mt-4 grid gap-3 text-sm'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>Allocations</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.allocationLimit ?? 0}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>Databases</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.databaseLimit ?? 0}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>Backups</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.backupLimit ?? 0}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>Swap</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.swapMb ?? 0} MB
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>IO Weight</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.ioWeight ?? 0}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>OOM Killer</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.oomDisabled ? 'Disabled' : 'Enabled'}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span className={'text-[color:var(--muted-foreground)]'}>
-                                                Start On Completion
-                                            </span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {selectedNode?.defaults.startOnCompletion ? 'Yes' : 'No'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className={'mt-6 billing-soft-card !rounded-2xl !p-5'}>
-                                    <p
-                                        className={
-                                            'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Node Availability
-                                    </p>
-                                    {selectedNode && selectedNode.showRemainingCapacity ? (
-                                        <div className={'mt-4 grid gap-3 text-sm'}>
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span className={'text-[color:var(--muted-foreground)]'}>
-                                                    Max vCore / Order
-                                                </span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {selectedNode.availability.cpuRemaining}
-                                                </span>
-                                            </div>
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span className={'text-[color:var(--muted-foreground)]'}>
-                                                    RAM Remaining
-                                                </span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {selectedNode.availability.memoryRemainingGb} GB
-                                                </span>
-                                            </div>
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span className={'text-[color:var(--muted-foreground)]'}>
-                                                    Storage Remaining
-                                                </span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {selectedNode.availability.diskRemainingGb} GB
-                                                </span>
-                                            </div>
-                                            <div className={'flex items-center justify-between gap-3'}>
-                                                <span className={'text-[color:var(--muted-foreground)]'}>
-                                                    Free Allocations
-                                                </span>
-                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                    {selectedNode.availability.freeAllocations}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ) : selectedNode ? (
-                                        <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
-                                            Remaining node stock is hidden by the admin, but billing limits are still
-                                            enforced before the order is accepted.
-                                        </p>
-                                    ) : (
-                                        <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
-                                            Select a node to view the live billing preview for this plan.
-                                        </p>
-                                    )}
-
-                                    {soldOutReason && (
-                                        <div
-                                            className={
-                                                'mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-                                            }
-                                        >
-                                            {soldOutReason}
-                                        </div>
-                                    )}
-                                </div>
+                                <div className={'billing-plan-main-body'}>{renderPlanStepContent()}</div>
+                                <div className={'billing-plan-footer'}>{renderPlanFooterActions()}</div>
                             </section>
-                        </aside>
-                    </div>
+                            <div className={'billing-plan-aside'}>{renderPlanSidebar()}</div>
+                        </div>
+                    ))}
+
+                {currentSection === 'subscriptions' && (
+                    <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
+                        <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
+                            <div>
+                                <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                    Active Subscriptions
+                                </h2>
+                                <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
+                                    Renewals and upgrades stay available here, but every invoice is handled manually
+                                    while payment gateway checkout is disabled.
+                                </p>
+                            </div>
+                            {subscriptions && subscriptions.length > 0 ? (
+                                <BillingPagination
+                                    currentPage={subscriptionsPage}
+                                    onPageChange={setSubscriptionsPage}
+                                    pageSize={ACTIVE_SUBSCRIPTIONS_PAGE_SIZE}
+                                    totalItems={subscriptions.length}
+                                />
+                            ) : subscriptionsLoading && subscriptions ? (
+                                <Spinner size={Spinner.Size.SMALL} />
+                            ) : null}
+                        </div>
+
+                        <div className={'billing-section-scroll'}>
+                            {!subscriptions && subscriptionsLoading ? (
+                                <Spinner centered />
+                            ) : subscriptions && subscriptions.length > 0 ? (
+                                <div className={'grid gap-4'}>
+                                    {paginateItems(
+                                        subscriptions,
+                                        subscriptionsPage,
+                                        ACTIVE_SUBSCRIPTIONS_PAGE_SIZE
+                                    ).map((subscription) => (
+                                        <BillingSubscriptionCard
+                                            key={subscription.id}
+                                            subscription={subscription}
+                                            renewing={renewingSubscriptionId === subscription.id}
+                                            upgrading={upgradingSubscriptionId === subscription.id}
+                                            togglingAutoRenew={togglingSubscriptionId === subscription.id}
+                                            billingProfileReady={billingProfileComplete}
+                                            billingProfileBlockReason={billingProfileMissingLabels || null}
+                                            onRenew={(current) => void onRenewSubscription(current.id)}
+                                            onUpgrade={(current, payload) =>
+                                                void onUpgradeSubscription(current.id, payload)
+                                            }
+                                            onToggleAutoRenew={(current, enabled) =>
+                                                void onToggleAutoRenew(current.id, enabled)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className={'billing-empty-card'}>No active billing subscriptions exist yet.</div>
+                            )}
+                        </div>
+                    </section>
                 )}
 
-                <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
-                        <div>
-                            <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
-                                Active Subscriptions
-                            </h2>
-                            <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Renewals and upgrades stay available here, but every invoice is handled manually while
-                                payment gateway checkout is disabled.
-                            </p>
-                        </div>
-                        {subscriptions && subscriptions.length > 0 ? (
-                            <BillingPagination
-                                currentPage={subscriptionsPage}
-                                onPageChange={setSubscriptionsPage}
-                                pageSize={ACTIVE_SUBSCRIPTIONS_PAGE_SIZE}
-                                totalItems={subscriptions.length}
-                            />
-                        ) : subscriptionsLoading && subscriptions ? (
-                            <Spinner size={Spinner.Size.SMALL} />
-                        ) : null}
-                    </div>
+                {currentSection === 'invoices' &&
+                    renderInvoiceSection(
+                        'Invoices',
+                        'Pending and active invoice work stays here until payment is confirmed. Paid billing proof moves into the receipts section.',
+                        sectionInvoices,
+                        invoicesPage,
+                        setInvoicesPage,
+                        invoicesLoading,
+                        'No invoices have been created yet.'
+                    )}
 
-                    {!subscriptions && subscriptionsLoading ? (
-                        <Spinner centered />
-                    ) : subscriptions && subscriptions.length > 0 ? (
-                        <div className={'grid gap-4'}>
-                            {paginateItems(subscriptions, subscriptionsPage, ACTIVE_SUBSCRIPTIONS_PAGE_SIZE).map(
-                                (subscription) => (
-                                    <BillingSubscriptionCard
-                                        key={subscription.id}
-                                        subscription={subscription}
-                                        renewing={renewingSubscriptionId === subscription.id}
-                                        upgrading={upgradingSubscriptionId === subscription.id}
-                                        togglingAutoRenew={togglingSubscriptionId === subscription.id}
-                                        billingProfileReady={billingProfileComplete}
-                                        billingProfileBlockReason={billingProfileMissingLabels || null}
-                                        onRenew={(current) => void onRenewSubscription(current.id)}
-                                        onUpgrade={(current, payload) =>
-                                            void onUpgradeSubscription(current.id, payload)
-                                        }
-                                        onToggleAutoRenew={(current, enabled) =>
-                                            void onToggleAutoRenew(current.id, enabled)
-                                        }
-                                    />
-                                )
+                {currentSection === 'receipts' &&
+                    renderInvoiceSection(
+                        'Receipts',
+                        'Completed or paid invoices with receipt activity are collected here so billing proof stays separate from pending invoice work.',
+                        receiptInvoices,
+                        receiptsPage,
+                        setReceiptsPage,
+                        invoicesLoading,
+                        'No receipts are available yet.',
+                        true
+                    )}
+
+                {currentSection === 'orders' && (
+                    <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
+                        <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
+                            <div>
+                                <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                    My Billing Orders
+                                </h2>
+                                <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
+                                    Provisioning intent and server deployment status after payment verification.
+                                </p>
+                            </div>
+                            {orders && orders.length > 0 ? (
+                                <BillingPagination
+                                    currentPage={ordersPage}
+                                    onPageChange={setOrdersPage}
+                                    pageSize={ORDERS_PAGE_SIZE}
+                                    totalItems={orders.length}
+                                />
+                            ) : ordersLoading && orders ? (
+                                <Spinner size={Spinner.Size.SMALL} />
+                            ) : null}
+                        </div>
+
+                        <div className={'billing-section-scroll'}>
+                            {!orders && ordersLoading ? (
+                                <Spinner centered />
+                            ) : orders && orders.length > 0 ? (
+                                <div className={'grid gap-4'}>
+                                    {paginateItems(orders, ordersPage, ORDERS_PAGE_SIZE).map((order) =>
+                                        renderBillingOrderCard(order)
+                                    )}
+                                </div>
+                            ) : (
+                                <div className={'billing-empty-card'}>No billing orders have been placed yet.</div>
                             )}
                         </div>
-                    ) : (
-                        <div className={'billing-empty-card'}>No active billing subscriptions exist yet.</div>
-                    )}
-                </section>
-
-                <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
-                        <div>
-                            <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>Invoices</h2>
-                            <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                New orders, renewals, upgrades, and payment receipts flow through invoices first. Manual
-                                payment review is required before provisioning or renewal is applied.
-                            </p>
-                        </div>
-                        {invoices && invoices.length > 0 ? (
-                            <BillingPagination
-                                currentPage={invoicesPage}
-                                onPageChange={setInvoicesPage}
-                                pageSize={INVOICES_PAGE_SIZE}
-                                totalItems={invoices.length}
-                            />
-                        ) : invoicesLoading && invoices ? (
-                            <Spinner size={Spinner.Size.SMALL} />
-                        ) : null}
-                    </div>
-
-                    {!invoices && invoicesLoading ? (
-                        <Spinner centered />
-                    ) : invoices && invoices.length > 0 ? (
-                        <div className={'grid gap-4 xl:grid-cols-2'}>
-                            {paginateItems(invoices, invoicesPage, INVOICES_PAGE_SIZE).map(
-                                (invoice: BillingInvoice) => (
-                                    <article key={invoice.id} className={'billing-order-card'}>
-                                        {(() => {
-                                            const latestPayment = invoice.payments[0] || null;
-                                            const latestRefund = latestPayment?.refunds[0] || null;
-                                            const canRetryPayment =
-                                                invoice.provider !== 'manual' &&
-                                                !invoice.paidAt &&
-                                                ['open', 'draft', 'failed', 'processing'].includes(invoice.status);
-
-                                            return (
-                                                <>
-                                                    <div className={'flex flex-wrap items-start justify-between gap-3'}>
-                                                        <div>
-                                                            <p
-                                                                className={
-                                                                    'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
-                                                                }
-                                                            >
-                                                                {invoice.invoiceNumber}
-                                                            </p>
-                                                            <h3
-                                                                className={
-                                                                    'mt-2 text-xl font-black tracking-tight text-[#f8f6ef]'
-                                                                }
-                                                            >
-                                                                {getOrderStatusLabel(invoice.type)}
-                                                            </h3>
-                                                            <p
-                                                                className={
-                                                                    'mt-2 text-xs text-[color:var(--muted-foreground)]'
-                                                                }
-                                                            >
-                                                                Issued{' '}
-                                                                {invoice.issuedAt
-                                                                    ? invoice.issuedAt.toLocaleString()
-                                                                    : 'Unknown'}
-                                                            </p>
-                                                        </div>
-                                                        <span
-                                                            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getInvoiceStatusClasses(
-                                                                invoice.status
-                                                            )}`}
-                                                        >
-                                                            {getOrderStatusLabel(invoice.status)}
-                                                        </span>
-                                                    </div>
-
-                                                    <div
-                                                        className={
-                                                            'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)]'
-                                                        }
-                                                    >
-                                                        <div className={'flex items-center justify-between gap-3'}>
-                                                            <span>Amount</span>
-                                                            <span
-                                                                className={'font-semibold text-[color:var(--primary)]'}
-                                                            >
-                                                                {formatMoney(invoice.grandTotal)}
-                                                            </span>
-                                                        </div>
-                                                        <div className={'flex items-center justify-between gap-3'}>
-                                                            <span>Due At</span>
-                                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                                {invoice.dueAt
-                                                                    ? invoice.dueAt.toLocaleString()
-                                                                    : 'Unknown'}
-                                                            </span>
-                                                        </div>
-                                                        <div className={'flex items-center justify-between gap-3'}>
-                                                            <span>Paid At</span>
-                                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                                {invoice.paidAt
-                                                                    ? invoice.paidAt.toLocaleString()
-                                                                    : 'Not paid yet'}
-                                                            </span>
-                                                        </div>
-                                                        {latestPayment && (
-                                                            <div className={'flex items-center justify-between gap-3'}>
-                                                                <span>Payment Method</span>
-                                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                                    {latestPayment.paymentMethodBrand &&
-                                                                    latestPayment.paymentMethodLast4
-                                                                        ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${
-                                                                              latestPayment.paymentMethodLast4
-                                                                          }`
-                                                                        : latestPayment.providerPaymentMethod ||
-                                                                          latestPayment.provider ||
-                                                                          'Recorded'}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {invoice.providerStatus && (
-                                                            <div className={'flex items-center justify-between gap-3'}>
-                                                                <span>Gateway Status</span>
-                                                                <span className={'font-semibold text-[#f8f6ef]'}>
-                                                                    {getOrderStatusLabel(invoice.providerStatus)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {latestRefund && (
-                                                            <div className={'flex items-center justify-between gap-3'}>
-                                                                <span>Latest Refund</span>
-                                                                <span className={'font-semibold text-amber-200'}>
-                                                                    {latestRefund.refundNumber} •{' '}
-                                                                    {getOrderStatusLabel(latestRefund.status)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className={'mt-5 flex flex-wrap items-center gap-3'}>
-                                                        {!latestPayment && !invoice.paidAt && (
-                                                            <p
-                                                                className={
-                                                                    'text-xs leading-6 text-[color:var(--muted-foreground)]'
-                                                                }
-                                                            >
-                                                                Waiting for billing admin to confirm manual payment
-                                                                before this invoice can be marked paid.
-                                                            </p>
-                                                        )}
-                                                        {canRetryPayment && (
-                                                            <span className={'text-xs leading-6 text-amber-200'}>
-                                                                Online retry is unavailable while manual billing mode is
-                                                                active.
-                                                            </span>
-                                                        )}
-                                                        {invoice.hostedInvoiceUrl && (
-                                                            <a
-                                                                href={invoice.hostedInvoiceUrl}
-                                                                className={'billing-secondary-btn'}
-                                                            >
-                                                                Open Hosted Invoice
-                                                            </a>
-                                                        )}
-                                                        {invoice.invoicePdfUrl && (
-                                                            <a
-                                                                href={invoice.invoicePdfUrl}
-                                                                className={'billing-ghost-btn'}
-                                                                target={'_blank'}
-                                                                rel={'noreferrer'}
-                                                            >
-                                                                Invoice PDF
-                                                            </a>
-                                                        )}
-                                                        {latestPayment?.receiptPdfUrl && (
-                                                            <a
-                                                                href={latestPayment.receiptPdfUrl}
-                                                                className={'billing-ghost-btn'}
-                                                                target={'_blank'}
-                                                                rel={'noreferrer'}
-                                                            >
-                                                                Receipt PDF
-                                                            </a>
-                                                        )}
-                                                        {latestPayment && rootAdmin && (
-                                                            <a
-                                                                href={`/admin/billing/payments/${latestPayment.id}`}
-                                                                className={'billing-secondary-btn'}
-                                                            >
-                                                                Open Refund Tools
-                                                            </a>
-                                                        )}
-                                                        {latestPayment && !rootAdmin && (
-                                                            <p
-                                                                className={
-                                                                    'text-xs leading-6 text-[color:var(--muted-foreground)]'
-                                                                }
-                                                            >
-                                                                Refunds are reviewed by billing admin after payment
-                                                                verification.
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            );
-                                        })()}
-                                    </article>
-                                )
-                            )}
-                        </div>
-                    ) : (
-                        <div className={'billing-empty-card'}>No invoices have been created yet.</div>
-                    )}
-                </section>
-
-                <section className={'billing-panel mt-6 p-6 md:p-8'}>
-                    <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
-                        <div>
-                            <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>My Billing Orders</h2>
-                            <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
-                                Provisioning intent and server deployment status after payment verification.
-                            </p>
-                        </div>
-                        {orders && orders.length > 0 ? (
-                            <BillingPagination
-                                currentPage={ordersPage}
-                                onPageChange={setOrdersPage}
-                                pageSize={ORDERS_PAGE_SIZE}
-                                totalItems={orders.length}
-                            />
-                        ) : ordersLoading && orders ? (
-                            <Spinner size={Spinner.Size.SMALL} />
-                        ) : null}
-                    </div>
-
-                    {!orders && ordersLoading ? (
-                        <Spinner centered />
-                    ) : orders && orders.length > 0 ? (
-                        <div className={'grid gap-4 xl:grid-cols-2'}>
-                            {paginateItems(orders, ordersPage, ORDERS_PAGE_SIZE).map((order) => (
-                                <article key={order.id} className={'billing-order-card'}>
-                                    <div className={'flex flex-wrap items-start justify-between gap-3'}>
-                                        <div>
-                                            <p
-                                                className={
-                                                    'text-[10px] font-bold uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                Order #{order.id}
-                                            </p>
-                                            <h3 className={'mt-2 text-xl font-black tracking-tight text-[#f8f6ef]'}>
-                                                {order.serverName}
-                                            </h3>
-                                            <p className={'mt-2 text-xs text-[color:var(--muted-foreground)]'}>
-                                                {order.nodeName} • {order.gameName}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${getOrderStatusClasses(
-                                                order.status
-                                            )}`}
-                                        >
-                                            {getOrderStatusLabel(order.status)}
-                                        </span>
-                                    </div>
-
-                                    <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)]'}>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Resources</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {order.cpuCores} vCore / {order.memoryGb} GB / {order.diskGb} GB
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Total</span>
-                                            <span className={'font-semibold text-[color:var(--primary)]'}>
-                                                {formatMoney(order.total)}
-                                            </span>
-                                        </div>
-                                        <div className={'flex items-center justify-between gap-3'}>
-                                            <span>Placed</span>
-                                            <span className={'font-semibold text-[#f8f6ef]'}>
-                                                {order.createdAt ? order.createdAt.toLocaleString() : 'Unknown'}
-                                            </span>
-                                        </div>
-                                        {order.adminNotes && (
-                                            <div
-                                                className={
-                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3 text-xs leading-6 text-[color:var(--muted-foreground)]'
-                                                }
-                                            >
-                                                {order.adminNotes}
-                                            </div>
-                                        )}
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className={'billing-empty-card'}>No billing orders have been placed yet.</div>
-                    )}
-                </section>
+                    </section>
+                )}
 
                 <Modal
                     visible={addressPromptVisible}

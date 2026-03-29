@@ -8,16 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class SetSecurityHeaders
 {
-    /**
-     * Ideally we move away from X-Frame-Options/X-XSS-Protection and implement a
-     * proper standard CSP, but I can guarantee that will break for a lot of folks
-     * using custom plugins and who knows what image embeds.
-     *
-     * We'll circle back to that at a later date when it can be more fully controlled
-     * by the admin to support those cases without too much trouble.
-     */
-    private static array $headers = [
-        'X-Frame-Options' => 'DENY',
+    private const BASE_HEADERS = [
         'X-Content-Type-Options' => 'nosniff',
         'X-XSS-Protection' => '1; mode=block',
         'Referrer-Policy' => 'no-referrer-when-downgrade',
@@ -49,13 +40,136 @@ class SetSecurityHeaders
             throw $exception;
         }
 
-        foreach (static::$headers as $key => $value) {
+        foreach (self::BASE_HEADERS as $key => $value) {
             if (! $response->headers->has($key)) {
                 $response->headers->set($key, $value);
             }
         }
 
+        $this->applyFrameHeaders($response);
+
         return $response;
+    }
+
+    private function applyFrameHeaders(mixed $response): void
+    {
+        $frameAncestors = $this->normalizedFrameAncestors();
+
+        if ($frameAncestors === []) {
+            if (! $response->headers->has('X-Frame-Options')) {
+                $response->headers->set('X-Frame-Options', 'DENY');
+            }
+
+            return;
+        }
+
+        $response->headers->remove('X-Frame-Options');
+
+        $frameAncestorsDirective = 'frame-ancestors ' . implode(' ', $frameAncestors);
+        $contentSecurityPolicy = trim((string) $response->headers->get('Content-Security-Policy', ''));
+
+        if ($contentSecurityPolicy === '') {
+            $response->headers->set('Content-Security-Policy', $frameAncestorsDirective);
+
+            return;
+        }
+
+        if (str_contains(strtolower($contentSecurityPolicy), 'frame-ancestors')) {
+            return;
+        }
+
+        $response->headers->set(
+            'Content-Security-Policy',
+            rtrim($contentSecurityPolicy, '; ') . '; ' . $frameAncestorsDirective
+        );
+    }
+
+    private function normalizedFrameAncestors(): array
+    {
+        $origins = is_array(config('security.framing.allowed_origins', []))
+            ? config('security.framing.allowed_origins', [])
+            : [];
+
+        $normalized = [];
+
+        foreach ($origins as $origin) {
+            $value = trim((string) $origin);
+
+            if ($value === '') {
+                continue;
+            }
+
+            if (in_array(strtolower($value), ['auto', 'same-domain', 'same_domain'], true)) {
+                $normalized = [...$normalized, ...$this->autoFrameAncestors()];
+                continue;
+            }
+
+            if (in_array(strtolower($value), ['self', "'self'"], true)) {
+                $normalized[] = "'self'";
+                continue;
+            }
+
+            if (in_array(strtolower($value), ['none', "'none'"], true)) {
+                $normalized[] = "'none'";
+                continue;
+            }
+
+            $normalized[] = $value;
+        }
+
+        return array_values(array_unique(array_filter($normalized)));
+    }
+
+    private function autoFrameAncestors(): array
+    {
+        $appUrl = trim((string) config('app.url', ''));
+
+        if ($appUrl === '') {
+            return ["'self'"];
+        }
+
+        $parts = parse_url($appUrl);
+        $scheme = (string) ($parts['scheme'] ?? 'https');
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if ($host === '') {
+            return ["'self'"];
+        }
+
+        $origin = $scheme . '://' . $host . (isset($parts['port']) ? ':' . $parts['port'] : '');
+        $rootHost = $this->detectRootHost($host);
+
+        $ancestors = ["'self'", $origin];
+
+        if ($rootHost !== null) {
+            $ancestors[] = $scheme . '://' . $rootHost;
+            $ancestors[] = $scheme . '://*.' . $rootHost;
+        }
+
+        return array_values(array_unique($ancestors));
+    }
+
+    private function detectRootHost(string $host): ?string
+    {
+        if (filter_var($host, FILTER_VALIDATE_IP) || $host === 'localhost') {
+            return null;
+        }
+
+        $segments = array_values(array_filter(explode('.', $host)));
+        $count = count($segments);
+
+        if ($count < 2) {
+            return null;
+        }
+
+        $last = $segments[$count - 1];
+        $secondLast = $segments[$count - 2];
+
+        if (strlen($last) === 2 && strlen($secondLast) <= 3 && $count >= 3) {
+            return implode('.', array_slice($segments, -3));
+        }
+
+        return implode('.', array_slice($segments, -2));
     }
 
     private function isFiuuReturnRequest(Request $request): bool

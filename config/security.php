@@ -42,4 +42,20 @@ return [
         'email' => env('SECURITY_ALERT_EMAIL', env('MAIL_FROM_ADDRESS')),
         'cooldown_seconds' => (int) env('SECURITY_ALERT_COOLDOWN_SECONDS', 300),
     ],
+
+    /*
+     * Origins allowed to embed the panel inside an iframe.
+     * The default "auto" value derives from APP_URL and allows the same root
+     * domain, including sibling subdomains.
+     *
+     * Example:
+     * SECURITY_FRAME_ALLOWED_ORIGINS=auto
+     * SECURITY_FRAME_ALLOWED_ORIGINS=self,https://app.example.com,https://billing.example.com
+     */
+    'framing' => [
+        'allowed_origins' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', env('SECURITY_FRAME_ALLOWED_ORIGINS', 'auto'))
+        ))),
+    ],
 ];

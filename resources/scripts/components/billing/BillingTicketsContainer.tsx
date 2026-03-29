@@ -455,11 +455,15 @@ const BillingTicketsContainer = () => {
     const ComposeIcon = composeMeta.Icon;
 
     return (
-        <div className={'billing-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
+        <div className={'billing-shell h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'}>
             <style>{`
                 .billing-shell {
                     position: relative;
-                    overflow: hidden;
+                    height: 100%;
+                    min-height: 0;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    -webkit-overflow-scrolling: touch;
                     background:
                         radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
                         radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
@@ -504,6 +508,7 @@ const BillingTicketsContainer = () => {
                     position: relative;
                     z-index: 2;
                     width: 100%;
+                    min-height: 0;
                 }
 
                 .billing-panel,

@@ -39,11 +39,11 @@ export default () => {
     };
 
     return (
-        <div css={tw`my-0 font-mono`}>
+        <div css={tw`my-0 min-w-0 font-mono`}>
             <FlashMessageRender byKey={'account'} />
-            <div css={tw`grid grid-cols-1 gap-6 md:grid-cols-2`}>
+            <div css={tw`grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-2`}>
                 <section
-                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
+                    css={tw`min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>Create API Key</h2>
                     <div css={tw`mt-2`}>
@@ -52,7 +52,7 @@ export default () => {
                 </section>
 
                 <section
-                    css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
+                    css={tw`min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>API Keys</h2>
                     <div css={tw`relative mt-2`}>
@@ -89,9 +89,9 @@ export default () => {
                                             {key.lastUsedAt ? format(key.lastUsedAt, 'MMM do, yyyy HH:mm') : 'Never'}
                                         </p>
                                     </div>
-                                    <p css={tw`ml-2 hidden text-sm md:block`}>
+                                    <p css={tw`ml-2 hidden max-w-[10rem] text-sm xl:block 2xl:max-w-none`}>
                                         <code
-                                            css={tw`rounded-md border border-[#2f3f17] bg-[#0a1104] px-2 py-1 font-mono text-[color:var(--primary)]`}
+                                            css={tw`block truncate rounded-md border border-[#2f3f17] bg-[#0a1104] px-2 py-1 font-mono text-[color:var(--primary)]`}
                                         >
                                             {key.identifier}
                                         </code>

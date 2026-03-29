@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Server } from '@/api/server/getServer';
 import getServers from '@/api/getServers';
 import ServerRow from '@/components/dashboard/ServerRow';
 import useFlash from '@/plugins/useFlash';
+import { joinDiscordCommunity, useDiscordCommunityStatus } from '@/api/account/discordCommunity';
+import { useOAuthAccounts } from '@/api/account/oauth';
 import { useStoreState } from 'easy-peasy';
 import { usePersistedState } from '@/plugins/usePersistedState';
 import useSWR from 'swr';
@@ -13,20 +15,61 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import ToggleSwitch from '@/components/ui/toggle-switch';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
-export default () => {
+interface DashboardContainerProps {
+    searchQuery?: string;
+}
+
+export default ({ searchQuery = '' }: DashboardContainerProps) => {
     const { search } = useLocation();
     const defaultPage = Number(new URLSearchParams(search).get('page') || '1');
 
     const [page, setPage] = useState(!isNaN(defaultPage) && defaultPage > 0 ? defaultPage : 1);
-    const { clearFlashes, clearAndAddHttpError } = useFlash();
+    const [discordBusy, setDiscordBusy] = useState(false);
+    const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const uuid = useStoreState((state) => state.user.data!.uuid);
+    const username = useStoreState((state) => state.user.data!.username);
     const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
+    const dashboardWebsite = useStoreState((state) => state.settings.data?.website);
     const [showOnlyAdmin, setShowOnlyAdmin] = usePersistedState(`${uuid}:show_all_servers`, false);
-
+    const websiteHref = dashboardWebsite || (typeof window !== 'undefined' ? window.location.origin : '/');
     const { data: servers, error } = useSWR<PaginatedResult<Server>>(
         ['/api/client/servers', showOnlyAdmin && rootAdmin, page],
         () => getServers({ page, type: showOnlyAdmin && rootAdmin ? 'admin' : undefined })
     );
+    const { data: community, error: communityError, mutate: mutateCommunity } = useDiscordCommunityStatus();
+    const { data: providers, error: providersError } = useOAuthAccounts();
+    const discordProvider = useMemo(
+        () => (providers || []).find((provider) => provider.provider === 'discord') || null,
+        [providers]
+    );
+    const discordShortcutLabel = useMemo(() => {
+        if (discordBusy) {
+            return 'Working...';
+        }
+
+        if (!community?.enabled || !community?.configured || !community?.oauthReady) {
+            return 'Discord Unavailable';
+        }
+
+        if (!discordProvider?.linked) {
+            return 'Link Discord';
+        }
+
+        if (community.requiresRelink) {
+            return 'Reconnect Discord';
+        }
+
+        if (community.roleAssigned) {
+            return 'Open Discord';
+        }
+
+        if (community.member) {
+            return 'Apply Discord Role';
+        }
+
+        return 'Join Our Discord';
+    }, [community, discordBusy, discordProvider]);
+    const discordShortcutDisabled = discordBusy || !community;
 
     useEffect(() => {
         setPage(1);
@@ -48,13 +91,109 @@ export default () => {
         if (!error) clearFlashes('dashboard');
     }, [error]);
 
+    useEffect(() => {
+        if (communityError || providersError) {
+            clearAndAddHttpError({ key: 'dashboard', error: communityError || providersError });
+        }
+    }, [communityError, providersError]);
+
+    const onDiscordShortcutClick = async () => {
+        if (discordBusy || !community) {
+            return;
+        }
+
+        clearFlashes('dashboard');
+
+        if (!community.enabled || !community.configured || !community.oauthReady) {
+            addFlash({
+                key: 'dashboard',
+                type: 'error',
+                title: 'Discord Unavailable',
+                message: 'Discord community access is not configured right now.',
+            });
+
+            return;
+        }
+
+        if (!discordProvider?.linked || community.requiresRelink) {
+            if (discordProvider?.linkUrl) {
+                window.location.assign(discordProvider.linkUrl);
+                return;
+            }
+
+            addFlash({
+                key: 'dashboard',
+                type: 'error',
+                title: 'Discord Unavailable',
+                message: 'Discord linking is not available right now.',
+            });
+
+            return;
+        }
+
+        if (community.roleAssigned) {
+            if (community.inviteUrl) {
+                window.location.assign(community.inviteUrl);
+                return;
+            }
+
+            addFlash({
+                key: 'dashboard',
+                type: 'error',
+                title: 'Discord Unavailable',
+                message: 'No Discord invite URL is configured yet.',
+            });
+
+            return;
+        }
+
+        setDiscordBusy(true);
+
+        try {
+            const response = await joinDiscordCommunity();
+
+            if (!response.success) {
+                addFlash({
+                    key: 'dashboard',
+                    type: 'error',
+                    title: 'Discord Error',
+                    message: response.error || 'Unable to join the Discord community right now.',
+                });
+
+                return;
+            }
+
+            await mutateCommunity();
+
+            const redirectUrl = response.redirectUrl || community.inviteUrl;
+            if (redirectUrl) {
+                window.location.assign(redirectUrl);
+                return;
+            }
+
+            addFlash({
+                key: 'dashboard',
+                type: 'success',
+                title: 'Discord Ready',
+                message: response.roleAssigned
+                    ? 'Your Discord role was applied successfully.'
+                    : 'Your Discord account is now connected to the community.',
+            });
+        } catch (error) {
+            clearAndAddHttpError({ key: 'dashboard', error });
+        } finally {
+            setDiscordBusy(false);
+        }
+    };
+
     return (
-        <div className='dashboard-auth-shell min-h-screen px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'>
+        <div className='dashboard-auth-shell flex-1 h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'>
             <style>{`
                 .dashboard-theme {
                     position: relative;
                     z-index: 2;
                     display: flex;
+                    flex: 1;
                     flex-direction: column;
                     height: 100%;
                     min-height: 0;
@@ -62,9 +201,13 @@ export default () => {
 
                 .dashboard-auth-shell {
                     position: relative;
+                    display: flex;
+                    flex: 1;
+                    flex-direction: column;
                     overflow: hidden;
-                    height: 100dvh;
-                    min-height: 100dvh;
+                    height: 100%;
+                    min-height: 0;
+                    min-width: 0;
                     background:
                         radial-gradient(circle at 11% 0%, rgba(var(--primary-rgb), 0.16), transparent 34%),
                         radial-gradient(circle at 90% 10%, rgba(98, 196, 255, 0.14), transparent 26%),
@@ -108,14 +251,26 @@ export default () => {
 
                 .dashboard-auth-wrap {
                     margin: 0 auto;
+                    display: flex;
+                    flex: 1;
+                    flex-direction: column;
+                    overflow: hidden;
                     width: 100%;
                     max-width: 100%;
                     height: 100%;
                     min-height: 0;
+                    min-width: 0;
                 }
 
                 .dashboard-auth-topbar {
                     margin-bottom: 18px;
+                    display: grid;
+                    gap: 12px;
+                    grid-template-columns: minmax(0, 1fr);
+                }
+
+                .dashboard-auth-hero-card,
+                .dashboard-auth-shortcut {
                     border-radius: 24px;
                     border: 1px solid rgba(255, 255, 255, 0.09);
                     background:
@@ -126,59 +281,33 @@ export default () => {
                         inset 0 -18px 28px rgba(0, 0, 0, 0.1),
                         0 24px 44px -28px rgba(0, 0, 0, 0.82),
                         0 0 56px rgba(var(--primary-rgb), 0.08);
-                    padding: 18px 20px;
                     backdrop-filter: blur(10px);
+                }
+
+                .dashboard-auth-hero-card {
+                    padding: 20px 22px;
+                    min-width: 0;
+                }
+
+                .dashboard-auth-topbar-main {
                     display: grid;
-                    gap: 18px;
+                    gap: 16px;
                     grid-template-columns: minmax(0, 1fr);
-                }
-
-                .dashboard-auth-pill-row {
-                    display: flex;
-                    flex-wrap: wrap;
                     align-items: center;
-                    gap: 10px;
-                    margin-bottom: 14px;
-                }
-
-                .dashboard-auth-pill {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-height: 34px;
-                    border-radius: 999px;
-                    border: 1px solid rgba(var(--primary-rgb), 0.42);
-                    background: linear-gradient(120deg, rgba(var(--primary-rgb), 0.24), rgba(var(--primary-rgb), 0.08));
-                    color: rgba(230, 252, 180, 0.95);
-                    font-size: 0.64rem;
-                    font-weight: 800;
-                    letter-spacing: 0.2em;
-                    text-transform: uppercase;
-                    padding: 0 14px;
-                    text-shadow: 0 0 10px rgba(var(--primary-rgb), 0.46);
-                }
-
-                .dashboard-auth-route {
-                    color: rgba(248, 246, 239, 0.56);
-                    font-size: 0.68rem;
-                    letter-spacing: 0.18em;
-                    text-transform: uppercase;
-                    font-weight: 700;
                 }
 
                 .dashboard-auth-title {
                     margin: 0;
-                    font-size: clamp(2rem, 4vw, 2.35rem);
+                    font-size: clamp(1.65rem, 3.2vw, 2.2rem);
                     line-height: 1.02;
                     letter-spacing: 0.02em;
-                    text-transform: uppercase;
                     font-weight: 900;
                     color: rgba(248, 246, 239, 0.97);
                     text-shadow: 0 0 18px rgba(248, 246, 239, 0.19);
                 }
 
                 .dashboard-auth-subtitle {
-                    margin-top: 8px;
+                    margin-top: 6px;
                     font-size: 0.85rem;
                     color: rgba(174, 183, 194, 0.82);
                     letter-spacing: 0.03em;
@@ -199,6 +328,45 @@ export default () => {
                         0 18px 30px -24px rgba(0, 0, 0, 0.52);
                 }
 
+                .dashboard-auth-shortcuts {
+                    display: grid;
+                    gap: 12px;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                .dashboard-auth-shortcut {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 92px;
+                    min-width: 112px;
+                    padding: 0 18px;
+                    appearance: none;
+                    cursor: pointer;
+                    color: rgba(248, 246, 239, 0.88);
+                    text-decoration: none;
+                    font: inherit;
+                    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+                }
+
+                .dashboard-auth-shortcut:hover {
+                    transform: translateY(-1px);
+                    border-color: rgba(var(--primary-rgb), 0.24);
+                    box-shadow:
+                        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                        inset 0 -18px 28px rgba(0, 0, 0, 0.12),
+                        0 20px 30px -22px rgba(var(--primary-rgb), 0.2);
+                }
+
+                .dashboard-auth-shortcut-icon {
+                    font-size: 2rem;
+                }
+
+                .dashboard-auth-shortcut:disabled {
+                    cursor: wait;
+                    opacity: 0.7;
+                }
+
                 .dashboard-rows-wrap {
                     display: flex;
                     flex-direction: column;
@@ -206,15 +374,24 @@ export default () => {
                 }
 
                 .dashboard-scroll-region {
-                    flex: 1;
+                    flex: 1 1 0%;
                     min-height: 0;
+                    height: 0;
+                    max-height: 100%;
                     overflow-y: auto;
                     overflow-x: hidden;
                     -webkit-overflow-scrolling: touch;
                     overscroll-behavior-y: contain;
                     touch-action: pan-y;
-                    padding-right: 2px;
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
                     padding-bottom: 10px;
+                }
+
+                .dashboard-scroll-region::-webkit-scrollbar {
+                    width: 0;
+                    height: 0;
+                    display: none;
                 }
 
                 .dashboard-empty-panel {
@@ -465,13 +642,14 @@ export default () => {
                 }
 
                 @media (max-width: 640px) {
-                    .dashboard-auth-topbar {
+                    .dashboard-auth-hero-card {
                         border-radius: 18px;
-                        padding: 14px 14px 12px;
+                        padding: 16px 16px 14px;
                     }
 
-                    .dashboard-auth-pill-row {
-                        margin-bottom: 10px;
+                    .dashboard-auth-shortcut {
+                        min-height: 78px;
+                        border-radius: 18px;
                     }
 
                     .dashboard-server-row {
@@ -480,28 +658,9 @@ export default () => {
                 }
 
                 @media (max-width: 1023px) {
-                    .dashboard-auth-shell {
-                        overflow-y: auto;
-                        overflow-x: hidden;
-                        height: auto;
-                        min-height: calc(100dvh - 48px);
-                    }
-
-                    .dashboard-theme {
-                        height: auto;
-                        min-height: calc(100dvh - 48px);
-                    }
-
                     .dashboard-scroll-region {
-                        flex: 0 0 auto;
-                        min-height: auto;
-                        overflow: visible;
                         padding-right: 0;
                         padding-bottom: 18px;
-                    }
-
-                    .dashboard-auth-topbar {
-                        grid-template-columns: minmax(0, 1fr);
                     }
 
                     .dashboard-auth-toggle-wrap {
@@ -518,7 +677,16 @@ export default () => {
                 @media (min-width: 1024px) {
                     .dashboard-auth-topbar {
                         grid-template-columns: minmax(0, 1fr) auto;
-                        align-items: start;
+                        align-items: stretch;
+                    }
+
+                    .dashboard-auth-topbar-main {
+                        grid-template-columns: minmax(0, 1fr) auto;
+                    }
+
+                    .dashboard-auth-shortcuts {
+                        grid-auto-flow: column;
+                        grid-auto-columns: 118px;
                     }
                 }
 
@@ -533,26 +701,51 @@ export default () => {
                 <FlashMessageRender byKey={'dashboard'} />
 
                 <div className='dashboard-auth-topbar'>
-                    <div>
-                        <div className='dashboard-auth-pill-row'>
-                            <span className='dashboard-auth-pill'>Secure server grid</span>
-                            <span className='dashboard-auth-route'>Route /dashboard</span>
+                    <div className='dashboard-auth-hero-card'>
+                        <div className='dashboard-auth-topbar-main'>
+                            <div>
+                                <h1 className='dashboard-auth-title'>Hi {username || 'there'}!</h1>
+                                <p className='dashboard-auth-subtitle'>
+                                    {showOnlyAdmin
+                                        ? 'Your full server inventory is available below.'
+                                        : 'Your servers are available below.'}
+                                </p>
+                            </div>
+                            {rootAdmin && (
+                                <div className='dashboard-auth-toggle-wrap'>
+                                    <ToggleSwitch
+                                        id='toggle-admin-servers'
+                                        checked={!!showOnlyAdmin}
+                                        onChange={(value) => setShowOnlyAdmin(value)}
+                                        label={showOnlyAdmin ? 'Showing All Servers' : 'Showing My Servers'}
+                                    />
+                                </div>
+                            )}
                         </div>
-                        <h1 className='dashboard-auth-title'>Your Servers</h1>
-                        <p className='dashboard-auth-subtitle'>
-                            {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
-                        </p>
                     </div>
-                    {rootAdmin && (
-                        <div className='dashboard-auth-toggle-wrap'>
-                            <ToggleSwitch
-                                id='toggle-admin-servers'
-                                checked={!!showOnlyAdmin}
-                                onChange={(value) => setShowOnlyAdmin(value)}
-                                label={showOnlyAdmin ? 'Showing All Servers' : 'Showing My Servers'}
-                            />
-                        </div>
-                    )}
+
+                    <div className='dashboard-auth-shortcuts'>
+                        <button
+                            type='button'
+                            className='dashboard-auth-shortcut'
+                            onClick={() => void onDiscordShortcutClick()}
+                            disabled={discordShortcutDisabled}
+                            title={discordShortcutLabel}
+                        >
+                            <span className='material-icons-round dashboard-auth-shortcut-icon'>sports_esports</span>
+                            <span className='sr-only'>{discordShortcutLabel}</span>
+                        </button>
+                        <a
+                            className='dashboard-auth-shortcut'
+                            href={websiteHref}
+                            target='_blank'
+                            rel='noreferrer'
+                            title='Website'
+                        >
+                            <span className='material-icons-round dashboard-auth-shortcut-icon'>language</span>
+                            <span className='sr-only'>Website</span>
+                        </a>
+                    </div>
                 </div>
 
                 <div className='dashboard-scroll-region'>
@@ -560,23 +753,50 @@ export default () => {
                         <PageLoadingSkeleton showChrome={false} rows={8} className='min-h-[420px]' />
                     ) : (
                         <Pagination data={servers} onPageSelect={setPage}>
-                            {({ items }) =>
-                                items.length > 0 ? (
+                            {({ items }) => {
+                                const searchValue = searchQuery.trim().toLowerCase();
+                                const filteredItems = searchValue
+                                    ? items.filter((server) =>
+                                          [
+                                              server.name,
+                                              String(server.id || ''),
+                                              String(server.identifier || ''),
+                                              String(server.internalId || ''),
+                                              server.__deprecatedUuidShort || '',
+                                              server.uuid,
+                                              server.node,
+                                              server.description || '',
+                                              server.allocations
+                                                  .map(
+                                                      (allocation) =>
+                                                          `${allocation.alias || allocation.ip}:${allocation.port}`
+                                                  )
+                                                  .join(' '),
+                                          ]
+                                              .join(' ')
+                                              .toLowerCase()
+                                              .includes(searchValue)
+                                      )
+                                    : items;
+
+                                return filteredItems.length > 0 ? (
                                     <div className='dashboard-rows-wrap'>
-                                        {items.map((server) => (
+                                        {filteredItems.map((server) => (
                                             <ServerRow key={server.uuid} server={server} />
                                         ))}
                                     </div>
                                 ) : (
                                     <div className='dashboard-empty-panel'>
                                         <p className='text-xs text-[rgba(174,183,194,0.78)]'>
-                                            {showOnlyAdmin
+                                            {searchValue
+                                                ? 'No servers on this page match your search.'
+                                                : showOnlyAdmin
                                                 ? 'There are no other servers to display.'
                                                 : 'There are no servers associated with your account.'}
                                         </p>
                                     </div>
-                                )
-                            }
+                                );
+                            }}
                         </Pagination>
                     )}
                 </div>

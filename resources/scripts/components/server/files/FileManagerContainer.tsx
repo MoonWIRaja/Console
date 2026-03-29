@@ -105,7 +105,11 @@ export default () => {
                         : absolutePath.replace(/^\/+/, '');
                 };
 
-                while (queue.length > 0 && scannedDirectories < MAX_SEARCH_DIRS && results.length < MAX_SEARCH_RESULTS) {
+                while (
+                    queue.length > 0 &&
+                    scannedDirectories < MAX_SEARCH_DIRS &&
+                    results.length < MAX_SEARCH_RESULTS
+                ) {
                     if (!active) return;
                     if (Date.now() > deadline) break;
 
@@ -211,17 +215,24 @@ export default () => {
             <ErrorBoundary>
                 <div
                     className={
-                        'flex h-[calc(100dvh-8.5rem)] min-h-[420px] flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] lg:h-[calc(100dvh-9rem)]'
+                        'flex min-h-0 flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] lg:h-[calc(100dvh-9rem)] lg:min-h-[420px]'
                     }
                 >
-                    <div className={'sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'}>
+                    <div
+                        className={
+                            'sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'
+                        }
+                    >
                         <div className={'flex flex-wrap-reverse items-start xl:flex-nowrap'}>
                             <FileManagerBreadcrumbs
                                 renderLeft={
                                     <FileActionCheckbox
                                         type={'checkbox'}
                                         css={tw`mx-4`}
-                                        checked={selectedFilesLength === (visibleFiles.length === 0 ? -1 : visibleFiles.length)}
+                                        checked={
+                                            selectedFilesLength ===
+                                            (visibleFiles.length === 0 ? -1 : visibleFiles.length)
+                                        }
                                         onChange={onSelectAllClick}
                                     />
                                 }
@@ -252,7 +263,12 @@ export default () => {
 
                     <div className={'min-h-0 flex-1 overflow-y-auto p-4'}>
                         {!files ? (
-                            <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={8} className='min-h-[320px]' />
+                            <PageLoadingSkeleton
+                                showChrome={false}
+                                showSpinner={false}
+                                rows={8}
+                                className='min-h-[320px]'
+                            />
                         ) : !files.length ? (
                             <p css={tw`text-center text-sm text-gray-400`}>This directory seems to be empty.</p>
                         ) : !visibleFiles.length && search.trim() && indexing ? (

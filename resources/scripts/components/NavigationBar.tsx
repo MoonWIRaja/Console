@@ -11,7 +11,6 @@ import {
     Sidebar,
     SidebarBody,
     SidebarLink,
-    SidebarLabel,
     SidebarMode,
     useSidebar,
 } from '@/components/elements/sidebar/AceternitySidebar';
@@ -24,6 +23,23 @@ interface NavigationBarProps {
     sidebarOpen?: boolean;
     setSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
     showMobileHeader?: boolean;
+    showSidebarLogo?: boolean;
+    topOffset?: number;
+}
+
+interface SidebarSectionLinkItem {
+    label: string;
+    href: string;
+    icon: React.ReactNode;
+    active?: boolean;
+    external?: boolean;
+    onClick?: () => void;
+}
+
+interface SidebarSectionProps {
+    label: string;
+    items: SidebarSectionLinkItem[];
+    defaultExpanded?: boolean;
 }
 
 // ---------- Logo ----------
@@ -96,6 +112,116 @@ const SidebarLogo = () => {
                     </div>
                 )}
             </motion.div>
+        </div>
+    );
+};
+
+const SidebarSection = ({ label, items, defaultExpanded = false }: SidebarSectionProps) => {
+    const { open, animate } = useSidebar();
+    const expanded = animate ? open : true;
+    const hasActiveItem = items.some((item) => item.active);
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded || hasActiveItem);
+
+    useEffect(() => {
+        if (hasActiveItem) {
+            setIsExpanded(true);
+        }
+    }, [hasActiveItem]);
+
+    if (!items.length) {
+        return null;
+    }
+
+    return (
+        <div
+            style={{
+                marginBottom: expanded ? '14px' : '10px',
+            }}
+        >
+            {expanded ? (
+                <button
+                    type='button'
+                    onClick={() => setIsExpanded((value) => !value)}
+                    style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginBottom: '8px',
+                        padding: '8px 10px 6px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'rgba(248, 246, 239, 0.62)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                    }}
+                >
+                    <span
+                        style={{
+                            fontSize: '0.67rem',
+                            fontWeight: 900,
+                            letterSpacing: '0.18em',
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {label}
+                    </span>
+                    <span
+                        className='material-icons-round'
+                        style={{
+                            fontSize: '18px',
+                            color: 'rgba(248, 246, 239, 0.54)',
+                            transform: isExpanded ? 'rotate(0deg)' : 'rotate(180deg)',
+                            transition: 'transform 0.2s ease',
+                            flexShrink: 0,
+                        }}
+                    >
+                        expand_less
+                    </span>
+                </button>
+            ) : (
+                <div
+                    aria-hidden='true'
+                    style={{
+                        width: '100%',
+                        height: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <span
+                        style={{
+                            width: '22px',
+                            height: '1px',
+                            borderRadius: '999px',
+                            background: 'rgba(255, 255, 255, 0.12)',
+                        }}
+                    />
+                </div>
+            )}
+
+            {(expanded ? isExpanded : true) && (
+                <div>
+                    {items.map((item) => (
+                        <SidebarLink
+                            key={`${label}-${item.label}-${item.href}`}
+                            link={{
+                                label: item.label,
+                                href: item.href,
+                                icon: item.icon,
+                                external: item.external,
+                                onClick: item.onClick,
+                            }}
+                            active={item.active}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -462,11 +588,97 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
 };
 
 // ---------- NavigationBar (exported) ----------
-export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: NavigationBarProps) => {
+export default ({
+    sidebarOpen,
+    setSidebarOpen,
+    showMobileHeader = true,
+    showSidebarLogo = true,
+    topOffset = 0,
+}: NavigationBarProps) => {
     const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
     const userName = useStoreState((state: ApplicationStore) => state.user.data?.username || 'User');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
+    const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+
+    const createIcon = (icon: string) => (
+        <span className='material-icons-round' style={{ fontSize: '22px' }}>
+            {icon}
+        </span>
+    );
+
+    const billingSection = location.pathname === '/billing' ? searchParams.get('section') || 'plan' : null;
+    const isSupportRoute = location.pathname.startsWith('/tickets') || location.pathname.startsWith('/billing/tickets');
+    const supportSection = isSupportRoute ? searchParams.get('view') || 'tickets' : null;
+
+    const myServerItems: SidebarSectionLinkItem[] = [
+        {
+            label: 'Dashboard',
+            href: '/',
+            icon: createIcon('dashboard'),
+            active: location.pathname === '/',
+        },
+    ];
+
+    const myBillingItems: SidebarSectionLinkItem[] = [
+        {
+            label: 'Plan',
+            href: '/billing?section=plan',
+            icon: createIcon('inventory_2'),
+            active: billingSection === 'plan',
+        },
+        {
+            label: 'My Subscriptions',
+            href: '/billing?section=subscriptions',
+            icon: createIcon('subscriptions'),
+            active: billingSection === 'subscriptions',
+        },
+        {
+            label: 'Invoices',
+            href: '/billing?section=invoices',
+            icon: createIcon('receipt_long'),
+            active: billingSection === 'invoices',
+        },
+        {
+            label: 'Receipts',
+            href: '/billing?section=receipts',
+            icon: createIcon('fact_check'),
+            active: billingSection === 'receipts',
+        },
+        {
+            label: 'My Billing Orders',
+            href: '/billing?section=orders',
+            icon: createIcon('shopping_bag'),
+            active: billingSection === 'orders',
+        },
+    ];
+
+    const mySupportItems: SidebarSectionLinkItem[] = [
+        {
+            label: 'Tiket',
+            href: '/tickets?view=tickets',
+            icon: createIcon('confirmation_number'),
+            active: supportSection === 'tickets',
+        },
+        {
+            label: 'Chat',
+            href: '/tickets?view=chat',
+            icon: createIcon('forum'),
+            active: supportSection === 'chat',
+        },
+    ];
+
+    const adminItems: SidebarSectionLinkItem[] = rootAdmin
+        ? [
+              {
+                  label: 'Admin Panel',
+                  href: '/admin',
+                  icon: createIcon('admin_panel_settings'),
+                  external: true,
+                  active: location.pathname.startsWith('/admin'),
+              },
+          ]
+        : [];
 
     const onTriggerLogout = async () => {
         if (isLoggingOut) return;
@@ -557,73 +769,30 @@ export default ({ sidebarOpen, setSidebarOpen, showMobileHeader = true }: Naviga
                     ) !important;
                     border-color: rgba(var(--primary-rgb), 0.3) !important;
                 }
+                .sidebar-scroll-region {
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .sidebar-scroll-region::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
+                    height: 0;
+                }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
-                <SidebarBody showMobileHeader={showMobileHeader}>
-                    <SidebarLogo />
+                <SidebarBody showMobileHeader={showMobileHeader} topOffset={topOffset}>
+                    {showSidebarLogo ? <SidebarLogo /> : null}
 
                     {/* Nav */}
-                    <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-                        <SidebarLink
-                            link={{
-                                label: 'Dashboard',
-                                href: '/',
-                                icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                        dashboard
-                                    </span>
-                                ),
-                            }}
-                            active={location.pathname === '/'}
-                        />
-
-                        <SidebarLink
-                            link={{
-                                label: 'Billing',
-                                href: '/billing',
-                                icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                        payments
-                                    </span>
-                                ),
-                            }}
-                            active={location.pathname === '/billing'}
-                        />
-
-                        <SidebarLink
-                            link={{
-                                label: 'Support',
-                                href: '/tickets',
-                                icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                        support_agent
-                                    </span>
-                                ),
-                            }}
-                            active={
-                                location.pathname.startsWith('/tickets') ||
-                                location.pathname.startsWith('/billing/tickets')
-                            }
-                        />
-
-                        {rootAdmin && (
-                            <>
-                                <SidebarLabel label='ADMIN' />
-                                <SidebarLink
-                                    link={{
-                                        label: 'Admin Panel',
-                                        href: '/admin',
-                                        icon: (
-                                            <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                                admin_panel_settings
-                                            </span>
-                                        ),
-                                        external: true,
-                                    }}
-                                />
-                            </>
-                        )}
+                    <nav
+                        className='sidebar-scroll-region'
+                        style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 12px' }}
+                    >
+                        <SidebarSection label='My Server' items={myServerItems} defaultExpanded />
+                        <SidebarSection label='My Billing' items={myBillingItems} defaultExpanded />
+                        <SidebarSection label='My Support' items={mySupportItems} defaultExpanded />
+                        {adminItems.length > 0 && <SidebarSection label='Admin' items={adminItems} />}
                     </nav>
 
                     <UserFooter userName={userName} onLogout={onTriggerLogout} />
@@ -637,6 +806,8 @@ export const ServerNavigationBar = ({
     sidebarOpen,
     setSidebarOpen,
     showMobileHeader = true,
+    showSidebarLogo = true,
+    topOffset = 0,
     routes,
     serverId,
 }: NavigationBarProps & { routes: any[]; serverId: string }) => {
@@ -701,6 +872,51 @@ export const ServerNavigationBar = ({
     };
 
     const visibleRoutes = routes.filter((r) => !!r.name);
+    const createIcon = (icon: string) => (
+        <span className='material-icons-round' style={{ fontSize: '22px' }}>
+            {icon}
+        </span>
+    );
+
+    const serverRouteItems: SidebarSectionLinkItem[] = visibleRoutes.map((route) => ({
+        label: route.name,
+        href: `/server/${serverId}${route.path.replace('/*', '')}`,
+        icon: createIcon(getIconForRoute(route.name)),
+        active: matchUrl(route.path),
+    }));
+
+    const getSectionItems = (labels: string[]): SidebarSectionLinkItem[] =>
+        labels
+            .map((label) => serverRouteItems.find((item) => item.label === label))
+            .filter((item): item is SidebarSectionLinkItem => !!item);
+
+    const overviewItems = getSectionItems(['Console']);
+    const configurationItems = getSectionItems(['Schedules', 'Network', 'Startup', 'Settings']);
+    const managementItems = getSectionItems(['Files', 'Databases', 'Backups']);
+    const accessAndLogsItems = getSectionItems(['Users', 'Activity']);
+
+    const adminItems: SidebarSectionLinkItem[] = rootAdmin
+        ? [
+              {
+                  label: 'Admin Panel',
+                  href: '/admin',
+                  icon: createIcon('admin_panel_settings'),
+                  external: true,
+                  active: location.pathname.startsWith('/admin'),
+              },
+              ...(!adminServerId
+                  ? []
+                  : [
+                        {
+                            label: 'Admin Server',
+                            href: `/admin/servers/view/${adminServerId}`,
+                            icon: createIcon('tune'),
+                            external: true,
+                            active: false,
+                        },
+                    ]),
+          ]
+        : [];
 
     return (
         <>
@@ -763,58 +979,38 @@ export const ServerNavigationBar = ({
                     ) !important;
                     border-color: rgba(var(--primary-rgb), 0.3) !important;
                 }
+                .sidebar-scroll-region {
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .sidebar-scroll-region::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
+                    height: 0;
+                }
             `}</style>
             <SpinnerOverlay visible={isLoggingOut} />
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
-                <SidebarBody showMobileHeader={showMobileHeader}>
-                    <SidebarLogo />
+                <SidebarBody showMobileHeader={showMobileHeader} topOffset={topOffset}>
+                    {showSidebarLogo ? <SidebarLogo /> : null}
 
                     {/* Nav */}
-                    <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-                        <SidebarLabel label='SERVER' />
-                        {visibleRoutes.map((route) => (
-                            <SidebarLink
-                                key={route.path}
-                                link={{
-                                    label: route.name,
-                                    href: `/server/${serverId}${route.path.replace('/*', '')}`,
-                                    icon: (
-                                        <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                            {getIconForRoute(route.name)}
-                                        </span>
-                                    ),
-                                }}
-                                active={matchUrl(route.path)}
-                            />
-                        ))}
-                        {rootAdmin && !!adminServerId && (
-                            <>
-                                <SidebarLabel label='ADMIN' />
-                                <SidebarLink
-                                    link={{
-                                        label: 'Admin Server',
-                                        href: `/admin/servers/view/${adminServerId}`,
-                                        icon: (
-                                            <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                                admin_panel_settings
-                                            </span>
-                                        ),
-                                        external: true,
-                                    }}
-                                />
-                            </>
-                        )}
+                    <nav
+                        className='sidebar-scroll-region'
+                        style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 12px' }}
+                    >
+                        <SidebarSection label='Overview' items={overviewItems} defaultExpanded />
+                        <SidebarSection label='Configuration' items={configurationItems} defaultExpanded />
+                        <SidebarSection label='Management' items={managementItems} defaultExpanded />
+                        <SidebarSection label='Access & Logs' items={accessAndLogsItems} defaultExpanded />
+                        <SidebarSection label='Admin' items={adminItems} />
                     </nav>
                     <div style={{ padding: '0 12px 8px' }}>
                         <SidebarLink
                             link={{
                                 label: 'Back to Dashboard',
                                 href: '/',
-                                icon: (
-                                    <span className='material-icons-round' style={{ fontSize: '22px' }}>
-                                        dashboard
-                                    </span>
-                                ),
+                                icon: createIcon('dashboard'),
                             }}
                             active={location.pathname === '/'}
                         />

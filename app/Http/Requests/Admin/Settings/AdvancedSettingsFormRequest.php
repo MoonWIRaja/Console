@@ -26,6 +26,7 @@ class AdvancedSettingsFormRequest extends AdminFormRequest
             'pterodactyl:guzzle:timeout' => 'required|integer|between:1,60',
             'pterodactyl:guzzle:connect_timeout' => 'required|integer|between:1,60',
             'pterodactyl:client_features:allocations:enabled' => 'required|in:true,false',
+            'app:website' => 'nullable|url|max:2048',
             'pterodactyl:client_features:allocations:range_start' => [
                 'nullable',
                 'required_if:pterodactyl:client_features:allocations:enabled,true',
@@ -143,6 +144,7 @@ class AdvancedSettingsFormRequest extends AdminFormRequest
             'turnstile:verify_domain' => 'Turnstile Verify Domain',
             'pterodactyl:guzzle:timeout' => 'HTTP Request Timeout',
             'pterodactyl:guzzle:connect_timeout' => 'HTTP Connection Timeout',
+            'app:website' => 'Panel Website URL',
             'pterodactyl:client_features:allocations:enabled' => 'Auto Create Allocations Enabled',
             'pterodactyl:client_features:allocations:range_start' => 'Starting Port',
             'pterodactyl:client_features:allocations:range_end' => 'Ending Port',

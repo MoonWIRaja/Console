@@ -19,6 +19,7 @@ class SettingsServiceProvider extends ServiceProvider
     protected array $keys = [
         'app:name',
         'app:logo',
+        'app:website',
         'app:locale',
         'turnstile:enabled',
         'turnstile:secret_key',

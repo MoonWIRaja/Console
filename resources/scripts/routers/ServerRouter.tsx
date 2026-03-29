@@ -2,6 +2,7 @@ import TransferListener from '@/components/server/TransferListener';
 import React, { useEffect, useState } from 'react';
 import { Route, Switch, useRouteMatch } from 'react-router-dom';
 import { ServerNavigationBar } from '@/components/NavigationBar';
+import DashboardTopbar, { DASHBOARD_TOPBAR_HEIGHT } from '@/components/dashboard/DashboardTopbar';
 import TransitionRouter from '@/TransitionRouter';
 import WebsocketHandler from '@/components/server/WebsocketHandler';
 import { ServerContext } from '@/state/server';
@@ -16,18 +17,18 @@ import ConflictStateRenderer from '@/components/server/ConflictStateRenderer';
 import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
-import useSiteBranding from '@/hooks/useSiteBranding';
+import ConsoleSidebar from '@/components/server/console/ConsoleSidebar';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
     const location = useLocation();
-    const { name } = useSiteBranding();
 
     const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
     const [error, setError] = useState('');
 
     const id = ServerContext.useStoreState((state) => state.server.data?.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data?.uuid);
+    const serverName = ServerContext.useStoreState((state) => state.server.data?.name || 'Server');
     const serverStatus = ServerContext.useStoreState((state) => state.server.data?.status ?? null);
     const inConflictState = ServerContext.useStoreState((state) => state.server.inConflictState);
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
@@ -135,17 +136,23 @@ export default () => {
         serverStatus === 'installing' || serverStatus === 'install_failed' || serverStatus === 'reinstall_failed';
     // Allow Console route during install/reinstall so users can still monitor progress.
     const canBypassConflictState = isConsoleRoute && (rootAdmin || isInstallConflict);
-
     return (
         <React.Fragment key={'server-router'}>
             <div
-                className='font-sans fixed inset-0 z-0 flex h-screen min-h-0 w-full overflow-hidden'
+                className='font-sans fixed inset-0 z-0 h-screen min-h-0 w-full overflow-hidden'
                 style={{
                     height: '100dvh',
                     background: 'linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
                     color: 'var(--foreground)',
                 }}
             >
+                <DashboardTopbar
+                    isMobileViewport={isMobileViewport}
+                    onOpenSidebar={isMobileViewport ? () => setMobileSidebarOpen(true) : undefined}
+                    onCloseSidebar={isMobileViewport ? () => setMobileSidebarOpen(false) : undefined}
+                    isSidebarOpen={isMobileViewport ? mobileSidebarOpen : false}
+                    centerTitle={serverName}
+                />
                 <style>{`
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
                     @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
@@ -228,6 +235,24 @@ export default () => {
                         overflow: hidden;
                     }
 
+                    .server-route-layout {
+                        position: relative;
+                        display: flex;
+                        flex: 1;
+                        min-height: 0;
+                        height: 100%;
+                        width: 100%;
+                        min-width: 0;
+                        flex-direction: column;
+                        overflow: hidden;
+                    }
+
+                    @media (min-width: 1280px) {
+                        .server-route-layout {
+                            flex-direction: row;
+                        }
+                    }
+
                     .server-route-fill > * {
                         display: flex;
                         flex: 1;
@@ -296,126 +321,149 @@ export default () => {
                     }
 
                     @media (max-width: 1023px) {
+                        .server-route-layout {
+                            height: auto;
+                            min-height: auto;
+                            overflow: visible;
+                        }
+
                         .server-theme-scroll {
                             padding-bottom: 0;
+                            overflow-y: auto;
+                            overflow-x: hidden;
+                        }
+
+                        .server-route-fill,
+                        .server-route-fill > *,
+                        .server-route-fill section,
+                        .server-route-fill .fade-enter,
+                        .server-route-fill .fade-enter-active,
+                        .server-route-fill .fade-enter-done,
+                        .server-route-fill .fade-exit,
+                        .server-route-fill .fade-exit-active,
+                        .server-route-fill [class*='Fade__Container'] {
+                            height: auto;
+                            min-height: auto;
+                            overflow: visible;
+                        }
+
+                        .server-main-content .content-container-full {
+                            flex: 0 0 auto;
+                            overflow: visible;
+                        }
+
+                        .server-main-content .server-content-shell {
+                            min-height: auto;
+                            border-radius: 1.1rem;
+                        }
+
+                        .server-main-content .server-content-body {
+                            overflow: visible;
+                            padding: 0.85rem;
                         }
                     }
                 `}</style>
-                <ServerNavigationBar
-                    sidebarOpen={isMobileViewport ? mobileSidebarOpen : undefined}
-                    setSidebarOpen={isMobileViewport ? setMobileSidebarOpen : undefined}
-                    showMobileHeader={false}
-                    routes={routes.server}
-                    serverId={match.params.id}
-                />
-
-                <main
-                    className='server-main-content flex-1 min-h-0 flex flex-col overflow-hidden relative'
+                <div
                     style={{
-                        minWidth: 0,
-                        fontFamily: "var(--font-sans, 'Inter', sans-serif)",
-                        backgroundColor: 'transparent',
+                        position: 'absolute',
+                        top: `${DASHBOARD_TOPBAR_HEIGHT}px`,
+                        right: 0,
+                        bottom: 0,
+                        left: 0,
+                        display: 'flex',
+                        minHeight: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    {isMobileViewport && (
-                        <>
-                            <div
-                                style={{
-                                    height: '48px',
-                                    position: 'sticky',
-                                    top: 0,
-                                    zIndex: 1000,
-                                    backgroundColor: 'var(--card)',
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                    borderBottom: '1px solid var(--border)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '0 16px',
-                                }}
-                            >
-                                <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>
-                                    {name}
-                                </div>
-                                <button
-                                    type='button'
-                                    onClick={() => setMobileSidebarOpen(true)}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--primary)',
-                                        fontSize: '20px',
-                                        cursor: 'pointer',
-                                        padding: '4px',
-                                        lineHeight: 1,
-                                    }}
-                                >
-                                    ☰
-                                </button>
-                            </div>
-                        </>
-                    )}
+                    <ServerNavigationBar
+                        sidebarOpen={isMobileViewport ? mobileSidebarOpen : undefined}
+                        setSidebarOpen={isMobileViewport ? setMobileSidebarOpen : undefined}
+                        showMobileHeader={false}
+                        showSidebarLogo={false}
+                        topOffset={DASHBOARD_TOPBAR_HEIGHT}
+                        routes={routes.server}
+                        serverId={match.params.id}
+                    />
 
-                    {!uuid || !id ? (
-                        error ? (
-                            <div className='p-6'>
-                                <ServerError message={error} />
-                            </div>
-                        ) : (
-                            <div className='p-6'>
-                                <PageLoadingSkeleton rows={9} />
-                            </div>
-                        )
-                    ) : (
-                        <>
-                            <InstallListener />
-                            <TransferListener />
-                            <WebsocketHandler />
-                            <div className='server-theme-shell'>
-                                <div className='server-theme-scroll'>
-                                    {inConflictState && !canBypassConflictState ? (
-                                        <div className='server-route-fill px-4 pt-4 xl:px-6'>
-                                            <ConflictStateRenderer />
-                                        </div>
-                                    ) : (
-                                        <div className='server-route-fill overflow-x-hidden'>
-                                            <div className='flex min-h-0 flex-1 flex-col'>
-                                                <ErrorBoundary>
-                                                    <TransitionRouter>
-                                                        <Switch location={location}>
-                                                            {routes.server.map(
-                                                                ({ path, permission, component: Component }) => (
-                                                                    <PermissionRoute
-                                                                        key={path}
-                                                                        permission={permission}
-                                                                        path={to(path)}
-                                                                        exact
-                                                                    >
-                                                                        <Spinner.Suspense
-                                                                            fallback={
-                                                                                <div className='p-6'>
-                                                                                    <PageLoadingSkeleton rows={9} />
-                                                                                </div>
-                                                                            }
-                                                                        >
-                                                                            <Component />
-                                                                        </Spinner.Suspense>
-                                                                    </PermissionRoute>
-                                                                )
-                                                            )}
-                                                            <Route path={'*'} component={NotFound} />
-                                                        </Switch>
-                                                    </TransitionRouter>
-                                                </ErrorBoundary>
-                                            </div>
-                                        </div>
-                                    )}
+                    <main
+                        className='server-main-content flex-1 min-h-0 flex flex-col overflow-hidden relative'
+                        style={{
+                            minWidth: 0,
+                            fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                            backgroundColor: 'transparent',
+                        }}
+                    >
+                        {!uuid || !id ? (
+                            error ? (
+                                <div className='p-6'>
+                                    <ServerError message={error} />
                                 </div>
-                            </div>
-                        </>
-                    )}
-                </main>
+                            ) : (
+                                <div className='p-6'>
+                                    <PageLoadingSkeleton rows={9} />
+                                </div>
+                            )
+                        ) : (
+                            <>
+                                <InstallListener />
+                                <TransferListener />
+                                <WebsocketHandler />
+                                <div className='server-theme-shell'>
+                                    <div className='server-theme-scroll'>
+                                        <div className='server-route-layout'>
+                                            {inConflictState && !canBypassConflictState ? (
+                                                <div className='server-route-fill px-4 pt-4 xl:px-6'>
+                                                    <ConflictStateRenderer />
+                                                </div>
+                                            ) : (
+                                                <div className='server-route-fill overflow-x-hidden'>
+                                                    <div className='flex min-h-0 flex-1 flex-col'>
+                                                        <ErrorBoundary>
+                                                            <TransitionRouter>
+                                                                <Switch location={location}>
+                                                                    {routes.server.map(
+                                                                        ({
+                                                                            path,
+                                                                            permission,
+                                                                            component: Component,
+                                                                        }) => (
+                                                                            <PermissionRoute
+                                                                                key={path}
+                                                                                permission={permission}
+                                                                                path={to(path)}
+                                                                                exact
+                                                                            >
+                                                                                <Spinner.Suspense
+                                                                                    fallback={
+                                                                                        <div className='p-6'>
+                                                                                            <PageLoadingSkeleton
+                                                                                                rows={9}
+                                                                                            />
+                                                                                        </div>
+                                                                                    }
+                                                                                >
+                                                                                    <Component />
+                                                                                </Spinner.Suspense>
+                                                                            </PermissionRoute>
+                                                                        )
+                                                                    )}
+                                                                    <Route path={'*'} component={NotFound} />
+                                                                </Switch>
+                                                            </TransitionRouter>
+                                                        </ErrorBoundary>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {!isConsoleRoute && (
+                                                <ConsoleSidebar syncMode={'full'} contributeToSharedTranscript={true} />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </main>
+                </div>
             </div>
         </React.Fragment>
     );

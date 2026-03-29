@@ -23,6 +23,56 @@
     @apply flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden;
     background-color: var(--card);
 
+    &.terminal_sidebar {
+        @apply rounded-2xl border border-[color:var(--border)];
+        background:
+            linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 44%),
+            rgba(5, 8, 14, 0.92);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 26px 40px -34px rgba(0, 0, 0, 0.9),
+            0 0 36px rgba(var(--primary-rgb), 0.08);
+    }
+
+    & .sidebar_header {
+        @apply flex items-start justify-between gap-3 border-b border-[color:var(--border)] px-4 py-3;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+            rgba(5, 8, 14, 0.62);
+    }
+
+    & .sidebar_header_left {
+        @apply min-w-0 flex-1;
+    }
+
+    & .sidebar_title {
+        @apply flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#f8f6ef];
+    }
+
+    & .sidebar_notice {
+        @apply mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--primary)];
+    }
+
+    & .sidebar_actions {
+        @apply flex items-center gap-2;
+    }
+
+    & .sidebar_action {
+        @apply inline-flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] text-gray-300;
+        @apply transition-colors duration-150;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    & .sidebar_action:hover:not(:disabled) {
+        @apply border-[color:var(--primary)] text-[color:var(--primary)];
+        box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.2) !important;
+    }
+
+    & .sidebar_action:disabled {
+        @apply cursor-wait opacity-70;
+    }
+
     & .overflows_container {
         @apply w-full;
         background-color: var(--card) !important;
@@ -43,10 +93,28 @@
     }
 
     & .command_shell {
+        @apply flex items-center gap-2;
         background-color: var(--card) !important;
         border: 0 !important;
         box-shadow: none !important;
         outline: none !important;
+    }
+
+    & .command_input_wrap {
+        @apply min-w-0 flex-1;
+    }
+
+    & .command_external {
+        @apply inline-flex h-10 w-10 flex-none items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] text-gray-300;
+        @apply transition-colors duration-150;
+        box-shadow: none !important;
+        outline: none !important;
+        text-decoration: none !important;
+    }
+
+    & .command_external:hover {
+        @apply border-[color:var(--primary)] text-[color:var(--primary)];
+        box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.2) !important;
     }
 
     & > .container {

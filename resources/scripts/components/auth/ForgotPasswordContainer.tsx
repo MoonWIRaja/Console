@@ -9,6 +9,7 @@ import { object, ref as yupRef, string } from 'yup';
 import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
+import AuthTopbar from '@/components/auth/AuthTopbar';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import useSiteBranding from '@/hooks/useSiteBranding';
 import {
@@ -156,11 +157,12 @@ const ForgotPasswordContainer = () => {
     return (
         <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
+            <AuthTopbar />
             <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
                 <span className='sr-only'>Dark neon background area.</span>
             </div>
             <div
-                className={`burhan-auth-rail h-full w-full overflow-y-auto px-6 py-5 sm:px-10 sm:py-6 md:px-14 lg:w-[30%] lg:px-8 lg:py-4 xl:px-10 ${
+                className={`burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:px-8 lg:pb-4 lg:pt-24 xl:px-10 ${
                     mode === 'verify' ? 'lg:overflow-y-auto' : 'lg:overflow-y-hidden'
                 }`}
             >

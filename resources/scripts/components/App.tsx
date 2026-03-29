@@ -17,6 +17,7 @@ import Spinner from '@/components/elements/Spinner';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 import { applyThemePreset, DEFAULT_THEME_ID } from '@/components/ui/theme-presets';
 import AuthenticationRouter from '@/routers/AuthenticationRouter';
+import ConsoleRouter from '@/routers/ConsoleRouter';
 import DashboardRouter from '@/routers/DashboardRouter';
 import ServerRouter from '@/routers/ServerRouter';
 
@@ -82,6 +83,13 @@ const App = () => {
                                 <Spinner.Suspense fallback={<PageLoadingSkeleton fullScreen rows={10} />}>
                                     <ServerContext.Provider>
                                         <ServerRouter />
+                                    </ServerContext.Provider>
+                                </Spinner.Suspense>
+                            </AuthenticatedRoute>
+                            <AuthenticatedRoute path={'/console/:id'}>
+                                <Spinner.Suspense fallback={<PageLoadingSkeleton fullScreen rows={10} />}>
+                                    <ServerContext.Provider>
+                                        <ConsoleRouter />
                                     </ServerContext.Provider>
                                 </Spinner.Suspense>
                             </AuthenticatedRoute>

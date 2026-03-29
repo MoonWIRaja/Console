@@ -9,6 +9,34 @@ import useSiteBranding from '@/hooks/useSiteBranding';
 // ============================================================
 
 export type SidebarMode = 'auto' | 'locked-open' | 'locked-closed';
+export const SIDEBAR_MODE_STORAGE_KEY = 'ui.sidebar.mode';
+export const SIDEBAR_MODE_SYNC_EVENT = 'ui:sidebar-mode-sync';
+
+const isSidebarMode = (value: string | null): value is SidebarMode =>
+    value === 'locked-open' || value === 'locked-closed' || value === 'auto';
+
+export const getStoredSidebarMode = (): SidebarMode => {
+    if (typeof window === 'undefined') {
+        return 'auto';
+    }
+
+    const storedMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY);
+    if (isSidebarMode(storedMode)) {
+        return storedMode;
+    }
+
+    return window.localStorage.getItem('ui.sidebar.locked') === 'true' ? 'locked-open' : 'auto';
+};
+
+export const syncSidebarMode = (mode: SidebarMode) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, mode);
+    window.localStorage.setItem('ui.sidebar.locked', mode === 'locked-open' ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent<SidebarMode>(SIDEBAR_MODE_SYNC_EVENT, { detail: mode }));
+};
 
 interface SidebarContextType {
     open: boolean;
@@ -48,18 +76,7 @@ export const SidebarProvider = ({
     const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
     useEffect(() => {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        const storedMode = window.localStorage.getItem('ui.sidebar.mode');
-        if (storedMode === 'locked-open' || storedMode === 'locked-closed' || storedMode === 'auto') {
-            setMode(storedMode);
-            return;
-        }
-
-        const legacyLocked = window.localStorage.getItem('ui.sidebar.locked') === 'true';
-        setMode(legacyLocked ? 'locked-open' : 'auto');
+        setMode(getStoredSidebarMode());
     }, []);
 
     useEffect(() => {
@@ -67,9 +84,30 @@ export const SidebarProvider = ({
             return;
         }
 
-        window.localStorage.setItem('ui.sidebar.mode', mode);
-        window.localStorage.setItem('ui.sidebar.locked', mode === 'locked-open' ? 'true' : 'false');
+        syncSidebarMode(mode);
     }, [mode]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const handleSidebarModeSync = (event: Event) => {
+            const nextMode = (event as CustomEvent<SidebarMode>).detail;
+            if (isSidebarMode(nextMode)) {
+                setMode(nextMode);
+                return;
+            }
+
+            setMode(getStoredSidebarMode());
+        };
+
+        window.addEventListener(SIDEBAR_MODE_SYNC_EVENT, handleSidebarModeSync as EventListener);
+
+        return () => {
+            window.removeEventListener(SIDEBAR_MODE_SYNC_EVENT, handleSidebarModeSync as EventListener);
+        };
+    }, []);
 
     return (
         <SidebarContext.Provider value={{ open, setOpen, mode, setMode, animate }}>{children}</SidebarContext.Provider>
@@ -97,10 +135,11 @@ interface SidebarBodyProps {
     children: React.ReactNode;
     className?: string;
     showMobileHeader?: boolean;
+    topOffset?: number;
 }
 
 // ---------- DesktopSidebar ----------
-function DesktopSidebar({ children, className }: SidebarBodyProps) {
+function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps) {
     const { open, setOpen, mode, animate: shouldAnimate } = useSidebar();
     const isAuto = mode === 'auto';
 
@@ -121,9 +160,9 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
                 animate={{ width: shouldAnimate ? (open ? '288px' : '72px') : '288px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 style={{
-                    height: '100vh',
+                    height: `calc(100vh - ${topOffset}px)`,
                     position: 'fixed',
-                    top: 0,
+                    top: `${topOffset}px`,
                     left: 0,
                     zIndex: 20,
                     background:
@@ -152,7 +191,7 @@ function DesktopSidebar({ children, className }: SidebarBodyProps) {
 }
 
 // ---------- MobileSidebar ----------
-function MobileSidebar({ children, className, showMobileHeader = true }: SidebarBodyProps) {
+function MobileSidebar({ children, className, showMobileHeader = true, topOffset = 0 }: SidebarBodyProps) {
     const { open, setOpen } = useSidebar();
     const { name } = useSiteBranding();
 
@@ -205,7 +244,10 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                             onClick={() => setOpen(false)}
                             style={{
                                 position: 'fixed',
-                                inset: 0,
+                                top: `${topOffset}px`,
+                                right: 0,
+                                bottom: 0,
+                                left: 0,
                                 backgroundColor: 'rgba(var(--background-rgb), 0.55)',
                                 zIndex: 1001,
                             }}
@@ -217,9 +259,9 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
                             transition={{ duration: 0.3, ease: 'easeInOut' }}
                             style={{
                                 position: 'fixed',
-                                top: 0,
+                                top: `${topOffset}px`,
                                 left: 0,
-                                height: '100vh',
+                                height: `calc(100vh - ${topOffset}px)`,
                                 width: '288px',
                                 background:
                                     'radial-gradient(circle at 16% -2%, rgba(var(--primary-rgb), 0.18), transparent 36%), radial-gradient(circle at 106% 92%, rgba(84, 140, 255, 0.17), transparent 40%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
@@ -255,7 +297,7 @@ function MobileSidebar({ children, className, showMobileHeader = true }: Sidebar
     );
 }
 
-export const SidebarBody = ({ children, className, showMobileHeader = true }: SidebarBodyProps) => {
+export const SidebarBody = ({ children, className, showMobileHeader = true, topOffset = 0 }: SidebarBodyProps) => {
     const [isMobile, setIsMobile] = useState(
         typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false
     );
@@ -271,11 +313,13 @@ export const SidebarBody = ({ children, className, showMobileHeader = true }: Si
     }, []);
 
     return isMobile ? (
-        <MobileSidebar className={className} showMobileHeader={showMobileHeader}>
+        <MobileSidebar className={className} showMobileHeader={showMobileHeader} topOffset={topOffset}>
             {children}
         </MobileSidebar>
     ) : (
-        <DesktopSidebar className={className}>{children}</DesktopSidebar>
+        <DesktopSidebar className={className} topOffset={topOffset}>
+            {children}
+        </DesktopSidebar>
     );
 };
 
@@ -297,6 +341,7 @@ interface SidebarLinkProps {
 export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
     const { open, setOpen, animate: shouldAnimate } = useSidebar();
     const expanded = shouldAnimate ? open : true;
+    const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
 
     const closeOnMobile = useCallback(() => {
         if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
@@ -312,6 +357,30 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
         closeOnMobile();
     }, [closeOnMobile, link]);
 
+    const showCollapsedTooltip = !expanded && !!tooltipPosition;
+    const wrapperStyle: React.CSSProperties = {
+        position: 'relative',
+        display: 'block',
+        width: '100%',
+        margin: '0',
+    };
+
+    const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
+        if (expanded) {
+            return;
+        }
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        setTooltipPosition({
+            top: rect.top + rect.height / 2,
+            left: rect.right + 12,
+        });
+    };
+
+    const handleMouseLeave = () => {
+        setTooltipPosition(null);
+    };
+
     const content = (
         <div
             style={{
@@ -319,7 +388,10 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 alignItems: 'center',
                 justifyContent: expanded ? 'flex-start' : 'center',
                 gap: expanded ? '12px' : '0px',
-                padding: expanded ? '11px 12px' : '10px',
+                width: expanded ? '100%' : '48px',
+                minWidth: expanded ? undefined : '48px',
+                height: expanded ? 'auto' : '48px',
+                padding: expanded ? '11px 12px' : '0',
                 textDecoration: 'none',
                 color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
                 background: active
@@ -329,11 +401,11 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 boxShadow: active
                     ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 24px rgba(var(--primary-rgb), 0.12), 0 0 20px rgba(var(--primary-rgb), 0.14)'
                     : 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
-                borderRadius: '14px',
-                margin: '4px 0',
+                borderRadius: expanded ? '14px' : '16px',
+                margin: expanded ? '4px 0' : '6px auto',
                 transition: 'all 0.2s ease',
                 cursor: 'pointer',
-                overflow: 'hidden',
+                overflow: 'visible',
                 whiteSpace: 'nowrap',
             }}
             className={`sidebar-link ${className || ''}`}
@@ -373,21 +445,76 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
         </div>
     );
 
+    const tooltip = showCollapsedTooltip ? (
+        <span
+            style={{
+                position: 'fixed',
+                left: `${tooltipPosition?.left || 0}px`,
+                top: `${tooltipPosition?.top || 0}px`,
+                transform: 'translateY(-50%)',
+                padding: '8px 12px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background:
+                    'linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)), rgba(7, 10, 15, 0.98)',
+                color: '#eff7dc',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                boxShadow: '0 18px 34px rgba(0, 0, 0, 0.38), 0 0 18px rgba(var(--primary-rgb), 0.12)',
+                pointerEvents: 'none',
+                zIndex: 80,
+                whiteSpace: 'nowrap',
+            }}
+        >
+            {link.label}
+        </span>
+    ) : null;
+
     if (link.onClick) {
-        return <div onClick={handleActivate}>{content}</div>;
+        return (
+            <div
+                style={wrapperStyle}
+                onClick={handleActivate}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                title={!expanded ? link.label : undefined}
+            >
+                {content}
+                {tooltip}
+            </div>
+        );
     }
 
     if (link.external) {
         return (
-            <a href={link.href} rel='noreferrer' style={{ textDecoration: 'none' }} onClick={handleActivate}>
+            <a
+                href={link.href}
+                rel='noreferrer'
+                style={{ ...wrapperStyle, textDecoration: 'none' }}
+                onClick={handleActivate}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                title={!expanded ? link.label : undefined}
+            >
                 {content}
+                {tooltip}
             </a>
         );
     }
 
     return (
-        <Link to={link.href} style={{ textDecoration: 'none' }} onClick={handleActivate}>
+        <Link
+            to={link.href}
+            style={{ ...wrapperStyle, textDecoration: 'none' }}
+            onClick={handleActivate}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            title={!expanded ? link.label : undefined}
+        >
             {content}
+            {tooltip}
         </Link>
     );
 };

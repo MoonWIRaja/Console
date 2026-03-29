@@ -28,6 +28,7 @@ class AssetComposer
         $view->with('siteConfiguration', [
             'name' => config('app.name') ?? 'Pterodactyl',
             'logo' => asset(config('app.logo') ?: 'assets/svgs/pterodactyl.svg'),
+            'website' => config('app.website') ?: config('app.url'),
             'locale' => config('app.locale') ?? 'en',
             'captcha' => [
                 'enabled' => $turnstileEnabled,

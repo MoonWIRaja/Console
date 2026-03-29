@@ -40,6 +40,7 @@ export default ({
     preventExternalClose,
     panelClassName,
     contentClassName,
+    scrollWrapperClassName,
     children,
 }: RenderDialogProps) => {
     const container = useRef<HTMLDivElement>(null);
@@ -75,7 +76,11 @@ export default ({
                         onClose={onDialogClose}
                     >
                         <div className={'fixed inset-0 z-40 bg-[color:var(--card)]/70'} />
-                        <div className={'fixed inset-0 overflow-y-auto z-50'}>
+                        <div
+                            className={['fixed inset-0 overflow-y-auto z-50', scrollWrapperClassName || '']
+                                .join(' ')
+                                .trim()}
+                        >
                             <div
                                 ref={container}
                                 className={styles.container}
