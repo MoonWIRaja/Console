@@ -1,8 +1,5 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-    faFileAlt,
-    faFileImport,
-} from '@fortawesome/free-solid-svg-icons';
+import { faFileImport } from '@fortawesome/free-solid-svg-icons';
 import { encodePathSegments } from '@/helpers';
 import { differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import React, { memo } from 'react';
@@ -17,13 +14,7 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { join } from 'pathe';
 import { bytesToString } from '@/lib/formatters';
 import styles from './style.module.css';
-import {
-    DEFAULT_FILE,
-    DEFAULT_FOLDER,
-    getIconForFile,
-    getIconForFolder,
-    getIconForOpenFolder,
-} from 'vscode-icons-js';
+import { DEFAULT_FILE, DEFAULT_FOLDER, getIconForFile, getIconForFolder, getIconForOpenFolder } from 'vscode-icons-js';
 
 const VSCODE_ICON_BASE = 'https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons';
 
@@ -68,9 +59,7 @@ const FileObjectRow = ({ file }: { file: FileObject }) => {
         >
             <SelectFileCheckbox name={file.name} />
             <Clickable file={file}>
-                <div
-                    css={tw`mr-4 flex-none pl-1 text-lg transition-colors duration-150`}
-                >
+                <div css={tw`mr-4 flex-none pl-1 text-lg transition-colors duration-150`}>
                     {file.isSymlink ? (
                         <FontAwesomeIcon icon={faFileImport} className={'text-[#22d3ee]'} />
                     ) : (
@@ -89,11 +78,14 @@ const FileObjectRow = ({ file }: { file: FileObject }) => {
                 </div>
                 <div css={tw`flex-1 truncate`}>{file.name}</div>
                 {file.isFile && (
-                    <div css={tw`mr-4 hidden w-1/6 text-right text-xs text-gray-400 sm:block`}>
+                    <div css={tw`mr-4 hidden w-1/6 text-right text-xs text-[color:var(--text-subtle)] sm:block`}>
                         {bytesToString(file.size)}
                     </div>
                 )}
-                <div css={tw`mr-4 hidden w-1/5 text-right text-xs text-gray-400 md:block`} title={file.modifiedAt.toString()}>
+                <div
+                    css={tw`mr-4 hidden w-1/5 text-right text-xs text-[color:var(--text-subtle)] md:block`}
+                    title={file.modifiedAt.toString()}
+                >
                     {Math.abs(differenceInHours(file.modifiedAt, new Date())) > 48
                         ? format(file.modifiedAt, 'MMM do, yyyy h:mma')
                         : formatDistanceToNow(file.modifiedAt, { addSuffix: true })}

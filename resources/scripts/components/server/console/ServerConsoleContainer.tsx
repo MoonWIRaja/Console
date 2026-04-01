@@ -139,7 +139,7 @@ const toneClass = (tone?: string): string => {
         case 'danger':
             return 'border-red-500/40 bg-red-500/10 text-red-100 hover:border-red-400';
         case 'neutral':
-            return 'border-[color:var(--border)] bg-[color:var(--background)] text-gray-100 hover:border-[color:var(--primary)]';
+            return 'border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--foreground)] hover:border-[color:var(--primary)]';
         default:
             return 'border-[color:var(--primary)]/35 bg-[color:var(--primary)]/10 text-[color:var(--foreground)] hover:border-[color:var(--primary)]';
     }
@@ -511,7 +511,9 @@ const PlayerItemIcon = ({
     }
 
     return (
-        <span className={classNames('material-icons-round text-sm text-gray-500', emptyClassName)}>inventory_2</span>
+        <span className={classNames('material-icons-round text-sm text-[color:var(--text-subtle)]', emptyClassName)}>
+            inventory_2
+        </span>
     );
 };
 
@@ -879,16 +881,20 @@ const ServerConsoleContainer = () => {
             }
             title={slot ? `${slot.item_name} (${slot.item_id})` : options?.titlePrefix || 'Empty Slot'}
         >
-            <PlayerItemIcon slot={slot} className={'h-8 w-8'} emptyClassName={'text-gray-600 opacity-40'} />
+            <PlayerItemIcon
+                slot={slot}
+                className={'h-8 w-8'}
+                emptyClassName={'text-[color:var(--text-subtle)] opacity-40'}
+            />
             {options?.indexLabel && (
-                <span className={'absolute left-1 top-0 text-[10px] font-semibold text-gray-500'}>
+                <span className={'absolute left-1 top-0 text-[10px] font-semibold text-[color:var(--text-subtle)]'}>
                     {options.indexLabel}
                 </span>
             )}
             {slot && slot.count > 1 && (
                 <span
                     className={
-                        'absolute bottom-0 right-1 text-[11px] font-bold text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.9)]'
+                        'absolute bottom-0 right-1 text-[11px] font-bold text-[color:var(--foreground)] [text-shadow:0_1px_1px_rgba(0,0,0,0.9)]'
                     }
                 >
                     {slot.count}
@@ -1097,7 +1103,7 @@ const ServerConsoleContainer = () => {
                                 >
                                     {playerActionTarget ? `Run: ${playerActionTarget.label}` : 'Run Action'}
                                 </h3>
-                                <p className={'mt-1 text-xs text-gray-400'}>
+                                <p className={'mt-1 text-xs text-[color:var(--text-subtle)]'}>
                                     {playerActionTarget?.description ||
                                         'Configure action details and confirm execution.'}
                                 </p>
@@ -1106,7 +1112,7 @@ const ServerConsoleContainer = () => {
                                 type={'button'}
                                 onClick={closePlayerActionDialog}
                                 className={
-                                    'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-semibold text-gray-200 transition-colors hover:border-[color:var(--primary)]'
+                                    'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-semibold text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)]'
                                 }
                             >
                                 Close
@@ -1120,7 +1126,11 @@ const ServerConsoleContainer = () => {
                                         'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'
                                     }
                                 >
-                                    <p className={'text-[11px] uppercase tracking-wide text-gray-500'}>
+                                    <p
+                                        className={
+                                            'text-[11px] uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                        }
+                                    >
                                         Current Gamemode
                                     </p>
                                     <p className={'mt-1 text-sm font-semibold text-[color:var(--foreground)]'}>
@@ -1132,7 +1142,9 @@ const ServerConsoleContainer = () => {
                             {actionDialogFields.map((field) => (
                                 <div key={field.key} className={'space-y-1.5'}>
                                     <label
-                                        className={'block text-[11px] font-bold uppercase tracking-wide text-gray-300'}
+                                        className={
+                                            'block text-[11px] font-bold uppercase tracking-wide text-[color:var(--foreground)]'
+                                        }
                                     >
                                         {field.label}
                                     </label>
@@ -1153,7 +1165,7 @@ const ServerConsoleContainer = () => {
                                         <textarea
                                             autoFocus
                                             className={
-                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-gray-100 outline-none transition-colors placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none transition-colors placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
                                             }
                                             rows={4}
                                             placeholder={field.placeholder}
@@ -1171,7 +1183,7 @@ const ServerConsoleContainer = () => {
                                         <input
                                             autoFocus
                                             className={
-                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-gray-100 outline-none transition-colors placeholder:text-gray-500 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none transition-colors placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
                                             }
                                             type={field.type === 'number' ? 'number' : 'text'}
                                             min={field.type === 'number' ? 1 : undefined}
@@ -1188,14 +1200,18 @@ const ServerConsoleContainer = () => {
                                             }}
                                         />
                                     )}
-                                    {field.helpText && <p className={'text-[11px] text-gray-500'}>{field.helpText}</p>}
+                                    {field.helpText && (
+                                        <p className={'text-[11px] text-[color:var(--text-subtle)]'}>
+                                            {field.helpText}
+                                        </p>
+                                    )}
                                 </div>
                             ))}
 
                             {actionDialogFields.length === 0 && (
                                 <div
                                     className={
-                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs text-gray-300'
+                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs text-[color:var(--foreground)]'
                                     }
                                 >
                                     This action does not require additional input.
@@ -1216,7 +1232,7 @@ const ServerConsoleContainer = () => {
                                 <button
                                     type={'button'}
                                     className={
-                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs font-semibold text-gray-200 transition-colors hover:border-[color:var(--primary)]'
+                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)]'
                                     }
                                     onClick={closePlayerActionDialog}
                                     disabled={!!playerActionLoading}
@@ -1333,7 +1349,7 @@ const ServerConsoleContainer = () => {
                                             </div>
                                             <div
                                                 className={
-                                                    'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-400'
+                                                    'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-subtle)]'
                                                 }
                                             >
                                                 <code
@@ -1350,7 +1366,7 @@ const ServerConsoleContainer = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={'text-right text-[11px] text-gray-400'}>
+                                    <div className={'text-right text-[11px] text-[color:var(--text-subtle)]'}>
                                         <p>{selectedPlayer.game.label}</p>
                                     </div>
                                 </div>
@@ -1368,7 +1384,7 @@ const ServerConsoleContainer = () => {
                                             'rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors',
                                             playerDialogTab === tab
                                                 ? 'border border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-[color:var(--foreground)]'
-                                                : 'border border-[color:var(--border)] bg-[color:var(--card)] text-gray-300 hover:border-[color:var(--primary)]'
+                                                : 'border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[color:var(--primary)]'
                                         )}
                                     >
                                         {tabLabel(tab)}
@@ -1379,7 +1395,7 @@ const ServerConsoleContainer = () => {
                             {playerActionNotice && (
                                 <div
                                     className={
-                                        'whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-200'
+                                        'whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-[color:var(--foreground)]'
                                     }
                                 >
                                     {playerActionNotice}
@@ -1400,7 +1416,7 @@ const ServerConsoleContainer = () => {
                                                     {group.title}
                                                 </h4>
                                                 {group.description && (
-                                                    <p className={'mt-1 text-[11px] text-gray-400'}>
+                                                    <p className={'mt-1 text-[11px] text-[color:var(--text-subtle)]'}>
                                                         {group.description}
                                                     </p>
                                                 )}
@@ -1435,7 +1451,10 @@ const ServerConsoleContainer = () => {
                                                 }
                                             >
                                                 {(playersData?.capabilities.notes || []).map((note, idx) => (
-                                                    <p key={`${note}-${idx}`} className={'text-[11px] text-gray-400'}>
+                                                    <p
+                                                        key={`${note}-${idx}`}
+                                                        className={'text-[11px] text-[color:var(--text-subtle)]'}
+                                                    >
                                                         {note}
                                                     </p>
                                                 ))}
@@ -1449,7 +1468,7 @@ const ServerConsoleContainer = () => {
                                         {!selectedInventory?.available && (
                                             <div
                                                 className={
-                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-gray-400'
+                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-[color:var(--text-subtle)]'
                                                 }
                                             >
                                                 {selectedInventory?.message ||
@@ -1485,14 +1504,14 @@ const ServerConsoleContainer = () => {
                                                                 >
                                                                     <p
                                                                         className={
-                                                                            'text-[10px] uppercase tracking-wide text-gray-500'
+                                                                            'text-[10px] uppercase tracking-wide text-[color:var(--text-subtle)]'
                                                                         }
                                                                     >
                                                                         {entry.label}
                                                                     </p>
                                                                     <p
                                                                         className={
-                                                                            'mt-1 text-sm font-semibold text-gray-100'
+                                                                            'mt-1 text-sm font-semibold text-[color:var(--foreground)]'
                                                                         }
                                                                     >
                                                                         {entry.value}
@@ -1506,7 +1525,7 @@ const ServerConsoleContainer = () => {
                                                 {(selectedInventory.sections || []).length === 0 && (
                                                     <section
                                                         className={
-                                                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-gray-500'
+                                                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-[color:var(--text-subtle)]'
                                                         }
                                                     >
                                                         No inventory sections were returned for this player.
@@ -1530,7 +1549,7 @@ const ServerConsoleContainer = () => {
                                                                         <div>
                                                                             <span
                                                                                 className={
-                                                                                    'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-400'
+                                                                                    'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
                                                                                 }
                                                                             >
                                                                                 <span
@@ -1575,7 +1594,7 @@ const ServerConsoleContainer = () => {
                                                                         <div>
                                                                             <span
                                                                                 className={
-                                                                                    'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400'
+                                                                                    'mb-1 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
                                                                                 }
                                                                             >
                                                                                 Offhand
@@ -1598,7 +1617,7 @@ const ServerConsoleContainer = () => {
                                                                     <div>
                                                                         <span
                                                                             className={
-                                                                                'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-400'
+                                                                                'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
                                                                             }
                                                                         >
                                                                             <span
@@ -1636,7 +1655,7 @@ const ServerConsoleContainer = () => {
                                                                             >
                                                                                 <span
                                                                                     className={
-                                                                                        'mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400'
+                                                                                        'mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
                                                                                     }
                                                                                 >
                                                                                     Hotbar
@@ -1693,7 +1712,7 @@ const ServerConsoleContainer = () => {
                                                                 </h4>
                                                                 <span
                                                                     className={
-                                                                        'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-[10px] font-semibold text-gray-300'
+                                                                        'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]'
                                                                     }
                                                                 >
                                                                     {section.slots.length} slots
@@ -1703,7 +1722,7 @@ const ServerConsoleContainer = () => {
                                                             {section.slots.length === 0 ? (
                                                                 <div
                                                                     className={
-                                                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-3 text-xs text-gray-500'
+                                                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-3 text-xs text-[color:var(--text-subtle)]'
                                                                     }
                                                                 >
                                                                     No item data in this section.
@@ -1735,7 +1754,7 @@ const ServerConsoleContainer = () => {
                                                                                 <div className={'min-w-0 flex-1'}>
                                                                                     <p
                                                                                         className={
-                                                                                            'truncate text-xs font-semibold text-gray-100'
+                                                                                            'truncate text-xs font-semibold text-[color:var(--foreground)]'
                                                                                         }
                                                                                     >
                                                                                         {slot.item_name}
@@ -1751,7 +1770,7 @@ const ServerConsoleContainer = () => {
                                                                             </div>
                                                                             <div
                                                                                 className={
-                                                                                    'mt-2 flex items-center justify-between gap-2 text-[10px] text-gray-500'
+                                                                                    'mt-2 flex items-center justify-between gap-2 text-[10px] text-[color:var(--text-subtle)]'
                                                                                 }
                                                                             >
                                                                                 <span>Slot {slot.slot}</span>
@@ -1776,7 +1795,7 @@ const ServerConsoleContainer = () => {
                                         {!selectedStatistics?.available && (
                                             <div
                                                 className={
-                                                    'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 text-xs text-gray-400'
+                                                    'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 text-xs text-[color:var(--text-subtle)]'
                                                 }
                                             >
                                                 {selectedStatistics?.message ||
@@ -1806,8 +1825,14 @@ const ServerConsoleContainer = () => {
                                                                     'flex items-center justify-between rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs'
                                                                 }
                                                             >
-                                                                <span className={'text-gray-400'}>{entry.label}</span>
-                                                                <span className={'font-semibold text-gray-100'}>
+                                                                <span className={'text-[color:var(--text-subtle)]'}>
+                                                                    {entry.label}
+                                                                </span>
+                                                                <span
+                                                                    className={
+                                                                        'font-semibold text-[color:var(--foreground)]'
+                                                                    }
+                                                                >
                                                                     {entry.value}
                                                                 </span>
                                                             </div>
@@ -1863,12 +1888,12 @@ const ServerConsoleContainer = () => {
                     inset: 0;
                     pointer-events: none;
                     background:
-                        radial-gradient(500px 180px at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 68%),
-                        radial-gradient(460px 190px at 92% 0%, rgba(102, 141, 255, 0.18), transparent 70%),
+                        radial-gradient(500px 180px at 8% 0%, rgba(var(--primary-rgb), 0.16), transparent 68%),
+                        radial-gradient(460px 190px at 92% 0%, rgba(var(--primary-rgb), 0.08), transparent 70%),
                         linear-gradient(
                             180deg,
-                            rgba(255, 255, 255, 0.015) 0%,
-                            rgba(255, 255, 255, 0.005) 22%,
+                            rgba(245, 231, 198, 0.028) 0%,
+                            rgba(245, 231, 198, 0.012) 22%,
                             transparent 60%
                         );
                     opacity: 0.9;
@@ -1876,20 +1901,20 @@ const ServerConsoleContainer = () => {
 
                 .server-console-panel {
                     border-radius: 1rem;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 44%),
-                        rgba(5, 8, 14, 0.82);
+                        linear-gradient(160deg, rgba(245, 231, 198, 0.05), rgba(245, 231, 198, 0.015) 44%),
+                        var(--surface-elevated);
                     box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                        inset 0 1px 0 rgba(245, 231, 198, 0.06),
                         0 26px 40px -34px rgba(0, 0, 0, 0.9),
                         0 0 36px rgba(var(--primary-rgb), 0.08);
                 }
 
                 .server-console-panel-head {
                     background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-                        rgba(5, 8, 14, 0.62);
+                        linear-gradient(180deg, rgba(245, 231, 198, 0.04), rgba(245, 231, 198, 0.012)),
+                        var(--surface-subtle);
                 }
 
                 .server-console-inline-toggle {
@@ -1903,11 +1928,11 @@ const ServerConsoleContainer = () => {
                     width: 28px;
                     height: 84px;
                     transform: translateY(-50%);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border: 1px solid var(--surface-border);
                     border-right: 0;
                     border-radius: 0.75rem 0 0 0.75rem;
-                    background: rgba(12, 12, 12, 0.92);
-                    color: rgba(209, 213, 219, 0.92);
+                    background: var(--surface-elevated);
+                    color: var(--text-subtle);
                     box-shadow: -8px 0 24px rgba(0, 0, 0, 0.28);
                     backdrop-filter: blur(12px);
                     transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -1927,7 +1952,7 @@ const ServerConsoleContainer = () => {
             `}</style>
 
             <div
-                className={'server-console-shell w-full overflow-x-hidden text-gray-100'}
+                className={'server-console-shell w-full overflow-x-hidden text-[color:var(--foreground)]'}
                 style={{
                     fontFamily:
                         "'Space Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
@@ -1995,12 +2020,16 @@ const ServerConsoleContainer = () => {
                             <div className={'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4'}>
                                 <div className={'space-y-2'}>
                                     <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-gray-400'}>CPU Usage</span>
+                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
+                                            CPU Usage
+                                        </span>
                                     </div>
                                     <div className={'text-3xl font-black text-[#f8f6ef]'}>{stats.cpu.toFixed(1)}%</div>
-                                    <div className={'h-2 w-full rounded-full bg-white/10'}>
+                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
                                         <div
-                                            className={'h-2 rounded-none bg-blue-600 transition-all duration-500'}
+                                            className={
+                                                'h-2 rounded-none bg-[color:var(--primary)] transition-all duration-500'
+                                            }
                                             style={{ width: `${cpuPercent}%` }}
                                         />
                                     </div>
@@ -2008,18 +2037,22 @@ const ServerConsoleContainer = () => {
 
                                 <div className={'space-y-2'}>
                                     <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-gray-400'}>Memory Usage</span>
+                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
+                                            Memory Usage
+                                        </span>
                                     </div>
                                     <div className={'text-2xl font-black text-[#f8f6ef]'}>
                                         {bytesToString(stats.memory)}
-                                        <span className={'text-lg font-normal text-gray-500'}>
+                                        <span className={'text-lg font-normal text-[color:var(--text-subtle)]'}>
                                             {' '}
                                             / {memoryLimitBytes > 0 ? bytesToString(memoryLimitBytes) : '\u221E'}
                                         </span>
                                     </div>
-                                    <div className={'h-2 w-full rounded-full bg-white/10'}>
+                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
                                         <div
-                                            className={'h-2 rounded-none bg-purple-600 transition-all duration-500'}
+                                            className={
+                                                'h-2 rounded-none bg-[rgba(245,231,198,0.72)] transition-all duration-500'
+                                            }
                                             style={{ width: `${memoryPercent}%` }}
                                         />
                                     </div>
@@ -2027,18 +2060,22 @@ const ServerConsoleContainer = () => {
 
                                 <div className={'space-y-2'}>
                                     <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-gray-400'}>Disk Usage</span>
+                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
+                                            Disk Usage
+                                        </span>
                                     </div>
                                     <div className={'text-2xl font-black text-[#f8f6ef]'}>
                                         {bytesToString(stats.disk)}
-                                        <span className={'text-lg font-normal text-gray-500'}>
+                                        <span className={'text-lg font-normal text-[color:var(--text-subtle)]'}>
                                             {' '}
                                             / {diskLimitBytes > 0 ? bytesToString(diskLimitBytes) : '\u221E'}
                                         </span>
                                     </div>
-                                    <div className={'h-2 w-full rounded-full bg-white/10'}>
+                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
                                         <div
-                                            className={'h-2 rounded-none bg-pink-600 transition-all duration-500'}
+                                            className={
+                                                'h-2 rounded-none bg-[rgba(245,231,198,0.48)] transition-all duration-500'
+                                            }
                                             style={{ width: `${diskPercent}%` }}
                                         />
                                     </div>
@@ -2046,16 +2083,26 @@ const ServerConsoleContainer = () => {
 
                                 <div className={'space-y-2'}>
                                     <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-gray-400'}>Network</span>
+                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
+                                            Network
+                                        </span>
                                     </div>
                                     <div className={'flex flex-col space-y-1'}>
-                                        <div className={'flex items-center text-sm font-bold text-gray-200'}>
+                                        <div
+                                            className={
+                                                'flex items-center text-sm font-bold text-[color:var(--foreground)]'
+                                            }
+                                        >
                                             <span className={'material-icons-round mr-1 text-base text-green-500'}>
                                                 arrow_downward
                                             </span>
                                             {bytesToString(networkRate.rx)}/s
                                         </div>
-                                        <div className={'flex items-center text-sm font-bold text-gray-200'}>
+                                        <div
+                                            className={
+                                                'flex items-center text-sm font-bold text-[color:var(--foreground)]'
+                                            }
+                                        >
                                             <span className={'material-icons-round mr-1 text-base text-blue-500'}>
                                                 arrow_upward
                                             </span>
@@ -2102,7 +2149,7 @@ const ServerConsoleContainer = () => {
                                 </div>
                                 <div className={'min-w-0'}>
                                     <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
-                                    <p className={'truncate text-xs text-gray-400'}>{email}</p>
+                                    <p className={'truncate text-xs text-[color:var(--text-subtle)]'}>{email}</p>
                                 </div>
                             </div>
 
@@ -2114,35 +2161,35 @@ const ServerConsoleContainer = () => {
                                 </h3>
                                 <div className={'mb-6 space-y-3 text-sm'}>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-gray-400'}>IP:</span>
+                                        <span className={'text-[color:var(--text-subtle)]'}>IP:</span>
                                         <span
                                             className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-gray-200'
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)]'
                                             }
                                         >
                                             {allocation}
                                         </span>
                                     </div>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-gray-400'}>Status:</span>
+                                        <span className={'text-[color:var(--text-subtle)]'}>Status:</span>
                                         <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
                                     </div>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-gray-400'}>Node:</span>
+                                        <span className={'text-[color:var(--text-subtle)]'}>Node:</span>
                                         <code
                                             className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)]'
                                             }
                                         >
                                             {node}
                                         </code>
                                     </div>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-gray-400'}>Server ID:</span>
+                                        <span className={'text-[color:var(--text-subtle)]'}>Server ID:</span>
                                         <code
                                             title={uuid}
                                             className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-gray-200'
+                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)]'
                                             }
                                         >
                                             {uuid.slice(0, 8)}
@@ -2161,7 +2208,7 @@ const ServerConsoleContainer = () => {
                                     <div className={'flex items-start justify-between gap-3'}>
                                         <div>
                                             <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
-                                            <p className={'text-[11px] text-gray-400'}>
+                                            <p className={'text-[11px] text-[color:var(--text-subtle)]'}>
                                                 {playersData?.game.label || 'Loading player provider...'}
                                             </p>
                                         </div>
@@ -2180,7 +2227,7 @@ const ServerConsoleContainer = () => {
                                 <div className={'relative mb-4'}>
                                     <input
                                         className={
-                                            'w-full rounded-lg border border-gray-800 bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                            'w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
                                         }
                                         placeholder={'Filter by Name, UUID, or ID...'}
                                         type={'text'}
@@ -2189,7 +2236,7 @@ const ServerConsoleContainer = () => {
                                     />
                                     <span
                                         className={
-                                            'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-gray-500'
+                                            'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-[color:var(--text-subtle)]'
                                         }
                                     >
                                         search
@@ -2200,7 +2247,7 @@ const ServerConsoleContainer = () => {
                                     {playersLoading && (
                                         <div className={'py-8'}>
                                             <Spinner size={'small'} centered />
-                                            <p className={'mt-2 text-center text-xs text-gray-500'}>
+                                            <p className={'mt-2 text-center text-xs text-[color:var(--text-subtle)]'}>
                                                 Loading players...
                                             </p>
                                         </div>
@@ -2219,7 +2266,7 @@ const ServerConsoleContainer = () => {
                                     {!playersLoading && !playersError && (playersData?.items || []).length === 0 && (
                                         <p
                                             className={
-                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-gray-400'
+                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-[color:var(--text-subtle)]'
                                             }
                                         >
                                             {debouncedPlayerSearch
@@ -2256,7 +2303,11 @@ const ServerConsoleContainer = () => {
                                                     </div>
                                                     <div className={'min-w-0'}>
                                                         <div className={'flex flex-wrap items-center gap-1'}>
-                                                            <p className={'truncate text-sm font-bold text-gray-100'}>
+                                                            <p
+                                                                className={
+                                                                    'truncate text-sm font-bold text-[color:var(--foreground)]'
+                                                                }
+                                                            >
                                                                 {player.name}
                                                             </p>
                                                             {player.is_operator && (
@@ -2287,7 +2338,7 @@ const ServerConsoleContainer = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className={'text-[10px] text-gray-500'}>
+                                                        <p className={'text-[10px] text-[color:var(--text-subtle)]'}>
                                                             {player.status === 'online'
                                                                 ? `Ping: ${player.ping}ms`
                                                                 : 'Offline'}
@@ -2297,7 +2348,7 @@ const ServerConsoleContainer = () => {
                                                 <div className={'flex gap-1'}>
                                                     <button
                                                         className={
-                                                            'rounded p-1 text-gray-500 hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
+                                                            'rounded p-1 text-[color:var(--text-subtle)] hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
                                                         }
                                                         type={'button'}
                                                         onClick={(event) => {

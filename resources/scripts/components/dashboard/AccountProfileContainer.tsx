@@ -190,9 +190,8 @@ export default () => {
                     min-width: 0;
                     -webkit-overflow-scrolling: touch;
                     background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
-                        radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
-                        linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1));
+                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
+                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
                     font-family: var(--font-sans, 'Inter', sans-serif);
                 }
 
@@ -204,12 +203,12 @@ export default () => {
                     background:
                         repeating-linear-gradient(
                             90deg,
-                            rgba(255, 255, 255, 0.014) 0,
-                            rgba(255, 255, 255, 0.014) 1px,
+                            rgba(var(--primary-rgb), 0.02) 0,
+                            rgba(var(--primary-rgb), 0.02) 1px,
                             transparent 1px,
                             transparent 40px
                         );
-                    opacity: 0.2;
+                    opacity: 0.1;
                 }
 
                 .account-auth-shell::after {
@@ -224,8 +223,8 @@ export default () => {
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(112, 168, 255, 0.08) 0%,
-                        rgba(112, 168, 255, 0.03) 42%,
+                        rgba(var(--primary-rgb), 0.05) 0%,
+                        rgba(var(--primary-rgb), 0.015) 42%,
                         transparent 72%
                     );
                 }
@@ -244,7 +243,7 @@ export default () => {
                 }
 
                 .account-theme .activity-feed-shell .bg-gray-600 {
-                    background-color: #0f172a !important;
+                    background-color: var(--surface-elevated) !important;
                 }
 
                 .account-theme .activity-feed-shell .grid {
@@ -332,8 +331,8 @@ export default () => {
                 }
 
                 .account-theme .account-tabs-shell section {
-                    background-color: var(--card) !important;
-                    border: 1px solid var(--border) !important;
+                    background-color: var(--surface-elevated) !important;
+                    border: 1px solid var(--surface-border) !important;
                     border-radius: 0.75rem !important;
                     padding: 1.5rem !important;
                 }
@@ -362,8 +361,8 @@ export default () => {
                 .account-theme .account-tabs-shell input,
                 .account-theme .account-tabs-shell textarea,
                 .account-theme .account-tabs-shell select {
-                    background-color: var(--card) !important;
-                    border-color: rgba(var(--primary-rgb), 0.28) !important;
+                    background-color: var(--surface-elevated) !important;
+                    border-color: var(--surface-border) !important;
                     color: #f8f6ef !important;
                     border-radius: 8px !important;
                 }

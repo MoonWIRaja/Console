@@ -55,7 +55,9 @@ export default () => {
         <ServerContentBlock title={'Users'} className={'content-container-full px-4 xl:px-6'}>
             <FlashMessageRender byKey={'users'} css={tw`mb-4`} />
             {!subusers.length ? (
-                <p css={tw`text-center text-sm text-neutral-400`}>It looks like you don&apos;t have any subusers.</p>
+                <p css={tw`text-center text-sm text-[color:var(--text-subtle)]`}>
+                    It looks like you don&apos;t have any subusers.
+                </p>
             ) : (
                 subusers.map((subuser) => <UserRow key={subuser.uuid} subuser={subuser} />)
             )}

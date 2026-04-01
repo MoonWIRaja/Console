@@ -95,10 +95,12 @@ const MassActionsBar = () => {
                 >
                     <p className={'mb-2'}>
                         Move&nbsp;
-                        <span className={'font-semibold text-[color:var(--primary)]'}>{selectedFiles.length} files</span> to recycle
-                        bin? You can recover them later.
+                        <span className={'font-semibold text-[color:var(--primary)]'}>
+                            {selectedFiles.length} files
+                        </span>{' '}
+                        to recycle bin? You can recover them later.
                     </p>
-                    <ul className={'space-y-1 text-sm text-gray-300'}>
+                    <ul className={'space-y-1 text-sm text-[color:var(--foreground)]'}>
                         {selectedFiles.slice(0, 15).map((file) => (
                             <li key={file}>{file}</li>
                         ))}

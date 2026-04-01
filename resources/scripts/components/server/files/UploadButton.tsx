@@ -124,7 +124,7 @@ export default ({ className }: WithClassname) => {
                                 }
                             >
                                 <CloudUploadIcon className={'h-10 w-10 flex-shrink-0 text-[color:var(--primary)]'} />
-                                <p className={'font-header flex-1 text-center text-lg text-gray-100'}>
+                                <p className={'font-header flex-1 text-center text-lg text-[color:var(--foreground)]'}>
                                     Drag and drop files to upload.
                                 </p>
                             </div>

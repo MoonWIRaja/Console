@@ -45,7 +45,7 @@ export default () => {
             ) : (
                 <>
                     {schedules.length === 0 ? (
-                        <p css={tw`text-center text-sm text-neutral-400`}>
+                        <p css={tw`text-center text-sm text-[color:var(--text-subtle)]`}>
                             There are no schedules configured for this server.
                         </p>
                     ) : (

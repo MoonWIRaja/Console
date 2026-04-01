@@ -223,56 +223,18 @@
                         </div>
                     </div>
 
-                    {{-- Theme Selector (matches React Select exactly) --}}
-                    <div id="themeSelectWrapper" style="position: relative; padding: 4px 12px;">
-                        {{-- Trigger (matches SelectItem noDescription=true mode) --}}
-                        <div id="themeSelectTrigger" style="width: 100%; overflow: hidden; border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 30px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08); transition: border-color 0.15s;">
+                    <div style="position: relative; padding: 4px 12px;">
+                        <div style="width: 100%; overflow: hidden; border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 30px; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px;">
                                 <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
                                     <div class="theme-icon-circle" style="flex-shrink: 0;">
-                                        <span class="material-icons-round" style="font-size: 16px;">palette</span>
+                                        <span class="material-icons-round" style="font-size: 16px;">dark_mode</span>
                                     </div>
-                                    <strong id="themeSelectLabel" class="theme-label-text">Cyberpunk</strong>
-                                </div>
-                                <div style="display: flex; align-items: center; padding-right: 12px;">
-                                    <span class="material-icons-round" style="font-size: 20px; color: var(--admin-primary);">expand_more</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Dropdown Panel --}}
-                        <div id="themeSelectDropdown" class="theme-select-dropdown">
-                            {{-- Header --}}
-                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;">
-                                <strong style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--admin-foreground);">Theme</strong>
-                                <button type="button" id="themeSelectClose" class="theme-close-btn">
-                                    <span class="material-icons-round" style="font-size: 12px;">close</span>
-                                </button>
-                            </div>
-                            {{-- Items --}}
-                            <div class="theme-select-scroll">
-                                @foreach([
-                                    ['cyberpunk', 'Cyberpunk'],
-                                    ['earthy', 'Earthy'],
-                                    ['amber-mono', 'Amber Mono'],
-                                    ['limes', 'Limes'],
-                                    ['domia', 'Domia'],
-                                    ['flat-pink', 'Flat Pink'],
-                                    ['terminal-muted', 'Terminal Muted'],
-                                    ['light-green', 'Light Green']
-                                ] as $theme)
-                                <div class="theme-select-item" data-theme-id="{{ $theme[0] }}">
-                                    <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
-                                        <div class="theme-icon-circle" style="flex-shrink: 0;">
-                                            <span class="material-icons-round" style="font-size: 16px;">palette</span>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; min-width: 0; width: 224px;">
-                                            <strong class="theme-label-text">{{ $theme[1] }}</strong>
-                                            <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark Mode</span>
-                                        </div>
+                                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                                        <strong class="theme-label-text">Dark Mode</strong>
+                                        <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark charcoal with cream accents</span>
                                     </div>
                                 </div>
-                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -475,23 +437,21 @@
                 })();
             </script>
 
-            {{-- Theme presets — syncs with React sidebar via localStorage --}}
+            {{-- Theme mode — syncs with React panel via localStorage --}}
             <script>
                 (function() {
-                    var THEMES = {
-                        'cyberpunk':       { background:'rgb(0,0,0)', foreground:'rgb(0,255,65)', card:'rgb(5,5,5)', primary:'rgb(0,255,65)', 'muted-foreground':'rgb(0,143,17)', border:'rgb(0,59,0)', accent:'rgb(0,255,65)', destructive:'rgb(255,0,0)' },
-                        'earthy':          { background:'rgb(38,38,36)', foreground:'rgb(241,241,239)', card:'rgb(44,44,43)', primary:'rgb(217,119,87)', 'muted-foreground':'rgb(183,181,169)', border:'rgb(62,62,56)', accent:'rgb(26,25,21)', destructive:'rgb(239,68,68)' },
-                        'amber-mono':      { background:'rgb(10,10,10)', foreground:'rgb(245,245,245)', card:'rgb(23,23,23)', primary:'rgb(225,113,0)', 'muted-foreground':'rgb(166,160,155)', border:'rgb(68,64,59)', accent:'rgb(68,64,59)', destructive:'rgb(193,0,7)' },
-                        'limes':           { background:'rgb(0,0,0)', foreground:'rgb(255,255,255)', card:'rgb(0,0,0)', primary:'rgb(94,165,0)', 'muted-foreground':'rgb(164,164,164)', border:'rgb(36,36,36)', accent:'rgb(51,51,51)', destructive:'rgb(255,91,91)' },
-                        'domia':           { background:'rgb(0,0,0)', foreground:'rgb(231,233,234)', card:'rgb(23,24,28)', primary:'rgb(186,0,189)', 'muted-foreground':'rgb(114,118,122)', border:'rgb(36,38,40)', accent:'rgb(6,22,34)', destructive:'rgb(244,33,46)' },
-                        'flat-pink':       { background:'rgb(0,0,0)', foreground:'rgb(255,255,255)', card:'rgb(0,0,0)', primary:'rgb(124,0,81)', 'muted-foreground':'rgb(164,164,164)', border:'rgb(36,36,36)', accent:'rgb(51,51,51)', destructive:'rgb(91,91,255)' },
-                        'terminal-muted':  { background:'rgb(9,12,10)', foreground:'rgb(169,214,185)', card:'rgb(13,18,15)', primary:'rgb(69,161,103)', 'muted-foreground':'rgb(117,163,134)', border:'rgb(33,44,37)', accent:'rgb(34,42,37)', destructive:'rgb(172,57,57)' },
-                        'light-green':     { background:'rgb(2,6,23)', foreground:'rgb(248,250,252)', card:'rgb(15,23,42)', primary:'rgb(175,243,62)', 'muted-foreground':'rgb(148,163,184)', border:'rgb(30,41,59)', accent:'rgb(20,83,45)', destructive:'rgb(153,27,27)' }
-                    };
-
-                    var LABELS = {
-                        'cyberpunk':'Cyberpunk', 'earthy':'Earthy', 'amber-mono':'Amber Mono', 'limes':'Limes',
-                        'domia':'Domia', 'flat-pink':'Flat Pink', 'terminal-muted':'Terminal Muted', 'light-green':'Light Green'
+                    var THEME_ID = 'burhan-core';
+                    var THEME_MODES = {
+                        dark: {
+                            background: 'rgb(34, 34, 34)',
+                            foreground: 'rgb(245, 231, 198)',
+                            card: 'rgb(34, 34, 34)',
+                            primary: 'rgb(245, 231, 198)',
+                            'muted-foreground': 'rgba(245, 231, 198, 0.74)',
+                            border: 'rgba(245, 231, 198, 0.18)',
+                            accent: 'rgba(245, 231, 198, 0.1)',
+                            destructive: 'rgb(245, 231, 198)'
+                        }
                     };
 
                     function extractRgb(val) {
@@ -500,12 +460,15 @@
                         return m ? m[1]+', '+m[2]+', '+m[3] : null;
                     }
 
-                    function applyTheme(themeId) {
-                        var t = THEMES[themeId];
+                    function normalizeMode() { return 'dark'; }
+
+                    function applyThemeMode(mode) {
+                        var normalizedMode = normalizeMode(mode);
+                        var t = THEME_MODES[normalizedMode];
                         if (!t) return;
                         var root = document.documentElement;
-                        var pRgb = extractRgb(t.primary) || '0,255,65';
-                        var bgRgb = extractRgb(t.background) || '0,0,0';
+                        var pRgb = extractRgb(t.primary) || '245, 231, 198';
+                        var bgRgb = extractRgb(t.background) || '34, 34, 34';
                         var cardRgb = extractRgb(t.card) || bgRgb;
 
                         root.style.setProperty('--admin-background', t.background);
@@ -520,66 +483,15 @@
                         root.style.setProperty('--admin-primary-rgb', pRgb);
                         root.style.setProperty('--admin-background-rgb', bgRgb);
                         root.style.setProperty('--admin-card-rgb', cardRgb);
-                        root.style.setProperty('--admin-primary-glow-soft', 'rgba('+pRgb+', 0.22)');
-                        root.style.setProperty('--admin-primary-glow-medium', 'rgba('+pRgb+', 0.35)');
-                        root.style.setProperty('--admin-primary-glow-strong', 'rgba('+pRgb+', 0.55)');
+                        root.style.setProperty('--admin-primary-glow-soft', 'rgba('+pRgb+', 0.18)');
+                        root.style.setProperty('--admin-primary-glow-medium', 'rgba('+pRgb+', 0.28)');
+                        root.style.setProperty('--admin-primary-glow-strong', 'rgba('+pRgb+', 0.4)');
 
-                        localStorage.setItem('panel.theme.id', themeId);
-                        localStorage.setItem('panel.theme.mode', 'dark');
+                        localStorage.setItem('panel.theme.id', THEME_ID);
+                        localStorage.setItem('panel.theme.mode', normalizedMode);
 
-                        // Update trigger label
-                        var label = document.getElementById('themeSelectLabel');
-                        if (label) label.textContent = LABELS[themeId] || themeId;
                     }
-
-                    // Custom dropdown toggle
-                    var trigger = document.getElementById('themeSelectTrigger');
-                    var dropdown = document.getElementById('themeSelectDropdown');
-                    var closeBtn = document.getElementById('themeSelectClose');
-                    var wrapper = document.getElementById('themeSelectWrapper');
-                    var themeDropOpen = false;
-
-                    function setThemeDropOpen(val) {
-                        themeDropOpen = val;
-                        if (dropdown) dropdown.style.display = val ? 'block' : 'none';
-                    }
-
-                    if (trigger) {
-                        trigger.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            setThemeDropOpen(!themeDropOpen);
-                        });
-                    }
-                    if (closeBtn) {
-                        closeBtn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            setThemeDropOpen(false);
-                        });
-                    }
-
-                    // Click outside to close theme dropdown
-                    document.addEventListener('mousedown', function(e) {
-                        if (!themeDropOpen) return;
-                        if (wrapper && !wrapper.contains(e.target)) {
-                            setThemeDropOpen(false);
-                        }
-                    });
-
-                    // Theme item clicks
-                    var items = document.querySelectorAll('.theme-select-item');
-                    for (var i = 0; i < items.length; i++) {
-                        (function(item) {
-                            item.addEventListener('click', function() {
-                                var id = item.getAttribute('data-theme-id');
-                                applyTheme(id);
-                                setThemeDropOpen(false);
-                            });
-                        })(items[i]);
-                    }
-
-                    // Load saved theme on page load
-                    var savedTheme = localStorage.getItem('panel.theme.id') || 'cyberpunk';
-                    applyTheme(savedTheme);
+                    applyThemeMode('dark');
                 })();
             </script>
 

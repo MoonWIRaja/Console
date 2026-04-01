@@ -25,7 +25,7 @@ interface Params {
 
 const CronBox = ({ title, value }: { title: string; value: string }) => (
     <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
-        <p css={tw`text-sm text-neutral-400`}>{title}</p>
+        <p css={tw`text-sm text-[color:var(--text-subtle)]`}>{title}</p>
         <p css={tw`text-xl font-medium text-[#f8f6ef]`}>{value}</p>
     </div>
 );
@@ -89,7 +89,9 @@ export default () => {
                         cron={schedule.cron}
                         css={tw`mb-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:hidden`}
                     />
-                    <div css={tw`overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]`}>
+                    <div
+                        css={tw`overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]`}
+                    >
                         <div
                             css={tw`rounded-t-xl border-b border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:flex sm:items-center sm:p-6`}
                         >
@@ -98,7 +100,7 @@ export default () => {
                                     {schedule.name}
                                     {schedule.isProcessing ? (
                                         <span
-                                            css={tw`ml-4 flex items-center rounded-full border border-[color:var(--border)] bg-[#111827] px-2 py-px text-xs uppercase text-[color:var(--primary)]`}
+                                            css={tw`ml-4 flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-px text-xs uppercase text-[color:var(--primary)]`}
                                         >
                                             <Spinner css={tw`w-3! h-3! mr-2`} />
                                             Processing
@@ -107,19 +109,19 @@ export default () => {
                                         <ActivePill active={schedule.isActive} />
                                     )}
                                 </h3>
-                                <p css={tw`mt-1 text-sm text-neutral-300`}>
+                                <p css={tw`mt-1 text-sm text-[color:var(--text-subtle)]`}>
                                     Last run at:&nbsp;
                                     {schedule.lastRunAt ? (
                                         format(schedule.lastRunAt, "MMM do 'at' h:mma")
                                     ) : (
-                                        <span css={tw`text-neutral-500`}>n/a</span>
+                                        <span css={tw`text-[color:var(--text-subtle)]`}>n/a</span>
                                     )}
                                     <span css={tw`ml-4 border-l-2 border-[color:var(--border)] py-px pl-4`}>
                                         Next run at:&nbsp;
                                         {schedule.nextRunAt ? (
                                             format(schedule.nextRunAt, "MMM do 'at' h:mma")
                                         ) : (
-                                            <span css={tw`text-neutral-500`}>n/a</span>
+                                            <span css={tw`text-[color:var(--text-subtle)]`}>n/a</span>
                                         )}
                                     </span>
                                 </p>

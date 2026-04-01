@@ -5,7 +5,6 @@ import { ApplicationStore } from '@/state';
 import getServers from '@/api/getServers';
 import { Server } from '@/api/server/getServer';
 import useSiteBranding from '@/hooks/useSiteBranding';
-import { applyThemePreset, DEFAULT_THEME_ID, THEME_PRESETS } from '@/components/ui/theme-presets';
 import {
     getStoredSidebarMode,
     SIDEBAR_MODE_SYNC_EVENT,
@@ -183,21 +182,6 @@ const DashboardTopbar = ({
         };
     }, [rootAdmin, serverSwitcherOpen, serverSwitcherQuery, showAllServers]);
 
-    const cycleThemePreset = () => {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        const currentThemeId = window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID;
-        const currentIndex = THEME_PRESETS.findIndex((preset) => preset.id === currentThemeId);
-        const nextPreset =
-            THEME_PRESETS[(currentIndex + 1 + THEME_PRESETS.length) % THEME_PRESETS.length] || THEME_PRESETS[0];
-
-        window.localStorage.setItem('panel.theme.id', nextPreset.id);
-        window.localStorage.setItem('panel.theme.mode', 'dark');
-        applyThemePreset(nextPreset.id, 'dark');
-    };
-
     const isSidebarCollapsed = sidebarMode === 'locked-closed';
 
     const handleServerSwitcherToggle = () => {
@@ -227,9 +211,9 @@ const DashboardTopbar = ({
                 width: '46px',
                 height: '46px',
                 borderRadius: '14px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(255, 255, 255, 0.04)',
-                color: 'var(--foreground)',
+                border: '1px solid rgba(245, 231, 198, 0.12)',
+                background: 'rgba(245, 231, 198, 0.06)',
+                color: 'rgba(245, 231, 198, 0.76)',
                 cursor: 'pointer',
                 flexShrink: 0,
             }}
@@ -259,9 +243,9 @@ const DashboardTopbar = ({
                 width: '46px',
                 height: '46px',
                 borderRadius: '14px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(255, 255, 255, 0.04)',
-                color: 'var(--foreground)',
+                border: '1px solid rgba(245, 231, 198, 0.12)',
+                background: 'rgba(245, 231, 198, 0.06)',
+                color: 'rgba(245, 231, 198, 0.76)',
                 cursor: 'pointer',
                 flexShrink: 0,
             }}
@@ -286,11 +270,10 @@ const DashboardTopbar = ({
                 justifyContent: 'space-between',
                 gap: isMobileViewport ? '10px' : '16px',
                 padding: isMobileViewport ? '0 12px' : '0 16px',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                background:
-                    'radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), 0.12), transparent 30%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 0.98))',
+                borderBottom: '1px solid rgba(245, 231, 198, 0.12)',
+                background: '#2D2D2D',
                 backdropFilter: 'blur(12px)',
-                boxShadow: '0 10px 24px rgba(0, 0, 0, 0.32)',
+                boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)',
                 fontFamily: "var(--font-sans, 'Inter', sans-serif)",
             }}
         >
@@ -316,9 +299,9 @@ const DashboardTopbar = ({
                             width: '44px',
                             height: '44px',
                             borderRadius: '14px',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            color: 'var(--foreground)',
+                            border: '1px solid rgba(245, 231, 198, 0.12)',
+                            background: 'rgba(245, 231, 198, 0.06)',
+                            color: 'rgba(245, 231, 198, 0.76)',
                             cursor: 'pointer',
                             flexShrink: 0,
                         }}
@@ -340,27 +323,25 @@ const DashboardTopbar = ({
                         color: 'inherit',
                     }}
                 >
-                    <span
+                    <img
                         draggable={false}
+                        src={logo}
+                        alt={`${name} logo`}
                         style={{
-                            width: '46px',
-                            height: '46px',
-                            borderRadius: '14px',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            backgroundImage: `url(${logo})`,
-                            backgroundSize: '68%',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat',
+                            width: isMobileViewport ? '3.2rem' : '4rem',
+                            height: isMobileViewport ? '3.2rem' : '4rem',
+                            borderRadius: '0.75rem',
+                            objectFit: 'contain',
+                            objectPosition: 'center',
                             flexShrink: 0,
                         }}
                     />
                     <div style={{ minWidth: 0 }}>
                         <div
                             style={{
-                                color: 'rgba(248, 246, 239, 0.96)',
-                                fontSize: isMobileViewport ? '0.94rem' : '1.05rem',
-                                fontWeight: 800,
+                                color: '#F5E7C6',
+                                fontSize: isMobileViewport ? '1rem' : '1.1rem',
+                                fontWeight: 700,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -388,13 +369,12 @@ const DashboardTopbar = ({
                             width: '46px',
                             height: '46px',
                             borderRadius: '14px',
-                            border: '1px solid rgba(var(--primary-rgb), 0.3)',
-                            background:
-                                'linear-gradient(135deg, rgba(var(--primary-rgb), 0.18), rgba(var(--primary-rgb), 0.06))',
-                            color: 'var(--primary)',
+                            border: '1px solid rgba(245, 231, 198, 0.12)',
+                            background: 'rgba(245, 231, 198, 0.06)',
+                            color: '#F5E7C6',
                             cursor: 'pointer',
                             flexShrink: 0,
-                            boxShadow: '0 0 18px rgba(var(--primary-rgb), 0.12)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
                         }}
                     >
                         <svg
@@ -423,15 +403,14 @@ const DashboardTopbar = ({
                                 maxHeight: 'min(72vh, 520px)',
                                 overflow: 'hidden',
                                 borderRadius: '18px',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                background:
-                                    'linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02) 30%), rgba(5, 9, 15, 0.98)',
-                                boxShadow: '0 24px 56px rgba(0, 0, 0, 0.55), 0 0 30px rgba(var(--primary-rgb), 0.08)',
+                                border: '1px solid rgba(245, 231, 198, 0.12)',
+                                background: '#2D2D2D',
+                                boxShadow: '0 24px 56px rgba(0, 0, 0, 0.38)',
                                 backdropFilter: 'blur(16px)',
                                 zIndex: 60,
                             }}
                         >
-                            <div style={{ padding: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                            <div style={{ padding: '14px', borderBottom: '1px solid rgba(245, 231, 198, 0.08)' }}>
                                 <div
                                     style={{
                                         display: 'flex',
@@ -440,8 +419,8 @@ const DashboardTopbar = ({
                                         height: '48px',
                                         padding: '0 14px',
                                         borderRadius: '14px',
-                                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                                        background: 'rgba(255, 255, 255, 0.035)',
+                                        border: '1px solid rgba(245, 231, 198, 0.08)',
+                                        background: 'rgba(255, 255, 255, 0.02)',
                                     }}
                                 >
                                     <svg
@@ -714,53 +693,6 @@ const DashboardTopbar = ({
                     </div>
                 </div>
             )}
-
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobileViewport ? '8px' : '12px',
-                    marginLeft: 'auto',
-                    zIndex: 1,
-                    flexShrink: 0,
-                }}
-            >
-                <button
-                    type='button'
-                    onClick={cycleThemePreset}
-                    aria-label='Switch panel theme'
-                    title='Switch panel theme'
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: isMobileViewport ? '46px' : '50px',
-                        height: isMobileViewport ? '46px' : '50px',
-                        borderRadius: '999px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        color: 'var(--foreground)',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                    }}
-                >
-                    <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        width='22'
-                        height='22'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        className='tabler-icon tabler-icon-sun'
-                    >
-                        <path d='M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0' />
-                        <path d='M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7' />
-                    </svg>
-                </button>
-            </div>
         </header>
     );
 };

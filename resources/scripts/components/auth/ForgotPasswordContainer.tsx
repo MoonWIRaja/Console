@@ -19,6 +19,7 @@ import {
     authInputWithSuffixClass,
     authPrimaryButtonClass,
     authSecondaryButtonClass,
+    authTurnstileErrorClass,
     burhanAuthThemeStyles,
     honeypotFieldClass,
 } from '@/components/auth/authTheme';
@@ -185,11 +186,20 @@ const ForgotPasswordContainer = () => {
                                 <h1 className='burhan-auth-title'>{name}</h1>
                             </div>
 
-                            <div className='mb-4 rounded-[1.35rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3'>
-                                <h2 className='text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(248,246,239,0.72)]'>
+                            <div
+                                className='mb-4 rounded-[1.35rem] px-4 py-3'
+                                style={{
+                                    border: '1px solid rgba(245, 231, 198, 0.12)',
+                                    backgroundColor: '#2D2D2D',
+                                }}
+                            >
+                                <h2
+                                    className='text-[0.72rem] font-extrabold uppercase tracking-[0.18em]'
+                                    style={{ color: '#F5E7C6' }}
+                                >
                                     Reset Password
                                 </h2>
-                                <p className='mt-2 text-sm leading-7 text-[rgba(151,160,171,0.94)]'>
+                                <p className='mt-2 text-sm leading-7' style={{ color: '#A0A0A0' }}>
                                     {mode === 'request'
                                         ? 'Enter your account email to receive a 6-digit PIN.'
                                         : `Enter the PIN sent to ${email} and set your new password.`}
@@ -287,7 +297,7 @@ const ForgotPasswordContainer = () => {
                                                         className='flex justify-center'
                                                     />
                                                     {captchaWidgetFailed && (
-                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                        <p className={authTurnstileErrorClass}>
                                                             Verification could not be loaded on this hostname. Check the
                                                             Turnstile widget configuration in Cloudflare.
                                                         </p>
@@ -446,7 +456,7 @@ const ForgotPasswordContainer = () => {
                                                         className='flex justify-center'
                                                     />
                                                     {captchaWidgetFailed && (
-                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                        <p className={authTurnstileErrorClass}>
                                                             Verification could not be loaded on this hostname. Check the
                                                             Turnstile widget configuration in Cloudflare.
                                                         </p>

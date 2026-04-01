@@ -44,7 +44,7 @@ export default () => {
             style={{
                 height: '100dvh',
                 background:
-                    'radial-gradient(circle at 10% 2%, rgba(var(--primary-rgb), 0.18), transparent 34%), radial-gradient(circle at 90% 100%, rgba(84, 140, 255, 0.2), transparent 38%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
+                    'radial-gradient(circle at 10% 2%, rgba(var(--primary-rgb), 0.08), transparent 34%), linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985))',
                 color: 'var(--foreground)',
                 fontFamily: "var(--font-sans, 'Inter', sans-serif)",
             }}
@@ -57,9 +57,8 @@ export default () => {
                     gap: '16px',
                     minHeight: '72px',
                     padding: '0 16px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    background:
-                        'radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), 0.12), transparent 30%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 0.98))',
+                    borderBottom: '1px solid var(--surface-border)',
+                    background: '#2D2D2D',
                     backdropFilter: 'blur(12px)',
                     boxShadow: '0 10px 24px rgba(0, 0, 0, 0.32)',
                 }}
@@ -100,8 +99,8 @@ export default () => {
                         height: '42px',
                         padding: '0 16px',
                         borderRadius: '999px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid var(--surface-border)',
+                        background: 'var(--surface-elevated)',
                         color: 'var(--foreground)',
                         textDecoration: 'none',
                         fontSize: '0.74rem',

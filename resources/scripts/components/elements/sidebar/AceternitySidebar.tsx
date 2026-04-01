@@ -165,16 +165,15 @@ function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps
                     top: `${topOffset}px`,
                     left: 0,
                     zIndex: 20,
-                    background:
-                        'radial-gradient(circle at 16% -2%, rgba(var(--primary-rgb), 0.18), transparent 36%), radial-gradient(circle at 106% 92%, rgba(84, 140, 255, 0.17), transparent 40%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
+                    background: '#2D2D2D',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.09)',
+                    borderRight: '1px solid rgba(245, 231, 198, 0.12)',
                     fontFamily: "var(--font-sans, 'Inter', sans-serif)",
                     overflow: 'visible',
                     flexShrink: 0,
                     boxShadow:
-                        'inset 1px 0 0 rgba(255, 255, 255, 0.04), inset -1px 0 0 rgba(255, 255, 255, 0.03), 0 20px 48px rgba(0, 0, 0, 0.42)',
+                        'inset 1px 0 0 rgba(255, 255, 255, 0.03), inset -1px 0 0 rgba(255, 255, 255, 0.02), 0 20px 48px rgba(0, 0, 0, 0.24)',
                 }}
                 className={`sidebar-desktop-shell ${className || ''}`}
             >
@@ -203,7 +202,7 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'linear-gradient(180deg, rgba(9, 12, 18, 0.97), rgba(4, 6, 10, 0.99))',
+                        background: '#2D2D2D',
                         padding: '12px 16px',
                         fontFamily: "var(--font-sans, 'Inter', sans-serif)",
                         position: 'fixed',
@@ -211,8 +210,8 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.09)',
-                        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)',
+                        borderBottom: '1px solid rgba(245, 231, 198, 0.12)',
+                        boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)',
                     }}
                 >
                     <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>{name}</div>
@@ -263,14 +262,13 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                                 left: 0,
                                 height: `calc(100vh - ${topOffset}px)`,
                                 width: '288px',
-                                background:
-                                    'radial-gradient(circle at 16% -2%, rgba(var(--primary-rgb), 0.18), transparent 36%), radial-gradient(circle at 106% 92%, rgba(84, 140, 255, 0.17), transparent 40%), linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
+                                background: '#2D2D2D',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 fontFamily: "var(--font-sans, 'Inter', sans-serif)",
-                                borderRight: '1px solid rgba(255, 255, 255, 0.09)',
-                                boxShadow: '0 24px 52px rgba(0, 0, 0, 0.45)',
+                                borderRight: '1px solid rgba(245, 231, 198, 0.12)',
+                                boxShadow: '0 24px 52px rgba(0, 0, 0, 0.28)',
                             }}
                             className='sidebar-mobile-shell'
                         >

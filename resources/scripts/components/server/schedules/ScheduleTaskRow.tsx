@@ -89,9 +89,13 @@ export default ({ schedule, task }: Props) => {
                 <p css={tw`text-sm uppercase text-[#f8f6ef] md:ml-6`}>{title}</p>
                 {task.payload && (
                     <div css={tw`md:ml-6 mt-2`}>
-                        {task.action === 'backup' && <p css={tw`mb-1 text-xs uppercase text-neutral-400`}>Ignoring files & folders:</p>}
+                        {task.action === 'backup' && (
+                            <p css={tw`mb-1 text-xs uppercase text-[color:var(--text-subtle)]`}>
+                                Ignoring files & folders:
+                            </p>
+                        )}
                         <div
-                            css={tw`inline-block w-auto break-all whitespace-pre-wrap rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-sm text-neutral-300`}
+                            css={tw`inline-block w-auto break-all whitespace-pre-wrap rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-sm text-[color:var(--foreground)]`}
                         >
                             {task.payload}
                         </div>
@@ -109,7 +113,9 @@ export default ({ schedule, task }: Props) => {
                 )}
                 {task.sequenceId > 1 && task.timeOffset > 0 && (
                     <div css={tw`mr-6`}>
-                        <div css={tw`flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 text-sm text-neutral-300`}>
+                        <div
+                            css={tw`flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 text-sm text-[color:var(--foreground)]`}
+                        >
                             <Icon icon={faClock} css={tw`w-3 h-3 mr-2`} />
                             {task.timeOffset}s later
                         </div>
@@ -119,19 +125,19 @@ export default ({ schedule, task }: Props) => {
                     <button
                         type={'button'}
                         aria-label={'Edit scheduled task'}
-                            css={tw`ml-auto mr-4 block p-2 text-sm text-neutral-500 transition-colors duration-150 hover:text-[color:var(--primary)] sm:ml-0`}
-                            onClick={() => setIsEditing(true)}
-                        >
-                            <FontAwesomeIcon icon={faPencilAlt} />
+                        css={tw`ml-auto mr-4 block p-2 text-sm text-[color:var(--text-subtle)] transition-colors duration-150 hover:text-[color:var(--primary)] sm:ml-0`}
+                        onClick={() => setIsEditing(true)}
+                    >
+                        <FontAwesomeIcon icon={faPencilAlt} />
                     </button>
                 </Can>
                 <Can action={'schedule.update'}>
                     <button
                         type={'button'}
                         aria-label={'Delete scheduled task'}
-                            css={tw`block p-2 text-sm text-neutral-500 transition-colors duration-150 hover:text-red-400`}
-                            onClick={() => setVisible(true)}
-                        >
+                        css={tw`block p-2 text-sm text-[color:var(--text-subtle)] transition-colors duration-150 hover:text-red-400`}
+                        onClick={() => setVisible(true)}
+                    >
                         <FontAwesomeIcon icon={faTrashAlt} />
                     </button>
                 </Can>

@@ -14,31 +14,37 @@ export default createGlobalStyle`
     }
 
     :root {
-        --background: #0C0C0C;
-        --foreground: #f8f6ef;
-        --card: #0C0C0C;
-        --card-foreground: #f8f6ef;
-        --popover: #0C0C0C;
-        --popover-foreground: #f8f6ef;
-        --primary: #a3ff12;
-        --primary-foreground: #0C0C0C;
-        --secondary: #12220b;
-        --secondary-foreground: #f8f6ef;
-        --muted: #1b1f1c;
-        --muted-foreground: #94a3b8;
-        --accent: #1f2a14;
-        --accent-foreground: #f8f6ef;
-        --destructive: #ef4444;
-        --destructive-foreground: #fee2e2;
-        --border: #1f2a14;
-        --input: #0C0C0C;
-        --ring: #a3ff12;
-        --primary-rgb: 163, 255, 18;
-        --background-rgb: 12, 12, 12;
-        --card-rgb: 12, 12, 12;
-        --primary-glow-soft: rgba(163, 255, 18, 0.22);
-        --primary-glow-medium: rgba(163, 255, 18, 0.35);
-        --primary-glow-strong: rgba(163, 255, 18, 0.55);
+        --background: #222222;
+        --foreground: #F5E7C6;
+        --card: #222222;
+        --card-foreground: #F5E7C6;
+        --popover: #222222;
+        --popover-foreground: #F5E7C6;
+        --primary: #F5E7C6;
+        --primary-foreground: #222222;
+        --secondary: rgba(245, 231, 198, 0.07);
+        --secondary-foreground: #F5E7C6;
+        --muted: rgba(245, 231, 198, 0.05);
+        --muted-foreground: rgba(245, 231, 198, 0.74);
+        --accent: rgba(245, 231, 198, 0.1);
+        --accent-foreground: #F5E7C6;
+        --destructive: #F5E7C6;
+        --destructive-foreground: #222222;
+        --border: rgba(245, 231, 198, 0.18);
+        --input: rgba(245, 231, 198, 0.08);
+        --ring: #F5E7C6;
+        --primary-rgb: 245, 231, 198;
+        --background-rgb: 34, 34, 34;
+        --card-rgb: 34, 34, 34;
+        --primary-glow-soft: rgba(245, 231, 198, 0.18);
+        --primary-glow-medium: rgba(245, 231, 198, 0.28);
+        --primary-glow-strong: rgba(245, 231, 198, 0.4);
+        --surface-elevated: #2D2D2D;
+        --surface-elevated-rgb: 45, 45, 45;
+        --surface-subtle: rgba(245, 231, 198, 0.02);
+        --surface-subtle-strong: rgba(245, 231, 198, 0.04);
+        --surface-border: rgba(245, 231, 198, 0.12);
+        --text-subtle: #A0A0A0;
         --font-sans: 'IBM Plex Sans', 'Roboto', system-ui, sans-serif;
         --font-mono: 'IBM Plex Sans', 'Roboto', system-ui, sans-serif;
         --radius: 0.75rem;
@@ -101,7 +107,8 @@ export default createGlobalStyle`
         border-right-width: 4px;
         border-left-width: 4px;
         -webkit-border-radius: 9px 4px;
-        -webkit-box-shadow: inset 0 0 0 1px hsl(211, 10%, 53%), inset 0 0 0 4px hsl(209deg 18% 30%);
+        -webkit-box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.22),
+            inset 0 0 0 4px rgba(var(--surface-elevated-rgb), 1);
     }
 
     ::-webkit-scrollbar-track-piece {
@@ -218,5 +225,46 @@ export default createGlobalStyle`
 
     [style*='#1f2a14'] {
         border-color: var(--border) !important;
+    }
+
+    [class~='bg-white'],
+    [class*='bg-white'],
+    [class*='bg-gray-800'],
+    [class*='bg-gray-700'],
+    [class*='bg-gray-600'],
+    [class*='bg-neutral-700'],
+    [class*='bg-neutral-800'],
+    [class*='bg-neutral-900'],
+    [class*='bg-[#1f2937]'] {
+        background-color: var(--surface-elevated) !important;
+    }
+
+    [class*='border-gray-200'],
+    [class*='border-gray-700'],
+    [class*='border-neutral-200'],
+    [class*='border-white/10'],
+    [class*='border-white/8'] {
+        border-color: var(--surface-border) !important;
+    }
+
+    [class~='text-white'],
+    [class*='text-white'],
+    [class*='text-neutral-100'],
+    [class*='text-neutral-200'],
+    [class*='text-neutral-300'],
+    [class*='text-gray-50'],
+    [class*='text-gray-200'],
+    [class*='text-gray-300'],
+    [class*='text-gray-100'] {
+        color: var(--foreground) !important;
+    }
+
+    [class*='text-neutral-400'],
+    [class*='text-neutral-500'],
+    [class*='text-gray-400'],
+    [class*='text-gray-500'],
+    [class*='text-white/60'],
+    [class*='text-white/40'] {
+        color: var(--text-subtle) !important;
     }
 `;

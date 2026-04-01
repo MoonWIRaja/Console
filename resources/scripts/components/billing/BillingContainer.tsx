@@ -2821,7 +2821,7 @@ export default () => {
         return (
             <div
                 className={
-                    'min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(var(--primary-rgb),0.18),transparent_40%),radial-gradient(circle_at_94%_100%,rgba(84,140,255,0.2),transparent_44%),linear-gradient(180deg,rgba(4,7,12,0.98),rgba(1,2,5,1))] px-6 py-8 text-[color:var(--foreground)] md:px-10'
+                    'min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(var(--primary-rgb),0.08),transparent_40%),linear-gradient(180deg,rgba(var(--background-rgb),1),rgba(var(--background-rgb),0.985))] px-6 py-8 text-[color:var(--foreground)] md:px-10'
                 }
             >
                 <Spinner centered size={Spinner.Size.LARGE} />
@@ -2846,9 +2846,8 @@ export default () => {
                     display: flex;
                     flex-direction: column;
                     background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
-                        radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
-                        linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1));
+                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
+                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
                     font-family: var(--font-sans, 'Inter', sans-serif);
                 }
 
@@ -2860,12 +2859,12 @@ export default () => {
                     background:
                         repeating-linear-gradient(
                             90deg,
-                            rgba(255, 255, 255, 0.014) 0,
-                            rgba(255, 255, 255, 0.014) 1px,
+                            rgba(var(--primary-rgb), 0.02) 0,
+                            rgba(var(--primary-rgb), 0.02) 1px,
                             transparent 1px,
                             transparent 40px
                         );
-                    opacity: 0.2;
+                    opacity: 0.1;
                 }
 
                 .billing-shell::after {
@@ -2880,8 +2879,8 @@ export default () => {
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(112, 168, 255, 0.08) 0%,
-                        rgba(112, 168, 255, 0.03) 42%,
+                        rgba(var(--primary-rgb), 0.05) 0%,
+                        rgba(var(--primary-rgb), 0.015) 42%,
                         transparent 72%
                     );
                 }
@@ -2975,10 +2974,10 @@ export default () => {
                 .billing-choice-card {
                     width: 100%;
                     border-radius: 20px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(170deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 54%),
-                        rgba(4, 8, 14, 0.76);
+                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.03), rgba(var(--primary-rgb), 0.012) 54%),
+                        var(--surface-elevated);
                     padding: 1.15rem;
                     text-align: left;
                     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -3022,8 +3021,8 @@ export default () => {
 
                 .billing-choice-meta-grid > div {
                     border-radius: 14px;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background: rgba(255, 255, 255, 0.025);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 0.75rem;
                 }
 
@@ -3057,7 +3056,7 @@ export default () => {
                     gap: 0.9rem;
                     margin-top: 0;
                     padding-top: 1.25rem;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
+                    border-top: 1px solid var(--surface-border);
                 }
 
                 .billing-step-row {
@@ -3065,8 +3064,8 @@ export default () => {
                     align-items: flex-start;
                     gap: 0.85rem;
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 0.85rem 0.9rem;
                 }
 
@@ -3119,8 +3118,8 @@ export default () => {
                     justify-content: space-between;
                     gap: 1rem;
                     border-radius: 14px;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 0.85rem 0.95rem;
                     color: rgba(174, 183, 194, 0.82);
                 }
@@ -3131,12 +3130,12 @@ export default () => {
 
                 .billing-panel {
                     border-radius: 22px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(170deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 50%),
-                        rgba(4, 8, 14, 0.78);
+                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.012) 50%),
+                        var(--surface-elevated);
                     box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
                         0 24px 38px -32px rgba(0, 0, 0, 0.86);
                 }
 
@@ -3206,8 +3205,8 @@ export default () => {
                 }
 
                 .billing-secondary-btn {
-                    border-color: rgba(255, 255, 255, 0.1);
-                    background: rgba(255, 255, 255, 0.03);
+                    border-color: var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     color: rgba(248, 246, 239, 0.92);
                 }
 
@@ -3218,7 +3217,7 @@ export default () => {
                 }
 
                 .billing-ghost-btn {
-                    border-color: rgba(255, 255, 255, 0.12);
+                    border-color: var(--surface-border);
                     background: transparent;
                     color: rgba(174, 183, 194, 0.9);
                 }
@@ -3238,9 +3237,9 @@ export default () => {
 
                 .billing-slider-card {
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: linear-gradient(165deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01) 50%),
-                        rgba(4, 8, 14, 0.72);
+                    border: 1px solid var(--surface-border);
+                    background: linear-gradient(165deg, rgba(var(--primary-rgb), 0.025), rgba(var(--primary-rgb), 0.01) 50%),
+                        var(--surface-elevated);
                     padding: 16px;
                 }
 
@@ -3261,10 +3260,10 @@ export default () => {
 
                 .billing-subscription-card {
                     border-radius: 20px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(170deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 54%),
-                        rgba(4, 8, 14, 0.76);
+                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.03), rgba(var(--primary-rgb), 0.012) 54%),
+                        var(--surface-elevated);
                     padding: 1.25rem;
                     box-shadow:
                         inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -3281,29 +3280,29 @@ export default () => {
                 .billing-upgrade-panel {
                     margin-top: 1.25rem;
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 1.25rem;
                 }
 
                 .billing-upgrade-summary {
                     margin-top: 1.25rem;
                     border-radius: 14px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: rgba(3, 7, 12, 0.74);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 1rem;
                 }
 
                 .billing-variable-card {
                     border-radius: 14px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
-                    background: rgba(4, 8, 14, 0.72);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-elevated);
                     overflow: hidden;
                 }
 
                 .billing-variable-head {
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-                    background: rgba(255, 255, 255, 0.03);
+                    border-bottom: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 0.65rem 0.8rem;
                 }
 
@@ -3320,8 +3319,8 @@ export default () => {
 
                 .billing-variable-badge {
                     border-radius: 999px;
-                    border: 1px solid rgba(255, 255, 255, 0.15);
-                    background: rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     padding: 0.14rem 0.52rem;
                     font-size: 0.6rem;
                     font-weight: 800;
@@ -3335,8 +3334,8 @@ export default () => {
 
                 .billing-chip {
                     border-radius: 999px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    background: rgba(255, 255, 255, 0.035);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     padding: 0.5rem 0.9rem;
                     font-size: 11px;
                     font-weight: 800;
@@ -3347,15 +3346,15 @@ export default () => {
 
                 .billing-soft-card {
                     border-radius: 14px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: rgba(3, 7, 12, 0.72);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 0.95rem;
                 }
 
                 .billing-empty-card {
                     border-radius: 16px;
-                    border: 1px dashed rgba(255, 255, 255, 0.2);
-                    background: rgba(3, 7, 12, 0.56);
+                    border: 1px dashed rgba(var(--primary-rgb), 0.22);
+                    background: var(--surface-subtle);
                     padding: 1.5rem 1rem;
                     text-align: center;
                     font-size: 0.88rem;
@@ -3364,10 +3363,10 @@ export default () => {
 
                 .billing-order-card {
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(170deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01) 54%),
-                        rgba(4, 8, 14, 0.72);
+                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.028), rgba(var(--primary-rgb), 0.01) 54%),
+                        var(--surface-elevated);
                     padding: 1.1rem;
                 }
 
@@ -3407,8 +3406,8 @@ export default () => {
                     align-items: center;
                     justify-content: center;
                     border-radius: 0.85rem;
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     color: rgba(248, 246, 239, 0.86);
                     font-size: 0.82rem;
                     font-weight: 800;
@@ -3435,13 +3434,13 @@ export default () => {
 
                 .billing-gate-modal {
                     border-radius: 24px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(170deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014) 55%),
-                        rgba(4, 8, 14, 0.94);
+                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.014) 55%),
+                        var(--surface-elevated);
                     padding: 1.25rem;
                     box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
                         0 26px 48px -28px rgba(0, 0, 0, 0.9);
                 }
 
@@ -3492,7 +3491,7 @@ export default () => {
                     gap: 12px;
                     margin-top: 22px;
                     padding-top: 18px;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
+                    border-top: 1px solid var(--surface-border);
                 }
 
                 .billing-gate-help {

@@ -24,9 +24,16 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 const normalizeCommand = (value: string): string =>
-    value.replace(/\\\r?\n/g, ' ').replace(/\r?\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    value
+        .replace(/\\\r?\n/g, ' ')
+        .replace(/\r?\n+/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
-const resolveCommandPreview = (command: string, variables: { envVariable: string; serverValue: string | null; defaultValue: string }[]) => {
+const resolveCommandPreview = (
+    command: string,
+    variables: { envVariable: string; serverValue: string | null; defaultValue: string }[]
+) => {
     const values = variables.reduce<Record<string, string>>((carry, item) => {
         carry[item.envVariable] = item.serverValue ?? item.defaultValue ?? '';
         return carry;
@@ -100,7 +107,8 @@ const StartupContainer = () => {
     const hasDockerOnlyChange =
         !!data &&
         !hasEggChange &&
-        selectedDockerImage !== (data.currentDockerImage || variables.dockerImage || dockerOptionsForSelectedEgg[0]?.value || '');
+        selectedDockerImage !==
+            (data.currentDockerImage || variables.dockerImage || dockerOptionsForSelectedEgg[0]?.value || '');
 
     useEffect(() => {
         // Since we're passing in initial data this will not trigger on mount automatically. We
@@ -124,7 +132,9 @@ const StartupContainer = () => {
         lastSavedCommand.current = data.rawStartupCommand || '';
         setStartupDraft(data.rawStartupCommand || '');
         setSelectedEggId(currentEggId);
-        setSelectedDockerImage(data.currentDockerImage || variables.dockerImage || Object.values(data.dockerImages || {})[0] || '');
+        setSelectedDockerImage(
+            data.currentDockerImage || variables.dockerImage || Object.values(data.dockerImages || {})[0] || ''
+        );
     }, [data?.rawStartupCommand, data?.currentDockerImage, currentEggId, variables.dockerImage]);
 
     const applyStartupProfileChange = useCallback(() => {
@@ -294,7 +304,9 @@ const StartupContainer = () => {
                     <TitledGreyBox
                         title={
                             <div css={tw`flex items-center justify-between gap-3`}>
-                                <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Startup Command</p>
+                                <p css={tw`text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                    Startup Command
+                                </p>
                                 {canEditStartup && (
                                     <InteractiveHoverButton
                                         type={'button'}
@@ -330,16 +342,22 @@ const StartupContainer = () => {
                                 style={{ backgroundColor: 'var(--card)' }}
                             />
                             {canEditStartup && commandSaving && (
-                                <div css={tw`flex items-center justify-end gap-2 text-xs text-neutral-400`}>
+                                <div
+                                    css={tw`flex items-center justify-end gap-2 text-xs text-[color:var(--text-subtle)]`}
+                                >
                                     <Spinner size={Spinner.Size.SMALL} />
                                     <span>Auto-saving...</span>
                                 </div>
                             )}
-                            <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
-                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Preview</p>
+                            <div
+                                css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}
+                            >
+                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                    Preview
+                                </p>
                                 <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>{commandPreview.preview}</p>
                                 {commandPreview.placeholders.length > 0 && (
-                                    <p css={tw`mt-2 text-xs text-neutral-400`}>
+                                    <p css={tw`mt-2 text-xs text-[color:var(--text-subtle)]`}>
                                         Placeholders: {commandPreview.placeholders.join(', ')}
                                     </p>
                                 )}
@@ -349,7 +367,9 @@ const StartupContainer = () => {
                     <TitledGreyBox
                         title={
                             <div css={tw`flex items-center justify-between gap-3`}>
-                                <p css={tw`text-sm font-bold uppercase tracking-wide text-neutral-100`}>Server Setup</p>
+                                <p css={tw`text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                    Server Setup
+                                </p>
                                 {canEditStartup && (
                                     <InteractiveHoverButton
                                         type={'button'}
@@ -379,11 +399,15 @@ const StartupContainer = () => {
                         <InputSpinner visible={loading}>
                             <div css={tw`space-y-3`}>
                                 <div>
-                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Game Type</p>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                        Game Type
+                                    </p>
                                     <Input readOnly value={currentNestName} />
                                 </div>
                                 <div>
-                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Server Type</p>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                        Server Type
+                                    </p>
                                     <Select
                                         disabled={!canEditStartup}
                                         onChange={(value) => {
@@ -406,7 +430,9 @@ const StartupContainer = () => {
                                     />
                                 </div>
                                 <div>
-                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-neutral-300`}>Docker Image</p>
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                        Docker Image
+                                    </p>
                                     <Select
                                         disabled={!canEditStartup || dockerOptionsForSelectedEgg.length < 1}
                                         onChange={(value) => setSelectedDockerImage(value)}
@@ -422,7 +448,7 @@ const StartupContainer = () => {
                                 </div>
                             </div>
                         </InputSpinner>
-                        <p css={tw`mt-3 text-xs text-neutral-300`}>
+                        <p css={tw`mt-3 text-xs text-[color:var(--text-subtle)]`}>
                             Game Type is managed by administrator. You can change Server Type and Docker Image here. If
                             Server Type is changed, update new variables and run reinstall from Settings.
                         </p>

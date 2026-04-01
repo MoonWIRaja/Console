@@ -41,7 +41,7 @@ export default ({ syncMode = 'full', contributeToSharedTranscript = true }: Prop
                             aria-label={'Open console'}
                             title={'Open console'}
                             className={
-                                'inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-white/10 bg-[rgba(12,12,12,0.92)] text-gray-300 shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
+                                'inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-subtle)] shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
                             }
                             onClick={() => setOpen(true)}
                         >
@@ -68,7 +68,7 @@ export default ({ syncMode = 'full', contributeToSharedTranscript = true }: Prop
                             aria-label={'Open console'}
                             title={'Open console'}
                             className={
-                                'pointer-events-auto inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-white/10 bg-[rgba(12,12,12,0.92)] text-gray-300 shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
+                                'pointer-events-auto inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-subtle)] shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
                             }
                             onClick={() => setOpen(true)}
                         >

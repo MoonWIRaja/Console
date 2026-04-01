@@ -56,7 +56,7 @@ export default () => {
                 Your server will be stopped and some files may be deleted or modified during this process, are you sure
                 you wish to continue?
             </Dialog.Confirm>
-            <p css={tw`text-sm text-neutral-300`}>
+            <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                 Reinstalling your server will stop it, and then re-run the installation script that initially set it
                 up.&nbsp;
                 <strong css={tw`font-medium text-[#f8f6ef]`}>
@@ -65,7 +65,9 @@ export default () => {
                 </strong>
             </p>
             {!server.canReinstall && server.reinstallBlockReason && (
-                <p css={tw`mt-4 rounded-xl border border-yellow-500 bg-yellow-900 px-4 py-3 text-sm text-yellow-100`}>
+                <p
+                    css={tw`mt-4 rounded-xl border border-yellow-500/50 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100`}
+                >
                     {server.reinstallBlockReason}
                 </p>
             )}

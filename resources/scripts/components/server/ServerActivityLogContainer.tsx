@@ -49,7 +49,7 @@ export default () => {
                 {!data && isValidating ? (
                     <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-0 flex-1' />
                 ) : !data?.items.length ? (
-                    <p className={'text-center text-sm text-neutral-400'}>
+                    <p className={'text-center text-sm text-[color:var(--text-subtle)]'}>
                         No activity logs available for this server.
                     </p>
                 ) : (

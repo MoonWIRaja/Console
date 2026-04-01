@@ -15,7 +15,7 @@ import { ServerContext } from '@/state/server';
 import '@/assets/tailwind.css';
 import Spinner from '@/components/elements/Spinner';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
-import { applyThemePreset, DEFAULT_THEME_ID } from '@/components/ui/theme-presets';
+import { syncStoredTheme } from '@/components/ui/theme-presets';
 import AuthenticationRouter from '@/routers/AuthenticationRouter';
 import ConsoleRouter from '@/routers/ConsoleRouter';
 import DashboardRouter from '@/routers/DashboardRouter';
@@ -61,9 +61,7 @@ const App = () => {
     }
 
     useEffect(() => {
-        const savedTheme = window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID;
-        window.localStorage.setItem('panel.theme.mode', 'dark');
-        applyThemePreset(savedTheme, 'dark');
+        syncStoredTheme();
     }, []);
 
     return (

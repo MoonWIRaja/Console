@@ -11,23 +11,23 @@ const ScheduleCronRow = ({ cron, className }: Props) => (
     <div className={classNames('flex', className)}>
         <div className={'w-1/5 sm:w-auto text-center'}>
             <p className={'font-medium text-[#f8f6ef]'}>{cron.minute}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Minute</p>
+            <p className={'text-2xs uppercase text-[color:var(--text-subtle)]'}>Minute</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
             <p className={'font-medium text-[#f8f6ef]'}>{cron.hour}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Hour</p>
+            <p className={'text-2xs uppercase text-[color:var(--text-subtle)]'}>Hour</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
             <p className={'font-medium text-[#f8f6ef]'}>{cron.dayOfMonth}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Day (Month)</p>
+            <p className={'text-2xs uppercase text-[color:var(--text-subtle)]'}>Day (Month)</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
             <p className={'font-medium text-[#f8f6ef]'}>{cron.month}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Month</p>
+            <p className={'text-2xs uppercase text-[color:var(--text-subtle)]'}>Month</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
             <p className={'font-medium text-[#f8f6ef]'}>{cron.dayOfWeek}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Day (Week)</p>
+            <p className={'text-2xs uppercase text-[color:var(--text-subtle)]'}>Day (Week)</p>
         </div>
     </div>
 );

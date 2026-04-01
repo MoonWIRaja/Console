@@ -41,16 +41,32 @@ const FileUploadList = () => {
     return (
         <div className={'mt-6 space-y-2'}>
             {uploads.map(([name, file]) => (
-                <div key={name} className={'flex items-center space-x-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3'}>
+                <div
+                    key={name}
+                    className={
+                        'flex items-center space-x-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3'
+                    }
+                >
                     <Tooltip content={`${Math.floor((file.loaded / file.total) * 100)}%`} placement={'left'}>
                         <div className={'flex-shrink-0'}>
-                            <Spinner progress={(file.loaded / file.total) * 100} className={'h-6 w-6 text-[color:var(--primary)]'} />
+                            <Spinner
+                                progress={(file.loaded / file.total) * 100}
+                                className={'h-6 w-6 text-[color:var(--primary)]'}
+                            />
                         </div>
                     </Tooltip>
-                    <Code className={'flex-1 truncate border border-[color:var(--border)] !bg-[color:var(--background)] !text-gray-200'}>{name}</Code>
+                    <Code
+                        className={
+                            'flex-1 truncate border border-[color:var(--border)] !bg-[color:var(--background)] !text-[color:var(--foreground)]'
+                        }
+                    >
+                        {name}
+                    </Code>
                     <button
                         onClick={cancelFileUpload.bind(this, name)}
-                        className={'text-gray-500 transition-colors duration-75 hover:text-[color:var(--primary)]'}
+                        className={
+                            'text-[color:var(--text-subtle)] transition-colors duration-75 hover:text-[color:var(--primary)]'
+                        }
                     >
                         <XIcon className={'h-5 w-5'} />
                     </button>
@@ -64,7 +80,12 @@ const FileUploadList = () => {
                 >
                     Cancel Uploads
                 </Button.Danger>
-                <Button.Text className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'} onClick={close}>
+                <Button.Text
+                    className={
+                        '!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'
+                    }
+                    onClick={close}
+                >
                     Close
                 </Button.Text>
             </Dialog.Footer>
@@ -97,7 +118,9 @@ export default () => {
             {count > 0 && (
                 <Tooltip content={`${count} files are uploading, click to view`}>
                     <button
-                        className={'flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] transition-colors duration-150 hover:border-[color:var(--primary)]'}
+                        className={
+                            'flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] transition-colors duration-150 hover:border-[color:var(--primary)]'
+                        }
                         onClick={() => (open.value = true)}
                     >
                         <Spinner progress={(progress.uploaded / progress.total) * 100} className={'h-8 w-8'} />

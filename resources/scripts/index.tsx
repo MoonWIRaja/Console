@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from '@/components/App';
 import { setConfig } from 'react-hot-loader';
-import { applyThemePreset, DEFAULT_THEME_ID } from '@/components/ui/theme-presets';
+import { syncStoredTheme } from '@/components/ui/theme-presets';
 
 // Enable language support.
 import './i18n';
@@ -36,9 +36,7 @@ if (typeof window !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
 }
 
 if (typeof window !== 'undefined') {
-    const savedTheme = window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID;
-    window.localStorage.setItem('panel.theme.mode', 'dark');
-    applyThemePreset(savedTheme, 'dark');
+    syncStoredTheme();
 }
 
 ReactDOM.render(<App />, document.getElementById('app'));

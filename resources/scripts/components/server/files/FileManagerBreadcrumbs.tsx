@@ -38,11 +38,11 @@ export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
             });
 
     return (
-        <div css={tw`flex flex-grow-0 items-center overflow-x-hidden text-sm text-gray-500`}>
-            {renderLeft || <div css={tw`w-12`} />}/<span css={tw`px-1 text-gray-300`}>home</span>/
+        <div css={tw`flex flex-grow-0 items-center overflow-x-hidden text-sm text-[color:var(--text-subtle)]`}>
+            {renderLeft || <div css={tw`w-12`} />}/<span css={tw`px-1 text-[color:var(--foreground)]`}>home</span>/
             <NavLink
                 to={`/server/${id}/files`}
-                css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
+                css={tw`px-1 text-[color:var(--foreground)] no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
             >
                 container
             </NavLink>
@@ -52,21 +52,21 @@ export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
                     <React.Fragment key={index}>
                         <NavLink
                             to={`/server/${id}/files#${encodePathSegments(crumb.path)}`}
-                            css={tw`px-1 text-gray-200 no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
+                            css={tw`px-1 text-[color:var(--foreground)] no-underline transition-colors duration-150 hover:text-[color:var(--primary)]`}
                         >
                             {crumb.name}
                         </NavLink>
                         /
                     </React.Fragment>
                 ) : (
-                    <span key={index} css={tw`px-1 text-gray-300`}>
+                    <span key={index} css={tw`px-1 text-[color:var(--foreground)]`}>
                         {crumb.name}
                     </span>
                 )
             )}
             {file && (
                 <React.Fragment>
-                    <span css={tw`px-1 text-gray-300`}>{file}</span>
+                    <span css={tw`px-1 text-[color:var(--foreground)]`}>{file}</span>
                 </React.Fragment>
             )}
         </div>

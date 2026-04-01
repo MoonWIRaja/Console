@@ -270,16 +270,20 @@ export default () => {
                                 className='min-h-[320px]'
                             />
                         ) : !files.length ? (
-                            <p css={tw`text-center text-sm text-gray-400`}>This directory seems to be empty.</p>
+                            <p css={tw`text-center text-sm text-[color:var(--text-subtle)]`}>
+                                This directory seems to be empty.
+                            </p>
                         ) : !visibleFiles.length && search.trim() && indexing ? (
-                            <p css={tw`text-center text-sm text-gray-400`}>Searching in folders...</p>
+                            <p css={tw`text-center text-sm text-[color:var(--text-subtle)]`}>Searching in folders...</p>
                         ) : !visibleFiles.length ? (
-                            <p css={tw`text-center text-sm text-gray-400`}>No files found.</p>
+                            <p css={tw`text-center text-sm text-[color:var(--text-subtle)]`}>No files found.</p>
                         ) : (
                             <CSSTransition classNames={'fade'} timeout={150} appear in>
                                 <div>
                                     {search.trim() && indexing && (
-                                        <p css={tw`mb-3 text-center text-sm text-gray-400`}>Searching in folders...</p>
+                                        <p css={tw`mb-3 text-center text-sm text-[color:var(--text-subtle)]`}>
+                                            Searching in folders...
+                                        </p>
                                     )}
                                     {sortFiles(visibleFiles).map((file) => (
                                         <FileObjectRow key={file.key} file={file} />

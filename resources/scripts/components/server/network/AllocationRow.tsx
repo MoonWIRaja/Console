@@ -22,7 +22,7 @@ import { ip } from '@/lib/formatters';
 import Code from '@/components/elements/Code';
 
 const Label = styled.label`
-    ${tw`mt-1 block select-none px-1 text-xs uppercase text-neutral-500 transition-colors duration-150`}
+    ${tw`mt-1 block select-none px-1 text-xs uppercase text-[color:var(--text-subtle)] transition-colors duration-150`}
 `;
 
 interface Props {
@@ -62,7 +62,7 @@ const AllocationRow = ({ allocation }: Props) => {
     return (
         <GreyRowBox $hoverable={false} className={'flex-wrap md:flex-nowrap mt-2'}>
             <div className={'flex items-center w-full md:w-auto'}>
-                <div className={'pl-4 pr-6 text-neutral-500'}>
+                <div className={'pl-4 pr-6 text-[color:var(--text-subtle)]'}>
                     <FontAwesomeIcon icon={faNetworkWired} />
                 </div>
                 <div className={'mr-4 flex-1 md:w-40'}>
@@ -87,7 +87,9 @@ const AllocationRow = ({ allocation }: Props) => {
             <div className={'mt-4 w-full md:mt-0 md:flex-1 md:w-auto'}>
                 <InputSpinner visible={loading}>
                     <Textarea
-                        className={'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[#2d3c1f]'}
+                        className={
+                            'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:var(--primary)]'
+                        }
                         placeholder={'Notes'}
                         defaultValue={allocation.notes || undefined}
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setAllocationNotes(e.currentTarget.value)}

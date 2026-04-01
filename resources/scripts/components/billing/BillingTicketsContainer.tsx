@@ -465,9 +465,8 @@ const BillingTicketsContainer = () => {
                     overflow-x: hidden;
                     -webkit-overflow-scrolling: touch;
                     background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.18), transparent 40%),
-                        radial-gradient(circle at 94% 100%, rgba(84, 140, 255, 0.2), transparent 44%),
-                        linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1));
+                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
+                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
                 }
 
                 .billing-shell::before {
@@ -478,12 +477,12 @@ const BillingTicketsContainer = () => {
                     background:
                         repeating-linear-gradient(
                             90deg,
-                            rgba(255, 255, 255, 0.014) 0,
-                            rgba(255, 255, 255, 0.014) 1px,
+                            rgba(var(--primary-rgb), 0.02) 0,
+                            rgba(var(--primary-rgb), 0.02) 1px,
                             transparent 1px,
                             transparent 40px
                         );
-                    opacity: 0.2;
+                    opacity: 0.1;
                 }
 
                 .billing-shell::after {
@@ -498,8 +497,8 @@ const BillingTicketsContainer = () => {
                     border-radius: 999px;
                     background: radial-gradient(
                         ellipse at center,
-                        rgba(112, 168, 255, 0.08) 0%,
-                        rgba(112, 168, 255, 0.03) 42%,
+                        rgba(var(--primary-rgb), 0.05) 0%,
+                        rgba(var(--primary-rgb), 0.015) 42%,
                         transparent 72%
                     );
                 }
@@ -514,14 +513,13 @@ const BillingTicketsContainer = () => {
                 .billing-panel,
                 .billing-hero {
                     border-radius: 24px;
-                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(160deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%),
-                        rgba(4, 8, 14, 0.76);
+                        linear-gradient(160deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.012) 46%),
+                        var(--surface-elevated);
                     box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                        0 30px 46px -32px rgba(0, 0, 0, 0.82),
-                        0 0 56px rgba(var(--primary-rgb), 0.1);
+                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                        0 30px 46px -32px rgba(0, 0, 0, 0.82);
                     backdrop-filter: blur(8px);
                 }
 
@@ -586,8 +584,8 @@ const BillingTicketsContainer = () => {
                     inset: 0;
                     pointer-events: none;
                     background:
-                        radial-gradient(circle at top right, rgba(var(--primary-rgb), 0.13), transparent 34%),
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 38%);
+                        radial-gradient(circle at top right, rgba(var(--primary-rgb), 0.08), transparent 34%),
+                        linear-gradient(180deg, rgba(var(--primary-rgb), 0.02), transparent 38%);
                     opacity: 0.9;
                 }
 
@@ -606,7 +604,7 @@ const BillingTicketsContainer = () => {
                     gap: 1rem;
                     align-items: flex-start;
                     padding-bottom: 1rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                    border-bottom: 1px solid var(--surface-border);
                 }
 
                 .ticket-modal-icon {
@@ -616,9 +614,9 @@ const BillingTicketsContainer = () => {
                     width: 3.25rem;
                     height: 3.25rem;
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    background: rgba(255, 255, 255, 0.04);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
                     color: rgba(248, 246, 239, 0.94);
                     flex-shrink: 0;
                 }
@@ -689,8 +687,8 @@ const BillingTicketsContainer = () => {
                 .ticket-modal-textarea {
                     width: 100%;
                     border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    background: rgba(3, 8, 14, 0.78);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-elevated);
                     color: rgba(248, 246, 239, 0.98);
                     padding: 0.95rem 1rem;
                     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -708,7 +706,7 @@ const BillingTicketsContainer = () => {
                     outline: none;
                     border-color: rgba(var(--primary-rgb), 0.42);
                     box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
-                    background: rgba(5, 11, 18, 0.92);
+                    background: var(--surface-elevated);
                 }
 
                 .ticket-modal-textarea {
@@ -720,8 +718,8 @@ const BillingTicketsContainer = () => {
                 .ticket-modal-note,
                 .ticket-modal-upload {
                     border-radius: 20px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle);
                     padding: 1rem;
                 }
 
@@ -798,8 +796,8 @@ const BillingTicketsContainer = () => {
                     align-items: center;
                     gap: 0.45rem;
                     border-radius: 999px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background: rgba(255, 255, 255, 0.04);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     padding: 0.45rem 0.8rem;
                     color: rgba(248, 246, 239, 0.82);
                     font-size: 0.78rem;
@@ -823,8 +821,8 @@ const BillingTicketsContainer = () => {
                     justify-content: center;
                     min-height: 2.75rem;
                     border-radius: 999px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    background: rgba(255, 255, 255, 0.04);
+                    border: 1px solid var(--surface-border);
+                    background: var(--surface-subtle-strong);
                     padding: 0.75rem 1.25rem;
                     color: rgba(248, 246, 239, 0.88);
                     font-size: 0.9rem;
@@ -835,7 +833,7 @@ const BillingTicketsContainer = () => {
                 .ticket-modal-secondary:hover,
                 .ticket-modal-secondary:focus-visible {
                     border-color: rgba(var(--primary-rgb), 0.32);
-                    background: rgba(255, 255, 255, 0.06);
+                    background: rgba(var(--primary-rgb), 0.08);
                     transform: translateY(-1px);
                     outline: none;
                 }

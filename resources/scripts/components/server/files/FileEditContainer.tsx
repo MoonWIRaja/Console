@@ -152,12 +152,12 @@ export default () => {
                     position: relative;
                     overflow: hidden;
                     border-radius: 1.4rem;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--surface-border);
                     background:
-                        linear-gradient(165deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 42%),
-                        rgba(5, 8, 14, 0.82);
+                        linear-gradient(165deg, rgba(245, 231, 198, 0.05), rgba(245, 231, 198, 0.015) 42%),
+                        var(--surface-elevated);
                     box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                        inset 0 1px 0 rgba(245, 231, 198, 0.06),
                         0 24px 38px -32px rgba(0, 0, 0, 0.88),
                         0 0 44px rgba(var(--primary-rgb), 0.08);
                 }
@@ -168,8 +168,8 @@ export default () => {
                     inset: 0;
                     pointer-events: none;
                     background:
-                        radial-gradient(360px 130px at 8% -10%, rgba(var(--primary-rgb), 0.2), transparent 66%),
-                        radial-gradient(320px 120px at 92% -12%, rgba(102, 141, 255, 0.16), transparent 68%);
+                        radial-gradient(360px 130px at 8% -10%, rgba(var(--primary-rgb), 0.14), transparent 66%),
+                        radial-gradient(320px 120px at 92% -12%, rgba(var(--primary-rgb), 0.07), transparent 68%);
                     opacity: 0.5;
                 }
             `}</style>
@@ -195,18 +195,18 @@ export default () => {
                                               backgroundColor: 'rgba(245, 158, 11, 0.10)',
                                               color: '#fcd34d',
                                           }
-                                        : tw`border-[color:var(--border)] bg-[color:var(--card)] text-gray-300`,
+                                        : tw`border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
                                 ]}
                             >
                                 {hasUnsavedChanges ? 'Unsaved Changes' : 'All Changes Saved'}
                             </div>
                             <div
-                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-gray-300`}
+                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-[color:var(--foreground)]`}
                             >
                                 {selectedMode?.name || 'Plain Text'}
                             </div>
                             <div
-                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-gray-400`}
+                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-[color:var(--text-subtle)]`}
                             >
                                 Ctrl/Cmd+S
                             </div>
@@ -214,8 +214,8 @@ export default () => {
                     </div>
 
                     {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                        <div css={tw`border-b border-[color:var(--border)] bg-[#031204] px-4 py-3`}>
-                            <p css={tw`text-sm text-gray-300`}>
+                        <div css={tw`border-b border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}>
+                            <p css={tw`text-sm text-[color:var(--foreground)]`}>
                                 You&apos;re editing a{' '}
                                 <code
                                     css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}
@@ -303,7 +303,7 @@ export default () => {
                                     }))}
                                 />
                             </div>
-                            <div css={tw`flex flex-wrap items-center gap-2 text-xs text-gray-400`}>
+                            <div css={tw`flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-subtle)]`}>
                                 <span
                                     css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 font-mono`}
                                 >
@@ -316,7 +316,7 @@ export default () => {
                                 type={'button'}
                                 onClick={revertChanges}
                                 disabled={!hasUnsavedChanges || loading}
-                                css={tw`inline-flex h-11 min-w-[10rem] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 text-sm font-semibold uppercase tracking-wide text-gray-200 transition-all hover:border-[#f59e0b] hover:text-[#fcd34d] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[color:var(--border)] disabled:hover:text-gray-200`}
+                                css={tw`inline-flex h-11 min-w-[10rem] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 text-sm font-semibold uppercase tracking-wide text-[color:var(--foreground)] transition-all hover:border-[#f59e0b] hover:text-[#fcd34d] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[color:var(--border)] disabled:hover:text-[color:var(--foreground)]`}
                             >
                                 Revert Changes
                             </button>

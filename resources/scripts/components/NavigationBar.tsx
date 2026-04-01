@@ -15,8 +15,6 @@ import {
     useSidebar,
 } from '@/components/elements/sidebar/AceternitySidebar';
 import { motion } from 'framer-motion';
-import Select, { TSelectData } from '@/components/ui/select';
-import { applyThemePreset, DEFAULT_THEME_ID, THEME_PRESETS } from '@/components/ui/theme-presets';
 import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface NavigationBarProps {
@@ -231,18 +229,12 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
     const { open, setOpen, animate, mode, setMode } = useSidebar();
     const expanded = animate ? open : true;
     const [menuOpen, setMenuOpen] = useState(false);
-    const [themeId, setThemeId] = useState(DEFAULT_THEME_ID);
     const footerRef = React.useRef<HTMLDivElement>(null);
     const closeSidebarOnMobile = () => {
         if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
             setOpen(false);
         }
     };
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        setThemeId(window.localStorage.getItem('panel.theme.id') || DEFAULT_THEME_ID);
-    }, []);
 
     useEffect(() => {
         if (!expanded && mode !== 'locked-closed') {
@@ -263,27 +255,6 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         document.addEventListener('mousedown', onOutside);
         return () => document.removeEventListener('mousedown', onOutside);
     }, [menuOpen]);
-
-    const themeOptions = useMemo<TSelectData[]>(
-        () =>
-            THEME_PRESETS.map((theme) => ({
-                id: theme.id,
-                label: theme.label,
-                value: theme.id,
-                description: 'Dark Mode',
-                icon: <span className='material-icons-round text-base'>palette</span>,
-            })),
-        []
-    );
-
-    const setTheme = (nextThemeId: string) => {
-        setThemeId(nextThemeId);
-        applyThemePreset(nextThemeId, 'dark');
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem('panel.theme.id', nextThemeId);
-            window.localStorage.setItem('panel.theme.mode', 'dark');
-        }
-    };
 
     const sidebarModeOptions: Array<{ value: SidebarMode; label: string; icon: string }> = [
         { value: 'locked-closed', label: 'Close Lock', icon: 'keyboard_double_arrow_left' },
@@ -311,7 +282,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         <div
             ref={footerRef}
             style={{
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                borderTop: '1px solid rgba(245, 231, 198, 0.12)',
                 padding: '14px 12px 12px',
                 background: 'transparent',
                 position: 'relative',
@@ -339,7 +310,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                     border: 'none',
                     background: 'transparent',
                 }}
-                className='transition-colors hover:bg-white/5'
+                className='transition-colors'
             >
                 <div
                     style={{
@@ -365,7 +336,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         style={{
                             fontSize: '14px',
                             fontWeight: 700,
-                            color: 'var(--foreground)',
+                            color: '#F5E7C6',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -396,16 +367,15 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         left: expanded ? '12px' : '8px',
                         right: expanded ? '12px' : 'auto',
                         bottom: 'calc(100% + 8px)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        background:
-                            'linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 36%), rgba(7, 10, 15, 0.98)',
+                        border: '1px solid rgba(245, 231, 198, 0.12)',
+                        background: '#2D2D2D',
                         borderRadius: '16px',
                         padding: '10px',
                         width: expanded ? 'auto' : '240px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
-                        boxShadow: '0 22px 46px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                        boxShadow: '0 22px 46px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
                         zIndex: 50,
                     }}
                 >
@@ -421,7 +391,8 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                             className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
                             style={{
                                 width: '100%',
-                                color: 'var(--foreground)',
+                                color: '#F5E7C6',
+                                background: 'transparent',
                             }}
                         >
                             <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: '10px' }}>
@@ -433,9 +404,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         borderRadius: '999px',
-                                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        color: 'rgba(248, 246, 239, 0.86)',
+                                        border: '1px solid rgba(245, 231, 198, 0.12)',
+                                        background: 'rgba(245, 231, 198, 0.06)',
+                                        color: '#F5E7C6',
                                     }}
                                 >
                                     <span className='material-icons-round' style={{ fontSize: '16px' }}>
@@ -471,7 +442,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                 fontWeight: 700,
                                 letterSpacing: '0.08em',
                                 textTransform: 'uppercase',
-                                color: 'rgba(248, 246, 239, 0.56)',
+                                color: '#A0A0A0',
                                 padding: '0 4px',
                             }}
                         >
@@ -502,14 +473,14 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                             padding: '10px 8px',
                                             borderRadius: '12px',
                                             border: `1px solid ${
-                                                active ? 'rgba(var(--primary-rgb), 0.34)' : 'rgba(255, 255, 255, 0.08)'
+                                                active ? 'rgba(245, 231, 198, 0.24)' : 'rgba(245, 231, 198, 0.12)'
                                             }`,
                                             background: active
-                                                ? 'linear-gradient(90deg, rgba(var(--primary-rgb), 0.26), rgba(var(--primary-rgb), 0.12))'
-                                                : 'rgba(255, 255, 255, 0.025)',
-                                            color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                                                ? 'rgba(245, 231, 198, 0.08)'
+                                                : 'rgba(245, 231, 198, 0.03)',
+                                            color: active ? '#F5E7C6' : '#A0A0A0',
                                             boxShadow: active
-                                                ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 18px rgba(var(--primary-rgb), 0.18)'
+                                                ? 'inset 0 1px 0 rgba(255, 255, 255, 0.08)'
                                                 : 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
                                             cursor: 'pointer',
                                             transition: 'all 0.15s ease',
@@ -536,14 +507,12 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         </div>
                     </div>
 
-                    <Select title='Theme' data={themeOptions} defaultValue={themeId} onChange={setTheme} />
-
                     <button
                         onClick={onLogout}
                         className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
                         style={{
                             width: '100%',
-                            color: 'var(--muted-foreground)',
+                            color: '#A0A0A0',
                             cursor: 'pointer',
                             border: 'none',
                             background: 'transparent',
@@ -559,9 +528,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     borderRadius: '999px',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    background: 'rgba(255, 255, 255, 0.03)',
-                                    color: 'rgba(248, 246, 239, 0.86)',
+                                    border: '1px solid rgba(245, 231, 198, 0.12)',
+                                    background: 'rgba(245, 231, 198, 0.06)',
+                                    color: '#F5E7C6',
                                 }}
                             >
                                 <span className='material-icons-round' style={{ fontSize: '16px' }}>

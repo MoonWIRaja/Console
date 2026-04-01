@@ -23,19 +23,19 @@ export default ({ title, copyOnClick, icon, color, className, children }: StatBl
             <div className={classNames(styles.stat_block, className)}>
                 <div className={classNames(styles.status_bar, color || 'bg-gray-700')} />
                 <div className={classNames(styles.icon, color || 'bg-gray-700')}>
-                    <Icon icon={icon} className={'text-white'} />
+                    <Icon icon={icon} className={'text-[color:var(--foreground)]'} />
                 </div>
                 <div className={'flex flex-col justify-center overflow-hidden w-full'}>
                     <p
                         className={
-                            'font-header font-medium leading-tight text-xs md:text-sm text-gray-600 dark:text-gray-300'
+                            'font-header font-medium leading-tight text-xs md:text-sm text-[color:var(--text-subtle)]'
                         }
                     >
                         {title}
                     </p>
                     <div
                         ref={ref}
-                        className={'h-[1.75rem] w-full truncate font-semibold text-gray-900 dark:text-gray-100'}
+                        className={'h-[1.75rem] w-full truncate font-semibold text-[color:var(--foreground)]'}
                         style={{ fontSize }}
                     >
                         {children}

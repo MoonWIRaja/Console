@@ -9,6 +9,19 @@ import { object, ref as yupRef, string } from 'yup';
 import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import AuthTopbar from '@/components/auth/AuthTopbar';
+import {
+    authErrorClass,
+    authFieldLabelClass,
+    authInputClass,
+    authInputWithSuffixClass,
+    authPrimaryButtonClass,
+    authSecondaryButtonClass,
+    authTurnstileCopyClass,
+    authTurnstileErrorClass,
+    authTurnstileTitleClass,
+    burhanAuthThemeStyles,
+    honeypotFieldClass,
+} from '@/components/auth/authTheme';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import useSiteBranding from '@/hooks/useSiteBranding';
@@ -38,19 +51,6 @@ interface VerificationValues {
 }
 
 type AuthMode = 'login' | 'signup' | 'verify';
-
-const honeypotFieldClass =
-    'pointer-events-none absolute left-[-10000px] top-[-10000px] h-0 w-0 overflow-hidden opacity-0';
-const authInputClass =
-    'burhan-auth-input w-full rounded-[1.55rem] border border-[rgba(255,255,255,0.075)] bg-[rgba(5,8,14,0.84)] px-[1.15rem] py-[1.1rem] text-base text-[color:var(--foreground)] outline-none transition-all placeholder:text-[rgba(151,160,171,0.75)]';
-const authInputWithSuffixClass = `${authInputClass} pr-20`;
-const authFieldLabelClass =
-    'burhan-auth-label block text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(248,246,239,0.68)]';
-const authErrorClass = 'burhan-auth-error mt-1 text-[0.63rem] font-extrabold uppercase tracking-[0.12em] text-red-400';
-const authPrimaryButtonClass =
-    'burhan-auth-submit mt-1 flex min-h-[5rem] w-full items-center justify-center gap-2 rounded-[1.6rem] border border-[rgba(var(--primary-rgb),0.34)] text-[0.92rem] font-black uppercase tracking-[0.18em] text-[#0a0d10] transition-all';
-const authSecondaryButtonClass =
-    'burhan-auth-secondary flex min-h-[4rem] w-full items-center justify-center rounded-[1.6rem] border border-[rgba(255,255,255,0.08)] text-[0.88rem] font-extrabold uppercase tracking-[0.14em] text-[color:var(--foreground)] transition-all';
 
 const LoginContainer = ({ history, location }: RouteComponentProps) => {
     const [showPassword, setShowPassword] = useState(false);
@@ -349,591 +349,10 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
 
     return (
         <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
-            <style>{`
-                @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
-
-                .burhan-auth-stage {
-                    isolation: isolate;
-                    background:
-                        radial-gradient(circle at 14% 18%, rgba(var(--primary-rgb), 0.08), transparent 24%),
-                        radial-gradient(circle at 86% 12%, rgba(94, 150, 255, 0.12), transparent 18%),
-                        linear-gradient(180deg, #020304 0%, #05070a 50%, #080b10 100%);
-                }
-
-                .burhan-auth-stage::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background-image:
-                        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-                    background-size: 52px 52px;
-                    mask-image: radial-gradient(circle at center, black 36%, transparent 90%);
-                    opacity: 0.34;
-                    pointer-events: none;
-                }
-
-                .burhan-auth-stage::after {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background:
-                        radial-gradient(circle at 30% 35%, rgba(var(--primary-rgb), 0.06), transparent 28%),
-                        radial-gradient(circle at 78% 62%, rgba(124, 227, 223, 0.06), transparent 24%);
-                    filter: blur(54px);
-                    pointer-events: none;
-                }
-
-                .burhan-auth-backdrop {
-                    position: relative;
-                    background:
-                        radial-gradient(circle at 24% 28%, rgba(var(--primary-rgb), 0.1), transparent 24%),
-                        radial-gradient(circle at 76% 18%, rgba(94, 150, 255, 0.14), transparent 20%),
-                        linear-gradient(180deg, rgba(3, 4, 6, 0.98), rgba(7, 10, 15, 0.94));
-                }
-
-                .burhan-auth-backdrop::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background:
-                        radial-gradient(circle at 34% 40%, rgba(var(--primary-rgb), 0.08), transparent 16%),
-                        radial-gradient(circle at 72% 22%, rgba(124, 227, 223, 0.08), transparent 14%);
-                    filter: blur(24px);
-                }
-
-                .burhan-auth-backdrop::after {
-                    content: '';
-                    position: absolute;
-                    inset: 48px;
-                    border-radius: 36px;
-                    border: 1px solid rgba(255, 255, 255, 0.04);
-                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 38%);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                    opacity: 0.7;
-                }
-
-                .burhan-auth-rail {
-                    position: relative;
-                    z-index: 1;
-                    background: linear-gradient(180deg, rgba(4, 6, 9, 0.88), rgba(6, 8, 12, 0.96));
-                    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.04);
-                    overscroll-behavior: contain;
-                    scrollbar-gutter: stable both-edges;
-                    -webkit-overflow-scrolling: touch;
-                }
-
-                .burhan-auth-shell {
-                    position: relative;
-                    z-index: 1;
-                }
-
-                .burhan-auth-topbar {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    left: 0;
-                    z-index: 4;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-                    background: linear-gradient(180deg, rgba(4, 6, 10, 0.94), rgba(4, 6, 10, 0.76));
-                    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
-                    backdrop-filter: blur(18px);
-                }
-
-                .burhan-auth-topbar-inner {
-                    display: flex;
-                    min-height: 5.25rem;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 1rem;
-                    padding: 0 1.25rem;
-                }
-
-                .burhan-auth-topbar-brand {
-                    display: flex;
-                    min-width: 0;
-                    align-items: center;
-                    text-decoration: none;
-                }
-
-                .burhan-auth-topbar-logo {
-                    height: 2.5rem;
-                    width: 2.5rem;
-                    flex-shrink: 0;
-                    margin-right: 0.5rem;
-                    border-radius: 0.75rem;
-                    background-size: cover;
-                    background-repeat: no-repeat;
-                    background-position: center;
-                }
-
-                .burhan-auth-topbar-name {
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                    color: var(--foreground);
-                    font-size: 1.1rem;
-                    font-weight: 500;
-                }
-
-                .burhan-auth-topbar-button {
-                    display: inline-flex;
-                    height: 2.8rem;
-                    width: 2.8rem;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 999px;
-                    background: rgba(255, 255, 255, 0.04);
-                    color: rgba(248, 246, 239, 0.72);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                    transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
-                }
-
-                .burhan-auth-topbar-button:hover {
-                    color: var(--foreground);
-                    opacity: 0.88;
-                    transform: rotate(12deg);
-                    background: rgba(255, 255, 255, 0.08);
-                }
-
-                .burhan-auth-glow {
-                    --radius: 32;
-                    --border: 1.5;
-                    --size: 240;
-                    --backdrop: rgba(7, 10, 15, 0.96);
-                    --backup-border: rgba(255, 255, 255, 0.08);
-                    --bg-spot-opacity: 0.18;
-                    --border-spot-opacity: 0.92;
-                    --border-light-opacity: 0.72;
-                    --outer: 0.82;
-                    border-radius: 2rem;
-                    box-shadow: 0 38px 96px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
-                    touch-action: pan-y !important;
-                }
-
-                .burhan-auth-card {
-                    position: relative;
-                    overflow: hidden;
-                    border-radius: 30px;
-                    padding: 20px;
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 16%),
-                        linear-gradient(180deg, rgba(9, 12, 18, 0.98), rgba(5, 7, 11, 0.99));
-                }
-
-                .burhan-auth-card::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background:
-                        radial-gradient(circle at 18% 26%, rgba(var(--primary-rgb), 0.08), transparent 24%),
-                        radial-gradient(circle at 82% 14%, rgba(110, 148, 255, 0.12), transparent 20%);
-                    pointer-events: none;
-                }
-
-                .burhan-auth-card::after {
-                    content: '';
-                    position: absolute;
-                    inset: 10px;
-                    border-radius: 24px;
-                    border: 1px solid rgba(255, 255, 255, 0.04);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                    pointer-events: none;
-                }
-
-                .burhan-auth-card > * {
-                    position: relative;
-                    z-index: 1;
-                }
-
-                .burhan-auth-brand-panel {
-                    margin-bottom: 0.95rem;
-                    border-radius: 1.75rem;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 36%),
-                        rgba(255, 255, 255, 0.02);
-                    padding: 1.5rem 1.25rem;
-                    text-align: center;
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-                }
-
-                .burhan-auth-title {
-                    margin: 0;
-                    color: var(--foreground);
-                    font-size: clamp(2.7rem, 5vw, 4rem);
-                    font-weight: 800;
-                    line-height: 0.9;
-                    letter-spacing: -0.06em;
-                    text-shadow: 0 0 18px rgba(248, 246, 239, 0.28);
-                    text-transform: uppercase;
-                    word-break: break-word;
-                }
-
-                .burhan-auth-switch {
-                    display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
-                    gap: 0.75rem;
-                    margin-bottom: 1.1rem;
-                    padding: 0.55rem;
-                    border-radius: 1.75rem;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%),
-                        rgba(255, 255, 255, 0.02);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                }
-
-                .burhan-auth-tab {
-                    border: none;
-                    border-radius: 1.1rem;
-                    padding: 0.95rem 1rem;
-                    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
-                    color: rgba(248, 246, 239, 0.62);
-                    font-size: 0.9rem;
-                    font-weight: 800;
-                    letter-spacing: 0.16em;
-                    text-transform: uppercase;
-                    transition: all 0.25s ease;
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -12px 22px rgba(0, 0, 0, 0.18);
-                }
-
-                .burhan-auth-tab.is-active {
-                    color: #eff7dc;
-                    border: 1px solid rgba(var(--primary-rgb), 0.34);
-                    background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.3), rgba(var(--primary-rgb), 0.14));
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-                        0 0 0 1px rgba(var(--primary-rgb), 0.08),
-                        0 18px 28px rgba(var(--primary-rgb), 0.14),
-                        0 0 36px rgba(var(--primary-rgb), 0.12);
-                }
-
-                .burhan-auth-tab:not(.is-active):hover {
-                    color: rgba(248, 246, 239, 0.82);
-                }
-
-                .burhan-auth-form {
-                    display: grid;
-                    gap: 0.85rem;
-                }
-
-                .burhan-auth-label-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 0.75rem;
-                    margin-bottom: 0.45rem;
-                }
-
-                .burhan-auth-label {
-                    color: rgba(248, 246, 239, 0.68);
-                }
-
-                .burhan-auth-meta-link,
-                .burhan-auth-field-token {
-                    color: rgba(248, 246, 239, 0.68);
-                    font-size: 0.72rem;
-                    font-weight: 800;
-                    letter-spacing: 0.18em;
-                    text-transform: uppercase;
-                }
-
-                .burhan-auth-meta-link {
-                    transition: color 0.2s ease;
-                }
-
-                .burhan-auth-meta-link:hover {
-                    color: var(--primary);
-                }
-
-                .burhan-auth-input-wrap {
-                    position: relative;
-                }
-
-                .burhan-auth-input {
-                    min-height: 4.35rem;
-                    border-radius: 1.55rem;
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 30%),
-                        rgba(5, 8, 14, 0.84);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -18px 26px rgba(0, 0, 0, 0.24);
-                }
-
-                .burhan-auth-input:focus {
-                    border-color: rgba(var(--primary-rgb), 0.42);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                        inset 0 -18px 26px rgba(0, 0, 0, 0.24),
-                        0 0 0 1px rgba(var(--primary-rgb), 0.12),
-                        0 0 24px rgba(var(--primary-rgb), 0.12);
-                }
-
-                .burhan-auth-input:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-
-                .burhan-auth-input::placeholder {
-                    color: rgba(151, 160, 171, 0.75);
-                }
-
-                .burhan-auth-input.is-centered {
-                    padding-right: 1.15rem;
-                    text-align: center;
-                    letter-spacing: 0.45em;
-                }
-
-                .burhan-auth-field-token {
-                    position: absolute;
-                    top: 50%;
-                    right: 1rem;
-                    transform: translateY(-50%);
-                }
-
-                .burhan-auth-field-token.is-button {
-                    border: none;
-                    background: none;
-                    padding: 0;
-                    cursor: pointer;
-                    transition: color 0.2s ease;
-                }
-
-                .burhan-auth-field-token.is-button:hover {
-                    color: var(--foreground);
-                }
-
-                .burhan-auth-submit {
-                    background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.38), rgba(var(--primary-rgb), 0.2));
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.16),
-                        0 24px 36px rgba(var(--primary-rgb), 0.14),
-                        0 0 50px rgba(var(--primary-rgb), 0.12);
-                }
-
-                .burhan-auth-submit:hover:not(:disabled) {
-                    transform: translateY(-1px);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.16),
-                        0 28px 40px rgba(var(--primary-rgb), 0.18),
-                        0 0 56px rgba(var(--primary-rgb), 0.16);
-                }
-
-                .burhan-auth-submit:disabled {
-                    opacity: 0.55;
-                    cursor: not-allowed;
-                }
-
-                .burhan-auth-secondary {
-                    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -12px 20px rgba(0, 0, 0, 0.2);
-                }
-
-                .burhan-auth-secondary:hover {
-                    border-color: rgba(var(--primary-rgb), 0.22);
-                    color: var(--primary);
-                }
-
-                .burhan-auth-overlay {
-                    background: rgba(4, 6, 10, 0.82);
-                    backdrop-filter: blur(10px);
-                }
-
-                .burhan-auth-overlay-card {
-                    border-radius: 1.5rem;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 30%),
-                        rgba(9, 12, 18, 0.98);
-                    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                }
-
-                .burhan-auth-divider {
-                    position: relative;
-                    margin: 1.1rem 0 0.8rem;
-                    text-align: center;
-                }
-
-                .burhan-auth-divider::before {
-                    content: '';
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    top: 50%;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .burhan-auth-divider span {
-                    position: relative;
-                    z-index: 1;
-                    display: inline-block;
-                    padding: 0 0.85rem;
-                    background: rgba(7, 10, 15, 0.92);
-                    color: rgba(248, 246, 239, 0.62);
-                    font-size: 0.66rem;
-                    font-weight: 800;
-                    letter-spacing: 0.22em;
-                    text-transform: uppercase;
-                }
-
-                .burhan-auth-provider-list {
-                    display: grid;
-                    gap: 0.85rem;
-                }
-
-                .burhan-auth-provider {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 0.85rem;
-                    padding: 1rem 1rem 1rem 1.05rem;
-                    background:
-                        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%),
-                        rgba(5, 8, 14, 0.84);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -12px 20px rgba(0, 0, 0, 0.18);
-                }
-
-                .burhan-auth-provider:hover {
-                    border-color: rgba(var(--primary-rgb), 0.24);
-                    transform: translateY(-1px);
-                }
-
-                .burhan-auth-provider-main {
-                    display: flex;
-                    min-width: 0;
-                    align-items: center;
-                    gap: 0.85rem;
-                }
-
-                .burhan-auth-provider-icon {
-                    display: grid;
-                    height: 2.75rem;
-                    width: 2.75rem;
-                    place-items: center;
-                    border-radius: 1rem;
-                    background: rgba(255, 255, 255, 0.05);
-                    color: var(--foreground);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-                }
-
-                .burhan-auth-provider-icon.is-discord {
-                    color: #8c94ff;
-                }
-
-                .burhan-auth-provider-label {
-                    min-width: 0;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                    color: var(--foreground);
-                    font-size: 0.98rem;
-                    font-weight: 700;
-                }
-
-                .burhan-auth-provider-arrow {
-                    color: rgba(248, 246, 239, 0.68);
-                    font-size: 0.95rem;
-                }
-
-                .burhan-auth-provider:hover .burhan-auth-provider-arrow {
-                    color: var(--primary);
-                }
-
-                .burhan-auth-pin-copy {
-                    margin-bottom: 0.2rem;
-                    color: rgba(248, 246, 239, 0.72);
-                    line-height: 1.75;
-                }
-
-                .burhan-auth-stage input:-webkit-autofill,
-                .burhan-auth-stage input:-webkit-autofill:hover,
-                .burhan-auth-stage input:-webkit-autofill:focus {
-                    -webkit-text-fill-color: var(--foreground);
-                    -webkit-box-shadow: 0 0 0 1000px rgba(5, 8, 14, 0.96) inset;
-                    transition: background-color 9999s ease-in-out 0s;
-                }
-
-                @media (max-width: 1024px) {
-                    .burhan-auth-stage {
-                        background: linear-gradient(180deg, #030406 0%, #070a0f 100%);
-                    }
-                }
-
-                @media (max-height: 900px) {
-                    .burhan-auth-rail {
-                        overflow-y: auto !important;
-                    }
-
-                    .burhan-auth-shell {
-                        justify-content: flex-start !important;
-                        padding-top: 0.4rem;
-                        padding-bottom: 0.4rem;
-                    }
-
-                    .burhan-auth-card {
-                        padding: 16px;
-                    }
-
-                    .burhan-auth-brand-panel {
-                        margin-bottom: 0.75rem;
-                        padding: 1.2rem 1rem;
-                    }
-
-                    .burhan-auth-switch {
-                        margin-bottom: 0.8rem;
-                        padding: 0.45rem;
-                    }
-
-                    .burhan-auth-form {
-                        gap: 0.7rem;
-                    }
-
-                    .burhan-auth-input {
-                        min-height: 3.9rem;
-                    }
-
-                    .burhan-auth-submit {
-                        min-height: 4.2rem;
-                    }
-
-                    .burhan-auth-secondary {
-                        min-height: 3.4rem;
-                    }
-
-                    .burhan-auth-divider {
-                        margin: 0.8rem 0 0.6rem;
-                    }
-                }
-
-                @media (max-width: 640px) {
-                    .burhan-auth-topbar-inner {
-                        min-height: 4.75rem;
-                        padding: 0 1rem;
-                    }
-
-                    .burhan-auth-topbar-name {
-                        font-size: 1rem;
-                    }
-                }
-
-                @media (min-width: 640px) {
-                    .burhan-auth-topbar-inner {
-                        padding: 0 1.5rem;
-                    }
-                }
-
-                @media (min-width: 1024px) {
-                    .burhan-auth-topbar-inner {
-                        padding: 0 2rem;
-                    }
-                }
-
-            `}</style>
+            <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
             <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
-                <span className='sr-only'>Dark neon background area.</span>
+                <span className='sr-only'>Themed background area.</span>
             </div>
             <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
                 <div className='burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
@@ -1096,10 +515,10 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                 {lockLoginForm && (
                                                     <div className='burhan-auth-overlay absolute inset-0 z-20 flex items-center justify-center rounded-[1.6rem] px-5 text-center'>
                                                         <div className='burhan-auth-overlay-card w-full max-w-xs p-5'>
-                                                            <p className='mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--foreground)]'>
+                                                            <p className={authTurnstileTitleClass}>
                                                                 Verify Before Login
                                                             </p>
-                                                            <p className='mb-4 text-xs leading-6 text-[color:var(--muted-foreground)]'>
+                                                            <p className={`mb-4 ${authTurnstileCopyClass}`}>
                                                                 Complete the Cloudflare Turnstile check first. Login
                                                                 fields unlock after verification.
                                                             </p>
@@ -1113,7 +532,9 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                                 />
                                                             </div>
                                                             {captchaWidgetFailed && (
-                                                                <p className='mt-4 text-[11px] leading-6 text-amber-200'>
+                                                                <p
+                                                                    className={`mt-4 text-[11px] ${authTurnstileErrorClass}`}
+                                                                >
                                                                     Verification is blocked by the current Turnstile
                                                                     hostname configuration.
                                                                     <br />
@@ -1354,7 +775,7 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                         className='flex justify-center'
                                                     />
                                                     {captchaWidgetFailed && (
-                                                        <p className='mt-3 text-xs leading-6 text-amber-200'>
+                                                        <p className={authTurnstileErrorClass}>
                                                             Verification could not be loaded on this hostname. Check the
                                                             Turnstile widget configuration in Cloudflare.
                                                         </p>

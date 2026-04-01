@@ -44,7 +44,7 @@ export default () => {
                             <div css={tw`mt-6 flex flex-col gap-3 sm:flex-row sm:items-center`}>
                                 <div css={tw`w-full sm:flex-1`}>
                                     <div css={tw`border-l-4 border-[#a3ff12] bg-[color:var(--background)] p-3`}>
-                                        <p css={tw`text-xs text-neutral-300`}>
+                                        <p css={tw`text-xs text-[color:var(--text-subtle)]`}>
                                             Your SFTP password is the same as the password you use to access this panel.
                                         </p>
                                     </div>
@@ -60,7 +60,9 @@ export default () => {
                     <TitledGreyBox title={'Debug Information'} css={tw`mb-6 md:mb-10`}>
                         <div css={tw`flex items-center justify-between text-sm`}>
                             <p>Node</p>
-                            <code css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}>
+                            <code
+                                css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}
+                            >
                                 {node}
                             </code>
                         </div>

@@ -51,7 +51,11 @@ const NetworkContainer = () => {
     };
 
     return (
-        <ServerContentBlock showFlashKey={'server:network'} title={'Network'} className={'content-container-full px-4 xl:px-6'}>
+        <ServerContentBlock
+            showFlashKey={'server:network'}
+            title={'Network'}
+            className={'content-container-full px-4 xl:px-6'}
+        >
             {!data ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : (
@@ -63,7 +67,7 @@ const NetworkContainer = () => {
                         <Can action={'allocation.create'}>
                             <SpinnerOverlay visible={loading} />
                             <div css={tw`mt-6 sm:flex items-center justify-end`}>
-                                <p css={tw`mb-4 text-sm text-neutral-400 sm:mb-0 sm:mr-6`}>
+                                <p css={tw`mb-4 text-sm text-[color:var(--text-subtle)] sm:mb-0 sm:mr-6`}>
                                     You are currently using {data.length} of {allocationLimit} allowed allocations for
                                     this server.
                                 </p>

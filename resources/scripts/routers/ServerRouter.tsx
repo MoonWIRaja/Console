@@ -142,7 +142,7 @@ export default () => {
                 className='font-sans fixed inset-0 z-0 h-screen min-h-0 w-full overflow-hidden'
                 style={{
                     height: '100dvh',
-                    background: 'linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1))',
+                    background: 'var(--background)',
                     color: 'var(--foreground)',
                 }}
             >
@@ -166,9 +166,8 @@ export default () => {
                         flex-direction: column;
                         overflow: hidden;
                         background:
-                            radial-gradient(circle at 10% 2%, rgba(var(--primary-rgb), 0.18), transparent 34%),
-                            radial-gradient(circle at 90% 100%, rgba(84, 140, 255, 0.2), transparent 38%),
-                            linear-gradient(180deg, rgba(4, 7, 12, 0.98), rgba(1, 2, 5, 1));
+                            radial-gradient(circle at 10% 2%, rgba(var(--primary-rgb), 0.08), transparent 34%),
+                            linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
                     }
 
                     .server-theme-shell::before {
@@ -179,12 +178,12 @@ export default () => {
                         background:
                             repeating-linear-gradient(
                                 90deg,
-                                rgba(255, 255, 255, 0.014) 0,
-                                rgba(255, 255, 255, 0.014) 1px,
+                                rgba(var(--primary-rgb), 0.02) 0,
+                                rgba(var(--primary-rgb), 0.02) 1px,
                                 transparent 1px,
                                 transparent 40px
                             );
-                        opacity: 0.2;
+                        opacity: 0.12;
                     }
 
                     .server-theme-shell::after {
@@ -199,8 +198,8 @@ export default () => {
                         pointer-events: none;
                         background: radial-gradient(
                             ellipse at center,
-                            rgba(112, 168, 255, 0.08) 0%,
-                            rgba(112, 168, 255, 0.03) 42%,
+                            rgba(var(--primary-rgb), 0.06) 0%,
+                            rgba(var(--primary-rgb), 0.02) 42%,
                             transparent 72%
                         );
                     }

@@ -13,15 +13,17 @@ export default ({ schedule }: { schedule: Schedule }) => (
         </div>
         <div css={tw`flex-1 md:ml-4`}>
             <p css={tw`text-[#f8f6ef]`}>{schedule.name}</p>
-            <p css={tw`text-xs text-neutral-400`}>
+            <p css={tw`text-xs text-[color:var(--text-subtle)]`}>
                 Last run at: {schedule.lastRunAt ? format(schedule.lastRunAt, "MMM do 'at' h:mma") : 'never'}
             </p>
         </div>
         <div>
             <p
                 css={[
-                    tw`py-1 px-3 rounded text-xs uppercase text-white sm:hidden`,
-                    schedule.isActive ? tw`bg-green-700 text-green-100` : tw`bg-[#1f2937] text-neutral-300`,
+                    tw`rounded px-3 py-1 text-xs uppercase sm:hidden`,
+                    schedule.isActive
+                        ? tw`bg-green-700 text-green-100`
+                        : tw`border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
                 ]}
             >
                 {schedule.isActive ? 'Active' : 'Inactive'}
@@ -31,10 +33,10 @@ export default ({ schedule }: { schedule: Schedule }) => (
         <div>
             <p
                 css={[
-                    tw`py-1 px-3 rounded text-xs uppercase text-white hidden sm:block`,
+                    tw`hidden rounded px-3 py-1 text-xs uppercase sm:block`,
                     schedule.isActive && !schedule.isProcessing
                         ? tw`bg-green-700 text-green-100`
-                        : tw`bg-[#1f2937] text-neutral-300`,
+                        : tw`border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
                 ]}
             >
                 {schedule.isProcessing ? 'Processing' : schedule.isActive ? 'Active' : 'Inactive'}

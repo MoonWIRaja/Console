@@ -41,7 +41,7 @@ export default ({ database, className }: Props) => {
                         SQL Dashboard
                     </span>
                 </div>
-                <p css={tw`mt-1 text-sm text-neutral-400`}>
+                <p css={tw`mt-1 text-sm text-[color:var(--text-subtle)]`}>
                     Open this database workspace to view connection details and manage SQL settings.
                 </p>
             </div>
@@ -49,15 +49,21 @@ export default ({ database, className }: Props) => {
             <div css={tw`grid gap-4 text-left sm:grid-cols-3 sm:gap-6 md:min-w-[52%]`}>
                 <div css={tw`min-w-0`}>
                     <p css={tw`truncate text-sm font-medium text-[#f8f6ef]`}>{database.connectionString}</p>
-                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-neutral-500`}>Endpoint</p>
+                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
+                        Endpoint
+                    </p>
                 </div>
                 <div css={tw`min-w-0`}>
                     <p css={tw`truncate text-sm font-medium text-[#f8f6ef]`}>{database.allowConnectionsFrom}</p>
-                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-neutral-500`}>Connections From</p>
+                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
+                        Connections From
+                    </p>
                 </div>
                 <div css={tw`min-w-0`}>
                     <p css={tw`truncate text-sm font-medium text-[#f8f6ef]`}>{database.username}</p>
-                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-neutral-500`}>Username</p>
+                    <p css={tw`mt-1 text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
+                        Username
+                    </p>
                 </div>
             </div>
         </GreyRowBox>

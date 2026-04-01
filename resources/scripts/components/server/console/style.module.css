@@ -1,8 +1,9 @@
 .stat_block {
-    @apply relative flex items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply relative flex items-center overflow-hidden rounded-xl border shadow-sm;
+    border-color: var(--surface-border);
+    background-color: var(--surface-elevated);
     @apply col-span-3 md:col-span-2 lg:col-span-6;
     @apply px-3 py-2 md:p-3 lg:p-4;
-    @apply dark:border-gray-700 dark:bg-gray-800;
 
     & > .status_bar {
         @apply absolute left-0 top-0 h-full w-1 rounded-l sm:hidden;
@@ -26,19 +27,19 @@
     &.terminal_sidebar {
         @apply rounded-2xl border border-[color:var(--border)];
         background:
-            linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 44%),
-            rgba(5, 8, 14, 0.92);
+            linear-gradient(160deg, rgba(var(--primary-rgb), 0.03), rgba(var(--primary-rgb), 0.01) 44%),
+            var(--surface-elevated);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
             0 26px 40px -34px rgba(0, 0, 0, 0.9),
-            0 0 36px rgba(var(--primary-rgb), 0.08);
+            0 0 24px rgba(var(--primary-rgb), 0.08);
     }
 
     & .sidebar_header {
         @apply flex items-start justify-between gap-3 border-b border-[color:var(--border)] px-4 py-3;
         background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-            rgba(5, 8, 14, 0.62);
+            linear-gradient(180deg, rgba(var(--primary-rgb), 0.025), rgba(var(--primary-rgb), 0.008)),
+            var(--surface-elevated);
     }
 
     & .sidebar_header_left {
@@ -172,12 +173,13 @@
     }
 
     & .command_input {
-        @apply w-full appearance-none rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-white;
+        @apply w-full appearance-none rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs;
         @apply transition-shadow outline-none focus:outline-none focus-visible:outline-none;
         @apply focus:border-[color:var(--primary)];
         @apply focus:ring-0 focus:ring-transparent;
         -webkit-appearance: none;
         @apply placeholder:text-gray-500;
+        color: var(--foreground);
         background-color: var(--card) !important;
         box-shadow: none !important;
     }
@@ -201,7 +203,7 @@
         border-color: var(--border) !important;
         box-shadow: none !important;
         outline: none !important;
-        color: #ffffff !important;
+        color: var(--foreground) !important;
     }
 
     :global(input[aria-label='Console command input.']:focus),
@@ -213,6 +215,7 @@
 }
 
 .chart_container {
-    @apply relative overflow-hidden rounded-xl border border-gray-200 bg-white p-2 shadow-sm;
-    @apply dark:border-gray-700 dark:bg-gray-800;
+    @apply relative overflow-hidden rounded-xl border p-2 shadow-sm;
+    border-color: var(--surface-border);
+    background-color: var(--surface-elevated);
 }

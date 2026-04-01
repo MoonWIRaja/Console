@@ -13,12 +13,12 @@ export default ({ title, legend, children }: ChartBlockProps) => (
         <div className={'flex items-center justify-between px-4 py-2'}>
             <h3
                 className={
-                    'font-header text-sm font-semibold text-gray-700 transition-colors duration-100 dark:text-gray-200'
+                    'font-header text-sm font-semibold text-[color:var(--foreground)] transition-colors duration-100'
                 }
             >
                 {title}
             </h3>
-            {legend && <p className={'flex items-center text-xs text-gray-500 dark:text-gray-300'}>{legend}</p>}
+            {legend && <p className={'flex items-center text-xs text-[color:var(--text-subtle)]'}>{legend}</p>}
         </div>
         <div className={'z-10 ml-2'}>{children}</div>
     </div>
