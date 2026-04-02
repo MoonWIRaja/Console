@@ -13,7 +13,7 @@ export default () => {
     const { path } = useRouteMatch();
 
     return (
-        <div className={location.pathname === `${path}/login` ? '' : 'pt-8 xl:pt-32'}>
+        <div>
             <Switch location={location}>
                 <Route path={`${path}/login`} component={LoginContainer} exact />
                 <Route path={`${path}/login/checkpoint`} component={LoginCheckpointContainer} />

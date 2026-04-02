@@ -155,17 +155,15 @@ const ForgotPasswordContainer = () => {
     };
 
     return (
-        <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
+        <div className='burhan-auth-stage burhan-auth-stage-game fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
-            <AuthBackdropGame />
+            <AuthBackdropGame className='burhan-auth-backdrop-full' />
             <div
-                className={`burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:px-8 lg:pb-4 lg:pt-24 xl:px-10 ${
-                    mode === 'verify' ? 'lg:overflow-y-auto' : 'lg:overflow-y-hidden'
-                }`}
+                className='burhan-auth-rail burhan-auth-rail-floating h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-full lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'
             >
                 <div
-                    className={`burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col py-0 ${
+                    className={`burhan-auth-shell burhan-auth-shell-floating mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col py-0 ${
                         mode === 'verify' ? 'justify-start' : 'justify-center'
                     }`}
                 >
@@ -465,7 +463,7 @@ const ForgotPasswordContainer = () => {
                         </div>
                     </GlowCard>
 
-                    <div className='mt-6 text-center'>
+                    <div className='mt-6 pb-6 text-center'>
                         <Link className='burhan-auth-meta-link' to={'/auth/login'}>
                             Return to Login
                         </Link>

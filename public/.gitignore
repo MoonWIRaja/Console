@@ -2,3 +2,5 @@ assets
 assets/*
 !assets/svgs
 !assets/svgs/*.svg
+!minigames/laga-layang/assets/
+!minigames/laga-layang/assets/**

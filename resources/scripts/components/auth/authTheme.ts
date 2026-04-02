@@ -32,6 +32,8 @@ export const burhanAuthTopbarStyles = `
         right: 0;
         left: 0;
         z-index: 4;
+        height: var(--auth-topbar-height);
+        overflow: hidden;
         border-bottom: 1px solid rgba(245, 231, 198, 0.12);
         background: #2D2D2D;
         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
@@ -40,7 +42,8 @@ export const burhanAuthTopbarStyles = `
 
     .burhan-auth-topbar-inner {
         display: flex;
-        min-height: 5.25rem;
+        height: 100%;
+        min-height: 0;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
@@ -49,15 +52,20 @@ export const burhanAuthTopbarStyles = `
 
     .burhan-auth-topbar-brand {
         display: flex;
+        height: 100%;
+        max-width: min(100%, 32rem);
         min-width: 0;
         align-items: center;
+        overflow: hidden;
         text-decoration: none;
         color: inherit;
     }
 
     .burhan-auth-topbar-logo {
-        height: 4rem;
-        width: 4rem;
+        display: block;
+        height: calc(var(--auth-topbar-height) - 1.25rem);
+        width: calc(var(--auth-topbar-height) - 1.25rem);
+        max-height: calc(var(--auth-topbar-height) - 1.25rem);
         flex-shrink: 0;
         margin-right: 0.8rem;
         padding: 0.15rem;
@@ -74,6 +82,7 @@ export const burhanAuthTopbarStyles = `
         color: #F5E7C6;
         font-size: 1.1rem;
         font-weight: 700;
+        line-height: 1.05;
     }
 
     .burhan-auth-topbar-button {
@@ -99,7 +108,6 @@ export const burhanAuthTopbarStyles = `
 
     @media (max-width: 640px) {
         .burhan-auth-topbar-inner {
-            min-height: 4.75rem;
             padding: 0 1rem;
         }
 
@@ -125,6 +133,7 @@ export const burhanAuthThemeStyles = `
     @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 
     .burhan-auth-stage {
+        --auth-topbar-height: 5.25rem;
         --auth-mode-surface-rgb: 245, 231, 198;
         --auth-panel-bg: #2D2D2D;
         --auth-panel-surface: rgba(255, 255, 255, 0.02);
@@ -138,6 +147,12 @@ export const burhanAuthThemeStyles = `
 
     .dark .burhan-auth-stage {
         --auth-mode-surface-rgb: 34, 34, 34;
+    }
+
+    @media (max-width: 640px) {
+        .burhan-auth-stage {
+            --auth-topbar-height: 4.75rem;
+        }
     }
 
     .burhan-auth-stage::before {
@@ -218,6 +233,7 @@ export const burhanAuthThemeStyles = `
     .burhan-auth-rail {
         position: relative;
         z-index: 1;
+        padding-top: calc(var(--auth-topbar-height) + 1.25rem) !important;
         background: rgb(var(--auth-mode-surface-rgb)) !important;
         box-shadow: inset 1px 0 0 rgba(var(--primary-rgb), 0.1);
         overscroll-behavior: contain;

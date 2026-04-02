@@ -47,12 +47,12 @@ const LoginCheckpointContainer = () => {
     const activeError = touched[activeField] ? (errors[activeField] as string | undefined) : undefined;
 
     return (
-        <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
+        <div className='burhan-auth-stage burhan-auth-stage-game fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
-            <AuthBackdropGame />
-            <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:overflow-y-hidden lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
-                <div className='burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
+            <AuthBackdropGame className='burhan-auth-backdrop-full' />
+            <div className='burhan-auth-rail burhan-auth-rail-floating h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-full lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
+                <div className='burhan-auth-shell burhan-auth-shell-floating mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
                     <FlashMessageRender className='burhan-auth-flash mb-4 px-1' />
 
                     <GlowCard
@@ -125,7 +125,7 @@ const LoginCheckpointContainer = () => {
                         </button>
                     </div>
 
-                    <div className='mt-5 text-center'>
+                    <div className='mt-5 pb-6 text-center'>
                         <Link className='burhan-auth-meta-link' to={'/auth/login'}>
                             Return to Login
                         </Link>
