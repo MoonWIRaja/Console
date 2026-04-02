@@ -234,6 +234,22 @@ export default () => {
                     z-index: 2;
                 }
 
+                .account-theme > .account-profile-top-grid {
+                    z-index: 6;
+                }
+
+                .account-theme > .account-profile-content-grid {
+                    z-index: 2;
+                }
+
+                .account-avatar-menu-anchor {
+                    z-index: 7;
+                }
+
+                .account-avatar-menu-popover {
+                    z-index: 8;
+                }
+
                 .account-theme {
                     --neon-green: var(--primary);
                 }
@@ -454,14 +470,18 @@ export default () => {
             </Dialog>
 
             <FlashMessageRender byKey={'account'} />
-            <div className={'mb-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]'}>
+            <div
+                className={
+                    'account-profile-top-grid mb-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]'
+                }
+            >
                 <section
                     className={
-                        'min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
+                        'min-w-0 overflow-visible rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
                     }
                 >
                     <div className={'flex h-full min-w-0 flex-wrap items-center gap-4'}>
-                        <div ref={avatarMenuRef} className={'relative'}>
+                        <div ref={avatarMenuRef} className={'account-avatar-menu-anchor relative'}>
                             <button
                                 type={'button'}
                                 onClick={() => setAvatarMenuOpen((value) => !value)}
@@ -476,7 +496,7 @@ export default () => {
                             {avatarMenuOpen && (
                                 <div
                                     className={
-                                        'absolute left-0 top-[calc(100%+0.5rem)] z-30 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'
+                                        'account-avatar-menu-popover absolute left-0 top-[calc(100%+0.5rem)] w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'
                                     }
                                 >
                                     <button
@@ -538,7 +558,7 @@ export default () => {
                 </div>
             </div>
 
-            <div className={'grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
+            <div className={'account-profile-content-grid grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
                 <div className={'flex min-w-0 flex-col gap-6'}>
                     <section className={cardClass}>
                         <h2 className={'mb-5 text-lg font-bold tracking-tight text-[#f8f6ef]'}>Account Information</h2>

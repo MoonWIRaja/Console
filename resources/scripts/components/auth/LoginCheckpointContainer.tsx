@@ -8,8 +8,9 @@ import useFlash from '@/plugins/useFlash';
 import { FlashStore } from '@/state/flashes';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import AuthTopbar from '@/components/auth/AuthTopbar';
+import AuthBackdropGame from '@/components/auth/AuthBackdropGame';
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel';
 import { GlowCard } from '@/components/ui/spotlight-card';
-import useSiteBranding from '@/hooks/useSiteBranding';
 import {
     authErrorClass,
     authFieldLabelClass,
@@ -36,7 +37,6 @@ const getConfirmationToken = (location: OwnProps['location']): string => {
 const LoginCheckpointContainer = () => {
     const { isSubmitting, setFieldValue, values, errors, touched, handleChange, handleBlur } =
         useFormikContext<Values>();
-    const { name } = useSiteBranding();
     const [isMissingDevice, setIsMissingDevice] = useState(false);
     const activeField: keyof Values = isMissingDevice ? 'recoveryCode' : 'code';
     const activeDescription = isMissingDevice
@@ -50,9 +50,7 @@ const LoginCheckpointContainer = () => {
         <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
-            <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
-                <span className='sr-only'>Dark neon background area.</span>
-            </div>
+            <AuthBackdropGame />
             <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:overflow-y-hidden lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
                 <div className='burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
                     <FlashMessageRender className='burhan-auth-flash mb-4 px-1' />
@@ -65,9 +63,7 @@ const LoginCheckpointContainer = () => {
                         className='burhan-auth-glow w-full max-h-full'
                     >
                         <div className='burhan-auth-card'>
-                            <div className='burhan-auth-brand-panel'>
-                                <h1 className='burhan-auth-title'>{name}</h1>
-                            </div>
+                            <AuthBrandPanel />
 
                             <div className='mb-4 rounded-[1.35rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3'>
                                 <h2 className='text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(248,246,239,0.72)]'>

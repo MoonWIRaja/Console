@@ -1,4 +1,5 @@
 @php($panelLogo = config('app.logo') ? asset(config('app.logo')) : asset('assets/svgs/pterodactyl.svg'))
+@php($authBrandLogo = config('app.auth_logo') ? asset(config('app.auth_logo')) : null)
 @php($level = (int) old('pterodactyl:auth:2fa_required', config('pterodactyl.auth.2fa_required')))
 <div class="box">
     <div class="box-header with-border">
@@ -49,13 +50,33 @@
                     <div style="padding: 12px; min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb; border-radius: 8px; background: rgba(0, 0, 0, 0.02);">
                         <img src="{{ $panelLogo }}" alt="Panel Logo" style="max-width: 100%; max-height: 96px; object-fit: contain;">
                     </div>
-                    <p class="text-muted"><small>This image is used for the favicon, sidebar logo, and login branding.</small></p>
+                    <p class="text-muted"><small>This image is used for the favicon, sidebar logo, topbar branding, and other shared panel branding.</small></p>
                 </div>
                 <div class="form-group col-md-8">
                     <label class="control-label">Upload Logo <span class="field-optional"></span></label>
                     <div>
                         <input type="file" class="form-control" name="app_logo" accept=".png,.jpg,.jpeg,.webp,.svg,.ico">
                         <p class="text-muted"><small>Upload a square image for best results. Supported types: PNG, JPG, JPEG, WEBP, SVG, ICO. Max size: 2 MB.</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-md-4">
+                    <label class="control-label">Current Auth Brand Logo</label>
+                    <div style="padding: 12px; min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb; border-radius: 8px; background: rgba(0, 0, 0, 0.02);">
+                        @if($authBrandLogo)
+                            <img src="{{ $authBrandLogo }}" alt="Auth Brand Logo" style="max-width: 100%; max-height: 96px; object-fit: contain;">
+                        @else
+                            <span style="font-size: 12px; color: #6b7280; text-align: center;">No auth brand logo uploaded. The auth card will fall back to the company name.</span>
+                        @endif
+                    </div>
+                    <p class="text-muted"><small>This image is used only inside the auth card branding block on login-related screens.</small></p>
+                </div>
+                <div class="form-group col-md-8">
+                    <label class="control-label">Upload Auth Brand Logo <span class="field-optional"></span></label>
+                    <div>
+                        <input type="file" class="form-control" name="app_auth_logo" accept=".png,.jpg,.jpeg,.webp,.svg,.ico">
+                        <p class="text-muted"><small>Use this when you want the auth card to show a different logo than the main panel branding. Supported types: PNG, JPG, JPEG, WEBP, SVG, ICO. Max size: 2 MB.</small></p>
                     </div>
                 </div>
             </div>

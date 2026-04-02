@@ -53,7 +53,7 @@ const DashboardTopbar = ({
     const rootAdmin = useStoreState((state: ApplicationStore) => !!state.user.data?.rootAdmin);
     const userUuid = useStoreState((state: ApplicationStore) => state.user.data?.uuid || '');
 
-    const [sidebarMode, setSidebarMode] = useState<SidebarMode>('auto');
+    const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => getStoredSidebarMode());
     const [showAllServers, setShowAllServers] = useState(false);
     const [serverSwitcherOpen, setServerSwitcherOpen] = useState(false);
     const [serverSwitcherQuery, setServerSwitcherQuery] = useState('');
@@ -66,8 +66,6 @@ const DashboardTopbar = ({
     const switcherInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
-        setSidebarMode(getStoredSidebarMode());
-
         const handleSidebarModeSync = (event: Event) => {
             const nextMode = (event as CustomEvent<SidebarMode>).detail;
             setSidebarMode(

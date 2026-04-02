@@ -1,4 +1,5 @@
 import http from '@/api/http';
+import { PendingSignupData, transformPendingSignup } from '@/api/auth/types';
 
 export interface LoginResponse {
     complete: boolean;
@@ -9,6 +10,7 @@ export interface LoginResponse {
     challengeRequired?: boolean;
     retryAfter?: number;
     nextAction?: 'retry' | 'checkpoint' | 'email_pin';
+    pendingSignup?: PendingSignupData;
 }
 
 export interface LoginData {
@@ -54,6 +56,7 @@ export default ({
                     challengeRequired: !!response.data.challenge_required,
                     retryAfter: response.data.retry_after || undefined,
                     nextAction: response.data.next_action || undefined,
+                    pendingSignup: transformPendingSignup(response.data.data.pending_signup),
                 });
             })
             .catch(reject);

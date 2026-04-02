@@ -14,7 +14,10 @@ class TicketUrlService
 
     public function clientTicketUrl(Ticket $ticket): string
     {
-        return rtrim((string) config('app.url', ''), '/') . self::CLIENT_BASE_PATH . '/' . $ticket->id;
+        return rtrim((string) config('app.url', ''), '/') . self::CLIENT_BASE_PATH . '?' . http_build_query([
+            'view' => 'chat',
+            'ticket' => $ticket->id,
+        ]);
     }
 
     public function adminTicketUrl(Ticket $ticket): string
@@ -24,7 +27,7 @@ class TicketUrlService
 
     public function composeUrl(string $category, array $params = []): string
     {
-        $query = array_filter(array_merge(['compose' => $category], $params), fn ($value) => !is_null($value) && $value !== '');
+        $query = array_filter(array_merge(['view' => 'tickets', 'compose' => $category], $params), fn ($value) => !is_null($value) && $value !== '');
 
         return rtrim((string) config('app.url', ''), '/') . self::CLIENT_BASE_PATH . '?' . http_build_query($query);
     }

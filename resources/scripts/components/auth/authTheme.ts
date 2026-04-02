@@ -148,13 +148,71 @@ export const burhanAuthThemeStyles = `
         display: none;
     }
 
+    .burhan-auth-stage-game {
+        position: relative;
+        --auth-mode-surface-rgb: 13, 13, 13;
+        background: #0d0d0d !important;
+    }
+
     .burhan-auth-backdrop {
         position: relative;
+        overflow: hidden;
+        isolation: isolate;
         background: rgb(var(--auth-mode-surface-rgb)) !important;
     }
 
     .burhan-auth-backdrop::before {
         display: none;
+    }
+
+    .burhan-auth-backdrop-game {
+        border-right: 1px solid rgba(var(--primary-rgb), 0.08);
+    }
+
+    .burhan-auth-backdrop-full {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        width: 100% !important;
+        height: 100%;
+        border-right: 0;
+    }
+
+    .burhan-auth-backdrop-fallback {
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 18% 20%, rgba(var(--primary-rgb), 0.16), transparent 26%),
+            radial-gradient(circle at 78% 18%, rgba(245, 231, 198, 0.11), transparent 24%),
+            linear-gradient(180deg, rgba(12, 18, 10, 0.94), rgba(7, 10, 8, 0.98));
+    }
+
+    .burhan-auth-backdrop-fallback::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 38px 38px, 38px 38px;
+        opacity: 0.08;
+        pointer-events: none;
+    }
+
+    .burhan-auth-backdrop-frame {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #0d0d0d;
+        opacity: 0;
+        transition: opacity 220ms ease;
+    }
+
+    .burhan-auth-backdrop-frame.is-ready {
+        opacity: 1;
     }
 
     .burhan-auth-rail {
@@ -170,6 +228,17 @@ export const burhanAuthThemeStyles = `
     .burhan-auth-shell {
         position: relative;
         z-index: 1;
+    }
+
+    .burhan-auth-rail-floating {
+        background: transparent !important;
+        box-shadow: none;
+        scrollbar-gutter: auto;
+    }
+
+    .burhan-auth-shell-floating {
+        width: min(100%, 38.4rem);
+        max-width: 38.4rem;
     }
 
     ${burhanAuthTopbarStyles}
@@ -250,6 +319,15 @@ export const burhanAuthThemeStyles = `
         line-height: 0.9;
         letter-spacing: -0.06em;
         word-break: break-word;
+    }
+
+    .burhan-auth-brand-logo {
+        display: block;
+        width: min(100%, 26rem);
+        max-height: 8.75rem;
+        margin: 0 auto;
+        object-fit: contain;
+        object-position: center;
     }
 
     .burhan-auth-switch {
@@ -561,6 +639,26 @@ export const burhanAuthThemeStyles = `
     @media (max-width: 1024px) {
         .burhan-auth-stage {
             background: rgb(var(--auth-mode-surface-rgb)) !important;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .burhan-auth-rail-floating {
+            position: relative;
+            z-index: 3;
+            margin-left: auto;
+            width: min(43.2rem, 50.4vw) !important;
+            padding-left: 1.5rem;
+            padding-right: 12rem;
+        }
+
+        .burhan-auth-rail-floating::before {
+            display: none;
+        }
+
+        .burhan-auth-rail-floating > * {
+            position: relative;
+            z-index: 1;
         }
     }
 

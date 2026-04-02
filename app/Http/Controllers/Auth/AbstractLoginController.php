@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Event;
 use Pterodactyl\Events\Auth\DirectLogin;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\Auth\SignupOnboardingService;
 use Pterodactyl\Services\Security\AuthSecurityService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
@@ -101,6 +102,7 @@ abstract class AbstractLoginController extends Controller
     {
         $request->session()->remove('auth_confirmation_token');
         $request->session()->remove('email_verification_token');
+        $request->session()->remove(SignupOnboardingService::SESSION_KEY);
         $request->session()->regenerate();
 
         $this->clearLoginAttempts($request);

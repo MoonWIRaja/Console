@@ -10,6 +10,7 @@ use Pterodactyl\Facades\Activity;
 use Pterodactyl\Exceptions\DisplayException;
 use Illuminate\Contracts\Hashing\Hasher;
 use Pterodactyl\Services\Auth\EmailVerificationService;
+use Pterodactyl\Services\Auth\SignupOnboardingService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Pterodactyl\Http\Requests\Auth\RegisterRequest;
 use Pterodactyl\Http\Requests\Auth\VerifyEmailPinRequest;
@@ -23,6 +24,7 @@ class RegisterController extends AbstractLoginController
         private Hasher $hasher,
         private EmailVerificationService $emailVerificationService,
         private AuthSecurityService $security,
+        private SignupOnboardingService $signupOnboarding,
     ) {
         parent::__construct();
     }
@@ -47,16 +49,24 @@ class RegisterController extends AbstractLoginController
             'gravatar' => true,
         ])->save();
 
-        $token = $this->emailVerificationService->issueChallenge($request, $user);
+        $pendingSignup = $this->signupOnboarding->begin($request, $user);
 
         Activity::event('auth:signup')->withRequestMetadata()->subject($user)->log();
 
         return new JsonResponse([
             'data' => [
                 'complete' => false,
-                'email_verification_required' => true,
-                'verification_token' => $token,
+                'email_verification_required' => $pendingSignup['stage'] === SignupOnboardingService::STATE_PENDING_EMAIL_VERIFICATION,
+                'verification_token' => $pendingSignup['verification_token'],
+                'pending_signup' => $pendingSignup,
             ],
+        ]);
+    }
+
+    public function pending(Request $request): JsonResponse
+    {
+        return new JsonResponse([
+            'data' => $this->signupOnboarding->current($request),
         ]);
     }
 
@@ -88,7 +98,17 @@ class RegisterController extends AbstractLoginController
             throw new DisplayException(self::TOKEN_EXPIRED_MESSAGE);
         }
 
+        if ($this->signupOnboarding->isPending($user)
+            && $user->signup_onboarding_state !== SignupOnboardingService::STATE_PENDING_EMAIL_VERIFICATION) {
+            $this->security->registerFailure($request, 4, 'failed_signup_verify', $identifier);
+            throw new DisplayException('Complete Google and Discord linking before verifying your email.');
+        }
+
         if ($user->is_email_verified) {
+            if ($this->signupOnboarding->isPending($user)) {
+                $this->signupOnboarding->complete($request, $user);
+            }
+
             return $this->sendLoginResponse($user, $request);
         }
 
@@ -98,6 +118,9 @@ class RegisterController extends AbstractLoginController
         }
 
         $this->emailVerificationService->markVerified($user);
+        if ($this->signupOnboarding->isPending($user)) {
+            $this->signupOnboarding->complete($request, $user);
+        }
 
         Activity::event('auth:email-verified')->withRequestMetadata()->subject($user)->log();
 

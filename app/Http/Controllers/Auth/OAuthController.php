@@ -8,14 +8,19 @@ use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
+use Pterodactyl\Models\User;
 use Pterodactyl\Models\UserOAuthAccount;
+use Pterodactyl\Services\Auth\SignupOnboardingService;
 use Pterodactyl\Services\Auth\OAuth\OAuthProviderService;
 
 class OAuthController extends AbstractLoginController
 {
     private const SESSION_KEY = 'oauth_flow';
 
-    public function __construct(private OAuthProviderService $providers)
+    public function __construct(
+        private OAuthProviderService $providers,
+        private SignupOnboardingService $signupOnboarding,
+    )
     {
         parent::__construct();
     }
@@ -37,11 +42,25 @@ class OAuthController extends AbstractLoginController
             return $this->redirectWithStatus($request, $intent, $provider, 'login_required');
         }
 
+        $signupUserId = null;
+        if ($intent === 'signup') {
+            $signupUser = $this->signupOnboarding->resolvePendingUser($request);
+            if (!$signupUser || !$this->signupOnboarding->expectsProvider($signupUser, $provider)) {
+                return $this->redirectWithStatus($request, $intent, $provider, 'invalid_state');
+            }
+
+            $signupUserId = $signupUser->id;
+        }
+
         $request->session()->put(self::SESSION_KEY, [
             'provider' => $provider,
             'intent' => $intent,
             'state' => $state = bin2hex(random_bytes(20)),
-            'user_id' => $intent === 'link' ? $request->user()?->id : null,
+            'user_id' => match ($intent) {
+                'link' => $request->user()?->id,
+                'signup' => $signupUserId,
+                default => null,
+            },
             'return_to' => $this->sanitizeReturnTo($request->query('return_to')),
             'expires_at' => CarbonImmutable::now()->addMinutes(10),
         ]);
@@ -88,6 +107,10 @@ class OAuthController extends AbstractLoginController
             return $this->handleLinkedAccountCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
         }
 
+        if (($flow['intent'] ?? 'login') === 'signup') {
+            return $this->handleSignupCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
+        }
+
         return $this->handleLoginCallback($request, $provider, $identity);
     }
 
@@ -104,6 +127,15 @@ class OAuthController extends AbstractLoginController
         }
 
         $this->syncAccount($account, $identity);
+
+        if ($this->signupOnboarding->isPending($account->user)) {
+            $pendingSignup = $this->signupOnboarding->prepareForAuth($request, $account->user);
+            $status = $pendingSignup['stage'] === SignupOnboardingService::STATE_PENDING_EMAIL_VERIFICATION
+                ? 'email_verification_required'
+                : 'signup_incomplete';
+
+            return $this->redirectWithStatus($request, 'login', $provider, $status);
+        }
 
         if (!$account->user->is_email_verified) {
             return $this->redirectWithStatus($request, 'login', $provider, 'email_verification_required');
@@ -143,6 +175,49 @@ class OAuthController extends AbstractLoginController
         return $this->redirectWithStatus($request, 'link', $provider, 'linked', $flow);
     }
 
+    private function handleSignupCallback(Request $request, string $provider, int $userId, array $identity, ?array $flow = null): RedirectResponse
+    {
+        /** @var User|null $user */
+        $user = User::query()->find($userId);
+        if (!$user || !$this->signupOnboarding->isPending($user) || !$this->signupOnboarding->expectsProvider($user, $provider)) {
+            return $this->redirectWithStatus($request, 'signup', $provider, 'invalid_state', $flow);
+        }
+
+        $this->signupOnboarding->remember($request, $user);
+
+        $existing = UserOAuthAccount::query()
+            ->where('provider', $provider)
+            ->where('provider_id', $identity['provider_id'])
+            ->first();
+
+        if ($existing && $existing->user_id !== $user->id) {
+            return $this->redirectWithStatus(
+                $request,
+                'signup',
+                $provider,
+                $provider === 'google' ? 'signup_google_conflict' : 'signup_discord_conflict',
+                $flow
+            );
+        }
+
+        if ($provider === 'google' && !$this->signupOnboarding->isGoogleEmailMatch($user, $identity['email'] ?? null)) {
+            return $this->redirectWithStatus($request, 'signup', $provider, 'signup_google_email_mismatch', $flow);
+        }
+
+        /** @var UserOAuthAccount $account */
+        $account = $user->oauthAccounts()->firstOrNew(['provider' => $provider]);
+        $this->syncAccount($account, $identity);
+        $this->signupOnboarding->advanceAfterProviderLink($request, $user, $provider);
+
+        return $this->redirectWithStatus(
+            $request,
+            'signup',
+            $provider,
+            $provider === 'google' ? 'signup_google_linked' : 'signup_discord_linked',
+            $flow
+        );
+    }
+
     private function syncAccount(UserOAuthAccount $account, array $identity): void
     {
         $tokens = is_array($identity['oauth_tokens'] ?? null) ? $identity['oauth_tokens'] : [];
@@ -165,7 +240,7 @@ class OAuthController extends AbstractLoginController
             return false;
         }
 
-        if (!in_array($flow['intent'] ?? null, ['login', 'link'], true)) {
+        if (!in_array($flow['intent'] ?? null, ['login', 'link', 'signup'], true)) {
             return false;
         }
 
@@ -204,7 +279,9 @@ class OAuthController extends AbstractLoginController
 
     private function resolveIntent(Request $request): string
     {
-        return $request->query('intent') === 'link' ? 'link' : 'login';
+        $intent = strtolower((string) $request->query('intent', 'login'));
+
+        return in_array($intent, ['login', 'link', 'signup'], true) ? $intent : 'login';
     }
 
     private function sanitizeReturnTo(?string $path): ?string

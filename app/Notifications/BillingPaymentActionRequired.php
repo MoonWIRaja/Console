@@ -75,7 +75,9 @@ class BillingPaymentActionRequired extends Notification implements ShouldQueue
         return ['Link Discord & Open Ticket', route('auth.oauth.redirect', [
             'provider' => 'discord',
             'intent' => 'link',
-            'return_to' => '/tickets?compose=payment&invoiceId=' . $this->invoice->id,
+            'return_to' => app(TicketUrlService::class)->composeUrl(Ticket::CATEGORY_PAYMENT, [
+                'invoiceId' => $this->invoice->id,
+            ]),
         ])];
     }
 }

@@ -113,8 +113,8 @@ const PLAN_WIZARD_STEP_CONTENT: Record<
     },
     nest: {
         eyebrow: 'Step 2',
-        title: 'Choose A Nest',
-        copy: 'Select the software family first so only compatible eggs appear in the next step.',
+        title: 'Choose A Game',
+        copy: 'Select the game family first so only compatible server types appear in the next step.',
     },
     game: {
         eyebrow: 'Step 3',
@@ -302,7 +302,7 @@ const buildFollowUpAction = (
     if (response.manualPaymentRequired) {
         return {
             label: 'Open Support Inbox',
-            href: withReturnTo('/tickets', returnTo),
+            href: withReturnTo('/tickets?view=chat', returnTo),
             description:
                 'Continue this manual payment flow in your support inbox. That is where payment proof, staff replies, and approval updates are now tracked.',
             warning: response.ticketWarning ?? null,
@@ -724,7 +724,7 @@ export default () => {
         }
 
         setVariables(nextVariables);
-        setServerName((current) => (current.trim().length > 0 ? current : `${selectedGame.displayName} Server`));
+        setServerName((current) => (current.trim().length > 0 ? current : 'My Server'));
     }, [selectedGame?.id, selectedNode?.id]);
 
     useEffect(() => {
@@ -980,8 +980,8 @@ export default () => {
                 variables,
             });
             const returnTo = response.invoice?.id
-                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets';
+                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets?view=chat';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
 
@@ -1043,8 +1043,8 @@ export default () => {
         try {
             const response = await renewBillingSubscription(subscriptionId);
             const returnTo = response.invoice?.id
-                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets';
+                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets?view=chat';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
             addFlash({
@@ -1110,8 +1110,8 @@ export default () => {
                 )
             );
             const returnTo = response.invoice?.id
-                ? `/tickets?compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets';
+                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
+                : '/tickets?view=chat';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
 
@@ -1852,7 +1852,7 @@ export default () => {
                             <Input
                                 value={serverName}
                                 onChange={(event) => setServerName(event.currentTarget.value)}
-                                placeholder={'My Billing Server'}
+                                placeholder={'My Server'}
                                 maxLength={191}
                             />
                             <p className={'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
@@ -1882,7 +1882,7 @@ export default () => {
                             ) : null}
                         </div>
 
-                        <div className={'grid gap-4 xl:grid-cols-3'}>
+                        <div className={'grid gap-4'}>
                             <BillingResourceSlider
                                 label={'vCore'}
                                 value={cpuCores}
@@ -2349,7 +2349,7 @@ export default () => {
                             Live Preview
                         </p>
                         <h2 className={'mt-1 text-lg font-black tracking-tight text-[#f8f6ef] xl:text-[1.05rem]'}>
-                            {selectedGame?.displayName || 'Plan Preview'}
+                            {serverName.trim() || selectedGame?.displayName || 'Plan Preview'}
                         </h2>
                         <p className={'mt-1 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
                             {selectedNode?.displayName || 'No node selected'} {'•'}{' '}
@@ -3246,7 +3246,7 @@ export default () => {
                 .billing-slider-value {
                     display: inline-flex;
                     min-height: 46px;
-                    min-width: 56px;
+                    width: 92px;
                     align-items: center;
                     justify-content: center;
                     border-radius: 999px;
@@ -3256,6 +3256,16 @@ export default () => {
                     font-size: 0.9rem;
                     font-weight: 900;
                     color: var(--primary);
+                    text-align: center;
+                    appearance: textfield;
+                    outline: none;
+                    box-shadow: none;
+                }
+
+                .billing-slider-value::-webkit-outer-spin-button,
+                .billing-slider-value::-webkit-inner-spin-button {
+                    margin: 0;
+                    -webkit-appearance: none;
                 }
 
                 .billing-subscription-card {
@@ -3603,7 +3613,7 @@ export default () => {
                                 <a className={'billing-primary-btn'} href={followUpAction.href}>
                                     {followUpAction.label}
                                 </a>
-                                <a className={'billing-secondary-btn'} href={'/tickets'}>
+                                <a className={'billing-secondary-btn'} href={'/tickets?view=chat'}>
                                     Ticket Inbox
                                 </a>
                             </div>

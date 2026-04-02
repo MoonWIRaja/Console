@@ -77,8 +77,8 @@ export default () => {
             <div className={'mb-5'}>
                 <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Linked Accounts</h2>
                 <p className={'mt-2 text-xs text-gray-400'}>
-                    Link Google or Discord here. OAuth login only works after the provider has been linked to this panel
-                    account.
+                    Link or re-link Google and Discord here for an existing panel account. New signups can also link
+                    these providers during signup before the first login.
                 </p>
             </div>
 

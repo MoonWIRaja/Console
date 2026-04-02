@@ -52,6 +52,7 @@ class TicketController extends ClientApiController
             'data' => match ($category) {
                 Ticket::CATEGORY_PAYMENT => $this->eligibility->paymentEligibles($request->user()),
                 Ticket::CATEGORY_REFUND => $this->eligibility->refundEligibles($request->user()),
+                Ticket::CATEGORY_SUPPORT => $this->eligibility->supportServerEligibles($request->user()),
                 default => [],
             },
         ];

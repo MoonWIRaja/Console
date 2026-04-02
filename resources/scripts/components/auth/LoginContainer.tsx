@@ -3,12 +3,16 @@ import { Link, RouteComponentProps } from 'react-router-dom';
 import login from '@/api/auth/login';
 import signup from '@/api/auth/signup';
 import verifyEmailPin from '@/api/auth/verifyEmailPin';
+import getPendingSignup from '@/api/auth/getPendingSignup';
+import { PendingSignupData } from '@/api/auth/types';
 import { useStoreState } from 'easy-peasy';
 import { Form, Formik, FormikHelpers, FormikProps } from 'formik';
 import { object, ref as yupRef, string } from 'yup';
 import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import AuthTopbar from '@/components/auth/AuthTopbar';
+import AuthBackdropGame from '@/components/auth/AuthBackdropGame';
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel';
 import {
     authErrorClass,
     authFieldLabelClass,
@@ -24,7 +28,6 @@ import {
 } from '@/components/auth/authTheme';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
-import useSiteBranding from '@/hooks/useSiteBranding';
 
 interface LoginValues {
     username: string;
@@ -50,20 +53,19 @@ interface VerificationValues {
     pin: string;
 }
 
-type AuthMode = 'login' | 'signup' | 'verify';
+type AuthMode = 'login' | 'signup' | 'verify' | 'signup_onboarding';
 
 const LoginContainer = ({ history, location }: RouteComponentProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
     const [showSignupConfirmationPassword, setShowSignupConfirmationPassword] = useState(false);
     const [mode, setMode] = useState<AuthMode>('login');
+    const [pendingSignup, setPendingSignup] = useState<PendingSignupData | null>(null);
     const [verificationToken, setVerificationToken] = useState('');
     const [verificationIdentity, setVerificationIdentity] = useState('');
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
     const [captchaWidgetFailed, setCaptchaWidgetFailed] = useState(false);
-    const { name } = useSiteBranding();
-
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const captcha = useStoreState((state) => state.settings.data!.captcha);
     const oauth = useStoreState((state) => state.settings.data?.oauth);
@@ -81,12 +83,73 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
             ].filter((provider): provider is NonNullable<typeof provider> => !!provider),
         [oauth]
     );
+    const pendingProvider = useMemo(() => {
+        if (!pendingSignup) {
+            return null;
+        }
+
+        if (pendingSignup.stage === 'pending_google_link') {
+            return {
+                provider: 'google' as const,
+                label: 'Google',
+                actionLabel: 'Link Google',
+                description:
+                    'Continue with the Google account that uses the exact same email address as your signup form.',
+                linkUrl: pendingSignup.googleLinkUrl,
+                available: pendingSignup.googleAvailable,
+            };
+        }
+
+        if (pendingSignup.stage === 'pending_discord_link') {
+            return {
+                provider: 'discord' as const,
+                label: 'Discord',
+                actionLabel: 'Link Discord',
+                description: 'Google is linked. Link your Discord account next before email verification unlocks.',
+                linkUrl: pendingSignup.discordLinkUrl,
+                available: pendingSignup.discordAvailable,
+            };
+        }
+
+        return null;
+    }, [pendingSignup]);
 
     useEffect(() => {
         if (typeof clearFlashes === 'function') {
             clearFlashes();
         }
     }, [clearFlashes]);
+
+    useEffect(() => {
+        let active = true;
+
+        getPendingSignup()
+            .then((data) => {
+                if (!active) {
+                    return;
+                }
+
+                if (!data) {
+                    setPendingSignup(null);
+
+                    if (mode === 'signup_onboarding') {
+                        setMode('login');
+                    }
+
+                    return;
+                }
+
+                setPendingSignup(data);
+                setVerificationIdentity(data.email);
+                setVerificationToken(data.verificationToken || '');
+                setMode(data.stage === 'pending_email_verification' ? 'verify' : 'signup_onboarding');
+            })
+            .catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [location.search]);
 
     useEffect(() => {
         const search = new URLSearchParams(location.search);
@@ -101,8 +164,8 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
         const flashes = {
             cancelled: {
                 type: 'error' as const,
-                title: 'Sign-in Cancelled',
-                message: `${label} sign-in was cancelled before it completed.`,
+                title: 'Flow Cancelled',
+                message: `${label} authorization was cancelled before it completed.`,
             },
             disabled: {
                 type: 'error' as const,
@@ -116,18 +179,49 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
             },
             failed: {
                 type: 'error' as const,
-                title: 'Sign-in Failed',
-                message: `Unable to complete ${label} sign-in right now.`,
+                title: 'OAuth Failed',
+                message: `Unable to complete ${label} authorization right now.`,
             },
             invalid_state: {
                 type: 'error' as const,
                 title: 'Session Expired',
-                message: `The ${label} OAuth session expired. Start the sign-in flow again.`,
+                message: `The ${label} OAuth session expired. Start the flow again.`,
             },
             not_linked: {
                 type: 'error' as const,
                 title: 'Account Not Linked',
                 message: `Link your ${label} account in Account Settings before using ${label} login.`,
+            },
+            signup_google_linked: {
+                type: 'success' as const,
+                title: 'Google Linked',
+                message: 'Google is linked. Continue by linking your Discord account.',
+            },
+            signup_google_email_mismatch: {
+                type: 'error' as const,
+                title: 'Google Email Mismatch',
+                message:
+                    'The Google email does not match the email you used in the signup form, so linking was rejected.',
+            },
+            signup_google_conflict: {
+                type: 'error' as const,
+                title: 'Google Already Linked',
+                message: 'That Google account is already linked to another panel user.',
+            },
+            signup_discord_linked: {
+                type: 'success' as const,
+                title: 'Discord Linked',
+                message: 'Discord is linked. Verify your email PIN to finish creating the account.',
+            },
+            signup_discord_conflict: {
+                type: 'error' as const,
+                title: 'Discord Already Linked',
+                message: 'That Discord account is already linked to another panel user.',
+            },
+            signup_incomplete: {
+                type: 'error' as const,
+                title: 'Complete Signup First',
+                message: 'Finish the Google, Discord, and email verification steps before logging in.',
             },
         } as const;
 
@@ -150,12 +244,23 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
         if (typeof clearFlashes === 'function') {
             clearFlashes();
         }
+        setPendingSignup(null);
         setMode(next);
         setVerificationToken('');
         setVerificationIdentity('');
         setRequireCaptcha(false);
         setCaptchaToken('');
         setCaptchaWidgetFailed(false);
+    };
+
+    const setPendingSignupState = (data: PendingSignupData) => {
+        setPendingSignup(data);
+        setVerificationIdentity(data.email);
+        setVerificationToken(data.verificationToken || '');
+        setRequireCaptcha(false);
+        setCaptchaToken('');
+        setCaptchaWidgetFailed(false);
+        setMode(data.stage === 'pending_email_verification' ? 'verify' : 'signup_onboarding');
     };
 
     const handleSecurityError = (error: any) => {
@@ -224,7 +329,15 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                     return;
                 }
 
+                if (response.pendingSignup) {
+                    setPendingSignupState(response.pendingSignup);
+                    setSubmitting(false);
+
+                    return;
+                }
+
                 if (response.verificationRequired && response.verificationToken) {
+                    setPendingSignup(null);
                     setVerificationToken(response.verificationToken);
                     setVerificationIdentity(values.username);
                     setMode('verify');
@@ -276,7 +389,14 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
             .then((response) => {
                 setCaptchaToken('');
 
+                if (response.pendingSignup) {
+                    setPendingSignupState(response.pendingSignup);
+
+                    return;
+                }
+
                 if (response.verificationRequired && response.verificationToken) {
+                    setPendingSignup(null);
                     setVerificationToken(response.verificationToken);
                     setVerificationIdentity(values.email);
                     setMode('verify');
@@ -313,6 +433,7 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                 });
             }
             setMode('login');
+            setPendingSignup(null);
             setSubmitting(false);
 
             return;
@@ -348,14 +469,12 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
         `burhan-auth-tab ${mode === tab ? 'is-active' : ''}`;
 
     return (
-        <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
+        <div className='burhan-auth-stage burhan-auth-stage-game fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
-            <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
-                <span className='sr-only'>Themed background area.</span>
-            </div>
-            <div className='burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
-                <div className='burhan-auth-shell mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
+            <AuthBackdropGame className='burhan-auth-backdrop-full' />
+            <div className='burhan-auth-rail burhan-auth-rail-floating h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-full lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
+                <div className='burhan-auth-shell burhan-auth-shell-floating mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col justify-center py-0'>
                     <FlashMessageRender className='burhan-auth-flash mb-4 px-1' />
 
                     <GlowCard
@@ -366,11 +485,9 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                         className={`burhan-auth-glow w-full ${mode === 'signup' ? '' : 'max-h-full'}`}
                     >
                         <div className='burhan-auth-card'>
-                            <div className='burhan-auth-brand-panel'>
-                                <h1 className='burhan-auth-title'>{name}</h1>
-                            </div>
+                            <AuthBrandPanel />
 
-                            {mode !== 'verify' && (
+                            {(mode === 'login' || mode === 'signup') && (
                                 <div className='burhan-auth-switch'>
                                     <button
                                         type='button'
@@ -765,6 +882,12 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                 <i className='fa-solid fa-arrow-right-long text-sm' />
                                             </button>
 
+                                            <p className='text-xs leading-6 text-gray-400'>
+                                                New signups must link Google and Discord before the first login. Google
+                                                must use the same email address as this signup form. If either provider
+                                                is unavailable, signup falls back to email verification only.
+                                            </p>
+
                                             {captchaEnabled && requireCaptcha && (
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
@@ -787,6 +910,60 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                 </Formik>
                             )}
 
+                            {mode === 'signup_onboarding' && pendingSignup && pendingProvider && (
+                                <div className='burhan-auth-form'>
+                                    <div className='burhan-auth-pin-copy text-sm'>
+                                        Account created for{' '}
+                                        <span className='text-[color:var(--foreground)]'>{pendingSignup.email}</span>.
+                                        <div className='mt-2'>{pendingProvider.description}</div>
+                                    </div>
+
+                                    <div className='rounded-[1.6rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-gray-300'>
+                                        <div className='flex items-center justify-between gap-3'>
+                                            <span>Google</span>
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${
+                                                    pendingSignup.googleLinked
+                                                        ? 'bg-emerald-500/10 text-emerald-300'
+                                                        : 'bg-white/5 text-gray-400'
+                                                }`}
+                                            >
+                                                {pendingSignup.googleLinked ? 'Linked' : 'Pending'}
+                                            </span>
+                                        </div>
+                                        <div className='mt-3 flex items-center justify-between gap-3'>
+                                            <span>Discord</span>
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${
+                                                    pendingSignup.discordLinked
+                                                        ? 'bg-emerald-500/10 text-emerald-300'
+                                                        : 'bg-white/5 text-gray-400'
+                                                }`}
+                                            >
+                                                {pendingSignup.discordLinked ? 'Linked' : 'Pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type='button'
+                                        onClick={() => window.location.assign(pendingProvider.linkUrl)}
+                                        disabled={!pendingProvider.available || !pendingProvider.linkUrl}
+                                        className={authPrimaryButtonClass}
+                                    >
+                                        {pendingProvider.actionLabel}
+                                        <i className='fa-solid fa-arrow-right-long text-sm' />
+                                    </button>
+
+                                    {!pendingProvider.available && (
+                                        <p className={authTurnstileErrorClass}>
+                                            {pendingProvider.label} OAuth is unavailable right now. This signup is still
+                                            pending until the provider is available again.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             {mode === 'verify' && (
                                 <Formik
                                     onSubmit={onVerifySubmit}
@@ -807,7 +984,9 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                     }: FormikProps<VerificationValues>) => (
                                         <Form className='burhan-auth-form'>
                                             <div className='burhan-auth-pin-copy text-sm'>
-                                                Enter the 6-digit verification code sent to{' '}
+                                                {pendingSignup ? 'Google and Discord are linked. ' : 'Enter '}
+                                                {!pendingSignup && 'the 6-digit verification code sent to '}
+                                                {pendingSignup && 'Enter the 6-digit verification code sent to '}
                                                 <span className='text-[color:var(--foreground)]'>
                                                     {verificationIdentity}
                                                 </span>
@@ -842,13 +1021,15 @@ const LoginContainer = ({ history, location }: RouteComponentProps) => {
                                                 Verify Account
                                                 <i className='fa-solid fa-check text-sm' />
                                             </button>
-                                            <button
-                                                type='button'
-                                                onClick={() => switchMode('login')}
-                                                className={authSecondaryButtonClass}
-                                            >
-                                                Back to Login
-                                            </button>
+                                            {!pendingSignup && (
+                                                <button
+                                                    type='button'
+                                                    onClick={() => switchMode('login')}
+                                                    className={authSecondaryButtonClass}
+                                                >
+                                                    Back to Login
+                                                </button>
+                                            )}
                                         </Form>
                                     )}
                                 </Formik>

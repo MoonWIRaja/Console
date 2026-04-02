@@ -18,6 +18,7 @@ class BillingTicketAutomationService
         private TicketService $tickets,
         private TicketDiscordService $discord,
         private DiscordCommunityService $community,
+        private TicketUrlService $urls,
     ) {
     }
 
@@ -34,7 +35,7 @@ class BillingTicketAutomationService
             $payload['link_discord_url'] = route('auth.oauth.redirect', [
                 'provider' => 'discord',
                 'intent' => 'link',
-                'return_to' => '/tickets?compose=payment&invoiceId=' . $invoice->id,
+                'return_to' => $this->urls->composeUrl(Ticket::CATEGORY_PAYMENT, ['invoiceId' => $invoice->id]),
             ]);
 
             return null;

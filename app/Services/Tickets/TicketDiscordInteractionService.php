@@ -282,7 +282,7 @@ class TicketDiscordInteractionService
                 'url' => route('auth.oauth.redirect', [
                     'provider' => 'discord',
                     'intent' => 'link',
-                    'return_to' => '/tickets',
+                    'return_to' => $this->urls->composeUrl(Ticket::CATEGORY_SUPPORT),
                 ]),
             ]],
             'Linked Discord account required before a ticket can be opened.'

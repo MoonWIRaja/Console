@@ -10,5 +10,6 @@ export default () => {
     return {
         name: settings?.name || DEFAULT_SITE_NAME,
         logo: settings?.logo || DEFAULT_SITE_LOGO,
+        authCardLogo: settings?.authCardLogo || null,
     };
 };

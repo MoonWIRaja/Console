@@ -10,8 +10,9 @@ import useFlash from '@/plugins/useFlash';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { GlowCard } from '@/components/ui/spotlight-card';
 import AuthTopbar from '@/components/auth/AuthTopbar';
+import AuthBackdropGame from '@/components/auth/AuthBackdropGame';
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
-import useSiteBranding from '@/hooks/useSiteBranding';
 import {
     authErrorClass,
     authFieldLabelClass,
@@ -49,8 +50,6 @@ const ForgotPasswordContainer = () => {
     const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
     const [captchaWidgetFailed, setCaptchaWidgetFailed] = useState(false);
-    const { name } = useSiteBranding();
-
     const { clearFlashes, addFlash } = useFlash();
     const captcha = useStoreState((state) => state.settings.data!.captcha);
     const captchaEnabled = !!captcha?.enabled && captcha?.provider === 'turnstile' && !!captcha?.siteKey;
@@ -159,9 +158,7 @@ const ForgotPasswordContainer = () => {
         <div className='burhan-auth-stage fixed inset-0 z-50 flex h-[100dvh] w-full overflow-hidden text-[color:var(--foreground)]'>
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
-            <div className='burhan-auth-backdrop hidden h-full w-[70%] lg:block'>
-                <span className='sr-only'>Dark neon background area.</span>
-            </div>
+            <AuthBackdropGame />
             <div
                 className={`burhan-auth-rail h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-[30%] lg:px-8 lg:pb-4 lg:pt-24 xl:px-10 ${
                     mode === 'verify' ? 'lg:overflow-y-auto' : 'lg:overflow-y-hidden'
@@ -182,9 +179,7 @@ const ForgotPasswordContainer = () => {
                         className={`burhan-auth-glow w-full ${mode === 'verify' ? '' : 'max-h-full'}`}
                     >
                         <div className='burhan-auth-card'>
-                            <div className='burhan-auth-brand-panel'>
-                                <h1 className='burhan-auth-title'>{name}</h1>
-                            </div>
+                            <AuthBrandPanel />
 
                             <div
                                 className='mb-4 rounded-[1.35rem] px-4 py-3'

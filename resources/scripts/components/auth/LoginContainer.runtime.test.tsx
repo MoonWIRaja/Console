@@ -6,6 +6,7 @@ import LoginContainer from './LoginContainer';
 jest.mock('@/api/auth/login', () => jest.fn());
 jest.mock('@/api/auth/signup', () => jest.fn());
 jest.mock('@/api/auth/verifyEmailPin', () => jest.fn());
+jest.mock('@/api/auth/getPendingSignup', () => jest.fn());
 
 jest.mock('easy-peasy', () => {
     const state = {
@@ -13,6 +14,7 @@ jest.mock('easy-peasy', () => {
             data: {
                 name: 'BURHAN CONSOLE',
                 logo: '/logo.svg',
+                authCardLogo: null,
                 captcha: {
                     enabled: false,
                     provider: 'turnstile',

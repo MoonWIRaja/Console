@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Ticket;
+use Pterodactyl\Models\Server;
 use Pterodactyl\Models\BillingPayment;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingSubscription;
@@ -28,7 +29,16 @@ class TicketService
         $invoice = isset($payload['billing_invoice_id']) ? BillingInvoice::query()->find($payload['billing_invoice_id']) : null;
         $payment = isset($payload['billing_payment_id']) ? BillingPayment::query()->find($payload['billing_payment_id']) : null;
         $subscription = isset($payload['billing_subscription_id']) ? BillingSubscription::query()->find($payload['billing_subscription_id']) : null;
+        $supportServerId = max((int) ($payload['support_server_id'] ?? 0), 0);
+        $supportServer = null;
         $existing = $this->resolveExistingOpenTicket($category, $invoice, $payment);
+
+        if ($category === Ticket::CATEGORY_SUPPORT && $supportServerId > 0) {
+            $supportServer = $user->accessibleServers()->where('servers.id', $supportServerId)->first();
+            if (!$supportServer instanceof Server) {
+                throw new DisplayException('The selected support server is not available anymore.');
+            }
+        }
 
         if ($existing) {
             $body = trim((string) ($payload['body'] ?? ''));
@@ -50,12 +60,15 @@ class TicketService
             fn (UserOAuthAccount $account) => $account->provider === 'discord'
         );
 
-        return DB::transaction(function () use ($user, $payload, $options, $category, $invoice, $payment, $subscription, $discordAccount) {
+        return DB::transaction(function () use ($user, $payload, $options, $category, $invoice, $payment, $subscription, $discordAccount, $supportServer) {
             $meta = array_filter(array_merge(
                 Arr::wrap($payload['meta'] ?? []),
                 [
                     'checkout_context' => Arr::get($options, 'checkout_context'),
                     'created_via' => Arr::get($options, 'created_via'),
+                    'support_server_id' => $supportServer?->id,
+                    'support_server_name' => $supportServer?->name,
+                    'support_server_uuid_short' => $supportServer?->uuidShort,
                 ]
             ), fn ($value) => !is_null($value));
 

@@ -8,11 +8,15 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Illuminate\Contracts\View\View;
 use Pterodactyl\Services\Auth\EmailVerificationService;
+use Pterodactyl\Services\Auth\SignupOnboardingService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class LoginController extends AbstractLoginController
 {
-    public function __construct(private EmailVerificationService $emailVerificationService)
+    public function __construct(
+        private EmailVerificationService $emailVerificationService,
+        private SignupOnboardingService $signupOnboarding,
+    )
     {
         parent::__construct();
     }
@@ -55,6 +59,19 @@ class LoginController extends AbstractLoginController
         // can proceed to the next step in the login process.
         if (!password_verify($request->input('password'), $user->password)) {
             $this->sendFailedLoginResponse($request, $user);
+        }
+
+        if ($this->signupOnboarding->isPending($user)) {
+            $pendingSignup = $this->signupOnboarding->prepareForAuth($request, $user);
+
+            return new JsonResponse([
+                'data' => [
+                    'complete' => false,
+                    'email_verification_required' => $pendingSignup['stage'] === SignupOnboardingService::STATE_PENDING_EMAIL_VERIFICATION,
+                    'verification_token' => $pendingSignup['verification_token'],
+                    'pending_signup' => $pendingSignup,
+                ],
+            ]);
         }
 
         if (!$user->is_email_verified) {

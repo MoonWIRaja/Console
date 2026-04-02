@@ -1,4 +1,5 @@
 import http from '@/api/http';
+import { PendingSignupData, transformPendingSignup } from '@/api/auth/types';
 
 export interface SignupData {
     email: string;
@@ -17,6 +18,7 @@ export interface SignupResponse {
     complete: boolean;
     verificationRequired?: boolean;
     verificationToken?: string;
+    pendingSignup?: PendingSignupData;
 }
 
 export default (data: SignupData): Promise<SignupResponse> => {
@@ -45,6 +47,7 @@ export default (data: SignupData): Promise<SignupResponse> => {
                     complete: response.data.data.complete,
                     verificationRequired: !!response.data.data.email_verification_required,
                     verificationToken: response.data.data.verification_token || undefined,
+                    pendingSignup: transformPendingSignup(response.data.data.pending_signup),
                 });
             })
             .catch(reject);

@@ -42,6 +42,7 @@ use Pterodactyl\Notifications\SendPasswordReset as ResetPasswordNotification;
  * @property bool $is_email_verified
  * @property string|null $email_verification_pin
  * @property \Illuminate\Support\Carbon|null $email_verification_expires_at
+ * @property string $signup_onboarding_state
  * @property string|null $password_reset_pin
  * @property \Illuminate\Support\Carbon|null $password_reset_expires_at
  * @property string|null $totp_secret
@@ -112,6 +113,10 @@ class User extends Model implements
 
     public const USER_LEVEL_USER = 0;
     public const USER_LEVEL_ADMIN = 1;
+    public const SIGNUP_ONBOARDING_COMPLETE = 'complete';
+    public const SIGNUP_ONBOARDING_PENDING_GOOGLE_LINK = 'pending_google_link';
+    public const SIGNUP_ONBOARDING_PENDING_DISCORD_LINK = 'pending_discord_link';
+    public const SIGNUP_ONBOARDING_PENDING_EMAIL_VERIFICATION = 'pending_email_verification';
 
     /**
      * The resource name for this model when it is transformed into an
@@ -146,6 +151,7 @@ class User extends Model implements
         'is_email_verified',
         'email_verification_pin',
         'email_verification_expires_at',
+        'signup_onboarding_state',
         'password_reset_pin',
         'password_reset_expires_at',
         'gravatar',
@@ -176,6 +182,7 @@ class User extends Model implements
         'totp_authenticated_at',
         'email_verification_pin',
         'email_verification_expires_at',
+        'signup_onboarding_state',
         'password_reset_pin',
         'password_reset_expires_at',
     ];
@@ -190,6 +197,7 @@ class User extends Model implements
         'use_totp' => false,
         'is_email_verified' => true,
         'totp_secret' => null,
+        'signup_onboarding_state' => self::SIGNUP_ONBOARDING_COMPLETE,
     ];
 
     /**
@@ -210,6 +218,7 @@ class User extends Model implements
         'is_email_verified' => 'boolean',
         'email_verification_pin' => 'nullable|string',
         'email_verification_expires_at' => 'nullable|date',
+        'signup_onboarding_state' => 'string|in:complete,pending_google_link,pending_discord_link,pending_email_verification',
         'password_reset_pin' => 'nullable|string',
         'password_reset_expires_at' => 'nullable|date',
         'avatar' => 'nullable|string|max:191',

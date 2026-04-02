@@ -5,6 +5,7 @@ namespace Pterodactyl\Http\Controllers\Admin\Settings;
 use Throwable;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Prologue\Alerts\AlertsMessageBag;
@@ -54,19 +55,11 @@ class IndexController extends Controller
         }
 
         if ($request->hasFile('app_logo')) {
-            $oldLogo = $this->settings->get('settings::app:logo', null);
-            if (!empty($oldLogo) && str_starts_with($oldLogo, 'storage/branding/')) {
-                Storage::disk('public')->delete(Str::after($oldLogo, 'storage/'));
-            }
+            $this->replaceBrandingAsset($request->file('app_logo'), 'settings::app:logo', 'panel-logo');
+        }
 
-            $file = $request->file('app_logo');
-            $path = $file->storeAs(
-                'branding',
-                'panel-logo-' . Str::random(24) . '.' . $file->extension(),
-                'public'
-            );
-
-            $this->settings->set('settings::app:logo', 'storage/' . $path);
+        if ($request->hasFile('app_auth_logo')) {
+            $this->replaceBrandingAsset($request->file('app_auth_logo'), 'settings::app:auth_logo', 'auth-brand-logo');
         }
 
         try {
@@ -81,5 +74,21 @@ class IndexController extends Controller
         $this->alert->success('Panel settings have been updated successfully and the queue worker was restarted to apply these changes.')->flash();
 
         return redirect()->route('admin.settings');
+    }
+
+    private function replaceBrandingAsset(UploadedFile $file, string $settingsKey, string $filePrefix): void
+    {
+        $oldLogo = $this->settings->get($settingsKey, null);
+        if (!empty($oldLogo) && str_starts_with($oldLogo, 'storage/branding/')) {
+            Storage::disk('public')->delete(Str::after($oldLogo, 'storage/'));
+        }
+
+        $path = $file->storeAs(
+            'branding',
+            $filePrefix . '-' . Str::random(24) . '.' . $file->extension(),
+            'public'
+        );
+
+        $this->settings->set($settingsKey, 'storage/' . $path);
     }
 }

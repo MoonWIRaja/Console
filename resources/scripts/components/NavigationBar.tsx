@@ -7,13 +7,7 @@ import http from '@/api/http';
 import Avatar from '@/components/Avatar';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import { ServerContext } from '@/state/server';
-import {
-    Sidebar,
-    SidebarBody,
-    SidebarLink,
-    SidebarMode,
-    useSidebar,
-} from '@/components/elements/sidebar/AceternitySidebar';
+import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/elements/sidebar/AceternitySidebar';
 import { motion } from 'framer-motion';
 import useSiteBranding from '@/hooks/useSiteBranding';
 
@@ -226,7 +220,7 @@ const SidebarSection = ({ label, items, defaultExpanded = false }: SidebarSectio
 
 // ---------- UserFooter ----------
 const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => void }) => {
-    const { open, setOpen, animate, mode, setMode } = useSidebar();
+    const { open, setOpen, animate, mode } = useSidebar();
     const expanded = animate ? open : true;
     const [menuOpen, setMenuOpen] = useState(false);
     const footerRef = React.useRef<HTMLDivElement>(null);
@@ -255,28 +249,6 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         document.addEventListener('mousedown', onOutside);
         return () => document.removeEventListener('mousedown', onOutside);
     }, [menuOpen]);
-
-    const sidebarModeOptions: Array<{ value: SidebarMode; label: string; icon: string }> = [
-        { value: 'locked-closed', label: 'Close Lock', icon: 'keyboard_double_arrow_left' },
-        { value: 'locked-open', label: 'Open Lock', icon: 'push_pin' },
-        { value: 'auto', label: 'Unlock', icon: 'lock_open' },
-    ];
-
-    const handleSidebarModeChange = (nextMode: SidebarMode) => {
-        setMode(nextMode);
-
-        if (nextMode === 'locked-open') {
-            setOpen(true);
-            return;
-        }
-
-        if (nextMode === 'locked-closed') {
-            setOpen(false);
-            return;
-        }
-
-        setOpen(true);
-    };
 
     return (
         <div
@@ -428,85 +400,6 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         </div>
                     </Link>
 
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                            padding: '2px 2px 0',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                                color: '#A0A0A0',
-                                padding: '0 4px',
-                            }}
-                        >
-                            Sidebar
-                        </span>
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                                gap: '8px',
-                            }}
-                        >
-                            {sidebarModeOptions.map((option) => {
-                                const active = mode === option.value;
-
-                                return (
-                                    <button
-                                        key={option.value}
-                                        type='button'
-                                        onClick={() => handleSidebarModeChange(option.value)}
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '6px',
-                                            minHeight: '64px',
-                                            padding: '10px 8px',
-                                            borderRadius: '12px',
-                                            border: `1px solid ${
-                                                active ? 'rgba(245, 231, 198, 0.24)' : 'rgba(245, 231, 198, 0.12)'
-                                            }`,
-                                            background: active
-                                                ? 'rgba(245, 231, 198, 0.08)'
-                                                : 'rgba(245, 231, 198, 0.03)',
-                                            color: active ? '#F5E7C6' : '#A0A0A0',
-                                            boxShadow: active
-                                                ? 'inset 0 1px 0 rgba(255, 255, 255, 0.08)'
-                                                : 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease',
-                                        }}
-                                    >
-                                        <span className='material-icons-round' style={{ fontSize: '18px' }}>
-                                            {option.icon}
-                                        </span>
-                                        <span
-                                            style={{
-                                                fontSize: '10px',
-                                                fontWeight: 800,
-                                                letterSpacing: '0.04em',
-                                                lineHeight: 1.25,
-                                                textTransform: 'uppercase',
-                                                textAlign: 'center',
-                                            }}
-                                        >
-                                            {option.label}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
                     <button
                         onClick={onLogout}
                         className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
@@ -578,7 +471,14 @@ export default ({
 
     const billingSection = location.pathname === '/billing' ? searchParams.get('section') || 'plan' : null;
     const isSupportRoute = location.pathname.startsWith('/tickets') || location.pathname.startsWith('/billing/tickets');
-    const supportSection = isSupportRoute ? searchParams.get('view') || 'tickets' : null;
+    const supportSection = isSupportRoute
+        ? searchParams.get('view') ||
+          (location.pathname.startsWith('/tickets/') ||
+          location.pathname.startsWith('/billing/tickets/') ||
+          searchParams.has('ticket')
+              ? 'chat'
+              : 'tickets')
+        : null;
 
     const myServerItems: SidebarSectionLinkItem[] = [
         {
@@ -624,7 +524,7 @@ export default ({
 
     const mySupportItems: SidebarSectionLinkItem[] = [
         {
-            label: 'Tiket',
+            label: 'Tickets',
             href: '/tickets?view=tickets',
             icon: createIcon('confirmation_number'),
             active: supportSection === 'tickets',

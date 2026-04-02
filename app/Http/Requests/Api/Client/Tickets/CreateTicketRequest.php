@@ -24,6 +24,7 @@ class CreateTicketRequest extends ClientApiRequest
             'billing_payment_id' => 'nullable|integer|exists:billing_payments,id',
             'billing_order_id' => 'nullable|integer|exists:billing_orders,id',
             'billing_subscription_id' => 'nullable|integer|exists:billing_subscriptions,id',
+            'support_server_id' => 'nullable|integer|min:0',
             'attachments' => 'nullable|array|max:' . max((int) config('tickets.attachments.max_files_per_message', 5), 1),
             'attachments.*' => array_filter([
                 'file',
@@ -48,6 +49,11 @@ class CreateTicketRequest extends ClientApiRequest
             }
 
             if ($category === Ticket::CATEGORY_SUPPORT) {
+                $serverId = $this->integer('support_server_id');
+                if ($serverId > 0 && !$this->user()->accessibleServers()->where('servers.id', $serverId)->exists()) {
+                    $validator->errors()->add('support_server_id', 'The selected server is not available for support tickets.');
+                }
+
                 if (!$this->filled('body') && !$hasAttachments) {
                     $validator->errors()->add('body', 'A message or at least one attachment is required for support tickets.');
                 }

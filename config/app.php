@@ -27,6 +27,8 @@ return [
 
     'logo' => env('APP_LOGO'),
 
+    'auth_logo' => env('APP_AUTH_LOGO'),
+
     'website' => env('APP_WEBSITE', env('APP_URL', 'http://localhost')),
 
     /*

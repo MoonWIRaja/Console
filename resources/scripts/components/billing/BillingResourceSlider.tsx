@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import isEqual from 'react-fast-compare';
 
 interface Props {
@@ -29,11 +29,45 @@ const BillingResourceSlider = ({
     onChange,
 }: Props) => {
     const safeMax = Math.max(max, min);
-    const percent = safeMax === min ? 100 : ((value - min) / (safeMax - min)) * 100;
     const hasBaselineMarker = typeof baselineValue === 'number';
     const normalizedBaseline = hasBaselineMarker ? Math.min(Math.max(baselineValue, min), safeMax) : null;
+    const [draftValue, setDraftValue] = useState(String(value));
+
+    useEffect(() => {
+        setDraftValue(String(value));
+    }, [value]);
+
+    const normalizedValue = useMemo(() => {
+        if (step <= 0) {
+            return min;
+        }
+
+        return (nextValue: number) => {
+            const clamped = Math.min(Math.max(nextValue, min), safeMax);
+            const offset = clamped - min;
+            const snapped = min + Math.round(offset / step) * step;
+
+            return Math.min(Math.max(snapped, min), safeMax);
+        };
+    }, [min, safeMax, step]);
+    const currentValue = normalizedValue(value);
+    const percent = safeMax === min ? 100 : ((currentValue - min) / (safeMax - min)) * 100;
     const baselinePercent =
         normalizedBaseline === null || safeMax === min ? 0 : ((normalizedBaseline - min) / (safeMax - min)) * 100;
+
+    const commitDraftValue = () => {
+        const parsed = Number(draftValue);
+
+        if (!Number.isFinite(parsed)) {
+            setDraftValue(String(value));
+
+            return;
+        }
+
+        const nextValue = normalizedValue(parsed);
+        setDraftValue(String(nextValue));
+        onChange(nextValue);
+    };
 
     return (
         <div className={'billing-slider-card'}>
@@ -48,7 +82,24 @@ const BillingResourceSlider = ({
                     </label>
                     <p className={'mt-1 text-xs text-[color:var(--muted-foreground)]'}>{helper}</p>
                 </div>
-                <div className={'billing-slider-value'}>{value}</div>
+                <input
+                    type={'number'}
+                    min={min}
+                    max={safeMax}
+                    step={step}
+                    value={draftValue}
+                    onChange={(event) => setDraftValue(event.currentTarget.value)}
+                    onBlur={commitDraftValue}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            commitDraftValue();
+                        }
+                    }}
+                    disabled={disabled}
+                    inputMode={'numeric'}
+                    className={'billing-slider-value'}
+                />
             </div>
 
             <div className={'relative'}>
@@ -57,8 +108,12 @@ const BillingResourceSlider = ({
                     min={min}
                     max={safeMax}
                     step={step}
-                    value={value}
-                    onChange={(event) => onChange(parseInt(event.currentTarget.value, 10))}
+                    value={currentValue}
+                    onChange={(event) => {
+                        const nextValue = normalizedValue(parseInt(event.currentTarget.value, 10));
+                        setDraftValue(String(nextValue));
+                        onChange(nextValue);
+                    }}
                     disabled={disabled}
                     className={
                         'billing-slider-input relative z-10 h-2 w-full appearance-none rounded-full bg-transparent disabled:cursor-not-allowed disabled:opacity-60'

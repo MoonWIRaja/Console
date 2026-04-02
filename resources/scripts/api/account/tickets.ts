@@ -72,6 +72,9 @@ export interface TicketEligibilityItem {
     subscriptionId?: number | null;
     paymentId?: number;
     paymentNumber?: string | null;
+    serverId?: number;
+    serverLabel?: string | null;
+    serverUuidShort?: string | null;
     subject: string;
     status: string;
     amount: number;
@@ -173,7 +176,9 @@ export const useTicket = (ticketId?: number | null, config?: ConfigInterface<Tic
     );
 };
 
-export const fetchTicketEligibles = async (category: 'payment' | 'refund'): Promise<TicketEligibilityItem[]> => {
+export const fetchTicketEligibles = async (
+    category: 'payment' | 'refund' | 'support'
+): Promise<TicketEligibilityItem[]> => {
     const { data } = await http.get('/api/client/account/tickets/eligibles', { params: { category } });
 
     return (data.data || []).map((item: any) => ({
@@ -184,10 +189,13 @@ export const fetchTicketEligibles = async (category: 'payment' | 'refund'): Prom
         subscriptionId: item.subscription_id ?? null,
         paymentId: item.payment_id ?? undefined,
         paymentNumber: item.payment_number ?? null,
+        serverId: item.server_id ?? undefined,
+        serverLabel: item.server_label ?? null,
+        serverUuidShort: item.server_uuid_short ?? null,
         subject: item.subject,
-        status: item.status,
-        amount: item.amount,
-        currency: item.currency,
+        status: item.status ?? 'available',
+        amount: Number(item.amount ?? 0),
+        currency: item.currency ?? 'MYR',
         serverName: item.server_name ?? null,
         existingTicketId: item.existing_ticket_id ?? null,
         existingTicketNumber: item.existing_ticket_number ?? null,

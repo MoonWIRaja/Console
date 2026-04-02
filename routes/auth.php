@@ -17,6 +17,7 @@ use Pterodactyl\Http\Controllers\Auth;
 Route::get('/login', [Auth\LoginController::class, 'index'])->name('auth.login');
 Route::get('/password', [Auth\LoginController::class, 'index'])->name('auth.forgot-password');
 Route::get('/password/reset/{token}', [Auth\LoginController::class, 'index'])->name('auth.reset');
+Route::get('/signup/pending', [Auth\RegisterController::class, 'pending'])->name('auth.signup.pending');
 
 // Apply a throttle to authentication action endpoints, in addition to captcha
 // checks to slow down manual attack spammers even more. 🤷‍

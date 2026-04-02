@@ -5,7 +5,7 @@ import useSiteBranding from '@/hooks/useSiteBranding';
 
 // ============================================================
 // Aceternity-style Sidebar (ported for React 16 + framer-motion v6)
-// Collapsible on hover, mobile responsive, dark neon theme
+// Desktop sidebar is controlled explicitly by the topbar toggle, mobile responsive, dark neon theme
 // ============================================================
 
 export type SidebarMode = 'auto' | 'locked-open' | 'locked-closed';
@@ -17,15 +17,19 @@ const isSidebarMode = (value: string | null): value is SidebarMode =>
 
 export const getStoredSidebarMode = (): SidebarMode => {
     if (typeof window === 'undefined') {
-        return 'auto';
+        return 'locked-open';
     }
 
     const storedMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY);
-    if (isSidebarMode(storedMode)) {
+    if (storedMode === 'locked-open' || storedMode === 'locked-closed') {
         return storedMode;
     }
 
-    return window.localStorage.getItem('ui.sidebar.locked') === 'true' ? 'locked-open' : 'auto';
+    if (storedMode === 'auto') {
+        return 'locked-open';
+    }
+
+    return window.localStorage.getItem('ui.sidebar.locked') === 'true' ? 'locked-open' : 'locked-open';
 };
 
 export const syncSidebarMode = (mode: SidebarMode) => {
@@ -33,9 +37,10 @@ export const syncSidebarMode = (mode: SidebarMode) => {
         return;
     }
 
-    window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, mode);
-    window.localStorage.setItem('ui.sidebar.locked', mode === 'locked-open' ? 'true' : 'false');
-    window.dispatchEvent(new CustomEvent<SidebarMode>(SIDEBAR_MODE_SYNC_EVENT, { detail: mode }));
+    const normalizedMode: SidebarMode = mode === 'locked-closed' ? 'locked-closed' : 'locked-open';
+    window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, normalizedMode);
+    window.localStorage.setItem('ui.sidebar.locked', normalizedMode === 'locked-open' ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent<SidebarMode>(SIDEBAR_MODE_SYNC_EVENT, { detail: normalizedMode }));
 };
 
 interface SidebarContextType {
@@ -47,9 +52,9 @@ interface SidebarContextType {
 }
 
 const SidebarContext = createContext<SidebarContextType>({
-    open: false,
+    open: true,
     setOpen: () => undefined,
-    mode: 'auto',
+    mode: 'locked-open',
     setMode: () => undefined,
     animate: true,
 });
@@ -70,14 +75,10 @@ export const SidebarProvider = ({
     setOpen: setOpenProp,
     animate = true,
 }: SidebarProviderProps) => {
-    const [openState, setOpenState] = useState(false);
-    const [mode, setMode] = useState<SidebarMode>('auto');
+    const [mode, setMode] = useState<SidebarMode>(() => getStoredSidebarMode());
+    const [openState, setOpenState] = useState(() => getStoredSidebarMode() !== 'locked-closed');
     const open = openProp !== undefined ? openProp : openState;
     const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
-
-    useEffect(() => {
-        setMode(getStoredSidebarMode());
-    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -141,10 +142,9 @@ interface SidebarBodyProps {
 // ---------- DesktopSidebar ----------
 function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps) {
     const { open, setOpen, mode, animate: shouldAnimate } = useSidebar();
-    const isAuto = mode === 'auto';
 
     useEffect(() => {
-        if (mode === 'locked-open' && !open) {
+        if (mode !== 'locked-closed' && !open) {
             setOpen(true);
         }
         if (mode === 'locked-closed' && open) {
@@ -155,8 +155,6 @@ function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps
     return (
         <>
             <motion.div
-                onMouseEnter={() => isAuto && setOpen(true)}
-                onMouseLeave={() => isAuto && setOpen(false)}
                 animate={{ width: shouldAnimate ? (open ? '288px' : '72px') : '288px' }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 style={{
