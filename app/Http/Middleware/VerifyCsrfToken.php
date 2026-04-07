@@ -14,6 +14,7 @@ class VerifyCsrfToken extends BaseVerifier
     protected $except = [
         'remote/*',
         'daemon/*',
+        'billing/gateways/bcl/webhook',
         'billing/gateways/fiuu/callback',
         'billing/gateways/fiuu/return',
         'billing/gateways/stripe/webhook',

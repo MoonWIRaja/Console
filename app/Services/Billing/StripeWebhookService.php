@@ -194,15 +194,19 @@ class StripeWebhookService
     private function constructEvent(string $payload, ?string $signatureHeader = null): Event
     {
         $secret = $this->stripe->webhookSecret();
-        if ($secret && $signatureHeader) {
-            try {
-                return Webhook::constructEvent($payload, $signatureHeader, $secret);
-            } catch (SignatureVerificationException $exception) {
-                throw new HttpException(422, $exception->getMessage(), $exception);
-            }
+        if (!$secret) {
+            throw new HttpException(422, 'Stripe webhook secret is not configured.');
         }
 
-        return Event::constructFrom(json_decode($payload, true, 512, JSON_THROW_ON_ERROR));
+        if (!$signatureHeader) {
+            throw new HttpException(422, 'Stripe signature header is missing.');
+        }
+
+        try {
+            return Webhook::constructEvent($payload, $signatureHeader, $secret);
+        } catch (SignatureVerificationException $exception) {
+            throw new HttpException(422, $exception->getMessage(), $exception);
+        }
     }
 
     private function handleCheckoutSessionCompleted(array $event): array

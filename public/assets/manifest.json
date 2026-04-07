@@ -1,18 +1,10 @@
 {
-  "147.e3137dc2.js": {
-    "src": "/assets/147.e3137dc2.js",
-    "integrity": "sha384-e2oYtsouBxn+LB14ttrB0zixHj3G7X3D9BbxarzEMzZADgGGGdVwJGbGFvAEdPk4"
-  },
-  "ibm-plex-sans-latin-wght-normal.woff2": {
-    "src": "/assets/b33a81b76947ac354369.woff2",
-    "integrity": ""
-  },
   "main.js": {
-    "src": "/assets/bundle.37e0cae2.js",
-    "integrity": "sha384-Gp0NM/EVDR2yFnJe+L6OfbJ7asmxEwF6EopsCv9yaNQwzUHg+03gfy34bZay0+YI"
+    "src": "/assets/bundle.8eec623a.js",
+    "integrity": "sha384-sHtxYkZr2a2ukwHRbMX0n9a0OUxO7UqNzSB4OYiNByAiq64IW7VVePu9+Gg3E14O"
   },
-  "main.woff2": {
-    "src": "/assets/b33a81b76947ac354369.woff2",
-    "integrity": ""
+  "vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js": {
+    "src": "/assets/vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js",
+    "integrity": "sha384-Xe/O5uhfBMqpB1D21JHESwRHpc8AkQzIyj8F5x4eD5bT08QUb+hubIsDl0AcUHR4"
   }
 }

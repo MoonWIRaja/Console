@@ -13,7 +13,9 @@ export interface ServerStats {
     uptime: number;
 }
 
-export default (server: string): Promise<ServerStats> => {
+export const isServerResourceConflict = (error: any): boolean => error?.response?.status === 409;
+
+export default (server: string): Promise<ServerStats | null> => {
     return new Promise((resolve, reject) => {
         http.get(`/api/client/servers/${server}/resources`)
             .then(({ data: { attributes } }) =>
@@ -28,6 +30,14 @@ export default (server: string): Promise<ServerStats> => {
                     uptime: attributes.resources.uptime,
                 })
             )
-            .catch(reject);
+            .catch((error) => {
+                if (isServerResourceConflict(error)) {
+                    resolve(null);
+
+                    return;
+                }
+
+                reject(error);
+            });
     });
 };

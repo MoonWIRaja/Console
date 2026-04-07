@@ -154,9 +154,6 @@ export default () => {
                     centerTitle={serverName}
                 />
                 <style>{`
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
-                    @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
-
                     .server-theme-shell {
                         position: relative;
                         display: flex;
@@ -388,7 +385,8 @@ export default () => {
                         className='server-main-content flex-1 min-h-0 flex flex-col overflow-hidden relative'
                         style={{
                             minWidth: 0,
-                            fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                            fontFamily:
+                                "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                             backgroundColor: 'transparent',
                         }}
                     >

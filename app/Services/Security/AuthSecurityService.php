@@ -10,8 +10,11 @@ use Pterodactyl\Facades\Activity;
 
 class AuthSecurityService
 {
-    public function __construct(private SecurityAlertService $alertService)
-    {
+    public function __construct(
+        private SecurityAlertService $alertService,
+        private SecurityCenterSettingsService $settings,
+        private SecurityOrchestratorService $orchestrator,
+    ) {
     }
 
     public function getIdentifierFromRequest(Request $request): ?string
@@ -37,7 +40,7 @@ class AuthSecurityService
             return false;
         }
 
-        $trusted = config('security.trusted_ips', []);
+        $trusted = $this->settings->trustedNetworks();
         foreach ($trusted as $entry) {
             if ($this->ipMatchesCidr($ip, (string) $entry)) {
                 return true;
@@ -96,6 +99,8 @@ class AuthSecurityService
             'score' => $score,
         ]);
 
+        $this->recordThreatFromFailure($request, $reason, $identifier, $points, $score);
+
         if ($score >= $this->longLockThreshold()) {
             $this->applyLock($request, $this->longLockMinutes(), $score, $reason);
         } elseif ($score >= $this->shortLockThreshold()) {
@@ -145,6 +150,29 @@ class AuthSecurityService
             ->property('hits', $hits)
             ->property('score', $score)
             ->log();
+
+        $stage = $score >= $this->shortLockThreshold()
+            ? SecurityVocabulary::STAGE_TEMP_BLOCK
+            : SecurityVocabulary::STAGE_OBSERVE;
+
+        $this->orchestrator->record('auth_honeyport_probe', [
+            'severity' => 'high',
+            'confidence' => 96,
+            'source_ip' => $ip,
+            'summary' => 'Honeyport probe detected against the panel host.',
+            'evidence' => [
+                'port' => $port,
+                'hits' => $hits,
+                'score' => $score,
+            ],
+            'blocked' => $stage === SecurityVocabulary::STAGE_TEMP_BLOCK,
+            'verdict' => $stage === SecurityVocabulary::STAGE_TEMP_BLOCK
+                ? SecurityVocabulary::VERDICT_BLOCKED
+                : SecurityVocabulary::VERDICT_OBSERVED,
+            'mitigation_stage' => $stage,
+            'score' => $score,
+            'execute_actions' => $stage === SecurityVocabulary::STAGE_TEMP_BLOCK,
+        ]);
 
         return $score;
     }
@@ -380,6 +408,42 @@ class AuthSecurityService
     private function decaySeconds(): int
     {
         return max(60, (int) config('security.risk.decay_seconds', 86400));
+    }
+
+    private function recordThreatFromFailure(Request $request, string $reason, ?string $identifier, int $points, int $score): void
+    {
+        [$ruleKey, $severity] = match ($reason) {
+            'failed_login' => ['auth_brute_force', 'medium'],
+            'honeypot_triggered' => ['auth_honeypot_trigger', 'high'],
+            default => ['auth_checkpoint_abuse', 'medium'],
+        };
+
+        $stage = $score >= $this->shortLockThreshold()
+            ? SecurityVocabulary::STAGE_TEMP_BLOCK
+            : ($score >= $this->challengeThreshold() ? SecurityVocabulary::STAGE_CHALLENGE : SecurityVocabulary::STAGE_OBSERVE);
+        $blocked = $stage === SecurityVocabulary::STAGE_TEMP_BLOCK;
+
+        $this->orchestrator->record($ruleKey, [
+            'severity' => $severity,
+            'confidence' => $reason === 'honeypot_triggered' ? 95 : 80,
+            'source_ip' => $request->ip(),
+            'fingerprint' => $this->fingerprintFromRequest($request),
+            'summary' => sprintf('Authentication security signal recorded for reason "%s".', $reason),
+            'evidence' => [
+                'reason' => $reason,
+                'points' => $points,
+                'score' => $score,
+                'route' => $request->route()?->getName() ?: $request->path(),
+                'identifier_hash' => $identifier ? sha1(mb_strtolower(trim($identifier))) : null,
+            ],
+            'blocked' => $blocked,
+            'verdict' => $blocked
+                ? SecurityVocabulary::VERDICT_BLOCKED
+                : ($stage === SecurityVocabulary::STAGE_CHALLENGE ? SecurityVocabulary::VERDICT_CHALLENGED : SecurityVocabulary::VERDICT_OBSERVED),
+            'mitigation_stage' => $stage,
+            'score' => $score,
+            'execute_actions' => $blocked && (bool) config('security.auth.auto_temp_block', true),
+        ]);
     }
 
     private function ipMatchesCidr(string $ip, string $entry): bool

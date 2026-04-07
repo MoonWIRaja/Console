@@ -21,10 +21,10 @@
             {!! Theme::css('vendor/sweetalert/sweetalert.min.css?t={cache-version}') !!}
             {!! Theme::css('vendor/animate/animate.min.css?t={cache-version}') !!}
             {!! Theme::css('css/pterodactyl.css?t={cache-version}') !!}
-            {!! Theme::css('css/admin-sidebar.css?v=20260316-2248') !!}
+            {!! Theme::css('css/admin-sidebar.css?v=20260406-0208') !!}
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&display=swap">
             <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 
             <!--[if lt IE 9]>
@@ -34,135 +34,273 @@
         @show
     </head>
     <body class="hold-transition skin-blue fixed sidebar-mini">
-        {{-- ===== Custom Sidebar (matches React sidebar) ===== --}}
-        <div class="sidebar-desktop-shell" id="adminSidebar">
-            {{-- Logo --}}
-            <div style="padding: 24px 24px 16px; overflow: hidden; white-space: nowrap;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <img src="{{ $panelLogo }}" alt="System Logo" class="sidebar-logo-img" style="object-fit: contain; filter: brightness(1.15); flex-shrink: 0;">
-                    <div class="sidebar-text" style="font-size: 18px; font-weight: 900; color: var(--admin-foreground); line-height: 1; letter-spacing: -0.02em; text-shadow: 0 0 10px rgba(var(--admin-primary-rgb), 0.18); white-space: nowrap;">
-                        {{ config('app.name', 'Pterodactyl') }}
+        <header class="admin-topbar">
+            <div class="admin-topbar-left">
+                <a href="/" class="admin-topbar-brand">
+                    <img src="{{ $panelLogo }}" alt="{{ config('app.name', 'Pterodactyl') }} logo" class="admin-topbar-logo" draggable="false">
+                    <div class="admin-topbar-brand-copy">
+                        <div class="admin-topbar-brand-title">{{ config('app.name', 'Pterodactyl') }}</div>
                     </div>
+                </a>
+                <div class="admin-topbar-primary-actions">
+                    <a href="/" class="admin-topbar-link" title="Open Dashboard" aria-label="Open Dashboard">
+                        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 512 512" fill="currentColor">
+                            <path d="M0 168v-16c0-13.255 10.745-24 24-24h360V80c0-21.367 25.899-32.042 40.971-16.971l80 80c9.372 9.373 9.372 24.569 0 33.941l-80 80C409.956 271.982 384 261.456 384 240v-48H24c-13.255 0-24-10.745-24-24zm488 152H128v-48c0-21.314-25.862-32.08-40.971-16.971l-80 80c-9.372 9.373-9.372 24.569 0 33.941l80 80C102.057 463.997 128 453.437 128 432v-48h360c13.255 0 24-10.745 24-24v-16c0-13.255-10.745-24-24-24z" />
+                        </svg>
+                    </a>
+                    <button type="button" class="admin-topbar-icon" id="adminSidebarToggle" aria-label="Toggle sidebar">
+                        <svg
+                            aria-hidden="true"
+                            focusable="false"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 320 512"
+                            fill="currentColor"
+                            id="adminSidebarToggleArrow"
+                        >
+                            <path d="M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z" />
+                        </svg>
+                        <span class="material-icons-round admin-topbar-toggle-mobile-icon" id="adminSidebarToggleMobileIcon">menu</span>
+                    </button>
                 </div>
             </div>
+            <div class="admin-topbar-center">
+                <div class="admin-topbar-title-card">
+                    <span class="admin-topbar-eyebrow">Administration</span>
+                    <span class="admin-topbar-title" id="adminTopbarTitle">@yield('title')</span>
+                    <span class="admin-topbar-subtitle" id="adminTopbarSubtitle">Manage panel services, billing, nodes, and customer infrastructure.</span>
+                </div>
+            </div>
+            <div class="admin-topbar-right">
+                <a href="{{ route('account') }}" class="admin-topbar-user">
+                    <img src="{{ Auth::user()->getImageUrl() }}" alt="User avatar" class="admin-topbar-avatar">
+                    <span class="admin-topbar-user-copy">
+                        <span class="admin-topbar-user-name">{{ Auth::user()->name_first }} {{ Auth::user()->name_last }}</span>
+                        <span class="admin-topbar-user-role">{{ Auth::user()->root_admin ? 'Root Admin' : 'Staff Account' }}</span>
+                    </span>
+                </a>
+            </div>
+        </header>
+        <div id="adminSidebarOverlay" class="admin-sidebar-overlay"></div>
 
+        {{-- ===== Custom Sidebar (matches React sidebar) ===== --}}
+        <div class="sidebar-desktop-shell" id="adminSidebar">
             {{-- Nav --}}
-            <nav style="flex: 1; overflow-y: auto; padding: 0 12px;">
-                <div class="sidebar-label sidebar-text">BASIC ADMINISTRATION</div>
-
-                <a href="{{ route('admin.index') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ Route::currentRouteName() === 'admin.index' ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">dashboard</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Overview</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.settings') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.settings') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">settings</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Settings</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.api.index') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.api') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">api</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Application API</span>
-                    </div>
-                </a>
-
-                <div class="sidebar-label sidebar-text">MANAGEMENT</div>
-
-                <a href="{{ route('admin.databases') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.databases') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">dns</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Databases</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.locations') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.locations') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">public</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Locations</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.nodes') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.nodes') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">hub</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nodes</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.servers') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.servers') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">storage</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Servers</span>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.users') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.users') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">group</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Users</span>
-                    </div>
-                </a>
-
-                @if(Auth::user()->root_admin)
-                    <a href="{{ route('admin.billing') }}" style="text-decoration: none;">
-                        <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.billing') ? 'active' : '' }}">
-                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                                <span class="material-icons-round" style="font-size: 20px;">payments</span>
+            <nav style="flex: 1; overflow-y: auto; padding: 14px 12px 0;">
+                <div class="admin-sidebar-section" data-admin-section="basic">
+                    <button
+                        type="button"
+                        class="sidebar-text admin-sidebar-section-toggle"
+                        data-admin-section-toggle="basic"
+                        aria-expanded="true"
+                        style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 8px 10px 6px; border: none; background: transparent; color: rgba(248, 246, 239, 0.62); cursor: pointer; text-align: left;"
+                    >
+                        <span class="admin-sidebar-section-title">Basic Administration</span>
+                        <span class="material-icons-round admin-sidebar-section-arrow" data-admin-section-arrow="basic" style="font-size: 18px; color: rgba(248, 246, 239, 0.54); transform: rotate(0deg); transition: transform 0.2s; flex-shrink: 0;">expand_less</span>
+                    </button>
+                    <div class="admin-sidebar-section-content" data-admin-section-content="basic">
+                        <a href="{{ route('admin.index') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ Route::currentRouteName() === 'admin.index' ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">dashboard</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Overview</span>
                             </div>
-                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Billing</span>
-                        </div>
-                    </a>
+                        </a>
 
-                    <a href="{{ route('admin.tickets') }}" style="text-decoration: none;">
-                        <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.tickets') ? 'active' : '' }}">
-                            <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                                <span class="material-icons-round" style="font-size: 20px;">support_agent</span>
+                        <a href="{{ route('admin.settings') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.settings') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">settings</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Settings</span>
                             </div>
-                            <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Support</span>
-                        </div>
-                    </a>
-                @endif
+                        </a>
 
-                <div class="sidebar-label sidebar-text">SERVICE MANAGEMENT</div>
+                        <a href="{{ route('admin.oauth') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.oauth') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">account_tree</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">OAuth</span>
+                            </div>
+                        </a>
 
-                <a href="{{ route('admin.mounts') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.mounts') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">inventory_2</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Mounts</span>
+                        <a href="{{ route('admin.discord') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.discord') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">forum</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Discord</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.always-motd') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.always-motd') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">stream</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Minecraft MOTD</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.down-detector') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.down-detector') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">radar</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Down Detector</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.security') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.security') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">shield</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Security</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.logs') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.logs') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">receipt_long</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">System Logs</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.api.index') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.api') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">api</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Application API</span>
+                            </div>
+                        </a>
                     </div>
-                </a>
+                </div>
 
-                <a href="{{ route('admin.nests') }}" style="text-decoration: none;">
-                    <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.nests') ? 'active' : '' }}">
-                        <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
-                            <span class="material-icons-round" style="font-size: 20px;">grid_view</span>
-                        </div>
-                        <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nests</span>
+                <div class="admin-sidebar-section" data-admin-section="management">
+                    <button
+                        type="button"
+                        class="sidebar-text admin-sidebar-section-toggle"
+                        data-admin-section-toggle="management"
+                        aria-expanded="true"
+                        style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 8px 10px 6px; border: none; background: transparent; color: rgba(248, 246, 239, 0.62); cursor: pointer; text-align: left;"
+                    >
+                        <span class="admin-sidebar-section-title">Management</span>
+                        <span class="material-icons-round admin-sidebar-section-arrow" data-admin-section-arrow="management" style="font-size: 18px; color: rgba(248, 246, 239, 0.54); transform: rotate(0deg); transition: transform 0.2s; flex-shrink: 0;">expand_less</span>
+                    </button>
+                    <div class="admin-sidebar-section-content" data-admin-section-content="management">
+                        <a href="{{ route('admin.databases') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.databases') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">dns</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Databases</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.subdomains.index') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.subdomains') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">alternate_email</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Subdomains</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.locations') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.locations') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">public</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Locations</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.nodes') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.nodes') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">hub</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nodes</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.servers') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.servers') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">storage</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Servers</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.users') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.users') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">group</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Users</span>
+                            </div>
+                        </a>
+
+                        @if(Auth::user()->root_admin)
+                            <a href="{{ route('admin.billing') }}" style="text-decoration: none;">
+                                <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.billing') ? 'active' : '' }}">
+                                    <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                        <span class="material-icons-round" style="font-size: 20px;">payments</span>
+                                    </div>
+                                    <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Billing</span>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('admin.tickets') }}" style="text-decoration: none;">
+                                <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.tickets') ? 'active' : '' }}">
+                                    <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                        <span class="material-icons-round" style="font-size: 20px;">support_agent</span>
+                                    </div>
+                                    <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Support</span>
+                                </div>
+                            </a>
+                        @endif
                     </div>
-                </a>
+                </div>
+
+                <div class="admin-sidebar-section" data-admin-section="service-management">
+                    <button
+                        type="button"
+                        class="sidebar-text admin-sidebar-section-toggle"
+                        data-admin-section-toggle="service-management"
+                        aria-expanded="true"
+                        style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 8px 10px 6px; border: none; background: transparent; color: rgba(248, 246, 239, 0.62); cursor: pointer; text-align: left;"
+                    >
+                        <span class="admin-sidebar-section-title">Service Management</span>
+                        <span class="material-icons-round admin-sidebar-section-arrow" data-admin-section-arrow="service-management" style="font-size: 18px; color: rgba(248, 246, 239, 0.54); transform: rotate(0deg); transition: transform 0.2s; flex-shrink: 0;">expand_less</span>
+                    </button>
+                    <div class="admin-sidebar-section-content" data-admin-section-content="service-management">
+                        <a href="{{ route('admin.mounts') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.mounts') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">inventory_2</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Mounts</span>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.nests') }}" style="text-decoration: none;">
+                            <div class="sidebar-link {{ starts_with(Route::currentRouteName(), 'admin.nests') ? 'active' : '' }}">
+                                <div style="flex-shrink: 0; width: 20px; display: flex; justify-content: center;">
+                                    <span class="material-icons-round" style="font-size: 20px;">grid_view</span>
+                                </div>
+                                <span class="sidebar-text" style="font-size: 14px; font-weight: 500; white-space: nowrap;">Nests</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             </nav>
 
             {{-- Back to Dashboard --}}
@@ -178,26 +316,26 @@
             </div>
 
             {{-- User Footer --}}
-            <div id="userFooter" style="border-top: 1px solid var(--admin-border); padding: 16px; background-color: rgba(var(--admin-card-rgb), 0.45); position: relative;">
+            <div id="userFooter" style="border-top: 1px solid rgba(var(--admin-primary-rgb), 0.12); padding: 14px 12px 12px; background: transparent; position: relative;">
                 {{-- Avatar Button --}}
-                <button type="button" id="userFooterBtn" class="sidebar-user-btn" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-bottom: 0; cursor: pointer; padding: 4px; border-radius: 8px; border: none; background: transparent;">
-                    <div style="width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background-color: var(--admin-background); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--admin-primary-rgb), 0.35); box-shadow: 0 0 0 1px rgba(var(--admin-primary-rgb), 0.12), 0 6px 14px -6px rgba(var(--admin-primary-rgb), 0.45);">
-                        <img src="{{ Auth::user()->getImageUrl() }}" alt="User avatar" style="width: 36px; height: 36px; border-radius: 9999px; object-fit: cover;">
+                <button type="button" id="userFooterBtn" class="sidebar-user-btn" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-bottom: 0; cursor: pointer; padding: 4px; border-radius: 12px; border: none; background: transparent;">
+                    <div style="width: 40px; height: 40px; border-radius: 999px; overflow: hidden; flex-shrink: 0; background: transparent; display: flex; align-items: center; justify-content: center; box-shadow: none;">
+                        <img src="{{ Auth::user()->getImageUrl() }}" alt="User avatar" style="width: 40px; height: 40px; border-radius: 9999px; object-fit: cover;">
                     </div>
                     <div class="sidebar-text" style="font-size: 14px; font-weight: 700; color: var(--admin-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <span>{{ Auth::user()->name_first }} {{ Auth::user()->name_last }}</span>
-                        <span class="material-icons-round" id="userFooterArrow" style="font-size: 18px; color: var(--admin-muted-foreground);">expand_more</span>
+                        <span class="material-icons-round" id="userFooterArrow" style="font-size: 18px; color: rgba(248, 246, 239, 0.56);">expand_more</span>
                     </div>
                 </button>
 
                 {{-- Popup Menu --}}
-                <div id="userFooterMenu" style="display: none; position: absolute; left: 12px; right: 12px; bottom: calc(100% + 8px); border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 12px; padding: 10px; flex-direction: column; gap: 10px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); z-index: 50;">
+                <div id="userFooterMenu" style="display: none; position: absolute; left: 12px; right: 12px; bottom: calc(100% + 8px); border: 1px solid rgba(var(--admin-primary-rgb), 0.12); background: var(--admin-surface-elevated); border-radius: 16px; padding: 10px; flex-direction: column; gap: 10px; box-shadow: 0 22px 46px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04); z-index: 50;">
 
                     {{-- Profile --}}
                     <a href="{{ route('account') }}" style="text-decoration: none;">
-                        <div class="footer-menu-item" style="width: 100%; color: var(--admin-foreground); display: flex; cursor: pointer; align-items: center; justify-content: space-between; gap: 8px; border-radius: 14px; padding: 12px; transition: background-color 0.15s;">
+                        <div class="footer-menu-item" style="width: 100%; color: var(--admin-foreground); display: flex; cursor: pointer; align-items: center; justify-content: space-between; gap: 8px; border-radius: 14px; padding: 12px; transition: background-color 0.15s; background: transparent;">
                             <div style="display: flex; min-width: 0; align-items: center; gap: 10px;">
-                                <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--admin-border); background: var(--admin-background); color: var(--admin-primary);">
+                                <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid rgba(var(--admin-primary-rgb), 0.12); background: rgba(var(--admin-primary-rgb), 0.06); color: var(--admin-primary);">
                                     <span class="material-icons-round" style="font-size: 16px;">person</span>
                                 </div>
                                 <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;">Profile</span>
@@ -205,44 +343,10 @@
                         </div>
                     </a>
 
-                    <div class="sidebar-mode-wrap">
-                        <span class="sidebar-mode-label">Sidebar</span>
-                        <div class="sidebar-mode-grid">
-                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="locked-closed">
-                                <span class="material-icons-round" style="font-size: 18px;">keyboard_double_arrow_left</span>
-                                <span class="sidebar-mode-button-label">Close Lock</span>
-                            </button>
-                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="locked-open">
-                                <span class="material-icons-round" style="font-size: 18px;">push_pin</span>
-                                <span class="sidebar-mode-button-label">Open Lock</span>
-                            </button>
-                            <button type="button" class="sidebar-mode-button" data-sidebar-mode="auto">
-                                <span class="material-icons-round" style="font-size: 18px;">lock_open</span>
-                                <span class="sidebar-mode-button-label">Unlock</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style="position: relative; padding: 4px 12px;">
-                        <div style="width: 100%; overflow: hidden; border: 1px solid var(--admin-border); background-color: var(--admin-card); border-radius: 30px; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px;">
-                                <div style="display: flex; min-width: 0; align-items: center; gap: 12px;">
-                                    <div class="theme-icon-circle" style="flex-shrink: 0;">
-                                        <span class="material-icons-round" style="font-size: 16px;">dark_mode</span>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; min-width: 0;">
-                                        <strong class="theme-label-text">Dark Mode</strong>
-                                        <span style="font-size: 11px; color: var(--admin-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dark charcoal with cream accents</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     {{-- Log out --}}
                     <button type="button" id="logoutButton" class="footer-menu-item" style="width: 100%; color: var(--admin-muted-foreground); cursor: pointer; border: none; background: transparent; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 14px; padding: 12px; transition: background-color 0.15s;">
                         <div style="display: flex; min-width: 0; align-items: center; gap: 10px;">
-                            <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--admin-border); background: var(--admin-background); color: var(--admin-primary);">
+                            <div style="display: flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid rgba(var(--admin-primary-rgb), 0.12); background: rgba(var(--admin-primary-rgb), 0.06); color: var(--admin-primary);">
                                 <span class="material-icons-round" style="font-size: 16px;">logout</span>
                             </div>
                             <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;">Log out</span>
@@ -253,12 +357,12 @@
         </div>
 
         {{-- ===== Main Content ===== --}}
-        <div class="admin-content-wrapper" style="display: flex; flex-direction: column;">
-            <div style="flex: 1 1 auto;">
-            <section class="content-header" style="padding: 24px 30px 12px;">
+        <div class="admin-content-wrapper">
+            <div class="admin-main-shell">
+            <section class="content-header">
                 @yield('content-header')
             </section>
-            <section class="content" style="padding: 12px 30px 30px;">
+            <section class="content" style="padding: 12px 0 30px; width: 100%; margin: 0;">
                 <div class="row">
                     <div class="col-xs-12">
                         @if (count($errors) > 0)
@@ -283,12 +387,12 @@
                 @yield('content')
             </section>
             </div>
-            <footer style="background: var(--admin-card); color: var(--admin-muted-foreground); border-top: 1px solid rgba(var(--admin-primary-rgb), 0.22); padding: 15px 30px; font-size: 13px; font-family: 'Inter', sans-serif; margin-top: auto;">
-                <div class="pull-right small" style="color: var(--admin-muted-foreground); margin-right:10px;margin-top:-7px;">
+            <footer class="admin-sticky-footer">
+                <div class="pull-right small">
                     <strong><i class="fa fa-fw {{ $appIsGit ? 'fa-git-square' : 'fa-code-fork' }}"></i></strong> {{ $appVersion }}<br />
                     <strong><i class="fa fa-fw fa-clock-o"></i></strong> {{ round(microtime(true) - LARAVEL_START, 3) }}s
                 </div>
-                Copyright &copy; 2015 - {{ date('Y') }} <a href="https://pterodactyl.io/" style="color: var(--admin-primary) !important;">Pterodactyl Software</a>.
+                Copyright &copy; 2015 - {{ date('Y') }} <a href="https://pterodactyl.io/">Pterodactyl Software</a>.
             </footer>
         </div>
 
@@ -310,18 +414,114 @@
             <script>
                 (function() {
                     var sidebar = document.getElementById('adminSidebar');
-                    var content = document.querySelector('.admin-content-wrapper');
+                    var root = document.documentElement;
+                    var body = document.body;
                     var footerBtn = document.getElementById('userFooterBtn');
                     var footerMenu = document.getElementById('userFooterMenu');
                     var footerArrow = document.getElementById('userFooterArrow');
                     var footerRef = document.getElementById('userFooter');
+                    var sidebarToggle = document.getElementById('adminSidebarToggle');
+                    var sidebarToggleArrow = document.getElementById('adminSidebarToggleArrow');
+                    var sidebarToggleMobileIcon = document.getElementById('adminSidebarToggleMobileIcon');
+                    var sidebarOverlay = document.getElementById('adminSidebarOverlay');
+                    var topbarTitle = document.getElementById('adminTopbarTitle');
+                    var topbarSubtitle = document.getElementById('adminTopbarSubtitle');
                     var modeButtons = document.querySelectorAll('[data-sidebar-mode]');
-                    var expandedWidth = '256px';
+                    var sectionButtons = document.querySelectorAll('[data-admin-section-toggle]');
+                    var expandedWidth = '288px';
                     var collapsedWidth = '72px';
                     var storageKey = 'ui.sidebar.mode';
+                    var sectionStorageKey = 'ui.admin.sidebar.sections';
+                    var mobileBreakpoint = 767;
                     var isExpanded = false;
                     var menuOpen = false;
                     var mode = 'auto';
+                    var sectionState = {};
+                    var defaultTopbarTitle = topbarTitle ? topbarTitle.textContent.trim() : 'Administration';
+                    var defaultTopbarSubtitle = topbarSubtitle ? topbarSubtitle.textContent.trim() : '';
+
+                    function isMobileViewport() {
+                        return window.innerWidth <= mobileBreakpoint;
+                    }
+
+                    function setSidebarWidth(width) {
+                        root.style.setProperty('--admin-sidebar-width', width);
+                    }
+
+                    function updateToggleIcon() {
+                        if (isMobileViewport()) {
+                            if (sidebarToggleMobileIcon) {
+                                sidebarToggleMobileIcon.textContent = body.classList.contains('admin-sidebar-mobile-open') ? 'close' : 'menu';
+                            }
+                            return;
+                        }
+
+                        if (sidebarToggleArrow) {
+                            sidebarToggleArrow.style.transform = isExpanded ? 'none' : 'rotate(180deg)';
+                        }
+                    }
+
+                    function syncTopbarCopy() {
+                        if (!topbarTitle || !topbarSubtitle) return;
+
+                        var heading = document.querySelector('.content-header h1');
+                        if (!heading) {
+                            topbarTitle.textContent = defaultTopbarTitle;
+                            topbarSubtitle.textContent = defaultTopbarSubtitle;
+                            return;
+                        }
+
+                        var headingClone = heading.cloneNode(true);
+                        var smallNodes = headingClone.querySelectorAll('small');
+                        for (var i = 0; i < smallNodes.length; i++) {
+                            smallNodes[i].remove();
+                        }
+
+                        var titleText = headingClone.textContent.replace(/\s+/g, ' ').trim();
+                        var subtitleNode = heading.querySelector('small');
+                        var subtitleText = subtitleNode ? subtitleNode.textContent.replace(/\s+/g, ' ').trim() : '';
+
+                        topbarTitle.textContent = titleText || defaultTopbarTitle;
+                        topbarSubtitle.textContent = subtitleText || defaultTopbarSubtitle;
+                    }
+
+                    function readSectionState() {
+                        try {
+                            var stored = localStorage.getItem(sectionStorageKey);
+                            var parsed = stored ? JSON.parse(stored) : {};
+                            return parsed && typeof parsed === 'object' ? parsed : {};
+                        } catch (error) {
+                            return {};
+                        }
+                    }
+
+                    function persistSectionState() {
+                        try {
+                            localStorage.setItem(sectionStorageKey, JSON.stringify(sectionState));
+                        } catch (error) {
+                            // Ignore storage write errors.
+                        }
+                    }
+
+                    function applySectionState(sectionName) {
+                        var button = document.querySelector('[data-admin-section-toggle="' + sectionName + '"]');
+                        var arrow = document.querySelector('[data-admin-section-arrow="' + sectionName + '"]');
+                        var content = document.querySelector('[data-admin-section-content="' + sectionName + '"]');
+                        var isOpen = sectionState[sectionName] !== false;
+
+                        if (button) {
+                            button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                        }
+
+                        if (arrow) {
+                            arrow.textContent = isOpen ? 'expand_less' : 'expand_more';
+                            arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+                        }
+
+                        if (content) {
+                            content.classList.toggle('is-collapsed', !isOpen);
+                        }
+                    }
 
                     function persistMode(nextMode) {
                         mode = nextMode;
@@ -367,25 +567,40 @@
                     }
 
                     function setExpanded(val) {
+                        var mobile = isMobileViewport();
                         isExpanded = val;
+
                         if (sidebar) {
-                            sidebar.style.width = val ? expandedWidth : collapsedWidth;
-                            sidebar.classList.toggle('is-expanded', val);
+                            sidebar.style.width = mobile ? expandedWidth : (val ? expandedWidth : collapsedWidth);
+                            sidebar.classList.toggle('is-expanded', mobile ? val : val);
                         }
-                        if (content) {
-                            content.style.marginLeft = val ? expandedWidth : collapsedWidth;
+
+                        if (mobile) {
+                            body.classList.toggle('admin-sidebar-mobile-open', val);
+                            setSidebarWidth('0px');
+                        } else {
+                            body.classList.remove('admin-sidebar-mobile-open');
+                            setSidebarWidth(val ? expandedWidth : collapsedWidth);
                         }
+
+                        updateToggleIcon();
                         syncFooterMenuLayout();
                         if (!val) setMenuOpen(false);
                     }
 
                     mode = readMode();
+                    sectionState = readSectionState();
                     syncModeButtons();
                     syncSidebarMode();
 
                     function applyMode(nextMode) {
                         persistMode(nextMode);
                         syncSidebarMode();
+
+                        if (isMobileViewport()) {
+                            setExpanded(false);
+                            return;
+                        }
 
                         if (nextMode === 'locked-open') {
                             setExpanded(true);
@@ -399,22 +614,34 @@
 
                     if (sidebar) {
                         sidebar.addEventListener('mouseenter', function() {
-                            if (mode === 'auto') setExpanded(true);
+                            if (!isMobileViewport() && mode === 'auto') setExpanded(true);
                         });
                         sidebar.addEventListener('mouseleave', function() {
-                            if (mode === 'auto') setExpanded(false);
+                            if (!isMobileViewport() && mode === 'auto') setExpanded(false);
                         });
                     }
 
-                    // Avatar button click — expand sidebar first if collapsed, then toggle menu
                     if (footerBtn) {
                         footerBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
-                            if (!isExpanded && mode !== 'locked-closed') {
+
+                            if (!isExpanded && !isMobileViewport() && mode === 'auto') {
                                 setExpanded(true);
                                 return;
                             }
+
                             setMenuOpen(!menuOpen);
+                        });
+                    }
+
+                    if (sidebarToggle) {
+                        sidebarToggle.addEventListener('click', function() {
+                            if (isMobileViewport()) {
+                                setExpanded(!body.classList.contains('admin-sidebar-mobile-open'));
+                                return;
+                            }
+
+                            applyMode(mode === 'locked-open' ? 'locked-closed' : 'locked-open');
                         });
                     }
 
@@ -427,6 +654,22 @@
                         })(modeButtons[i]);
                     }
 
+                    for (var j = 0; j < sectionButtons.length; j++) {
+                        (function(button) {
+                            var sectionName = button.getAttribute('data-admin-section-toggle');
+                            if (!sectionName) return;
+
+                            applySectionState(sectionName);
+
+                            button.addEventListener('click', function() {
+                                var isOpen = sectionState[sectionName] !== false;
+                                sectionState[sectionName] = !isOpen;
+                                persistSectionState();
+                                applySectionState(sectionName);
+                            });
+                        })(sectionButtons[j]);
+                    }
+
                     // Click outside to close menu
                     document.addEventListener('mousedown', function(e) {
                         if (!menuOpen) return;
@@ -434,6 +677,38 @@
                             setMenuOpen(false);
                         }
                     });
+
+                    if (sidebarOverlay) {
+                        sidebarOverlay.addEventListener('click', function() {
+                            setExpanded(false);
+                        });
+                    }
+
+                    document.addEventListener('keydown', function(event) {
+                        if (event.key === 'Escape' && isMobileViewport()) {
+                            setExpanded(false);
+                        }
+                    });
+
+                    window.addEventListener('resize', function() {
+                        if (isMobileViewport()) {
+                            body.classList.remove('admin-sidebar-mobile-open');
+                            setSidebarWidth('0px');
+                            updateToggleIcon();
+                            return;
+                        }
+
+                        body.classList.remove('admin-sidebar-mobile-open');
+                        if (mode === 'locked-open') {
+                            setExpanded(true);
+                            return;
+                        }
+
+                        setExpanded(false);
+                    });
+
+                    syncTopbarCopy();
+                    updateToggleIcon();
                 })();
             </script>
 

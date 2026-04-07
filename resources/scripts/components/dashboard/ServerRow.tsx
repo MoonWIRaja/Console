@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Server } from '@/api/server/getServer';
-import getServerResourceUsage, { ServerPowerState, ServerStats } from '@/api/server/getServerResourceUsage';
-import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
+import getServerResourceUsage, {
+    isServerResourceConflict,
+    ServerPowerState,
+    ServerStats,
+} from '@/api/server/getServerResourceUsage';
+import { bytesToString, mbToBytes } from '@/lib/formatters';
 import getWebsocketToken from '@/api/server/getWebsocketToken';
 import { Websocket } from '@/plugins/Websocket';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
@@ -27,17 +31,24 @@ const getStatusLabel = (status: ServerPowerState | undefined): string => {
 };
 
 const clampPercent = (value: number): number => Math.max(0, Math.min(100, value));
+const getHttpStatus = (error: any): number | undefined => error?.response?.status;
 
 export default ({ server, className }: { server: Server; className?: string }) => {
     const pollInterval = useRef<Timer | null>(null);
     const socketRef = useRef<Websocket | null>(null);
+    const isMountedRef = useRef(true);
+    const requestSequenceRef = useRef(0);
     const [isSuspended, setIsSuspended] = useState(server.status === 'suspended');
     const [stats, setStats] = useState<ServerStats | null>(null);
+    const canUseLiveStats = !server.status && !server.isTransferring && !server.isNodeUnderMaintenance && !isSuspended;
 
-    const getStats = () =>
-        getServerResourceUsage(server.uuid)
-            .then((data) => setStats(data))
-            .catch((error) => console.error(error));
+    const safeSetStats = (value: React.SetStateAction<ServerStats | null>) => {
+        if (!isMountedRef.current) {
+            return;
+        }
+
+        setStats(value);
+    };
 
     const stopPolling = () => {
         if (pollInterval.current) {
@@ -46,26 +57,74 @@ export default ({ server, className }: { server: Server; className?: string }) =
         }
     };
 
+    const getStats = () => {
+        const requestId = ++requestSequenceRef.current;
+
+        return getServerResourceUsage(server.uuid)
+            .then((data) => {
+                if (!isMountedRef.current || requestId !== requestSequenceRef.current) {
+                    return;
+                }
+
+                if (data === null) {
+                    safeSetStats(null);
+                    stopPolling();
+
+                    return;
+                }
+
+                safeSetStats(data);
+            })
+            .catch((error) => {
+                if (!isMountedRef.current || requestId !== requestSequenceRef.current) {
+                    return;
+                }
+
+                if (isServerResourceConflict(error)) {
+                    safeSetStats(null);
+                    stopPolling();
+
+                    return;
+                }
+
+                console.error(error);
+            });
+    };
+
     const startPolling = () => {
-        if (pollInterval.current) return;
+        if (pollInterval.current || !canUseLiveStats) return;
 
         getStats();
         pollInterval.current = setInterval(() => getStats(), RESOURCE_POLL_INTERVAL);
     };
+
+    useEffect(
+        () => () => {
+            isMountedRef.current = false;
+            stopPolling();
+            socketRef.current?.close();
+            socketRef.current = null;
+        },
+        []
+    );
 
     useEffect(() => {
         setIsSuspended(stats?.isSuspended || server.status === 'suspended');
     }, [stats?.isSuspended, server.status]);
 
     useEffect(() => {
-        if (isSuspended) {
+        if (!canUseLiveStats) {
             stopPolling();
             socketRef.current?.close();
             socketRef.current = null;
+
+            if (server.status || server.isTransferring || server.isNodeUnderMaintenance) {
+                safeSetStats(null);
+            }
+
             return;
         }
 
-        let isMounted = true;
         let updatingToken = false;
 
         // Immediate value while websocket is bootstrapping.
@@ -75,30 +134,38 @@ export default ({ server, className }: { server: Server; className?: string }) =
         socketRef.current = socket;
 
         const updateToken = () => {
-            if (updatingToken || !isMounted) return;
+            if (updatingToken || !isMountedRef.current) return;
 
             updatingToken = true;
             getWebsocketToken(server.uuid)
                 .then((data) => socket.setToken(data.token, true))
-                .catch((error) => console.error(error))
+                .catch((error) => {
+                    if (getHttpStatus(error) === 409) {
+                        stopPolling();
+
+                        return;
+                    }
+
+                    console.error(error);
+                })
                 .finally(() => {
                     updatingToken = false;
                 });
         };
 
         socket.on('auth success', () => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
 
             stopPolling();
             socket.send(SocketRequest.SEND_STATS);
         });
 
         socket.on(SocketEvent.STATS, (data: string) => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
 
             try {
                 const parsed = JSON.parse(data);
-                setStats((current) => ({
+                safeSetStats((current) => ({
                     status: current?.status || 'running',
                     isSuspended: current?.isSuspended || false,
                     memoryUsageInBytes: parsed.memory_bytes,
@@ -114,9 +181,9 @@ export default ({ server, className }: { server: Server; className?: string }) =
         });
 
         socket.on(SocketEvent.STATUS, (status: ServerPowerState) => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
 
-            setStats((current) =>
+            safeSetStats((current) =>
                 current
                     ? {
                           ...current,
@@ -129,41 +196,47 @@ export default ({ server, className }: { server: Server; className?: string }) =
         socket.on('token expiring', updateToken);
         socket.on('token expired', updateToken);
         socket.on('SOCKET_CLOSE', () => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
             startPolling();
         });
         socket.on('SOCKET_CONNECT_ERROR', () => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
             startPolling();
         });
         socket.on('SOCKET_ERROR', () => {
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
             startPolling();
         });
         socket.on('jwt error', () => {
             updateToken();
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
             startPolling();
         });
 
         getWebsocketToken(server.uuid)
             .then((data) => {
-                if (!isMounted) return;
+                if (!isMountedRef.current) return;
                 socket.setToken(data.token).connect(data.socket);
             })
             .catch((error) => {
+                if (getHttpStatus(error) === 409) {
+                    stopPolling();
+
+                    return;
+                }
+
                 console.error(error);
-                if (!isMounted) return;
+
+                if (!isMountedRef.current) return;
                 startPolling();
             });
 
         return () => {
-            isMounted = false;
             stopPolling();
             socket.close();
             socketRef.current = null;
         };
-    }, [isSuspended, server.uuid]);
+    }, [canUseLiveStats, server.isNodeUnderMaintenance, server.isTransferring, server.status, server.uuid]);
 
     const cpuLimit = server.limits.cpu !== 0 ? `${server.limits.cpu}%` : '∞';
     const memoryLimit = server.limits.memory !== 0 ? bytesToString(mbToBytes(server.limits.memory)) : '∞';
@@ -202,10 +275,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
     const statusLabel = isSuspended ? 'SUSPENDED' : stats ? getStatusLabel(stats.status) : fallbackStatus;
     const statusColor = isSuspended ? '#ef4444' : stats ? getStatusColor(stats.status) : '#eab308';
 
-    const defaultAllocation = server.allocations.find((allocation) => allocation.isDefault);
-    const allocationLabel = defaultAllocation
-        ? `${defaultAllocation.alias || ip(defaultAllocation.ip)}:${defaultAllocation.port}`
-        : 'No allocation';
+    const ownerLabel = server.ownerUsername || 'Unknown owner';
 
     return (
         <Link
@@ -236,7 +306,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
                                 {statusLabel}
                             </span>
                             <span className='dashboard-server-separator'>•</span>
-                            <span className='dashboard-server-address truncate'>{allocationLabel}</span>
+                            <span className='dashboard-server-address truncate'>{ownerLabel}</span>
                         </div>
                     </div>
                 </div>

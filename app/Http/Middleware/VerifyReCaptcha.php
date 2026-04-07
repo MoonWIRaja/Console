@@ -41,11 +41,8 @@ class VerifyReCaptcha
 
         $token = $this->resolveToken($request);
         if ($token === null) {
-            if (!$this->isTokenRequired($request, $state)) {
-                return $next($request);
-            }
-
             $this->security->registerFailure($request, 4, 'captcha_missing', $identifier);
+            $state = $this->security->evaluate($request, $identifier);
 
             return $this->challengeResponse($state['retry_after'], 'Complete Cloudflare Turnstile verification before continuing.');
         }
@@ -55,6 +52,7 @@ class VerifyReCaptcha
         }
 
         $this->security->registerFailure($request, 4, 'captcha_failed', $identifier);
+        $state = $this->security->evaluate($request, $identifier);
 
         $this->dispatcher->dispatch(new FailedCaptcha($request->ip(), null));
 
@@ -91,7 +89,7 @@ class VerifyReCaptcha
 
     private function isTokenRequired(Request $request, array $state): bool
     {
-        return $request->routeIs('auth.post.login') || (bool) ($state['challenge_required'] ?? false);
+        return true;
     }
 
     private function verifyTurnstileToken(string $token, Request $request): bool

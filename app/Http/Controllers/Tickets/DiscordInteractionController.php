@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\DownDetector\DownDetectorDiscordInteractionService;
 use Pterodactyl\Services\Tickets\TicketDiscordInteractionService;
 
 class DiscordInteractionController extends Controller
@@ -18,8 +19,13 @@ class DiscordInteractionController extends Controller
             return new JsonResponse(['type' => 1], Response::HTTP_OK);
         }
 
+        $customId = (string) data_get($payload, 'data.custom_id', '');
+        $service = str_starts_with($customId, 'down-detector:')
+            ? app(DownDetectorDiscordInteractionService::class)
+            : app(TicketDiscordInteractionService::class);
+
         return new JsonResponse(
-            app(TicketDiscordInteractionService::class)->handle($payload),
+            $service->handle($payload),
             Response::HTTP_OK
         );
     }

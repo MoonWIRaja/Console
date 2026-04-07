@@ -160,6 +160,9 @@ Route::group([
         Route::post('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'update']);
         Route::post('/allocations/{allocation}/primary', [Client\Servers\NetworkAllocationController::class, 'setPrimary']);
         Route::delete('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'delete']);
+        Route::get('/subdomains', [Client\Servers\NetworkSubdomainController::class, 'index']);
+        Route::post('/subdomains', [Client\Servers\NetworkSubdomainController::class, 'store']);
+        Route::delete('/subdomains/{subdomainId}', [Client\Servers\NetworkSubdomainController::class, 'delete']);
     });
 
     Route::group(['prefix' => '/users'], function () {
@@ -184,6 +187,8 @@ Route::group([
 
     Route::group(['prefix' => '/startup'], function () {
         Route::get('/', [Client\Servers\StartupController::class, 'index']);
+        Route::get('/nests', [Client\Servers\StartupController::class, 'nests']);
+        Route::get('/nests/{nestId}/eggs', [Client\Servers\StartupController::class, 'nestEggs']);
         Route::put('/variable', [Client\Servers\StartupController::class, 'update']);
         Route::put('/command', [Client\Servers\StartupController::class, 'updateCommand']);
         Route::post('/command/reset', [Client\Servers\StartupController::class, 'resetCommand']);
@@ -203,5 +208,11 @@ Route::group([
         Route::post('/rename', [Client\Servers\SettingsController::class, 'rename']);
         Route::post('/reinstall', [Client\Servers\SettingsController::class, 'reinstall']);
         Route::put('/docker-image', [Client\Servers\SettingsController::class, 'dockerImage']);
+    });
+
+    Route::group(['prefix' => '/split'], function () {
+        Route::get('/', [Client\Servers\SplitController::class, 'index']);
+        Route::post('/', [Client\Servers\SplitController::class, 'store']);
+        Route::delete('/{split_id}', [Client\Servers\SplitController::class, 'delete']);
     });
 });

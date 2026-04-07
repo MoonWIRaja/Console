@@ -580,8 +580,6 @@ export default ({
     return (
         <>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-                @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
                 .sidebar-desktop-shell {
                     position: relative;
                 }
@@ -761,7 +759,7 @@ export const ServerNavigationBar = ({
 
     const overviewItems = getSectionItems(['Console']);
     const configurationItems = getSectionItems(['Schedules', 'Network', 'Startup', 'Settings']);
-    const managementItems = getSectionItems(['Files', 'Databases', 'Backups']);
+    const managementItems = getSectionItems(['Files', 'Databases', 'Backups', 'Split']);
     const accessAndLogsItems = getSectionItems(['Users', 'Activity']);
 
     const adminItems: SidebarSectionLinkItem[] = rootAdmin
@@ -790,8 +788,6 @@ export const ServerNavigationBar = ({
     return (
         <>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-                @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
                 .sidebar-desktop-shell {
                     position: relative;
                 }

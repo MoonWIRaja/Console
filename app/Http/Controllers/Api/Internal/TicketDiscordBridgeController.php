@@ -2,14 +2,19 @@
 
 namespace Pterodactyl\Http\Controllers\Api\Internal;
 
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Models\UserOAuthAccount;
 use Pterodactyl\Models\Ticket;
 use Pterodactyl\Models\TicketMessage;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\DownDetector\DownDetectorDiscordInteractionService;
+use Pterodactyl\Services\Security\SecurityOrchestratorService;
+use Pterodactyl\Services\Security\SecurityVocabulary;
 use Pterodactyl\Services\Tickets\TicketService;
 use Pterodactyl\Services\Tickets\TicketDiscordService;
 use Pterodactyl\Services\Tickets\TicketDiscordInteractionService;
@@ -25,7 +30,9 @@ class TicketDiscordBridgeController extends Controller
         private TicketSettingsService $settings,
         private TicketDiscordService $discord,
         private TicketDiscordInteractionService $interactions,
+        private DownDetectorDiscordInteractionService $downDetectorInteractions,
         private SettingsRepositoryInterface $repository,
+        private SecurityOrchestratorService $orchestrator,
     ) {
     }
 
@@ -37,8 +44,13 @@ class TicketDiscordBridgeController extends Controller
             'payload' => 'required|array',
         ]);
 
+        $customId = (string) data_get($payload, 'payload.data.custom_id', '');
+        $service = str_starts_with($customId, 'down-detector:')
+            ? $this->downDetectorInteractions
+            : $this->interactions;
+
         return new JsonResponse(
-            $this->interactions->handle($payload['payload']),
+            $service->handle($payload['payload']),
             Response::HTTP_OK
         );
     }
@@ -72,9 +84,13 @@ class TicketDiscordBridgeController extends Controller
                 : null;
 
             $authorType = null;
-            if ($ticket->requester_discord_user_id === $authorDiscordId) {
+            $isRequester = $ticket->requester_discord_user_id === $authorDiscordId
+                || ((int) ($authorAccount?->user_id ?? 0) > 0 && (int) $authorAccount->user_id === (int) $ticket->user_id);
+
+            if ($isRequester) {
+                $this->syncRequesterDiscordIdentity($ticket, $authorAccount, $authorDiscordId);
                 $authorType = TicketMessage::AUTHOR_USER;
-            } elseif ($authorAccount?->user?->root_admin && $this->discordStaffAllowed($messagePayload)) {
+            } elseif ($this->canAuthorAsStaff($ticket, $authorAccount, $messagePayload)) {
                 $authorType = TicketMessage::AUTHOR_ADMIN;
             }
 
@@ -154,19 +170,108 @@ class TicketDiscordBridgeController extends Controller
     private function abortIfInvalidSignature(Request $request): void
     {
         $secret = (string) $this->settings->bridgeSharedSecret();
-        abort_if($secret === '', 403);
-
+        $timestamp = (int) $request->header('X-Tickets-Timestamp', 0);
+        $nonce = trim((string) $request->header('X-Tickets-Nonce', ''));
         $provided = (string) $request->header('X-Tickets-Signature', '');
-        $expected = hash_hmac('sha256', (string) $request->getContent(), $secret);
+        $path = $request->path();
 
-        abort_unless(hash_equals($expected, $provided), 403);
+        if ($secret === '') {
+            $this->recordBridgeFailure($request, 'shared_secret_missing', 'Ticket bridge shared secret is not configured; request rejected.', [
+                'path' => $path,
+                'secret_configured' => false,
+                'provided_signature_prefix' => $provided !== '' ? substr($provided, 0, 16) : null,
+            ], false);
+
+            abort(403);
+        }
+
+        if ($timestamp <= 0 || $nonce === '' || $provided === '') {
+            $this->recordBridgeFailure($request, 'missing_headers', 'Ticket bridge signing headers were incomplete.', [
+                'path' => $path,
+                'secret_configured' => true,
+                'timestamp_present' => $timestamp > 0,
+                'nonce_present' => $nonce !== '',
+                'signature_present' => $provided !== '',
+            ]);
+
+            abort(403);
+        }
+
+        if (abs(now()->timestamp - $timestamp) > $this->settings->bridgeClockSkewSeconds()) {
+            $this->recordBridgeFailure($request, 'clock_skew', 'Ticket bridge timestamp exceeded the allowed clock skew.', [
+                'path' => $path,
+                'secret_configured' => true,
+                'timestamp' => $timestamp,
+                'clock_skew_seconds' => $this->settings->bridgeClockSkewSeconds(),
+            ]);
+
+            abort(403);
+        }
+
+        $body = (string) $request->getContent();
+        $expected = hash_hmac('sha256', $timestamp . "\n" . $nonce . "\n" . $body, $secret);
+
+        if (!hash_equals($expected, $provided)) {
+            $this->recordBridgeFailure($request, 'signature_mismatch', 'Ticket bridge request signature validation failed.', [
+                'path' => $path,
+                'secret_configured' => true,
+                'provided_signature_prefix' => substr($provided, 0, 16),
+            ]);
+
+            abort(403);
+        }
+
+        $nonceKey = sprintf('tickets:bridge:nonce:%s', sha1($nonce));
+        if (!$this->cache()->add($nonceKey, true, now()->addSeconds($this->settings->bridgeNonceTtlSeconds()))) {
+            $this->recordBridgeFailure($request, 'replay', 'Ticket bridge nonce replay detected and rejected.', [
+                'path' => $path,
+                'secret_configured' => true,
+                'nonce_prefix' => substr($nonce, 0, 16),
+                'timestamp' => $timestamp,
+            ]);
+
+            abort(403);
+        }
+    }
+
+    private function recordBridgeFailure(
+        Request $request,
+        string $reason,
+        string $summary,
+        array $evidence = [],
+        bool $executeActions = true,
+    ): void {
+        \Illuminate\Support\Facades\Log::warning('Discord Bridge Heartbeat Failed: ' . $reason, [
+            'headers' => $request->headers->all(),
+            'evidence' => $evidence,
+        ]);
+        $this->orchestrator->record('bridge_signature_failure', [
+            'severity' => 'high',
+            'confidence' => 95,
+            'source_ip' => $request->ip(),
+            'summary' => $summary,
+            'evidence' => $evidence + [
+                'reason' => $reason,
+            ],
+            'blocked' => true,
+            'verdict' => SecurityVocabulary::VERDICT_BLOCKED,
+            'mitigation_stage' => SecurityVocabulary::STAGE_TEMP_BLOCK,
+            'execute_actions' => $executeActions,
+        ]);
+    }
+
+    private function cache(): CacheRepository
+    {
+        $cacheStore = config('security.cache_store');
+
+        return $cacheStore ? Cache::store($cacheStore) : Cache::store();
     }
 
     private function discordStaffAllowed(array $messagePayload): bool
     {
         $requiredRoles = $this->settings->staffRoleIds();
         if ($requiredRoles === []) {
-            return true;
+            return false;
         }
 
         $roles = array_values(array_filter(array_map(
@@ -175,5 +280,48 @@ class TicketDiscordBridgeController extends Controller
         )));
 
         return array_intersect($requiredRoles, $roles) !== [];
+    }
+
+    private function canAuthorAsStaff(Ticket $ticket, ?UserOAuthAccount $authorAccount, array $messagePayload): bool
+    {
+        if (!$authorAccount?->user) {
+            return false;
+        }
+
+        if ($this->discordStaffAllowed($messagePayload)) {
+            return true;
+        }
+
+        return $authorAccount->user->root_admin
+            || ((int) $ticket->assigned_admin_id > 0 && (int) $authorAccount->user_id === (int) $ticket->assigned_admin_id);
+    }
+
+    private function syncRequesterDiscordIdentity(Ticket $ticket, ?UserOAuthAccount $authorAccount, string $authorDiscordId): void
+    {
+        if (!$authorAccount || (int) $authorAccount->user_id !== (int) $ticket->user_id) {
+            return;
+        }
+
+        $displayName = trim((string) ($authorAccount->display_name ?? ''));
+        $avatar = trim((string) ($authorAccount->avatar ?? ''));
+        $updates = [];
+
+        if ($authorDiscordId !== '' && $authorDiscordId !== (string) $ticket->requester_discord_user_id) {
+            $updates['requester_discord_user_id'] = $authorDiscordId;
+        }
+
+        if ($displayName !== '' && $displayName !== (string) $ticket->requester_discord_name) {
+            $updates['requester_discord_name'] = $displayName;
+        }
+
+        if ($avatar !== '' && $avatar !== (string) $ticket->requester_discord_avatar) {
+            $updates['requester_discord_avatar'] = $avatar;
+        }
+
+        if ($updates === []) {
+            return;
+        }
+
+        $ticket->forceFill($updates)->saveOrFail();
     }
 }

@@ -57,6 +57,26 @@
                             <p class="text-muted"><small>The default language to use when rendering the Panel for this user.</small></p>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label class="control-label">Last Seen</label>
+                        <div>
+                            @if($user->last_seen_at)
+                                <p class="form-control-static">
+                                    @if($user->last_seen_at->gt(now()->subMinutes(5)))
+                                        <i class="fa fa-circle text-green"></i> Online
+                                    @else
+                                        <i class="fa fa-circle text-red"></i> {{ $user->last_seen_at->diffForHumans() }}
+                                    @endif
+                                    <br>
+                                    <small class="text-muted">{{ $user->last_seen_at->copy()->setTimezone(config('app.timezone'))->toDayDateTimeString() }}</small>
+                                </p>
+                            @else
+                                <p class="form-control-static text-muted">
+                                    <i class="fa fa-circle"></i> Never
+                                </p>
+                            @endif
+                        </div>
+                    </div>
                 </div>
                 <div class="box-footer">
                     {!! csrf_field() !!}

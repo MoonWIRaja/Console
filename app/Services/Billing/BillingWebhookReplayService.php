@@ -2,12 +2,15 @@
 
 namespace Pterodactyl\Services\Billing;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Pterodactyl\Models\BillingGatewayEvent;
 
 class BillingWebhookReplayService
 {
+    private const AUTO_REPLAY_WINDOW_MINUTES = 180;
+
     public function __construct(private BillingPaymentService $paymentService)
     {
     }
@@ -15,6 +18,7 @@ class BillingWebhookReplayService
     public function replay(BillingGatewayEvent $event): array
     {
         return match ($event->provider) {
+            BclCheckoutService::PROVIDER => $this->paymentService->handleBclWebhook($event->payload ?? [], true),
             FiuuCheckoutService::PROVIDER => $this->paymentService->handleFiuuCallback($event->payload ?? [], true),
             default => [
                 'processed' => false,
@@ -26,13 +30,21 @@ class BillingWebhookReplayService
     public function replayPending(int $limit = 25): array
     {
         $results = [];
+        $cutoff = CarbonImmutable::now()->subMinutes(self::AUTO_REPLAY_WINDOW_MINUTES);
 
         BillingGatewayEvent::query()
-            ->where('provider', FiuuCheckoutService::PROVIDER)
-            ->whereIn('status', [
-                BillingGatewayEvent::STATUS_RECEIVED,
-                BillingGatewayEvent::STATUS_FAILED,
+            ->whereIn('provider', [
+                BclCheckoutService::PROVIDER,
+                FiuuCheckoutService::PROVIDER,
             ])
+            ->where('created_at', '>=', $cutoff)
+            ->where(function ($query) {
+                $query->where('status', BillingGatewayEvent::STATUS_RECEIVED)
+                    ->orWhere(function ($failed) {
+                        $failed->where('status', BillingGatewayEvent::STATUS_FAILED)
+                            ->whereNull('processed_at');
+                    });
+            })
             ->orderBy('id')
             ->limit($limit)
             ->get()

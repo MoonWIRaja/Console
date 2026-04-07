@@ -58,47 +58,49 @@ const clearSharedTranscript = (serverId: string): void => {
 
 const theme = isDark
     ? {
-          background: '#0C0C0C',
-          cursor: 'transparent',
-          black: th`colors.black`.toString(),
-          red: '#E54B4B',
-          green: '#9ECE58',
-          yellow: '#FAED70',
-          blue: '#396FE2',
-          magenta: '#BB80B3',
-          cyan: '#2DDAFD',
-          white: '#d0d0d0',
-          brightBlack: 'rgba(255, 255, 255, 0.2)',
-          brightRed: '#FF5370',
-          brightGreen: '#C3E88D',
-          brightYellow: '#FFCB6B',
-          brightBlue: '#82AAFF',
-          brightMagenta: '#C792EA',
-          brightCyan: '#89DDFF',
-          brightWhite: '#ffffff',
-          selection: '#FAF089',
-      }
+        background: '#0C0C0C',
+        cursor: 'transparent',
+        cursorAccent: 'transparent',
+        black: th`colors.black`.toString(),
+        red: '#E54B4B',
+        green: '#9ECE58',
+        yellow: '#FAED70',
+        blue: '#396FE2',
+        magenta: '#BB80B3',
+        cyan: '#2DDAFD',
+        white: '#d0d0d0',
+        brightBlack: 'rgba(255, 255, 255, 0.2)',
+        brightRed: '#FF5370',
+        brightGreen: '#C3E88D',
+        brightYellow: '#FFCB6B',
+        brightBlue: '#82AAFF',
+        brightMagenta: '#C792EA',
+        brightCyan: '#89DDFF',
+        brightWhite: '#ffffff',
+        selection: '#FAF089',
+    }
     : {
-          background: '#0C0C0C',
-          cursor: '#111827',
-          black: '#111827',
-          red: '#dc2626',
-          green: '#16a34a',
-          yellow: '#ca8a04',
-          blue: '#2563eb',
-          magenta: '#7c3aed',
-          cyan: '#0891b2',
-          white: '#111827',
-          brightBlack: '#6b7280',
-          brightRed: '#ef4444',
-          brightGreen: '#22c55e',
-          brightYellow: '#eab308',
-          brightBlue: '#3b82f6',
-          brightMagenta: '#8b5cf6',
-          brightCyan: '#06b6d4',
-          brightWhite: '#0f172a',
-          selection: '#d1d5db',
-      };
+        background: '#0C0C0C',
+        cursor: 'transparent',
+        cursorAccent: 'transparent',
+        black: '#111827',
+        red: '#dc2626',
+        green: '#16a34a',
+        yellow: '#ca8a04',
+        blue: '#2563eb',
+        magenta: '#7c3aed',
+        cyan: '#0891b2',
+        white: '#111827',
+        brightBlack: '#6b7280',
+        brightRed: '#ef4444',
+        brightGreen: '#22c55e',
+        brightYellow: '#eab308',
+        brightBlue: '#3b82f6',
+        brightMagenta: '#8b5cf6',
+        brightCyan: '#06b6d4',
+        brightWhite: '#0f172a',
+        selection: '#d1d5db',
+    };
 
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
@@ -109,7 +111,7 @@ const terminalProps: ITerminalOptions = {
     lineHeight: 1.28,
     letterSpacing: 0.2,
     // Keep terminal output readable with a true monospace stack even when app-wide font changes.
-    fontFamily: `'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace`,
+    fontFamily: `'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace`,
     rows: 30,
     rendererType: 'dom',
     theme: theme,
@@ -136,6 +138,7 @@ export default ({
     const [canSendCommands] = usePermissions(['control.console']);
     const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
+    const status = ServerContext.useStoreState((state) => state.status.value);
     const { name: siteName } = useSiteBranding();
     const [history, setHistory] = usePersistedState<string[]>(`${serverId}:command_history`, []);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -145,6 +148,7 @@ export default ({
     const shareNoticeTimeout = useRef<number | null>(null);
     const transcriptEntries = useRef<TranscriptEntry[]>([]);
     const bufferedEntries = useRef<TranscriptEntry[]>([]);
+    const hasRenderedOutput = useRef(false);
     const isSidebar = variant === 'sidebar';
     const isStandaloneConsole = location.pathname.startsWith('/console/');
     const standaloneConsoleHref = `/console/${serverId}`;
@@ -207,6 +211,14 @@ export default ({
         [serverId, contributeToSharedTranscript]
     );
 
+    const writeTranscriptEntry = useCallback(
+        (entry: TranscriptEntry) => {
+            terminal.write(`${hasRenderedOutput.current ? '\r\n' : ''}${entry.rendered}`);
+            hasRenderedOutput.current = true;
+        },
+        [terminal]
+    );
+
     const pushTranscriptEntry = useCallback(
         (entry: TranscriptEntry) => {
             persistTranscriptEntry(entry);
@@ -216,15 +228,16 @@ export default ({
                 return;
             }
 
-            terminal.writeln(entry.rendered);
+            writeTranscriptEntry(entry);
         },
-        [persistTranscriptEntry, isPaused, terminal]
+        [persistTranscriptEntry, isPaused, writeTranscriptEntry]
     );
 
     const clearConsoleOutput = useCallback(() => {
         terminal.clear();
         transcriptEntries.current = [];
         bufferedEntries.current = [];
+        hasRenderedOutput.current = false;
 
         if (contributeToSharedTranscript) {
             clearSharedTranscript(serverId);
@@ -242,10 +255,11 @@ export default ({
         transcriptEntries.current = sharedTranscript;
         bufferedEntries.current = [];
         terminal.clear();
-        sharedTranscript.forEach((entry) => terminal.writeln(entry.rendered));
+        hasRenderedOutput.current = false;
+        sharedTranscript.forEach((entry) => writeTranscriptEntry(entry));
 
         return true;
-    }, [serverId, terminal]);
+    }, [serverId, terminal, writeTranscriptEntry]);
 
     const shareConsoleOutput = useCallback(async () => {
         if (isSharing) {
@@ -442,10 +456,10 @@ export default ({
 
     useEffect(() => {
         if (!isPaused && bufferedEntries.current.length > 0) {
-            bufferedEntries.current.forEach((entry) => terminal.writeln(entry.rendered));
+            bufferedEntries.current.forEach((entry) => writeTranscriptEntry(entry));
             bufferedEntries.current = [];
         }
-    }, [isPaused, terminal]);
+    }, [isPaused, writeTranscriptEntry]);
 
     useEffect(() => {
         const listeners: Record<string, (s: string) => void> = {
@@ -464,6 +478,7 @@ export default ({
             if (!hasSharedTranscript) {
                 transcriptEntries.current = [];
                 bufferedEntries.current = [];
+                hasRenderedOutput.current = false;
 
                 // Do not clear the console if the server is being transferred.
                 if (!isTransferring) {
@@ -507,7 +522,12 @@ export default ({
                 <div className={styles.sidebar_header}>
                     <div className={styles.sidebar_header_left}>
                         <h3 className={styles.sidebar_title}>
-                            <span className={'material-icons-round text-[18px]'}>terminal</span>
+                            <span className={classNames('material-icons-round text-[18px]', {
+                                'text-green-400': status === 'running',
+                                'text-yellow-400': status === 'starting' || status === 'stopping',
+                                'text-red-400': status === 'offline',
+                                'text-gray-400': status === null,
+                            })}>terminal</span>
                             Console
                         </h3>
                         {shareNotice && <p className={styles.sidebar_notice}>{shareNotice}</p>}
@@ -515,33 +535,30 @@ export default ({
                     <div className={styles.sidebar_actions}>
                         <button
                             type={'button'}
-                            title={isPaused ? 'Resume logs' : 'Pause logs'}
-                            aria-label={isPaused ? 'Resume logs' : 'Pause logs'}
+                            title={'Start Server'}
+                            aria-label={'Start Server'}
                             className={styles.sidebar_action}
-                            onClick={() => setIsPaused((value) => !value)}
+                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'start')}
                         >
-                            <span className={'material-icons-round text-[18px]'}>
-                                {isPaused ? 'play_arrow' : 'pause'}
-                            </span>
+                            <span className={'material-icons-round text-[18px] text-green-400'}>play_arrow</span>
                         </button>
                         <button
                             type={'button'}
-                            title={'Share log to mclo.gs'}
-                            aria-label={'Share log to mclo.gs'}
+                            title={'Restart Server'}
+                            aria-label={'Restart Server'}
                             className={styles.sidebar_action}
-                            onClick={() => void shareConsoleOutput()}
-                            disabled={isSharing}
+                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'restart')}
                         >
-                            <span className={'material-icons-round text-[18px]'}>{isSharing ? 'sync' : 'share'}</span>
+                            <span className={'material-icons-round text-[18px] text-amber-400'}>restart_alt</span>
                         </button>
                         <button
                             type={'button'}
-                            title={'Clear log'}
-                            aria-label={'Clear log'}
+                            title={'Stop Server'}
+                            aria-label={'Stop Server'}
                             className={styles.sidebar_action}
-                            onClick={clearConsoleOutput}
+                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'stop')}
                         >
-                            <span className={'material-icons-round text-[18px]'}>delete</span>
+                            <span className={'material-icons-round text-[18px] text-red-400'}>stop</span>
                         </button>
                         {onRequestClose && (
                             <button
@@ -565,18 +582,14 @@ export default ({
                 </div>
             </div>
             {canSendCommands && (
-                <div className={classNames(styles.command_bar)} style={{ backgroundColor: '#0C0C0C' }}>
-                    <div
-                        className={classNames('relative flex items-center', styles.command_shell)}
-                        style={{ backgroundColor: '#0C0C0C' }}
-                    >
+                <div className={classNames(styles.command_bar)}>
+                    <div className={classNames('relative flex items-center', styles.command_shell)}>
                         <div className={styles.command_input_wrap}>
                             <input
                                 className={classNames(styles.command_input)}
                                 type={'text'}
                                 placeholder={'Type a command...'}
                                 aria-label={'Console command input.'}
-                                style={{ backgroundColor: '#0C0C0C' }}
                                 disabled={!instance || !connected}
                                 onKeyDown={handleCommandKeyDown}
                                 autoCorrect={'off'}

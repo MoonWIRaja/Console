@@ -6,18 +6,33 @@ export function usePersistedState<S = undefined>(
 ): [S | undefined, Dispatch<SetStateAction<S | undefined>>] {
     const [state, setState] = useState(() => {
         try {
-            const item = localStorage.getItem(key);
+            if (typeof localStorage === 'undefined') {
+                return defaultValue;
+            }
 
-            return JSON.parse(item || String(defaultValue));
-        } catch (e) {
-            console.warn('Failed to retrieve persisted value from store.', e);
+            const item = localStorage.getItem(key);
+            if (item === null) {
+                return defaultValue;
+            }
+
+            return JSON.parse(item) as S;
+        } catch {
+            try {
+                localStorage.removeItem(key);
+            } catch {
+                // Ignore storage cleanup failures and just fall back to the default value.
+            }
 
             return defaultValue;
         }
     });
 
     useEffect(() => {
-        localStorage.setItem(key, JSON.stringify(state));
+        try {
+            localStorage.setItem(key, JSON.stringify(state));
+        } catch {
+            // Ignore storage write errors, this state should still function in-memory.
+        }
     }, [key, state]);
 
     return [state, setState];

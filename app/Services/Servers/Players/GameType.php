@@ -9,6 +9,7 @@ final class GameType
     public const FIVEM = 'fivem';
     public const TERRARIA = 'terraria';
     public const PROJECT_ZOMBOID = 'project_zomboid';
+    public const ARK = 'ark';
     public const HYTALE = 'hytale';
     public const GENERIC = 'generic';
 
@@ -20,6 +21,7 @@ final class GameType
             self::FIVEM,
             self::TERRARIA,
             self::PROJECT_ZOMBOID,
+            self::ARK,
             self::HYTALE,
             self::GENERIC,
         ];
@@ -33,6 +35,7 @@ final class GameType
             self::FIVEM => 'FiveM',
             self::TERRARIA => 'Terraria',
             self::PROJECT_ZOMBOID => 'Project Zomboid',
+            self::ARK => 'ARK: Survival Evolved',
             self::HYTALE => 'Hytale',
             default => 'Generic Game Server',
         };

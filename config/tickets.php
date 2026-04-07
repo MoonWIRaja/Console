@@ -15,6 +15,8 @@ return [
     ],
     'bridge' => [
         'shared_secret' => env('TICKETS_BRIDGE_SHARED_SECRET'),
+        'clock_skew_seconds' => (int) env('TICKETS_BRIDGE_CLOCK_SKEW_SECONDS', 60),
+        'nonce_ttl_seconds' => (int) env('TICKETS_BRIDGE_NONCE_TTL_SECONDS', 300),
         'last_heartbeat_at' => null,
         'last_heartbeat_meta' => [],
     ],

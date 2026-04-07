@@ -3,7 +3,14 @@ import http, { FractalResponseList } from '@/api/http';
 import { rawDataToServerEggVariable } from '@/api/transformers';
 import { ServerEggVariable } from '@/api/server/types';
 
-interface Response {
+export interface StartupEggOption {
+    id: number;
+    name: string;
+    description: string | null;
+    dockerImages: { label: string; value: string }[];
+}
+
+export interface StartupResponse {
     invocation: string;
     currentDockerImage: string;
     rawStartupCommand: string;
@@ -16,20 +23,15 @@ interface Response {
         id: number;
         name: string;
     };
-    eggs: {
-        id: number;
-        name: string;
-        description?: string | null;
-        dockerImages: { label: string; value: string }[];
-    }[];
+    eggs: StartupEggOption[];
     variables: ServerEggVariable[];
     dockerImages: Record<string, string>;
 }
 
-export default (uuid: string, initialData?: Response | null, config?: ConfigInterface<Response>) =>
+export default (uuid: string, initialData?: StartupResponse | null, config?: ConfigInterface<StartupResponse>) =>
     useSWR(
         [uuid, '/startup'],
-        async (): Promise<Response> => {
+        async (): Promise<StartupResponse> => {
             const { data } = await http.get(`/api/client/servers/${uuid}/startup`);
 
             const variables = ((data as FractalResponseList).data || []).map(rawDataToServerEggVariable);
@@ -45,7 +47,7 @@ export default (uuid: string, initialData?: Response | null, config?: ConfigInte
                 eggs: (data.meta.eggs || []).map((egg: any) => ({
                     id: Number(egg.id),
                     name: egg.name,
-                    description: egg.description,
+                    description: egg.description ?? null,
                     dockerImages: egg.docker_images || [],
                 })),
                 dockerImages: data.meta.docker_images || {},

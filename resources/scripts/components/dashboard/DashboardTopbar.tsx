@@ -13,6 +13,8 @@ import {
 } from '@/components/elements/sidebar/AceternitySidebar';
 
 export const DASHBOARD_TOPBAR_HEIGHT = 88;
+const DASHBOARD_VERSION = 'V2.5.0';
+const DASHBOARD_CHANNEL = 'BETA';
 
 interface Props {
     isMobileViewport?: boolean;
@@ -272,7 +274,8 @@ const DashboardTopbar = ({
                 background: '#2D2D2D',
                 backdropFilter: 'blur(12px)',
                 boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)',
-                fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                fontFamily:
+                    "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
             }}
         >
             <div
@@ -570,6 +573,52 @@ const DashboardTopbar = ({
                     )}
                 </div>
             </div>
+
+            {!isMobileViewport && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: '10px',
+                        flexShrink: 0,
+                        minWidth: 'fit-content',
+                    }}
+                >
+                    <span
+                        style={{
+                            color: 'rgba(248, 246, 239, 0.82)',
+                            fontSize: '0.76rem',
+                            fontWeight: 800,
+                            letterSpacing: '0.18em',
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {DASHBOARD_VERSION}
+                    </span>
+                    <span
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.35rem 0.5rem',
+                            borderRadius: '999px',
+                            background: 'rgba(245, 231, 198, 0.16)',
+                            color: '#F5E7C6',
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            letterSpacing: '0.16em',
+                            textTransform: 'uppercase',
+                            border: '1px solid rgba(245, 231, 198, 0.14)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {DASHBOARD_CHANNEL}
+                    </span>
+                </div>
+            )}
 
             {showSearch && !isMobileViewport && (
                 <div

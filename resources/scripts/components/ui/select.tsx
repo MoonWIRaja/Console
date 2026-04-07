@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { ChevronDownIcon, X } from 'lucide-react';
 
 export type TSelectData = {
@@ -15,6 +16,7 @@ type SelectProps = {
     data?: TSelectData[];
     onChange?: (value: string) => void;
     defaultValue?: string;
+    value?: string;
     title?: string;
     disabled?: boolean;
     compact?: boolean;
@@ -23,6 +25,7 @@ type SelectProps = {
 const Select = ({
     data = [],
     defaultValue,
+    value,
     onChange,
     title = 'Choose Mode',
     disabled = false,
@@ -33,10 +36,13 @@ const Select = ({
     const [selected, setSelected] = useState<TSelectData | undefined>(undefined);
     const ref = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (defaultValue) {
-            const item = data.find((i) => i.value === defaultValue);
+        const currentValue = value ?? defaultValue;
+
+        if (currentValue) {
+            const item = data.find((i) => i.value === currentValue);
             if (item) {
                 setSelected(item);
                 return;
@@ -44,7 +50,7 @@ const Select = ({
         }
 
         setSelected(data[0]);
-    }, [defaultValue, data]);
+    }, [value, defaultValue, data]);
 
     useEffect(() => {
         if (!open) return;
@@ -61,8 +67,15 @@ const Select = ({
         };
 
         const handleOutside = (e: MouseEvent) => {
-            if (!ref.current) return;
-            if (e.target instanceof Node && !ref.current.contains(e.target)) {
+            if (!(e.target instanceof Node)) {
+                return;
+            }
+
+            if (ref.current?.contains(e.target) || menuRef.current?.contains(e.target)) {
+                return;
+            }
+
+            if (open) {
                 setOpen(false);
             }
         };
@@ -89,11 +102,37 @@ const Select = ({
 
     const selectedItem = useMemo(() => selected || data[0], [selected, data]);
 
+    const [portalPosition, setPortalPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+    useEffect(() => {
+        const updatePosition = () => {
+            if (!triggerRef.current) return;
+            const rect = triggerRef.current.getBoundingClientRect();
+            const dropdownHeight = 340;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const openUp = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+            const top = openUp ? rect.top - 6 : rect.bottom + 6;
+            setPortalPosition({ top, left: rect.left, width: rect.width });
+        };
+
+        if (open) {
+            updatePosition();
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+            return () => {
+                window.removeEventListener('scroll', updatePosition, true);
+                window.removeEventListener('resize', updatePosition);
+            };
+        }
+
+        return undefined;
+    }, [open]);
+
     return (
         <div className={['relative w-full', compact ? 'min-h-[40px]' : 'min-h-[48px]'].join(' ')} ref={ref}>
             <div
                 ref={triggerRef}
-                onClick={() => !disabled && setOpen((v) => !v)}
+                onClick={() => !disabled && data.length > 0 && setOpen((v) => !v)}
                 className={[
                     'w-full overflow-hidden border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm',
                     compact ? 'rounded-xl' : 'rounded-[30px]',
@@ -103,18 +142,25 @@ const Select = ({
                 <SelectItem item={selectedItem} noDescription order={selectedItem?.value} compact={compact} />
             </div>
 
-            <AnimatePresence>
-                {open && (
+            {open &&
+                createPortal(
                     <motion.div
-                        initial={{ opacity: 0, y: openUpward ? 6 : -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: openUpward ? 6 : -6 }}
-                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        ref={menuRef}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
                         className={[
-                            'absolute left-0 z-[80] w-full overflow-hidden border border-[color:var(--border)] bg-[color:var(--card)] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.45)]',
+                            'fixed z-[10001] overflow-hidden border border-[color:var(--border)] bg-[color:var(--card)] py-2 shadow-[0_16px_28px_rgba(0,0,0,0.45)]',
                             compact ? 'min-w-[180px] rounded-xl' : 'min-w-[220px] rounded-[20px]',
-                            openUpward ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]',
                         ].join(' ')}
+                        style={{
+                            top: portalPosition ? `${portalPosition.top}px` : '-9999px',
+                            left: portalPosition ? `${portalPosition.left}px` : '0',
+                            width: portalPosition ? `${portalPosition.width}px` : '100%',
+                            transform: openUpward ? 'translateY(calc(-100% - 6px))' : undefined,
+                            transformOrigin: openUpward ? 'bottom center' : 'top center',
+                        }}
                     >
                         <Head setOpen={setOpen} title={title} />
                         <div className='max-h-72 w-full overflow-y-auto'>
@@ -130,9 +176,9 @@ const Select = ({
                                 />
                             ))}
                         </div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
-            </AnimatePresence>
         </div>
     );
 };
@@ -147,7 +193,9 @@ const Head = ({ setOpen, title }: { setOpen: (open: boolean) => void; title: str
             layout
             className='flex items-center justify-between px-4 py-3'
         >
-            <strong className='text-xs font-semibold uppercase tracking-wide text-[color:var(--foreground)]'>{title}</strong>
+            <strong className='text-xs font-semibold uppercase tracking-wide text-[color:var(--foreground)]'>
+                {title}
+            </strong>
             <button
                 type='button'
                 onClick={() => setOpen(false)}
@@ -213,7 +261,9 @@ const SelectItem = ({
                         {item?.label}
                     </motion.strong>
                     {!noDescription && item?.description ? (
-                        <span className='truncate text-[11px] text-[color:var(--muted-foreground)]'>{item.description}</span>
+                        <span className='truncate text-[11px] text-[color:var(--muted-foreground)]'>
+                            {item.description}
+                        </span>
                     ) : null}
                 </motion.div>
             </div>

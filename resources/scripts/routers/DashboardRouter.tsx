@@ -149,7 +149,8 @@ export default () => {
                         minHeight: 0,
                         minWidth: 0,
                         overflow: 'hidden',
-                        fontFamily: "var(--font-mono, 'Space Mono', monospace)",
+                        fontFamily:
+                            "var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                     }}
                 >
                     <TransitionRouter>

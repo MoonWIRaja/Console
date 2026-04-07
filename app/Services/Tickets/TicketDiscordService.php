@@ -25,9 +25,11 @@ class TicketDiscordService
 
     public function ensureTicketThread(Ticket $ticket): Ticket
     {
+        $ticket = $this->syncRequesterDiscordIdentity($ticket);
+
         if ($ticket->discord_thread_id) {
             if ($this->threadIsAccessible($ticket->discord_thread_id)) {
-                return $ticket;
+                return $this->syncThreadMembers($ticket, $ticket->discord_thread_id);
             }
 
             $ticket->forceFill([
@@ -70,24 +72,16 @@ class TicketDiscordService
             throw new RuntimeException('Discord did not return a valid thread identifier.');
         }
 
-        $memberSyncWarnings = $this->syncInitialThreadMembers($ticket, $threadId);
-        if ($memberSyncWarnings !== []) {
-            $this->logAudit(sprintf(
-                'Ticket %s Discord thread member sync warnings: %s',
-                $ticket->ticket_number,
-                implode(' ', $memberSyncWarnings)
-            ));
-        }
-
         $ticket->forceFill([
             'discord_thread_id' => $threadId,
             'discord_parent_channel_id' => $this->settings->activeParentChannelId(),
             'discord_sync_status' => Ticket::DISCORD_SYNC_SYNCED,
             'discord_last_synced_at' => now(),
-            'discord_last_error' => $memberSyncWarnings !== [] ? implode(' ', $memberSyncWarnings) : null,
+            'discord_last_error' => null,
         ])->saveOrFail();
 
-        $this->postThreadIntro($ticket->fresh());
+        $ticket = $this->syncThreadMembers($ticket->fresh(), $threadId);
+        $this->postThreadIntro($ticket);
 
         return $ticket->fresh();
     }
@@ -536,6 +530,76 @@ class TicketDiscordService
         }
 
         return $warnings;
+    }
+
+    private function syncThreadMembers(Ticket $ticket, string $threadId): Ticket
+    {
+        $warnings = $this->syncInitialThreadMembers($ticket, $threadId);
+        if ($warnings !== []) {
+            $this->logAudit(sprintf(
+                'Ticket %s Discord thread member sync warnings: %s',
+                $ticket->ticket_number,
+                implode(' ', $warnings)
+            ));
+        }
+
+        $errorMessage = $warnings !== [] ? implode(' ', $warnings) : null;
+        $updates = [];
+
+        if ($ticket->discord_sync_status !== Ticket::DISCORD_SYNC_SYNCED) {
+            $updates['discord_sync_status'] = Ticket::DISCORD_SYNC_SYNCED;
+        }
+
+        if ((string) $ticket->discord_last_error !== (string) $errorMessage) {
+            $updates['discord_last_error'] = $errorMessage;
+        }
+
+        if ($updates !== []) {
+            $updates['discord_last_synced_at'] = now();
+            $ticket->forceFill($updates)->saveOrFail();
+
+            return $ticket->fresh();
+        }
+
+        return $ticket;
+    }
+
+    private function syncRequesterDiscordIdentity(Ticket $ticket): Ticket
+    {
+        $discordAccount = UserOAuthAccount::query()
+            ->where('user_id', $ticket->user_id)
+            ->where('provider', 'discord')
+            ->first();
+
+        if (!$discordAccount) {
+            return $ticket;
+        }
+
+        $providerId = trim((string) $discordAccount->provider_id);
+        $displayName = trim((string) ($discordAccount->display_name ?? ''));
+        $avatar = trim((string) ($discordAccount->avatar ?? ''));
+
+        $updates = [];
+
+        if ($providerId !== '' && $providerId !== (string) $ticket->requester_discord_user_id) {
+            $updates['requester_discord_user_id'] = $providerId;
+        }
+
+        if ($displayName !== '' && $displayName !== (string) $ticket->requester_discord_name) {
+            $updates['requester_discord_name'] = $displayName;
+        }
+
+        if ($avatar !== '' && $avatar !== (string) $ticket->requester_discord_avatar) {
+            $updates['requester_discord_avatar'] = $avatar;
+        }
+
+        if ($updates === []) {
+            return $ticket;
+        }
+
+        $ticket->forceFill($updates)->saveOrFail();
+
+        return $ticket->fresh();
     }
 
     private function staffDiscordMemberIds(Ticket $ticket): array

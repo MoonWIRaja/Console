@@ -17,6 +17,11 @@ return [
         'provider' => 'manual',
         'enabled' => (bool) env('BILLING_MANUAL_ENABLED', true),
     ],
+    'bcl' => [
+        'provider' => 'bcl',
+        'enabled' => (bool) env('BILLING_BCL_ENABLED', false),
+        'form_url' => env('BILLING_BCL_FORM_URL'),
+    ],
     'stripe' => [
         'provider' => 'stripe',
         'enabled' => (bool) env('BILLING_STRIPE_ENABLED', false),

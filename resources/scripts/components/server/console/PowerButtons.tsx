@@ -55,6 +55,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'w-full'}
                     text={'Start Server'}
                     variant={'success'}
+                    iconName={'play_arrow'}
                     disabled={status !== 'offline'}
                     onClick={onButtonClick.bind(this, 'start')}
                 />
@@ -65,6 +66,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'w-full'}
                     text={'Restart Server'}
                     variant={'warning'}
+                    iconName={'restart_alt'}
                     disabled={!status}
                     onClick={onButtonClick.bind(this, 'restart')}
                 />
@@ -75,6 +77,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'w-full'}
                     variant={'danger'}
                     text={killable ? 'Kill Server' : 'Stop Server'}
+                    iconName={killable ? 'stop_circle' : 'stop'}
                     disabled={status === 'offline'}
                     onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}
                 />
@@ -98,6 +101,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'flex-1'}
                     text={'Start'}
                     variant={'success'}
+                    iconName={'play_arrow'}
                     disabled={status !== 'offline'}
                     onClick={onButtonClick.bind(this, 'start')}
                 />
@@ -108,6 +112,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'flex-1'}
                     text={'Restart'}
                     variant={'warning'}
+                    iconName={'restart_alt'}
                     disabled={!status}
                     onClick={onButtonClick.bind(this, 'restart')}
                 />
@@ -118,6 +123,7 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
                     className={'flex-1'}
                     variant={'danger'}
                     text={killable ? 'Kill' : 'Stop'}
+                    iconName={killable ? 'stop_circle' : 'stop'}
                     disabled={status === 'offline'}
                     onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}
                 />

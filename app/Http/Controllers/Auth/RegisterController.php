@@ -51,7 +51,16 @@ class RegisterController extends AbstractLoginController
 
         $pendingSignup = $this->signupOnboarding->begin($request, $user);
 
-        Activity::event('auth:signup')->withRequestMetadata()->subject($user)->log();
+        Activity::event('auth:signup')
+            ->withRequestMetadata()
+            ->subject($user)
+            ->property([
+                'username' => $user->username,
+                'email' => $user->email,
+                'name' => trim($user->name_first . ' ' . $user->name_last),
+                'email_verified' => false,
+                'signup_stage' => $pendingSignup['stage'] ?? SignupOnboardingService::STATE_PENDING_EMAIL_VERIFICATION,
+            ])->log();
 
         return new JsonResponse([
             'data' => [
@@ -122,7 +131,16 @@ class RegisterController extends AbstractLoginController
             $this->signupOnboarding->complete($request, $user);
         }
 
-        Activity::event('auth:email-verified')->withRequestMetadata()->subject($user)->log();
+        Activity::event('auth:email-verified')
+            ->withRequestMetadata()
+            ->subject($user)
+            ->property([
+                'username' => $user->username,
+                'email' => $user->email,
+                'name' => trim($user->name_first . ' ' . $user->name_last),
+                'email_verified' => true,
+                'signup_stage' => SignupOnboardingService::STATE_COMPLETE,
+            ])->log();
 
         return $this->sendLoginResponse($user, $request);
     }

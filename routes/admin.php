@@ -76,6 +76,59 @@ Route::group(['prefix' => 'settings'], function () {
     Route::patch('/advanced', [Admin\Settings\AdvancedController::class, 'update']);
 });
 
+Route::group(['prefix' => 'always-motd'], function () {
+    Route::get('/', [Admin\Settings\AlwaysMotdController::class, 'index'])->name('admin.always-motd');
+    Route::patch('/', [Admin\Settings\AlwaysMotdController::class, 'update'])->name('admin.always-motd.update');
+});
+
+Route::group(['prefix' => 'oauth'], function () {
+    Route::get('/', [Admin\OAuth\OAuthController::class, 'index'])->name('admin.oauth');
+    Route::patch('/', [Admin\OAuth\OAuthController::class, 'update'])->name('admin.oauth.update');
+});
+
+Route::group(['prefix' => 'discord'], function () {
+    Route::get('/', [Admin\Discord\DiscordController::class, 'index'])->name('admin.discord');
+    Route::patch('/', [Admin\Discord\DiscordController::class, 'update'])->name('admin.discord.update');
+});
+
+Route::group(['prefix' => 'logs'], function () {
+    Route::get('/', [Admin\Logs\LogCenterController::class, 'index'])->name('admin.logs');
+    Route::patch('/', [Admin\Logs\LogCenterController::class, 'update'])->name('admin.logs.update');
+});
+
+Route::group(['prefix' => 'security'], function () {
+    Route::get('/', [Admin\Security\SecurityController::class, 'index'])->name('admin.security');
+    Route::patch('/', [Admin\Security\SecurityController::class, 'update'])->name('admin.security.update');
+    Route::post('/self-test', [Admin\Security\SecurityController::class, 'runSelfTest'])->name('admin.security.self-test');
+    Route::post('/agents/auto-provision', [Admin\Security\SecurityController::class, 'autoProvisionAgents'])->name('admin.security.agents.auto-provision');
+    Route::post('/agents', [Admin\Security\SecurityController::class, 'storeAgent'])->name('admin.security.agents.store');
+    Route::post('/agents/{securityAgent:id}/rotate-secret', [Admin\Security\SecurityController::class, 'rotateAgentSecret'])->name('admin.security.agents.rotate-secret');
+});
+
+Route::group(['prefix' => 'down-detector'], function () {
+    Route::get('/', [Admin\DownDetector\DownDetectorController::class, 'index'])->name('admin.down-detector');
+    Route::patch('/', [Admin\DownDetector\DownDetectorController::class, 'update'])->name('admin.down-detector.update');
+    Route::patch('/nodes', [Admin\DownDetector\DownDetectorController::class, 'updateNodes'])->name('admin.down-detector.update-nodes');
+    Route::patch('/servers', [Admin\DownDetector\DownDetectorController::class, 'updateServers'])->name('admin.down-detector.update-servers');
+    Route::post('/check/{scope}', [Admin\DownDetector\DownDetectorController::class, 'check'])->name('admin.down-detector.check');
+    Route::post('/servers/sync-launcher', [Admin\DownDetector\DownDetectorController::class, 'syncServerLauncher'])->name('admin.down-detector.sync-server-launcher');
+});
+
+Route::group(['prefix' => 'subdomains'], function () {
+    Route::get('/', [Admin\Subdomains\SubdomainController::class, 'index'])->name('admin.subdomains.index');
+    Route::get('/domains/new', [Admin\Subdomains\SubdomainController::class, 'createDomain'])->name('admin.subdomains.domains.create');
+    Route::post('/domains', [Admin\Subdomains\SubdomainController::class, 'storeDomain'])->name('admin.subdomains.domains.store');
+    Route::get('/domains/{domain:id}/edit', [Admin\Subdomains\SubdomainController::class, 'editDomain'])->name('admin.subdomains.domains.edit');
+    Route::patch('/domains/{domain:id}', [Admin\Subdomains\SubdomainController::class, 'updateDomain'])->name('admin.subdomains.domains.update');
+    Route::delete('/domains/{domain:id}', [Admin\Subdomains\SubdomainController::class, 'deleteDomain'])->name('admin.subdomains.domains.delete');
+
+    Route::get('/records/new', [Admin\Subdomains\SubdomainController::class, 'createRecord'])->name('admin.subdomains.records.create');
+    Route::post('/records', [Admin\Subdomains\SubdomainController::class, 'storeRecord'])->name('admin.subdomains.records.store');
+    Route::get('/records/{record:id}/edit', [Admin\Subdomains\SubdomainController::class, 'editRecord'])->name('admin.subdomains.records.edit');
+    Route::patch('/records/{record:id}', [Admin\Subdomains\SubdomainController::class, 'updateRecord'])->name('admin.subdomains.records.update');
+    Route::delete('/records/{record:id}', [Admin\Subdomains\SubdomainController::class, 'deleteRecord'])->name('admin.subdomains.records.delete');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Billing Controller Routes

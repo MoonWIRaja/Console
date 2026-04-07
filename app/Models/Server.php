@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Pterodactyl\Exceptions\Http\Server\ServerStateConflictException;
+use Pterodactyl\Models\Subdomains\ServerSubdomain;
 
 /**
  * \Pterodactyl\Models\Server.
@@ -43,6 +44,9 @@ use Pterodactyl\Exceptions\Http\Server\ServerStateConflictException;
  * @property int|null $allocation_limit
  * @property int|null $database_limit
  * @property int $backup_limit
+ * @property int $split_limit
+ * @property int|null $split_parent_server_id
+ * @property int|null $split_root_server_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $installed_at
@@ -99,6 +103,9 @@ use Pterodactyl\Exceptions\Http\Server\ServerStateConflictException;
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereStartup($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereSwap($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Server whereSplitLimit($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Server whereSplitParentServerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Server whereSplitRootServerId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereThreads($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Server whereUuid($value)
@@ -174,6 +181,9 @@ class Server extends Model implements Identifiable
         'database_limit' => 'present|nullable|integer|min:0',
         'allocation_limit' => 'sometimes|nullable|integer|min:0',
         'backup_limit' => 'present|nullable|integer|min:0',
+        'split_limit' => 'sometimes|nullable|integer|min:0',
+        'split_parent_server_id' => 'nullable|integer|min:1',
+        'split_root_server_id' => 'nullable|integer|min:1',
     ];
 
     /**
@@ -195,6 +205,9 @@ class Server extends Model implements Identifiable
         'database_limit' => 'integer',
         'allocation_limit' => 'integer',
         'backup_limit' => 'integer',
+        'split_limit' => 'integer',
+        'split_parent_server_id' => 'integer',
+        'split_root_server_id' => 'integer',
         self::CREATED_AT => 'datetime',
         self::UPDATED_AT => 'datetime',
         'deleted_at' => 'datetime',
@@ -277,6 +290,16 @@ class Server extends Model implements Identifiable
     public function allocations(): HasMany
     {
         return $this->hasMany(Allocation::class, 'server_id');
+    }
+
+    /**
+     * Returns the DNS subdomains assigned to this server.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Subdomains\ServerSubdomain, $this>
+     */
+    public function subdomains(): HasMany
+    {
+        return $this->hasMany(ServerSubdomain::class, 'server_id');
     }
 
     /**
@@ -377,6 +400,46 @@ class Server extends Model implements Identifiable
     public function transfer(): HasOne
     {
         return $this->hasOne(ServerTransfer::class)->whereNull('successful')->orderByDesc('id');
+    }
+
+    /**
+     * Returns the server this instance was directly split from.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>
+     */
+    public function splitParentServer(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_parent_server_id');
+    }
+
+    /**
+     * Returns the top-level server for this split family.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>
+     */
+    public function splitRootServer(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_root_server_id');
+    }
+
+    /**
+     * Returns the direct split children created from this server.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Server, $this>
+     */
+    public function splitChildServers(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_parent_server_id');
+    }
+
+    /**
+     * Alias used by Laravel's scoped implicit route binding for the {split} parameter.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Server, $this>
+     */
+    public function splits(): HasMany
+    {
+        return $this->splitChildServers();
     }
 
     /**

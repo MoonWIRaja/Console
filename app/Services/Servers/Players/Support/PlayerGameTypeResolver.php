@@ -21,28 +21,47 @@ class PlayerGameTypeResolver
             $server->nest?->name,
         ])));
 
-        if (Str::contains($haystack, ['bedrock', 'pocketmine', 'nukkit', 'powernukkit'])) {
+        // ARK: Check first as it may contain "minecraft" in startup args for mod loaders
+        if (Str::contains($haystack, ['ark', 'arkserver', 'ark survival', 'shootergame'])) {
+            return GameType::ARK;
+        }
+
+        // Minecraft Bedrock: Must check BEFORE Minecraft Java
+        if (Str::contains($haystack, [
+            'bedrock',
+            'pocketmine',
+            'nukkit',
+            'powernukkit',
+            'bedrockdedicatedserver',
+            'bdcs',
+            'mcpe',
+            'mcbe',
+        ])) {
             return GameType::MINECRAFT_BEDROCK;
         }
 
-        if (Str::contains($haystack, ['fivem', 'five m', 'fxserver', 'txadmin', 'citizenfx'])) {
+        // FiveM
+        if (Str::contains($haystack, ['fivem', 'fxserver', 'txadmin', 'citizenfx'])) {
             return GameType::FIVEM;
         }
 
+        // Terraria
         if (Str::contains($haystack, ['terraria', 'tshock', 'tmodloader', 'tmod'])) {
             return GameType::TERRARIA;
         }
 
-        if (Str::contains($haystack, ['zomboid', 'project zomboid'])) {
+        // Project Zomboid
+        if (Str::contains($haystack, ['zomboid', 'project zomboid', 'pzserver'])) {
             return GameType::PROJECT_ZOMBOID;
         }
 
+        // Hytale
         if (Str::contains($haystack, ['hytale'])) {
             return GameType::HYTALE;
         }
 
+        // Minecraft Java: Only match if NOT bedrock keywords are present
         if (Str::contains($haystack, [
-            'minecraft',
             'paper',
             'spigot',
             'purpur',
@@ -52,7 +71,20 @@ class PlayerGameTypeResolver
             'velocity',
             'bungeecord',
             'waterfall',
+            'vanilla minecraft',
+            'minecraft java',
+            'mc java',
         ])) {
+            return GameType::MINECRAFT_JAVA;
+        }
+
+        // Generic "minecraft" without qualifiers - check for Java-specific Docker images
+        if (Str::contains($haystack, ['minecraft'])) {
+            // If it has bedrock keywords, it's bedrock
+            if (Str::contains($haystack, ['bedrock', 'pocketmine', 'nukkit', 'mcpe', 'mcbe'])) {
+                return GameType::MINECRAFT_BEDROCK;
+            }
+            // Default to Java if it just says "minecraft"
             return GameType::MINECRAFT_JAVA;
         }
 

@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Pterodactyl\Models\TicketAttachment;
 use Pterodactyl\Models\TicketMessage;
+use Pterodactyl\Services\Security\SecurityArtifactInspectionService;
 
 class TicketAttachmentService
 {
     public function __construct(
         private TicketSettingsService $settings,
         private TicketUrlService $urlService,
+        private SecurityArtifactInspectionService $inspection,
     ) {
     }
 
@@ -39,7 +41,7 @@ class TicketAttachmentService
                 ? file_get_contents($file->getRealPath())
                 : null;
 
-            $attachments[] = TicketAttachment::query()->create([
+            $attachment = TicketAttachment::query()->create([
                 'ticket_message_id' => $message->id,
                 'disk' => $this->settings->attachmentDisk(),
                 'path' => $path,
@@ -48,6 +50,9 @@ class TicketAttachmentService
                 'size_bytes' => $file->getSize(),
                 'sha256' => is_string($contents) ? hash('sha256', $contents) : null,
             ]);
+
+            $this->inspection->inspectTicketAttachment($attachment, $contents);
+            $attachments[] = $attachment;
         }
 
         return $attachments;
@@ -71,7 +76,7 @@ class TicketAttachmentService
 
         Storage::disk($this->settings->attachmentDisk())->put($path, $contents);
 
-        return TicketAttachment::query()->create([
+        $attachment = TicketAttachment::query()->create([
             'ticket_message_id' => $message->id,
             'disk' => $this->settings->attachmentDisk(),
             'path' => $path,
@@ -82,6 +87,10 @@ class TicketAttachmentService
             'discord_attachment_id' => $discordAttachmentId,
             'source_url' => $url,
         ]);
+
+        $this->inspection->inspectTicketAttachment($attachment, $contents);
+
+        return $attachment;
     }
 
     public function toArray(TicketAttachment $attachment): array

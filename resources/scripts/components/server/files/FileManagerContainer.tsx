@@ -29,7 +29,7 @@ const MAX_SEARCH_DIRS = 150;
 const MAX_SEARCH_RESULTS = 500;
 const SEARCH_MAX_DURATION_MS = 8000;
 const SEARCH_REQUEST_TIMEOUT_MS = 3500;
-const HIDDEN_DIRECTORY_NAMES = new Set(['.recycle_bin']);
+const HIDDEN_DIRECTORY_NAMES = new Set(['.recycle_bin', '.steam']);
 
 const pathHasHiddenSegment = (path: string): boolean => {
     return path
@@ -75,11 +75,14 @@ export default () => {
     }, [directory]);
 
     useEffect(() => {
-        if (!files) {
+        const keyword = search.trim();
+
+        if (!files || keyword === '') {
             setIndexing(false);
             setIndexedEntries([]);
             return;
         }
+
         let active = true;
         setIndexing(true);
         setIndexedEntries([]);
@@ -119,7 +122,9 @@ export default () => {
                         currentDirectory === baseDirectory
                             ? files
                             : await Promise.race([
-                                  loadDirectory(id, currentDirectory),
+                                  loadDirectory(id, currentDirectory).catch((_error) => {
+                                      return [];
+                                  }),
                                   new Promise<FileObject[]>((resolve) =>
                                       window.setTimeout(() => resolve([]), SEARCH_REQUEST_TIMEOUT_MS)
                                   ),
@@ -162,12 +167,16 @@ export default () => {
                 }
             }
         };
-        run();
+
+        const timer = window.setTimeout(() => {
+            void run();
+        }, 200);
 
         return () => {
             active = false;
+            window.clearTimeout(timer);
         };
-    }, [directory, id, files]);
+    }, [directory, id, files, search]);
 
     const filteredCurrentFiles = useMemo(() => {
         if (!files) return [];

@@ -3,14 +3,13 @@ import TitledGreyBox from '@/components/elements/TitledGreyBox';
 import tw from 'twin.macro';
 import VariableBox from '@/components/server/startup/VariableBox';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
-import getServerStartup from '@/api/swr/getServerStartup';
+import getServerStartup, { type StartupResponse } from '@/api/swr/getServerStartup';
 import Spinner from '@/components/elements/Spinner';
 import { ServerError } from '@/components/elements/ScreenBlock';
 import { httpErrorToHuman } from '@/api/http';
 import { ServerContext } from '@/state/server';
 import { useDeepCompareEffect } from '@/plugins/useDeepCompareEffect';
 import isEqual from 'react-fast-compare';
-import Input from '@/components/elements/Input';
 import InputSpinner from '@/components/elements/InputSpinner';
 import useFlash from '@/plugins/useFlash';
 import Select from '@/components/ui/select';
@@ -19,6 +18,8 @@ import { Dialog } from '@/components/elements/dialog';
 import updateStartupCommand from '@/api/server/updateStartupCommand';
 import resetStartupCommand from '@/api/server/resetStartupCommand';
 import changeStartupEgg from '@/api/server/changeStartupEgg';
+import getAvailableNests, { NestOption } from '@/api/server/getAvailableNests';
+import getNestEggs, { NestEgg } from '@/api/server/getNestEggs';
 import { usePermissions } from '@/plugins/usePermissions';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
@@ -60,13 +61,20 @@ const StartupContainer = () => {
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [changeEggOpen, setChangeEggOpen] = useState(false);
     const [startupDraft, setStartupDraft] = useState('');
+    const [availableNests, setAvailableNests] = useState<NestOption[]>([]);
+    const [availableEggsByNest, setAvailableEggsByNest] = useState<Record<number, NestEgg[]>>({});
+    const [selectedNestId, setSelectedNestId] = useState(0);
     const [selectedEggId, setSelectedEggId] = useState(0);
     const [selectedDockerImage, setSelectedDockerImage] = useState('');
-    const { clearFlashes, clearAndAddHttpError } = useFlash();
+    const [setupLoading, setSetupLoading] = useState(false);
+    const [nestOptionsLoading, setNestOptionsLoading] = useState(false);
+    const [nestEggsLoading, setNestEggsLoading] = useState(false);
+    const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const [canEditStartup] = usePermissions(['startup.update']);
     const lastSavedCommand = useRef('');
     const savingCommand = useRef<string | null>(null);
     const dockerSavingValue = useRef<string | null>(null);
+    const hasLoadedNestOptions = useRef(false);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const variables = ServerContext.useStoreState(
@@ -78,14 +86,29 @@ const StartupContainer = () => {
         isEqual
     );
 
-    const { data, error, isValidating, mutate } = getServerStartup(uuid, {
-        ...variables,
-        dockerImages: { [variables.dockerImage]: variables.dockerImage },
-    });
+    const initialStartupData = useMemo<StartupResponse>(
+        () => ({
+            invocation: variables.invocation,
+            currentDockerImage: variables.dockerImage,
+            rawStartupCommand: variables.invocation,
+            defaultStartupCommand: variables.invocation,
+            nest: { id: 0, name: '' },
+            currentEgg: { id: 0, name: '' },
+            eggs: [],
+            variables: variables.variables,
+            dockerImages: variables.dockerImage ? { [variables.dockerImage]: variables.dockerImage } : {},
+        }),
+        [variables.invocation, variables.dockerImage, variables.variables]
+    );
 
-    const availableEggs = data?.eggs || [];
+    const { data, error, isValidating, mutate } = getServerStartup(uuid, initialStartupData);
+
+    const currentNestId = data?.nest?.id || 0;
     const currentEggId = data?.currentEgg?.id || 0;
-    const currentNestName = data?.nest?.name || '';
+    const availableEggs = useMemo(
+        () => availableEggsByNest[selectedNestId] || [],
+        [availableEggsByNest, selectedNestId]
+    );
 
     const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
     const commandPreview = useMemo(
@@ -104,9 +127,11 @@ const StartupContainer = () => {
         [selectedEgg, data?.dockerImages]
     );
     const hasEggChange = !!data && selectedEggId !== currentEggId;
+    const hasNestChange = !!data && selectedNestId !== currentNestId;
+    const hasProfileChange = !!data && (hasNestChange || hasEggChange);
     const hasDockerOnlyChange =
         !!data &&
-        !hasEggChange &&
+        !hasProfileChange &&
         selectedDockerImage !==
             (data.currentDockerImage || variables.dockerImage || dockerOptionsForSelectedEgg[0]?.value || '');
 
@@ -129,21 +154,152 @@ const StartupContainer = () => {
 
     useEffect(() => {
         if (!data) return;
+        setAvailableNests((state) => {
+            if (!currentNestId) {
+                return state;
+            }
+
+            if (state.some((nest) => nest.id === currentNestId)) {
+                return state;
+            }
+
+            return [
+                ...state,
+                {
+                    id: currentNestId,
+                    name: data.nest?.name || 'Unknown Nest',
+                    description: null,
+                },
+            ];
+        });
+        setAvailableEggsByNest((state) => ({
+            ...state,
+            [currentNestId]: data.eggs || [],
+        }));
         lastSavedCommand.current = data.rawStartupCommand || '';
         setStartupDraft(data.rawStartupCommand || '');
+        setSelectedNestId(currentNestId);
         setSelectedEggId(currentEggId);
         setSelectedDockerImage(
             data.currentDockerImage || variables.dockerImage || Object.values(data.dockerImages || {})[0] || ''
         );
-    }, [data?.rawStartupCommand, data?.currentDockerImage, currentEggId, variables.dockerImage]);
+    }, [
+        data?.rawStartupCommand,
+        data?.currentDockerImage,
+        currentEggId,
+        currentNestId,
+        variables.dockerImage,
+        data?.eggs,
+    ]);
+
+    useEffect(() => {
+        if (!data || hasLoadedNestOptions.current) return;
+
+        hasLoadedNestOptions.current = true;
+        setNestOptionsLoading(true);
+
+        getAvailableNests(uuid)
+            .then((nests) => {
+                setAvailableNests(
+                    nests.some((nest) => nest.id === currentNestId) || !currentNestId
+                        ? nests
+                        : [
+                              ...nests,
+                              {
+                                  id: currentNestId,
+                                  name: data.nest?.name || 'Unknown Nest',
+                                  description: null,
+                              },
+                          ]
+                );
+            })
+            .catch((error) => {
+                console.error(error);
+                clearAndAddHttpError({ key: 'startup:image', error });
+                hasLoadedNestOptions.current = false;
+            })
+            .then(() => setNestOptionsLoading(false));
+    }, [uuid, data?.nest?.name, currentNestId]);
+
+    useEffect(() => {
+        if (!selectedNestId || availableEggsByNest[selectedNestId]) {
+            return;
+        }
+
+        setNestEggsLoading(true);
+        clearFlashes('startup:image');
+
+        getNestEggs(uuid, selectedNestId)
+            .then((eggs) => {
+                setAvailableEggsByNest((state) => ({
+                    ...state,
+                    [selectedNestId]: eggs,
+                }));
+
+                if (eggs.length < 1) {
+                    addFlash({
+                        key: 'startup:image',
+                        type: 'error',
+                        title: 'Error',
+                        message: 'This game type does not have any server types that can be selected.',
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                setAvailableEggsByNest((state) => ({
+                    ...state,
+                    [selectedNestId]: [],
+                }));
+                clearAndAddHttpError({ key: 'startup:image', error });
+            })
+            .then(() => setNestEggsLoading(false));
+    }, [uuid, selectedNestId, availableEggsByNest]);
+
+    useEffect(() => {
+        if (!selectedNestId) {
+            return;
+        }
+
+        if (availableEggs.length < 1) {
+            if (selectedEggId !== 0) {
+                setSelectedEggId(0);
+            }
+
+            if (selectedDockerImage !== '') {
+                setSelectedDockerImage('');
+            }
+
+            return;
+        }
+
+        const nextEgg = availableEggs.find((egg) => egg.id === selectedEggId) || availableEggs[0];
+        if (nextEgg.id !== selectedEggId) {
+            setSelectedEggId(nextEgg.id);
+        }
+
+        const nextDockerImage =
+            nextEgg.dockerImages.find((image) => image.value === selectedDockerImage)?.value ||
+            nextEgg.dockerImages[0]?.value ||
+            '';
+
+        if (nextDockerImage !== selectedDockerImage) {
+            setSelectedDockerImage(nextDockerImage);
+        }
+    }, [selectedNestId, availableEggs, selectedEggId, selectedDockerImage]);
 
     const applyStartupProfileChange = useCallback(() => {
-        if (!data || !canEditStartup) return;
+        if (!data || !canEditStartup || !selectedNestId || !selectedEggId) return;
 
         setLoading(true);
+        setSetupLoading(true);
         clearFlashes('startup:image');
-        changeStartupEgg(uuid, selectedEggId, selectedDockerImage)
+        changeStartupEgg(uuid, selectedNestId, selectedEggId, selectedDockerImage)
             .then((response) => {
+                setAvailableEggsByNest((state) => ({
+                    ...state,
+                    [response.nest.id]: response.eggs,
+                }));
                 mutate(
                     (current) =>
                         current
@@ -168,6 +324,8 @@ const StartupContainer = () => {
                     dockerImage: response.currentDockerImage || selectedDockerImage,
                     variables: response.variables,
                 }));
+                setSelectedNestId(response.nest.id);
+                setSelectedEggId(response.currentEgg.id);
                 setSelectedDockerImage(response.currentDockerImage || selectedDockerImage);
                 setStartupDraft(response.rawStartupCommand || '');
             })
@@ -178,13 +336,14 @@ const StartupContainer = () => {
             .then(() => {
                 dockerSavingValue.current = null;
                 setLoading(false);
+                setSetupLoading(false);
                 setChangeEggOpen(false);
             });
-    }, [uuid, selectedEggId, selectedDockerImage, data, canEditStartup]);
+    }, [uuid, selectedNestId, selectedEggId, selectedDockerImage, data, canEditStartup]);
 
     useEffect(() => {
         if (!canEditStartup || !data || !hasDockerOnlyChange) return;
-        if (loading) return;
+        if (loading || setupLoading) return;
         if (dockerSavingValue.current === selectedDockerImage) return;
 
         const timer = window.setTimeout(() => {
@@ -193,7 +352,15 @@ const StartupContainer = () => {
         }, 500);
 
         return () => window.clearTimeout(timer);
-    }, [selectedDockerImage, hasDockerOnlyChange, canEditStartup, data, loading, applyStartupProfileChange]);
+    }, [
+        selectedDockerImage,
+        hasDockerOnlyChange,
+        canEditStartup,
+        data,
+        loading,
+        setupLoading,
+        applyStartupProfileChange,
+    ]);
 
     const saveStartupCommand = (command: string) => {
         if (!canEditStartup || !data) return;
@@ -335,7 +502,9 @@ const StartupContainer = () => {
                         <div css={tw`space-y-3 px-1 py-2`}>
                             <Textarea
                                 value={startupDraft}
-                                onChange={(event) => setStartupDraft(event.currentTarget.value)}
+                                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                    setStartupDraft(event.currentTarget.value)
+                                }
                                 rows={4}
                                 readOnly={!canEditStartup}
                                 css={tw`font-mono`}
@@ -376,7 +545,9 @@ const StartupContainer = () => {
                                         text={'Change'}
                                         variant={'success'}
                                         className={'h-8 min-w-0 px-3 text-xs'}
-                                        disabled={!hasEggChange || loading}
+                                        disabled={
+                                            !hasProfileChange || loading || setupLoading || availableEggs.length < 1
+                                        }
                                         onClick={() => setChangeEggOpen(true)}
                                     />
                                 )}
@@ -387,29 +558,71 @@ const StartupContainer = () => {
                         <Dialog.Confirm
                             open={changeEggOpen}
                             title={'Confirm startup profile change'}
-                            confirm={'Change Egg'}
+                            confirm={hasNestChange ? 'Delete Data and Change Game Type' : 'Change Setup'}
                             onClose={() => setChangeEggOpen(false)}
                             onConfirmed={applyStartupProfileChange}
                         >
-                            Changing Egg will replace current startup variables with the new Egg variables. Old variable
-                            values will be removed. After changing Egg, you need to fill the new variables and then run
-                            reinstall from Settings.
+                            {hasNestChange ? (
+                                <div css={tw`space-y-3 text-sm leading-6`}>
+                                    <p>
+                                        Changing Game Type will permanently delete all existing server data before the
+                                        new setup is applied.
+                                    </p>
+                                    <ul css={tw`list-disc space-y-1 pl-5`}>
+                                        <li>All files inside the container will be deleted.</li>
+                                        <li>All backups for this server will be deleted.</li>
+                                        <li>Recycle Bin contents will be deleted.</li>
+                                        <li>
+                                            Current startup variables will be replaced with the new Game Type values.
+                                        </li>
+                                    </ul>
+                                    <p>
+                                        Continue only if you are sure. After changing, review the new variables and run
+                                        reinstall from Settings.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div css={tw`space-y-3 text-sm leading-6`}>
+                                    <p>
+                                        Changing Server Type will replace current startup variables with the new Server
+                                        Type variables.
+                                    </p>
+                                    <p>
+                                        Old variable values will be removed. After changing, fill the new variables and
+                                        then run reinstall from Settings.
+                                    </p>
+                                </div>
+                            )}
                         </Dialog.Confirm>
 
-                        <InputSpinner visible={loading}>
+                        <InputSpinner visible={loading || setupLoading || nestOptionsLoading || nestEggsLoading}>
                             <div css={tw`space-y-3`}>
                                 <div>
                                     <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
                                         Game Type
                                     </p>
-                                    <Input readOnly value={currentNestName} />
+                                    <Select
+                                        key={`startup-nest-${selectedNestId}-${availableNests.length}`}
+                                        disabled={!canEditStartup || nestOptionsLoading || availableNests.length < 1}
+                                        onChange={(value) => setSelectedNestId(Number(value))}
+                                        value={String(selectedNestId || currentNestId)}
+                                        defaultValue={String(selectedNestId || currentNestId)}
+                                        title={'Choose Game Type'}
+                                        data={availableNests.map((nest) => ({
+                                            id: String(nest.id),
+                                            label: nest.name,
+                                            value: String(nest.id),
+                                            description: nest.description || undefined,
+                                        }))}
+                                    />
                                 </div>
                                 <div>
                                     <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
                                         Server Type
                                     </p>
                                     <Select
-                                        disabled={!canEditStartup}
+                                        key={`startup-egg-${selectedNestId}-${selectedEggId}-${availableEggs.length}`}
+                                        disabled={!canEditStartup || nestEggsLoading || availableEggs.length < 1}
                                         onChange={(value) => {
                                             const nextEggId = Number(value);
                                             setSelectedEggId(nextEggId);
@@ -419,6 +632,7 @@ const StartupContainer = () => {
                                                 setSelectedDockerImage(nextDocker);
                                             }
                                         }}
+                                        value={String(selectedEggId)}
                                         defaultValue={String(selectedEggId)}
                                         title={'Choose Server Type'}
                                         data={availableEggs.map((egg) => ({
@@ -434,8 +648,15 @@ const StartupContainer = () => {
                                         Docker Image
                                     </p>
                                     <Select
-                                        disabled={!canEditStartup || dockerOptionsForSelectedEgg.length < 1}
+                                        key={`startup-docker-${selectedNestId}-${selectedEggId}-${selectedDockerImage}`}
+                                        disabled={
+                                            !canEditStartup ||
+                                            nestEggsLoading ||
+                                            dockerOptionsForSelectedEgg.length < 1 ||
+                                            !selectedEggId
+                                        }
                                         onChange={(value) => setSelectedDockerImage(value)}
+                                        value={selectedDockerImage}
                                         defaultValue={selectedDockerImage}
                                         title={'Choose Docker Image'}
                                         data={dockerOptionsForSelectedEgg.map((image) => ({
@@ -446,11 +667,18 @@ const StartupContainer = () => {
                                         }))}
                                     />
                                 </div>
+                                {selectedNestId > 0 && availableEggs.length < 1 && !nestEggsLoading && (
+                                    <p css={tw`text-xs text-[#fca5a5]`}>
+                                        This game type does not have any server types available right now.
+                                    </p>
+                                )}
                             </div>
                         </InputSpinner>
                         <p css={tw`mt-3 text-xs text-[color:var(--text-subtle)]`}>
-                            Game Type is managed by administrator. You can change Server Type and Docker Image here. If
-                            Server Type is changed, update new variables and run reinstall from Settings.
+                            Select Game Type first, then choose Server Type. Docker Image updates automatically when
+                            needed. Changing Game Type deletes backups, recycle bin contents, and all container files
+                            before applying the new setup. Changing Server Type in the same Game Type only resets
+                            startup variables, so review the new values and run reinstall from Settings afterwards.
                         </p>
                     </TitledGreyBox>
                 </div>

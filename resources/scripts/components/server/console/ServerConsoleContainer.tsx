@@ -1,4 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ServerContext } from '@/state/server';
 import isEqual from 'react-fast-compare';
 import Spinner from '@/components/elements/Spinner';
@@ -6,7 +7,7 @@ import Features from '@feature/Features';
 import Console from '@/components/server/console/Console';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import { Alert } from '@/components/elements/alert';
-import { useStoreState } from 'easy-peasy';
+import { useStoreState, useStoreActions } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import useWebsocketEvent from '@/plugins/useWebsocketEvent';
@@ -14,8 +15,10 @@ import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
 import Avatar from '@/components/Avatar';
 import { Dialog } from '@/components/elements/dialog';
+import FlashMessageRender from '@/components/FlashMessageRender';
 import Select, { TSelectData } from '@/components/ui/select';
 import { httpErrorToHuman } from '@/api/http';
+import useFlash from '@/plugins/useFlash';
 import {
     getServerPlayerInventory,
     getServerPlayerProfile,
@@ -591,6 +594,7 @@ const ServerConsoleContainer = () => {
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const username = useStoreState((state: ApplicationStore) => state.user.data!.username);
     const email = useStoreState((state: ApplicationStore) => state.user.data!.email);
+    const { addFlash, clearFlashes } = useFlash();
 
     const allocation = ServerContext.useStoreState((state) => {
         const match = state.server.data!.allocations.find((item) => item.isDefault);
@@ -751,10 +755,10 @@ const ServerConsoleContainer = () => {
     const statusBadgeClass = classNames(
         'rounded-lg border px-2 py-0.5 text-xs font-bold',
         status === 'running'
-            ? 'border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-[color:var(--primary)]'
+            ? 'border-green-500/40 bg-green-500/10 text-green-400'
             : status === 'offline' || status === null
-            ? 'border-red-500/40 bg-red-500/10 text-red-400'
-            : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                ? 'border-red-500/40 bg-red-500/10 text-red-400'
+                : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
     );
 
     const playerFilterOptions = useMemo<TSelectData[]>(() => {
@@ -770,10 +774,10 @@ const ServerConsoleContainer = () => {
         const normalized = source.length
             ? source
             : defaultPlayerFilters.map((item) => ({
-                  id: item.id,
-                  label: item.label,
-                  description: item.description,
-              }));
+                id: item.id,
+                label: item.label,
+                description: item.description,
+            }));
 
         return normalized.map((item) => {
             const scope = item.id as PlayerScope;
@@ -1079,9 +1083,9 @@ const ServerConsoleContainer = () => {
 
     return (
         <>
-            {playerActionDialogOpen && (
+            {playerActionDialogOpen && createPortal(
                 <div
-                    className={'fixed inset-0 z-[80] flex items-center justify-center px-3 py-5'}
+                    className={'fixed inset-0 z-[9999] flex items-center justify-center px-3 py-5'}
                     onMouseDown={(event) => {
                         if (event.target === event.currentTarget) {
                             closePlayerActionDialog();
@@ -1091,7 +1095,7 @@ const ServerConsoleContainer = () => {
                     <div className={'absolute inset-0 bg-[color:var(--card)]/75'} />
                     <div
                         className={
-                            'relative z-[81] w-[92vw] max-w-[640px] rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-[0_24px_54px_rgba(0,0,0,0.45)]'
+                            'relative z-[10000] w-[92vw] max-w-[640px] rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-[0_24px_54px_rgba(0,0,0,0.45)]'
                         }
                     >
                         <div className={'mb-3 flex items-start justify-between gap-3'}>
@@ -1248,8 +1252,8 @@ const ServerConsoleContainer = () => {
                                     disabled={!!playerActionLoading}
                                 >
                                     {playerActionLoading &&
-                                    playerActionTarget &&
-                                    playerActionLoading === playerActionTarget.id
+                                        playerActionTarget &&
+                                        playerActionLoading === playerActionTarget.id
                                         ? 'Processing...'
                                         : 'Run Action'}
                                 </button>
@@ -1257,7 +1261,7 @@ const ServerConsoleContainer = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                , document.body)}
 
             <Dialog
                 open={playerDialogOpen}
@@ -1639,9 +1643,8 @@ const ServerConsoleContainer = () => {
                                                                                     (slot, index) => (
                                                                                         <div key={`inventory-${index}`}>
                                                                                             {renderMinecraftSlot(slot, {
-                                                                                                titlePrefix: `Inventory Slot ${
-                                                                                                    index + 1
-                                                                                                }`,
+                                                                                                titlePrefix: `Inventory Slot ${index + 1
+                                                                                                    }`,
                                                                                             })}
                                                                                         </div>
                                                                                     )
@@ -1671,12 +1674,10 @@ const ServerConsoleContainer = () => {
                                                                                                 {renderMinecraftSlot(
                                                                                                     slot,
                                                                                                     {
-                                                                                                        titlePrefix: `Hotbar ${
-                                                                                                            index + 1
-                                                                                                        }`,
-                                                                                                        indexLabel: `${
-                                                                                                            index + 1
-                                                                                                        }`,
+                                                                                                        titlePrefix: `Hotbar ${index + 1
+                                                                                                            }`,
+                                                                                                        indexLabel: `${index + 1
+                                                                                                            }`,
                                                                                                     }
                                                                                                 )}
                                                                                             </div>
@@ -1900,6 +1901,7 @@ const ServerConsoleContainer = () => {
                 }
 
                 .server-console-panel {
+                    overflow: hidden;
                     border-radius: 1rem;
                     border: 1px solid var(--surface-border);
                     background:
@@ -1915,6 +1917,11 @@ const ServerConsoleContainer = () => {
                     background:
                         linear-gradient(180deg, rgba(245, 231, 198, 0.04), rgba(245, 231, 198, 0.012)),
                         var(--surface-subtle);
+                }
+
+                .server-console-panel-body {
+                    background: #0c0c0c;
+                    border-radius: 0 0 1rem 1rem;
                 }
 
                 .server-console-inline-toggle {
@@ -1955,9 +1962,10 @@ const ServerConsoleContainer = () => {
                 className={'server-console-shell w-full overflow-x-hidden text-[color:var(--foreground)]'}
                 style={{
                     fontFamily:
-                        "'Space Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                        "var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                 }}
             >
+                <FlashMessageRender byKey={'console:copy'} className={'absolute right-4 top-4 z-[9998] w-auto max-w-sm'} />
                 <div className={'server-console-layout'}>
                     {!sideConsoleOpen && (
                         <button
@@ -1980,8 +1988,8 @@ const ServerConsoleContainer = () => {
                                 {isNodeUnderMaintenance
                                     ? 'The node of this server is currently under maintenance and all actions are unavailable.'
                                     : isInstalling
-                                    ? 'This server is currently running its installation process and most actions are unavailable.'
-                                    : 'This server is currently being transferred to another node and all actions are unavailable.'}
+                                        ? 'This server is currently running its installation process and most actions are unavailable.'
+                                        : 'This server is currently being transferred to another node and all actions are unavailable.'}
                             </Alert>
                         )}
                         <div className={'server-console-panel flex min-h-0 min-w-0 flex-1 flex-col shadow-none'}>
@@ -2006,7 +2014,7 @@ const ServerConsoleContainer = () => {
                                     Live Console
                                 </h2>
                             </div>
-                            <div className={'min-w-0 flex-1 overflow-hidden p-4'}>
+                            <div className={'server-console-panel-body min-w-0 flex-1 overflow-hidden'}>
                                 <Spinner.Suspense>
                                     <Console />
                                 </Spinner.Suspense>
@@ -2164,8 +2172,20 @@ const ServerConsoleContainer = () => {
                                         <span className={'text-[color:var(--text-subtle)]'}>IP:</span>
                                         <span
                                             className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)]'
+                                                'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
                                             }
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(allocation).then(() => {
+                                                    clearFlashes('console:copy');
+                                                    addFlash({
+                                                        key: 'console:copy',
+                                                        type: 'success',
+                                                        title: 'Copied!',
+                                                        message: `Server IP "${allocation}" copied to clipboard.`,
+                                                    });
+                                                }).catch(() => undefined);
+                                            }}
+                                            title="Click to copy"
                                         >
                                             {allocation}
                                         </span>
@@ -2187,10 +2207,21 @@ const ServerConsoleContainer = () => {
                                     <div className={'flex items-start justify-between gap-3'}>
                                         <span className={'text-[color:var(--text-subtle)]'}>Server ID:</span>
                                         <code
-                                            title={uuid}
+                                            title="Click to copy full ID"
                                             className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)]'
+                                                'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
                                             }
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(uuid).then(() => {
+                                                    clearFlashes('console:copy');
+                                                    addFlash({
+                                                        key: 'console:copy',
+                                                        type: 'success',
+                                                        title: 'Copied!',
+                                                        message: `Server UUID copied to clipboard.`,
+                                                    });
+                                                }).catch(() => undefined);
+                                            }}
                                         >
                                             {uuid.slice(0, 8)}
                                         </code>
@@ -2243,7 +2274,7 @@ const ServerConsoleContainer = () => {
                                     </span>
                                 </div>
 
-                                <div className={'space-y-3 overflow-hidden pr-1'}>
+                                <div className={'space-y-3 overflow-y-auto pr-1'} style={{ maxHeight: 'calc(100% - 120px)' }}>
                                     {playersLoading && (
                                         <div className={'py-8'}>
                                             <Spinner size={'small'} centered />

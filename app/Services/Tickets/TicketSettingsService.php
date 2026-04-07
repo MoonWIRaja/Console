@@ -56,6 +56,16 @@ class TicketSettingsService
         return $this->nullableString(config('tickets.bridge.shared_secret'));
     }
 
+    public function bridgeClockSkewSeconds(): int
+    {
+        return max((int) config('tickets.bridge.clock_skew_seconds', 60), 5);
+    }
+
+    public function bridgeNonceTtlSeconds(): int
+    {
+        return max((int) config('tickets.bridge.nonce_ttl_seconds', 300), 30);
+    }
+
     public function lastHeartbeatAt(): ?string
     {
         return $this->nullableString(config('tickets.bridge.last_heartbeat_at'));

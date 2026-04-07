@@ -20,7 +20,7 @@
                 <h4 style="margin-top: 0;">Setup Order</h4>
                 <p style="margin-bottom: 8px;">Fill these settings in this order to make setup easier:</p>
                     <ol style="margin-bottom: 0; padding-left: 18px;">
-                        <li>Enter your Discord bot details: <strong>Guild ID</strong> and <strong>Bot Token</strong>. <strong>Application ID</strong> and <strong>Public Key</strong> are optional in gateway mode.</li>
+                        <li>Configure your Discord bot and guild first in <a href="{{ route('admin.discord') }}"><strong>Discord Settings</strong></a>.</li>
                         <li>Select the Discord channels used for the launcher, the thread parent, and the log channel.</li>
                         <li>Leave <strong>Relay Webhook ID</strong>, <strong>Relay Webhook Token</strong>, and <strong>Bridge Shared Secret</strong> blank if you want the panel to generate them automatically on save.</li>
                         <li>Save the form, start the gateway sidecar, click <strong>Sync Launcher Embed</strong>, and only then enable <strong>Enable Tickets</strong>.</li>
@@ -74,32 +74,25 @@
                         <h3 class="box-title">Discord</h3>
                     </div>
                     <div class="box-body">
-                        <div class="form-group">
-                            <label>Guild ID</label>
-                            <input type="text" class="form-control" name="services:discord:guild_id" value="{{ old('services:discord:guild_id', config('services.discord.guild_id')) }}" placeholder="123456789012345678">
-                            <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
-                                Your Discord server ID. Enable Developer Mode in Discord, then right-click the server and choose <strong>Copy Server ID</strong>.
+                        <div class="callout callout-info">
+                            <p style="margin-bottom: 0;">
+                                Bot token, guild ID, application ID, and Discord community setup now live in
+                                <a href="{{ route('admin.discord') }}"><strong>/admin/discord</strong></a>.
+                                This page now focuses on ticket launcher, bridge, and relay settings only.
                             </p>
                         </div>
                         <div class="form-group">
-                            <label>Application ID</label>
-                            <input type="text" class="form-control" name="services:discord:application_id" value="{{ old('services:discord:application_id', config('services.discord.application_id')) }}" placeholder="123456789012345678">
+                            <label>Configured Guild ID</label>
+                            <input type="text" readonly class="form-control" value="{{ config('services.discord.guild_id') ?: 'Not configured yet' }}">
                             <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
-                                Optional in the current gateway-sidecar setup. Keep this only if you also use other Discord application features that need the application ID.
+                                This value comes from <a href="{{ route('admin.discord') }}">Discord Settings</a>.
                             </p>
                         </div>
                         <div class="form-group">
-                            <label>Application Public Key</label>
-                            <input type="text" class="form-control" name="services:discord:application_public_key" value="{{ old('services:discord:application_public_key', config('services.discord.application_public_key')) }}" placeholder="hex_public_key_from_discord">
+                            <label>Configured Bot Token</label>
+                            <input type="text" readonly class="form-control" value="{{ filled(config('services.discord.bot_token')) ? 'Stored securely' : 'Not configured yet' }}">
                             <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
-                                Optional in the current gateway-sidecar setup. Ticket launcher buttons and modals are handled by the running Discord bot through the gateway, not by Discord outgoing-webhook verification.
-                            </p>
-                        </div>
-                        <div class="form-group">
-                            <label>Bot Token</label>
-                            <input type="text" class="form-control" name="services:discord:bot_token" value="" placeholder="{{ filled(config('services.discord.bot_token')) ? 'Stored securely. Leave blank to keep.' : 'paste bot token here' }}" autocomplete="new-password">
-                            <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
-                                Your Discord bot token. Get it from the <strong>Bot</strong> tab in the Discord Developer Portal. This value is stored securely.
+                                Ticket bridge uses the shared Discord bot configured in <a href="{{ route('admin.discord') }}">Discord Settings</a>.
                             </p>
                         </div>
                         <div class="form-group">

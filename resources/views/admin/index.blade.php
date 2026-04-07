@@ -13,15 +13,15 @@
 @endsection
 
 @section('content')
-<div class="row">
-    <div class="col-xs-12">
+<div class="row admin-full-row" style="margin-left: 0; margin-right: 0; width: 100%;">
+    <div class="col-xs-12 admin-full-col" style="float: none; width: 100%; max-width: none; padding-left: 0; padding-right: 0;">
         <div class="box
             @if($version->isLatestPanel())
                 box-success
             @else
                 box-danger
             @endif
-        ">
+        " style="display: block; width: 100%; max-width: none; margin-left: 0; margin-right: 0;">
             <div class="box-header with-border">
                 <h3 class="box-title">System Information</h3>
             </div>

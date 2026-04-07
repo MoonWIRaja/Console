@@ -4,11 +4,11 @@ import http from '@/api/http';
 import { rawDataToServerAllocation } from '@/api/transformers';
 import { Allocation } from '@/api/server/getServer';
 
-export default () => {
+export default (enabled = true) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
 
     return useSWR<Allocation[]>(
-        ['server:allocations', uuid],
+        enabled ? ['server:allocations', uuid] : null,
         async () => {
             const { data } = await http.get(`/api/client/servers/${uuid}/network/allocations`);
 

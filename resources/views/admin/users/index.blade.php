@@ -41,6 +41,7 @@
                             <th class="text-center">2FA</th>
                             <th class="text-center"><span data-toggle="tooltip" data-placement="top" title="Servers that this user is marked as the owner of.">Servers Owned</span></th>
                             <th class="text-center"><span data-toggle="tooltip" data-placement="top" title="Servers that this user can access because they are marked as a subuser.">Can Access</span></th>
+                            <th>Last Seen</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -62,6 +63,23 @@
                                     <a href="{{ route('admin.servers', ['filter[owner_id]' => $user->id]) }}">{{ $user->servers_count }}</a>
                                 </td>
                                 <td class="text-center">{{ $user->subuser_of_count }}</td>
+                                <td class="text-nowrap">
+                                    @if($user->last_seen_at)
+                                        @if($user->last_seen_at->gt(now()->subMinutes(5)))
+                                            <span title="{{ $user->last_seen_at->copy()->setTimezone(config('app.timezone'))->toDayDateTimeString() }}">
+                                                <i class="fa fa-circle text-green"></i> Online
+                                            </span>
+                                        @else
+                                            <span title="{{ $user->last_seen_at->copy()->setTimezone(config('app.timezone'))->toDayDateTimeString() }}">
+                                                <i class="fa fa-circle text-red"></i> {{ $user->last_seen_at->diffForHumans() }}
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">
+                                            <i class="fa fa-circle"></i> Never
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="text-center"><img src="https://www.gravatar.com/avatar/{{ md5(strtolower($user->email)) }}?s=100" style="height:20px;" class="img-circle" /></td>
                             </tr>
                         @endforeach

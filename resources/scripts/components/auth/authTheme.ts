@@ -130,8 +130,6 @@ export const burhanAuthTopbarStyles = `
 `;
 
 export const burhanAuthThemeStyles = `
-    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
-
     .burhan-auth-stage {
         --auth-topbar-height: 5.25rem;
         --auth-mode-surface-rgb: 245, 231, 198;

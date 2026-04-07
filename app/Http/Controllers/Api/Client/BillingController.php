@@ -13,6 +13,7 @@ use Pterodactyl\Services\Billing\BillingProfileService;
 use Pterodactyl\Services\Billing\BillingInvoiceService;
 use Pterodactyl\Services\Billing\BillingPaymentService;
 use Pterodactyl\Services\Billing\BillingProfileCompletenessService;
+use Pterodactyl\Services\Billing\BclCheckoutService;
 use Pterodactyl\Services\Billing\StripeCheckoutService;
 use Pterodactyl\Services\Billing\StripePortalService;
 use Pterodactyl\Services\Billing\StripeWebhookService;
@@ -405,9 +406,11 @@ class BillingController extends ClientApiController
                     ? (blank($subscription->provider_subscription_id)
                         ? 'This subscription has not completed Stripe migration yet.'
                         : null)
-                    : (blank($subscription->gateway_token_reference)
-                        ? 'Auto-renew requires a tokenized card payment. QR and online banking payments usually do not create a reusable token.'
-                        : null)),
+                    : ($subscription->gateway_provider === BclCheckoutService::PROVIDER
+                        ? 'BCL hosted checkout does not store recurring payment tokens in v1.'
+                        : (blank($subscription->gateway_token_reference)
+                            ? 'Auto-renew requires a tokenized card payment. QR and online banking payments usually do not create a reusable token.'
+                            : null))),
             'renews_at' => optional($subscription->renews_at)->toIso8601String(),
             'next_invoice_at' => optional($subscription->next_invoice_at)->toIso8601String(),
             'grace_suspend_at' => optional($subscription->grace_suspend_at)->toIso8601String(),

@@ -4,10 +4,12 @@ namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Models\Egg;
+use Pterodactyl\Models\Nest;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\ServerVariable;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Services\Servers\StartupCommandService;
+use Pterodactyl\Services\Servers\StartupProfileCleanupService;
 use Pterodactyl\Repositories\Eloquent\ServerVariableRepository;
 use Pterodactyl\Transformers\Api\Client\EggVariableTransformer;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
@@ -26,6 +28,7 @@ class StartupController extends ClientApiController
     public function __construct(
         private StartupCommandService $startupCommandService,
         private ServerVariableRepository $repository,
+        private StartupProfileCleanupService $startupProfileCleanupService,
     ) {
         parent::__construct();
     }
@@ -45,6 +48,44 @@ class StartupController extends ClientApiController
                 ...$this->buildStartupMeta($server, $startup),
             ])
             ->toArray();
+    }
+
+    /**
+     * Returns a list of available nests.
+     */
+    public function nests(GetStartupRequest $request, Server $server): array
+    {
+        $nests = Nest::query()
+            ->whereHas('eggs')
+            ->orderBy('name')
+            ->get(['id', 'name', 'description']);
+
+        return $nests->map(fn (Nest $nest) => [
+            'id' => $nest->id,
+            'name' => $nest->name,
+            'description' => $nest->description,
+        ])->values()->toArray();
+    }
+
+    /**
+     * Returns a list of available eggs for a specific nest.
+     */
+    public function nestEggs(GetStartupRequest $request, Server $server, int $nestId): array
+    {
+        $eggs = Egg::query()
+            ->where('nest_id', $nestId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'description', 'docker_images']);
+
+        return $eggs->map(fn (Egg $egg) => [
+            'id' => $egg->id,
+            'name' => $egg->name,
+            'description' => $egg->description,
+            'docker_images' => collect($this->normalizeDockerImageMap($egg->docker_images ?? []))
+                ->map(fn (string $value, string $label) => ['label' => $label, 'value' => $value])
+                ->values()
+                ->toArray(),
+        ])->values()->toArray();
     }
 
     /**
@@ -158,9 +199,11 @@ class StartupController extends ClientApiController
 
     public function changeEgg(UpdateStartupEggRequest $request, Server $server): array
     {
+        $nestId = (int) $request->input('nest_id');
+
         /** @var Egg $egg */
         $egg = Egg::query()
-            ->where('nest_id', $server->nest_id)
+            ->where('nest_id', $nestId)
             ->findOrFail((int) $request->input('egg_id'));
 
         $dockerImages = $this->normalizeDockerImageMap($egg->docker_images ?? []);
@@ -171,17 +214,28 @@ class StartupController extends ClientApiController
             : ($dockerImageValues[0] ?? $server->image);
 
         $previousEgg = $server->egg_id;
+        $previousNest = $server->nest_id;
 
         $isEggChanging = $server->egg_id !== $egg->id;
+        $isNestChanging = $server->nest_id !== $nestId;
+        $cleanupSummary = [
+            'deleted_backups' => 0,
+            'deleted_container_entries' => 0,
+        ];
+
+        if ($isNestChanging) {
+            $cleanupSummary = $this->startupProfileCleanupService->handleNestChange($server);
+        }
+
         $server->forceFill([
             'egg_id' => $egg->id,
             'nest_id' => $egg->nest_id,
-            'startup' => $isEggChanging ? ($egg->startup ?? $server->startup) : $server->startup,
+            'startup' => ($isEggChanging || $isNestChanging) ? ($egg->startup ?? $server->startup) : $server->startup,
             'image' => $nextImage,
         ])->save();
 
         // Drop all current server variable values only when egg is changed.
-        if ($isEggChanging) {
+        if ($isEggChanging || $isNestChanging) {
             ServerVariable::query()->where('server_id', $server->id)->delete();
         }
         $server->refresh();
@@ -192,7 +246,12 @@ class StartupController extends ClientApiController
             ->subject($server)
             ->property('old_egg_id', $previousEgg)
             ->property('new_egg_id', $egg->id)
+            ->property('old_nest_id', $previousNest)
+            ->property('new_nest_id', $egg->nest_id)
             ->property('egg_changed', $isEggChanging)
+            ->property('nest_changed', $isNestChanging)
+            ->property('deleted_backups', $cleanupSummary['deleted_backups'])
+            ->property('deleted_container_entries', $cleanupSummary['deleted_container_entries'])
             ->log();
 
         return $this->fractal->collection(

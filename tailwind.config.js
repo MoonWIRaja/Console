@@ -18,7 +18,39 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                header: ['"IBM Plex Sans"', '"Roboto"', 'system-ui', 'sans-serif'],
+                sans: [
+                    '"Geist Mono"',
+                    'ui-monospace',
+                    'SFMono-Regular',
+                    'Menlo',
+                    'Monaco',
+                    'Consolas',
+                    '"Liberation Mono"',
+                    '"Courier New"',
+                    'monospace',
+                ],
+                mono: [
+                    '"Geist Mono"',
+                    'ui-monospace',
+                    'SFMono-Regular',
+                    'Menlo',
+                    'Monaco',
+                    'Consolas',
+                    '"Liberation Mono"',
+                    '"Courier New"',
+                    'monospace',
+                ],
+                header: [
+                    '"Geist Mono"',
+                    'ui-monospace',
+                    'SFMono-Regular',
+                    'Menlo',
+                    'Monaco',
+                    'Consolas',
+                    '"Liberation Mono"',
+                    '"Courier New"',
+                    'monospace',
+                ],
             },
             colors: {
                 black: '#131a20',

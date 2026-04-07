@@ -55,7 +55,7 @@ class UserController extends Controller
         )
             ->allowedFilters(['username', 'email', 'uuid'])
             ->defaultSort('-root_admin')
-            ->allowedSorts(['id', 'uuid'])
+            ->allowedSorts(['id', 'uuid', 'last_seen_at'])
             ->paginate(50);
 
         return view('admin.users.index', ['users' => $users]);

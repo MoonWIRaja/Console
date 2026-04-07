@@ -7,11 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Billing\StripeWebhookService;
+use Pterodactyl\Services\Security\SecurityOrchestratorService;
+use Pterodactyl\Services\Security\SecurityVocabulary;
 
 class StripeGatewayController extends Controller
 {
     public function __construct(
         private StripeWebhookService $webhookService,
+        private SecurityOrchestratorService $orchestrator,
     ) {
     }
 
@@ -23,6 +26,23 @@ class StripeGatewayController extends Controller
                 $request->header('Stripe-Signature')
             );
         } catch (Throwable $exception) {
+            $message = strtolower($exception->getMessage());
+            if (str_contains($message, 'signature') || str_contains($message, 'secret')) {
+                $this->orchestrator->record('webhook_signature_failure', [
+                    'severity' => 'high',
+                    'confidence' => 95,
+                    'source_ip' => $request->ip(),
+                    'summary' => 'Stripe webhook request failed signature validation.',
+                    'evidence' => [
+                        'provider' => 'stripe',
+                        'message' => $exception->getMessage(),
+                    ],
+                    'blocked' => true,
+                    'verdict' => SecurityVocabulary::VERDICT_BLOCKED,
+                    'mitigation_stage' => SecurityVocabulary::STAGE_TEMP_BLOCK,
+                ]);
+            }
+
             report($exception);
 
             return response('Webhook rejected.', 422)->header('Content-Type', 'text/plain; charset=UTF-8');

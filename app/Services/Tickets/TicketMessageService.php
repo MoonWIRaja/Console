@@ -5,6 +5,7 @@ namespace Pterodactyl\Services\Tickets;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Ticket;
 use Pterodactyl\Models\TicketMessage;
@@ -124,7 +125,7 @@ class TicketMessageService
         array $files = [],
         array $meta = []
     ): TicketMessage {
-        return DB::transaction(function () use ($ticket, $authorType, $user, $body, $origin, $files, $meta) {
+        $message = DB::transaction(function () use ($ticket, $authorType, $user, $body, $origin, $files, $meta) {
             $message = TicketMessage::query()->create([
                 'ticket_id' => $ticket->id,
                 'author_type' => $authorType,
@@ -146,6 +147,29 @@ class TicketMessageService
 
             return $message->fresh(['attachments']);
         });
+
+        $event = match ($authorType) {
+            TicketMessage::AUTHOR_ADMIN => 'ticket:message.staff',
+            TicketMessage::AUTHOR_SYSTEM => 'ticket:message.system',
+            default => 'ticket:message.user',
+        };
+
+        $activity = Activity::event($event)
+            ->subject($ticket->fresh(), $message)
+            ->property([
+                'ticket_number' => $ticket->ticket_number,
+                'author_type' => $authorType,
+                'origin' => $origin,
+                'body_preview' => mb_substr(trim($body), 0, 160),
+            ]);
+
+        if ($user instanceof User) {
+            $activity->subject($user);
+        }
+
+        $activity->log();
+
+        return $message;
     }
 
     private function touchTicketAfterMessage(Ticket $ticket, TicketMessage $message): void

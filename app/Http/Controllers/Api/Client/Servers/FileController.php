@@ -29,6 +29,10 @@ class FileController extends ClientApiController
 {
     private const MAX_DECOMPRESS_SYMLINK_RETRIES = 10;
     private const DECOMPRESS_BAD_PATH_RESOLUTION_PATTERN = '/handling file(?: \d+)?:\s+(.+?):\s+filesystem: .*bad path resolution/i';
+    private const HIDDEN_ROOT_DIRECTORIES = [
+        '.recycle_bin',
+        '.steam',
+    ];
 
     /**
      * FileController constructor.
@@ -56,7 +60,7 @@ class FileController extends ClientApiController
                 ->toArray();
         }
 
-        if ($normalizedDirectory === '/.recycle_bin' || str_starts_with($normalizedDirectory, '/.recycle_bin/')) {
+        if ($this->isHiddenRootPath($normalizedDirectory)) {
             return $this->fractal->collection([])
                 ->transformWith($this->getTransformer(FileObjectTransformer::class))
                 ->toArray();
@@ -67,9 +71,9 @@ class FileController extends ClientApiController
             ->getDirectory($directory);
 
         $hiddenEntry = $this->hiddenBackupEntryForDirectory($normalizedDirectory);
-        $contents = array_values(array_filter($contents, function (array $entry) use ($hiddenEntry): bool {
+        $contents = array_values(array_filter($contents, function (array $entry) use ($hiddenEntry, $normalizedDirectory): bool {
             $name = (string) ($entry['name'] ?? '');
-            if ($name === '.recycle_bin') {
+            if ($this->isHiddenRootEntry($name, $normalizedDirectory)) {
                 return false;
             }
 
@@ -416,6 +420,23 @@ class FileController extends ClientApiController
         $normalized = preg_replace('#/+#', '/', $normalized) ?? '/';
 
         return $normalized === '' ? '/' : $normalized;
+    }
+
+    private function isHiddenRootPath(string $path): bool
+    {
+        foreach (self::HIDDEN_ROOT_DIRECTORIES as $directory) {
+            $rootPath = '/' . ltrim($directory, '/');
+            if ($path === $rootPath || str_starts_with($path, $rootPath . '/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isHiddenRootEntry(string $entryName, string $directory): bool
+    {
+        return $directory === '/' && in_array($entryName, self::HIDDEN_ROOT_DIRECTORIES, true);
     }
 
     private function localBackupDirectory(): string

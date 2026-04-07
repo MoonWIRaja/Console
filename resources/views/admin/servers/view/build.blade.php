@@ -119,6 +119,13 @@
                                     </div>
                                     <p class="text-muted small">The total number of backups that can be created for this server.</p>
                                 </div>
+                                <div class="form-group col-xs-6">
+                                    <label for="split_limit" class="control-label">Split Limit</label>
+                                    <div>
+                                        <input type="text" name="split_limit" class="form-control" value="{{ old('split_limit', $server->split_limit) }}"/>
+                                    </div>
+                                    <p class="text-muted small">The total number of split child servers this server family is allowed to create.</p>
+                                </div>
                             </div>
                         </div>
                     </div>

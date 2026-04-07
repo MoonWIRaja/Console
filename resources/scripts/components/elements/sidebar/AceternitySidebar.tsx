@@ -167,7 +167,8 @@ function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps
                     display: 'flex',
                     flexDirection: 'column',
                     borderRight: '1px solid rgba(245, 231, 198, 0.12)',
-                    fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                    fontFamily:
+                        "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                     overflow: 'visible',
                     flexShrink: 0,
                     boxShadow:
@@ -202,7 +203,8 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                         justifyContent: 'space-between',
                         background: '#2D2D2D',
                         padding: '12px 16px',
-                        fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                        fontFamily:
+                            "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                         position: 'fixed',
                         top: 0,
                         left: 0,
@@ -264,7 +266,8 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                                fontFamily:
+                                    "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                                 borderRight: '1px solid rgba(245, 231, 198, 0.12)',
                                 boxShadow: '0 24px 52px rgba(0, 0, 0, 0.28)',
                             }}

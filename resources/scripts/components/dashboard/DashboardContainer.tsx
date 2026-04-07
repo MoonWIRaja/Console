@@ -217,7 +217,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     background:
                         radial-gradient(circle at 11% 0%, rgba(var(--primary-rgb), 0.08), transparent 34%),
                         linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
-                    font-family: var(--font-sans, 'Inter', sans-serif);
+                    font-family: var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
                 }
 
                 .dashboard-auth-shell::before {
@@ -575,7 +575,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 20px;
                     min-width: 0;
-                    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+                    font-family: var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
                 }
 
                 .dashboard-server-metric {
@@ -768,6 +768,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                                               server.__deprecatedUuidShort || '',
                                               server.uuid,
                                               server.node,
+                                              server.ownerUsername || '',
                                               server.description || '',
                                               server.allocations
                                                   .map(

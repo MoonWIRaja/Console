@@ -43,6 +43,14 @@ class Permission extends Model
     public const ACTION_BACKUP_DOWNLOAD = 'backup.download';
     public const ACTION_BACKUP_RESTORE = 'backup.restore';
 
+    public const ACTION_SPLIT_READ = 'split.read';
+    public const ACTION_SPLIT_CREATE = 'split.create';
+    public const ACTION_SPLIT_DELETE = 'split.delete';
+
+    public const ACTION_SUBDOMAIN_READ = 'subdomain.read';
+    public const ACTION_SUBDOMAIN_CREATE = 'subdomain.create';
+    public const ACTION_SUBDOMAIN_DELETE = 'subdomain.delete';
+
     public const ACTION_ALLOCATION_READ = 'allocation.read';
     public const ACTION_ALLOCATION_CREATE = 'allocation.create';
     public const ACTION_ALLOCATION_UPDATE = 'allocation.update';
@@ -147,6 +155,24 @@ class Permission extends Model
                 'delete' => 'Allows a user to remove backups from the system.',
                 'download' => 'Allows a user to download a backup for the server. Danger: this allows a user to access all files for the server in the backup.',
                 'restore' => 'Allows a user to restore a backup for the server. Danger: this allows the user to delete all of the server files in the process.',
+            ],
+        ],
+
+        'split' => [
+            'description' => 'Permissions that control a user\'s ability to manage split servers created from this server.',
+            'keys' => [
+                'read' => 'Allows a user to view the split family and remaining resources for this server.',
+                'create' => 'Allows a user to create a new split server from this server.',
+                'delete' => 'Allows a user to delete split child servers from this split family.',
+            ],
+        ],
+
+        'subdomain' => [
+            'description' => 'Permissions that control a user\'s ability to manage DNS subdomains for this server.',
+            'keys' => [
+                'read' => 'Allows a user to view DNS subdomains assigned to this server.',
+                'create' => 'Allows a user to create DNS subdomains for this server using the configured templates.',
+                'delete' => 'Allows a user to delete DNS subdomains assigned to this server.',
             ],
         ],
 

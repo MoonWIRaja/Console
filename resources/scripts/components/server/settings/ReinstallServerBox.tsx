@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ServerContext } from '@/state/server';
 import TitledGreyBox from '@/components/elements/TitledGreyBox';
 import reinstallServer from '@/api/server/reinstallServer';
@@ -15,6 +15,8 @@ export default () => {
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
     const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
     const [modalVisible, setModalVisible] = useState(false);
+    const isMounted = useRef(true);
+    const refreshTimer = useRef<number | null>(null);
     const { addFlash, clearFlashes } = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes);
 
     const reinstall = () => {
@@ -28,8 +30,13 @@ export default () => {
                     message: 'Your server has begun the reinstallation process.',
                 });
 
-                window.setTimeout(() => {
+                refreshTimer.current = window.setTimeout(() => {
+                    if (!isMounted.current) {
+                        return;
+                    }
+
                     getServer(uuid).catch((error) => console.error(error));
+                    refreshTimer.current = null;
                 }, 1500);
             })
             .catch((error) => {
@@ -37,12 +44,26 @@ export default () => {
 
                 addFlash({ key: 'settings', type: 'error', message: httpErrorToHuman(error) });
             })
-            .then(() => setModalVisible(false));
+            .then(() => {
+                if (isMounted.current) {
+                    setModalVisible(false);
+                }
+            });
     };
 
     useEffect(() => {
+        isMounted.current = true;
         clearFlashes();
-    }, []);
+
+        return () => {
+            isMounted.current = false;
+
+            if (refreshTimer.current !== null) {
+                window.clearTimeout(refreshTimer.current);
+                refreshTimer.current = null;
+            }
+        };
+    }, [clearFlashes]);
 
     return (
         <TitledGreyBox title={'Reinstall Server'} css={tw`relative`}>

@@ -107,6 +107,7 @@
             </div>
         </div>
     </div>
+    @if(false)
     <div class="box">
         <div class="box-header with-border">
             <h3 class="box-title">OAuth Login Providers</h3>
@@ -246,6 +247,23 @@
                         <input type="text" class="form-control" name="app:website" value="{{ old('app:website', config('app.website', config('app.url'))) }}">
                         <p class="text-muted small">This URL is used by the Website shortcut card on the dashboard header.</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+    <div class="box box-info">
+        <div class="box-header with-border">
+            <h3 class="box-title">Identity & Community Settings</h3>
+        </div>
+        <div class="box-body">
+            <p><strong>OAuth providers</strong> are now managed from <a href="{{ route('admin.oauth') }}">/admin/oauth</a>.</p>
+            <p><strong>Discord bot and community</strong> are now managed from <a href="{{ route('admin.discord') }}">/admin/discord</a>.</p>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="control-label">Dashboard Website Shortcut URL</label>
+                <div>
+                    <input type="text" class="form-control" name="app:website" value="{{ old('app:website', config('app.website', config('app.url'))) }}">
+                    <p class="text-muted small">This URL is used by the Website shortcut card on the dashboard header.</p>
                 </div>
             </div>
         </div>

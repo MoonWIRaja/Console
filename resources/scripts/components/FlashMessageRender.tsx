@@ -86,7 +86,8 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
                 marginTop: '8px',
                 maxWidth: '340px',
                 minWidth: '280px',
-                fontFamily: "'Space Mono', monospace",
+                fontFamily:
+                    "var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                 fontSize: '11px',
                 lineHeight: '1.5',
                 display: 'flex',

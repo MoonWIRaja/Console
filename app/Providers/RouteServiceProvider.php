@@ -8,12 +8,15 @@ use Pterodactyl\Enum\ResourceLimit;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Pterodactyl\Http\Controllers\Billing\BclGatewayController;
+use Pterodactyl\Http\Controllers\Api\Internal\SecurityAgentController;
 use Pterodactyl\Http\Controllers\Api\Internal\TicketDiscordBridgeController;
 use Pterodactyl\Http\Controllers\Billing\BillingDocumentController;
 use Pterodactyl\Http\Controllers\Billing\FiuuGatewayController;
 use Pterodactyl\Http\Controllers\Billing\StripeGatewayController;
 use Pterodactyl\Http\Controllers\Tickets\DiscordInteractionController;
 use Pterodactyl\Http\Controllers\Tickets\TicketAttachmentController;
+use Pterodactyl\Http\Middleware\EnforceSecurityPolicies;
 use Pterodactyl\Http\Middleware\TrimStrings;
 use Pterodactyl\Http\Middleware\AdminAuthenticate;
 use Pterodactyl\Http\Middleware\RequireTwoFactorAuthentication;
@@ -43,15 +46,22 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->routes(function () {
             Route::post('/tickets/discord/interactions', DiscordInteractionController::class)
+                ->middleware(EnforceSecurityPolicies::class)
                 ->name('tickets.discord.interactions');
 
+            Route::post('/billing/gateways/bcl/webhook', [BclGatewayController::class, 'webhook'])
+                ->middleware(EnforceSecurityPolicies::class)
+                ->name('billing.gateway.bcl.webhook');
+
             Route::post('/billing/gateways/fiuu/callback', [FiuuGatewayController::class, 'callback'])
+                ->middleware(EnforceSecurityPolicies::class)
                 ->name('billing.gateway.fiuu.callback');
 
             Route::match(['GET', 'POST'], '/billing/gateways/fiuu/return', [FiuuGatewayController::class, 'return'])
                 ->name('billing.gateway.fiuu.return');
 
             Route::post('/billing/gateways/stripe/webhook', [StripeGatewayController::class, 'webhook'])
+                ->middleware(EnforceSecurityPolicies::class)
                 ->name('billing.gateway.stripe.webhook');
 
             Route::get('/billing/gateways/stripe/return', [StripeGatewayController::class, 'return'])
@@ -90,10 +100,14 @@ class RouteServiceProvider extends ServiceProvider
                 Route::middleware('guest')->prefix('/auth')->group(base_path('routes/auth.php'));
             });
 
-            Route::prefix('/api/internal')->group(function () {
+            Route::prefix('/api/internal')->middleware(EnforceSecurityPolicies::class)->group(function () {
                 Route::post('/tickets/discord/interactions', [TicketDiscordBridgeController::class, 'interactions']);
                 Route::post('/tickets/discord/events', [TicketDiscordBridgeController::class, 'events']);
                 Route::post('/tickets/discord/heartbeat', [TicketDiscordBridgeController::class, 'heartbeat']);
+                Route::post('/security/agents/heartbeat', [SecurityAgentController::class, 'heartbeat']);
+                Route::post('/security/agents/report', [SecurityAgentController::class, 'report']);
+                Route::post('/security/agents/pull-actions', [SecurityAgentController::class, 'pullActions']);
+                Route::post('/security/agents/action-result', [SecurityAgentController::class, 'actionResult']);
             });
 
             Route::middleware(['api', RequireTwoFactorAuthentication::class])->group(function () {
@@ -102,7 +116,7 @@ class RouteServiceProvider extends ServiceProvider
                     ->scopeBindings()
                     ->group(base_path('routes/api-application.php'));
 
-                Route::middleware(['client-api'])
+                Route::middleware(['client-api', 'throttle:api.client'])
                     ->prefix('/api/client')
                     ->scopeBindings()
                     ->group(base_path('routes/api-client.php'));

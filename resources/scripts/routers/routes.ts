@@ -5,6 +5,7 @@ import ScheduleContainer from '@/components/server/schedules/ScheduleContainer';
 import UsersContainer from '@/components/server/users/UsersContainer';
 import BackupContainer from '@/components/server/backups/BackupContainer';
 import NetworkContainer from '@/components/server/network/NetworkContainer';
+import SplitContainer from '@/components/server/split/SplitContainer';
 import StartupContainer from '@/components/server/startup/StartupContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
@@ -120,9 +121,15 @@ export default {
         },
         {
             path: '/network',
-            permission: 'allocation.*',
+            permission: ['allocation.*', 'subdomain.read'],
             name: 'Network',
             component: NetworkContainer,
+        },
+        {
+            path: '/split',
+            permission: 'split.read',
+            name: 'Split',
+            component: SplitContainer,
         },
         {
             path: '/startup',

@@ -22,7 +22,20 @@
 
 .terminal {
     @apply flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden;
-    background-color: var(--card);
+    background: #0c0c0c;
+
+    &.terminal_default {
+        height: 100%;
+    }
+
+    &.terminal_default .overflows_container {
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    &.terminal_default .command_bar {
+        padding: 0.875rem !important;
+    }
 
     &.terminal_sidebar {
         @apply rounded-2xl border border-[color:var(--border)];
@@ -76,26 +89,29 @@
 
     & .overflows_container {
         @apply w-full;
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
+        padding-left: 1.25rem !important;
+        padding-right: 0.875rem !important;
+        box-sizing: border-box !important;
         box-shadow: none !important;
-        border: 1px solid var(--border) !important;
+        border: 1px solid var(--surface-border) !important;
         border-bottom: 0 !important;
         border-radius: 0.75rem 0.75rem 0 0 !important;
         outline: none !important;
     }
 
     & .command_bar {
-        @apply w-full bg-[color:var(--card)] p-2;
+        @apply w-full p-2;
         border: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         outline: none !important;
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
     }
 
     & .command_shell {
         @apply flex items-center gap-2;
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
         border: 0 !important;
         box-shadow: none !important;
         outline: none !important;
@@ -106,7 +122,9 @@
     }
 
     & .command_external {
-        @apply inline-flex h-10 w-10 flex-none items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] text-gray-300;
+        @apply inline-flex h-10 w-10 flex-none items-center justify-center rounded-lg border text-gray-300;
+        border-color: var(--surface-border);
+        background: #0c0c0c !important;
         @apply transition-colors duration-150;
         box-shadow: none !important;
         outline: none !important;
@@ -119,7 +137,8 @@
     }
 
     & > .container {
-        @apply min-h-0 min-w-0 max-w-full flex-1 overflow-hidden rounded-none border-0 bg-[color:var(--card)] font-mono text-sm;
+        @apply min-h-0 min-w-0 max-w-full flex-1 overflow-hidden rounded-none border-0 font-mono text-sm;
+        background: #0c0c0c !important;
         box-shadow: none !important;
         border-color: transparent !important;
         outline: none !important;
@@ -146,7 +165,7 @@
     :global(.xterm .xterm-viewport) {
         width: 100% !important;
         max-width: 100% !important;
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
@@ -159,28 +178,29 @@
 
     :global(.xterm .xterm-screen) {
         max-width: 100% !important;
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
     }
 
     :global(.xterm .xterm-rows) {
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
     }
 
     :global(.xterm .xterm-helpers),
     :global(.xterm .xterm-helper-textarea),
     :global(.xterm .xterm-scroll-area) {
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
     }
 
     & .command_input {
-        @apply w-full appearance-none rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs;
+        @apply w-full appearance-none rounded-lg border py-2 pl-3 pr-8 text-xs;
         @apply transition-shadow outline-none focus:outline-none focus-visible:outline-none;
         @apply focus:border-[color:var(--primary)];
         @apply focus:ring-0 focus:ring-transparent;
         -webkit-appearance: none;
         @apply placeholder:text-gray-500;
         color: var(--foreground);
-        background-color: var(--card) !important;
+        border-color: var(--surface-border) !important;
+        background: #0c0c0c !important;
         box-shadow: none !important;
     }
 
@@ -192,15 +212,15 @@
     }
 
     & .command_input:disabled {
-        background-color: var(--card) !important;
+        background: #0c0c0c !important;
         color: #6b7280 !important;
-        border-color: var(--border) !important;
+        border-color: var(--surface-border) !important;
         opacity: 1 !important;
     }
 
     :global(input[aria-label='Console command input.']) {
-        background-color: var(--card) !important;
-        border-color: var(--border) !important;
+        background: #0c0c0c !important;
+        border-color: var(--surface-border) !important;
         box-shadow: none !important;
         outline: none !important;
         color: var(--foreground) !important;

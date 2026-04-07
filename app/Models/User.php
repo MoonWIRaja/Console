@@ -51,6 +51,7 @@ use Pterodactyl\Notifications\SendPasswordReset as ResetPasswordNotification;
  * @property string|null $avatar
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $last_seen_at
  * @property \Illuminate\Database\Eloquent\Collection|\Pterodactyl\Models\ApiKey[] $apiKeys
  * @property int|null $api_keys_count
  * @property string $name
@@ -170,6 +171,7 @@ class User extends Model implements
         'totp_authenticated_at' => 'datetime',
         'email_verification_expires_at' => 'datetime',
         'password_reset_expires_at' => 'datetime',
+        'last_seen_at' => 'datetime',
     ];
 
     /**

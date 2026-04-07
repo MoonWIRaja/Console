@@ -1,6 +1,9 @@
 import http from '@/api/http';
 import { ServerEggVariable } from '@/api/server/types';
 import { rawDataToServerEggVariable } from '@/api/transformers';
+import type { StartupEggOption } from '@/api/swr/getServerStartup';
+
+export type StartupProfileEgg = StartupEggOption;
 
 interface StartupResponse {
     invocation: string;
@@ -10,12 +13,12 @@ interface StartupResponse {
     dockerImages: Record<string, string>;
     nest: { id: number; name: string };
     currentEgg: { id: number; name: string };
-    eggs: { id: number; name: string; description?: string | null; dockerImages: { label: string; value: string }[] }[];
+    eggs: StartupProfileEgg[];
     variables: ServerEggVariable[];
 }
 
-export default async (uuid: string, eggId: number, dockerImage?: string): Promise<StartupResponse> => {
-    const payload: Record<string, unknown> = { egg_id: eggId };
+export default async (uuid: string, nestId: number, eggId: number, dockerImage?: string): Promise<StartupResponse> => {
+    const payload: Record<string, unknown> = { nest_id: nestId, egg_id: eggId };
     if (dockerImage) payload.docker_image = dockerImage;
 
     const { data } = await http.put(`/api/client/servers/${uuid}/startup/egg`, payload);
@@ -31,7 +34,7 @@ export default async (uuid: string, eggId: number, dockerImage?: string): Promis
         eggs: (data.meta.eggs || []).map((egg: any) => ({
             id: Number(egg.id),
             name: egg.name,
-            description: egg.description,
+            description: egg.description ?? null,
             dockerImages: egg.docker_images || [],
         })),
         variables: ((data.data || []) as any[]).map(rawDataToServerEggVariable),

@@ -57,10 +57,22 @@ class DaemonFileRepository extends DaemonRepository
      */
     public function putContent(string $path, string $content): ResponseInterface
     {
+        return $this->putRawContent($path, $content, 'text/plain; charset=utf-8');
+    }
+
+    /**
+     * Save raw contents to a given file. This is used for binary assets such as PNG icons.
+     *
+     * @throws DaemonConnectionException
+     */
+    public function putRawContent(string $path, string $content, string $contentType = 'application/octet-stream'): ResponseInterface
+    {
         Assert::isInstanceOf($this->server, Server::class);
 
         try {
-            return $this->getHttpClient()->post(
+            return $this->getHttpClient([
+                'Content-Type' => $contentType,
+            ])->post(
                 sprintf('/api/servers/%s/files/write', $this->server->uuid),
                 [
                     'query' => ['file' => $path],

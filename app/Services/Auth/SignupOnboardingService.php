@@ -57,7 +57,7 @@ class SignupOnboardingService
     {
         $user = $this->resolvePendingUser($request);
 
-        return $user ? $this->toFrontendPayload($request, $user) : null;
+        return $user ? $this->prepareForAuth($request, $user) : null;
     }
 
     public function resolvePendingUser(Request $request): ?User

@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Ticket;
 use Pterodactyl\Models\Server;
@@ -60,7 +61,7 @@ class TicketService
             fn (UserOAuthAccount $account) => $account->provider === 'discord'
         );
 
-        return DB::transaction(function () use ($user, $payload, $options, $category, $invoice, $payment, $subscription, $discordAccount, $supportServer) {
+        $ticket = DB::transaction(function () use ($user, $payload, $options, $category, $invoice, $payment, $subscription, $discordAccount, $supportServer) {
             $meta = array_filter(array_merge(
                 Arr::wrap($payload['meta'] ?? []),
                 [
@@ -104,6 +105,19 @@ class TicketService
 
             return $ticket->fresh(['messages.attachments', 'invoice', 'payment', 'subscription', 'order', 'assignedAdmin']);
         });
+
+        Activity::event('ticket:create')
+            ->subject($ticket, $user)
+            ->property([
+                'ticket_number' => $ticket->ticket_number,
+                'category' => $ticket->category,
+                'status' => $ticket->status,
+                'source' => $ticket->source,
+                'requester_email' => $user->email,
+            ])
+            ->log();
+
+        return $ticket;
     }
 
     public function postSystemMessage(Ticket $ticket, string $body, array $meta = []): Ticket
@@ -136,7 +150,18 @@ class TicketService
             'closed_at' => null,
         ])->saveOrFail();
 
-        return $ticket->fresh(['messages.attachments', 'invoice', 'payment', 'subscription', 'order', 'assignedAdmin']);
+        $ticket = $ticket->fresh(['user', 'messages.attachments', 'invoice', 'payment', 'subscription', 'order', 'assignedAdmin']);
+
+        Activity::event('ticket:reopen')
+            ->subject($ticket, $user)
+            ->property([
+                'ticket_number' => $ticket->ticket_number,
+                'status' => $ticket->status,
+                'requester_email' => $ticket->user?->email,
+            ])
+            ->log();
+
+        return $ticket;
     }
 
     public function updateStatus(Ticket $ticket, string $status, ?int $assignedAdminId = null): Ticket
@@ -156,9 +181,29 @@ class TicketService
             $payload['assigned_admin_id'] = $assignedAdminId;
         }
 
+        $previousStatus = $ticket->status;
         $ticket->forceFill($payload)->saveOrFail();
 
-        return $ticket->fresh(['messages.attachments', 'invoice', 'payment', 'subscription', 'order', 'assignedAdmin']);
+        $ticket = $ticket->fresh(['user', 'messages.attachments', 'invoice', 'payment', 'subscription', 'order', 'assignedAdmin']);
+
+        $event = match ($status) {
+            Ticket::STATUS_CLOSED => 'ticket:close',
+            Ticket::STATUS_RESOLVED => 'ticket:resolve',
+            default => 'ticket:status.update',
+        };
+
+        Activity::event($event)
+            ->subject($ticket)
+            ->property([
+                'ticket_number' => $ticket->ticket_number,
+                'from_status' => $previousStatus,
+                'to_status' => $ticket->status,
+                'assigned_admin_id' => $assignedAdminId,
+                'requester_email' => $ticket->user?->email,
+            ])
+            ->log();
+
+        return $ticket;
     }
 
     public function resolveExistingOpenTicket(string $category, ?BillingInvoice $invoice = null, ?BillingPayment $payment = null): ?Ticket

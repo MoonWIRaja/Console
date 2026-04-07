@@ -43,8 +43,20 @@ const client = new Client({
 
 let heartbeatTimer = null;
 
-const signBody = (body) =>
-    crypto.createHmac('sha256', env.sharedSecret).update(body).digest('hex');
+const buildSignedHeaders = (body) => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce = crypto.randomUUID();
+    const signature = crypto
+        .createHmac('sha256', env.sharedSecret)
+        .update(`${timestamp}\n${nonce}\n${body}`)
+        .digest('hex');
+
+    return {
+        'X-Tickets-Timestamp': String(timestamp),
+        'X-Tickets-Nonce': nonce,
+        'X-Tickets-Signature': signature,
+    };
+};
 
 const postInternal = async (path, payload, { expectJson = false } = {}) => {
     const body = JSON.stringify(payload);
@@ -52,7 +64,7 @@ const postInternal = async (path, payload, { expectJson = false } = {}) => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-Tickets-Signature': signBody(body),
+            ...buildSignedHeaders(body),
         },
         body,
     });
@@ -111,7 +123,7 @@ const normalizeThread = (channel) => ({
     type: channel?.type ?? null,
 });
 
-const normalizeMessage = (message) => ({
+const normalizeMessage = (message, member = message.member) => ({
     id: String(message.id),
     channel_id: String(message.channelId),
     content: message.content ?? '',
@@ -123,12 +135,25 @@ const normalizeMessage = (message) => ({
         global_name: message.author?.globalName ?? null,
         bot: !!message.author?.bot,
         webhook_id: message.webhookId ? String(message.webhookId) : null,
-        roles: normalizeRoles(message.member),
+        roles: normalizeRoles(member),
     },
     member: {
-        roles: normalizeRoles(message.member),
+        roles: normalizeRoles(member),
     },
 });
+
+const resolveMessageMember = async (message) => {
+    const currentRoles = normalizeRoles(message.member);
+    if (currentRoles.length > 0) {
+        return message.member;
+    }
+
+    if (!message.guild || !message.author?.id) {
+        return message.member ?? null;
+    }
+
+    return message.guild.members.fetch(message.author.id).catch(() => message.member ?? null);
+};
 
 const shouldIgnoreMessage = (message) => {
     if (!isThreadChannel(message.channel)) {
@@ -317,7 +342,19 @@ const buildInteractionMessage = (data = {}, { includeEphemeral = false } = {}) =
 
 const applyInteractionActions = async (interaction, response) => {
     for (const action of response.actions ?? []) {
-        if (!action || action.type !== 'delete_channel') {
+        if (!action) {
+            continue;
+        }
+
+        if (action.type === 'delete_reply_after_ms') {
+            const delayMs = Math.max(Number(action.delay_ms ?? 0) || 0, 1000);
+            setTimeout(() => {
+                interaction.deleteReply().catch(() => null);
+            }, delayMs);
+            continue;
+        }
+
+        if (action.type !== 'delete_channel') {
             continue;
         }
 
@@ -397,10 +434,12 @@ const emitMessageEvent = async (eventType, rawMessage) => {
         return;
     }
 
+    const member = await resolveMessageMember(message);
+
     await postInternal('/api/internal/tickets/discord/events', {
         event_type: eventType,
         thread: normalizeThread(message.channel),
-        message: normalizeMessage(message),
+        message: normalizeMessage(message, member),
     });
 };
 
@@ -438,10 +477,12 @@ client.on(Events.MessageDelete, async (message) => {
             return;
         }
 
+        const member = await resolveMessageMember(message);
+
         await postInternal('/api/internal/tickets/discord/events', {
             event_type: 'MESSAGE_DELETE',
             thread: normalizeThread(message.channel),
-            message: normalizeMessage(message),
+            message: normalizeMessage(message, member),
         });
     } catch (error) {
         console.error('[ticket-bridge] MESSAGE_DELETE failed:', error);
@@ -454,7 +495,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             return;
         }
 
-        if (!String(interaction.customId ?? '').startsWith('tickets:')) {
+        const customId = String(interaction.customId ?? '');
+        if (!customId.startsWith('tickets:') && !customId.startsWith('down-detector:')) {
             return;
         }
 

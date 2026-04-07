@@ -12,6 +12,9 @@
             <!-- Font preconnect only; avoid preload warnings for fonts not used on every page -->
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&display=swap">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             @include('partials.branding.favicon')
         @show
 

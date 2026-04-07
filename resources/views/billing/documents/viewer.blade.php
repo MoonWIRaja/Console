@@ -7,13 +7,14 @@
     <meta name="robots" content="noindex">
     <title>{{ config('app.name', 'Pterodactyl') }} - {{ $title }}</title>
     @include('partials.branding.favicon')
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&display=swap">
     <style>
         html, body {
             height: 100%;
             margin: 0;
             background: #eef1f5;
             color: #1f2937;
-            font-family: Inter, Arial, sans-serif;
+            font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
         .shell {
             min-height: 100%;

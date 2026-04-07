@@ -8,6 +8,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\UserOAuthAccount;
 use Pterodactyl\Services\Auth\SignupOnboardingService;
@@ -103,24 +104,37 @@ class OAuthController extends AbstractLoginController
             return $this->redirectWithStatus($request, $intent, $provider, 'failed', $flow);
         }
 
-        if (($flow['intent'] ?? 'login') === 'link') {
-            return $this->handleLinkedAccountCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
-        }
+        try {
+            if (($flow['intent'] ?? 'login') === 'link') {
+                return $this->handleLinkedAccountCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
+            }
 
-        if (($flow['intent'] ?? 'login') === 'signup') {
-            return $this->handleSignupCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
-        }
+            if (($flow['intent'] ?? 'login') === 'signup') {
+                return $this->handleSignupCallback($request, $provider, (int) ($flow['user_id'] ?? 0), $identity, $flow);
+            }
 
-        return $this->handleLoginCallback($request, $provider, $identity);
+            return $this->handleLoginCallback($request, $provider, $identity);
+        } catch (Throwable $exception) {
+            Log::error('OAuth callback processing failed.', [
+                'provider' => $provider,
+                'intent' => $flow['intent'] ?? 'login',
+                'flow_user_id' => $flow['user_id'] ?? null,
+                'provider_id' => $identity['provider_id'] ?? null,
+                'exception_class' => $exception::class,
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
+            report($exception);
+
+            return $this->redirectWithStatus($request, $intent, $provider, 'failed', $flow);
+        }
     }
 
     private function handleLoginCallback(Request $request, string $provider, array $identity): RedirectResponse
     {
-        $account = UserOAuthAccount::query()
-            ->with('user')
-            ->where('provider', $provider)
-            ->where('provider_id', $identity['provider_id'])
-            ->first();
+        $account = $this->findAccountByIdentity($provider, (string) $identity['provider_id']);
 
         if (!$account) {
             return $this->redirectWithStatus($request, 'login', $provider, 'not_linked');
@@ -159,10 +173,7 @@ class OAuthController extends AbstractLoginController
             return $this->redirectWithStatus($request, 'link', $provider, 'login_required');
         }
 
-        $existing = UserOAuthAccount::query()
-            ->where('provider', $provider)
-            ->where('provider_id', $identity['provider_id'])
-            ->first();
+        $existing = $this->findAccountByIdentity($provider, (string) $identity['provider_id']);
 
         if ($existing && $existing->user_id !== $user->id) {
             return $this->redirectWithStatus($request, 'link', $provider, 'conflict');
@@ -185,10 +196,7 @@ class OAuthController extends AbstractLoginController
 
         $this->signupOnboarding->remember($request, $user);
 
-        $existing = UserOAuthAccount::query()
-            ->where('provider', $provider)
-            ->where('provider_id', $identity['provider_id'])
-            ->first();
+        $existing = $this->findAccountByIdentity($provider, (string) $identity['provider_id']);
 
         if ($existing && $existing->user_id !== $user->id) {
             return $this->redirectWithStatus(
@@ -223,15 +231,58 @@ class OAuthController extends AbstractLoginController
         $tokens = is_array($identity['oauth_tokens'] ?? null) ? $identity['oauth_tokens'] : [];
 
         $account->forceFill([
-            'provider' => $identity['provider'],
-            'provider_id' => $identity['provider_id'],
-            'email' => $identity['email'],
-            'display_name' => $identity['display_name'],
-            'avatar' => $identity['avatar'],
+            'provider' => $this->limitNullableString($identity['provider'] ?? null, 32) ?? '',
+            'provider_id' => $this->limitNullableString($identity['provider_id'] ?? null, 191) ?? '',
+            'email' => $this->limitNullableString($identity['email'] ?? null, 191),
+            'display_name' => $this->limitNullableString($identity['display_name'] ?? null, 191),
+            'avatar' => $this->limitNullableString($identity['avatar'] ?? null, 2048),
             'access_token' => $tokens['access_token'] ?? null,
             'refresh_token' => $tokens['refresh_token'] ?? null,
             'token_expires_at' => $tokens['expires_at'] ?? null,
         ])->saveOrFail();
+    }
+
+    private function findAccountByIdentity(string $provider, string $providerId): ?UserOAuthAccount
+    {
+        $account = UserOAuthAccount::query()
+            ->with('user')
+            ->where('provider', $provider)
+            ->where('provider_id', $providerId)
+            ->first();
+
+        return $this->pruneOrphanedAccount($account);
+    }
+
+    private function pruneOrphanedAccount(?UserOAuthAccount $account): ?UserOAuthAccount
+    {
+        if (!$account || $account->user) {
+            return $account;
+        }
+
+        Log::warning('Removing orphaned OAuth account.', [
+            'oauth_account_id' => $account->id,
+            'provider' => $account->provider,
+            'provider_id' => $account->provider_id,
+            'user_id' => $account->user_id,
+        ]);
+
+        $account->delete();
+
+        return null;
+    }
+
+    private function limitNullableString(mixed $value, int $maxLength): ?string
+    {
+        if (!is_scalar($value) && $value !== null) {
+            return null;
+        }
+
+        $string = trim((string) ($value ?? ''));
+        if ($string === '') {
+            return null;
+        }
+
+        return mb_substr($string, 0, $maxLength);
     }
 
     private function hasValidFlow(mixed $flow, string $provider, string $state): bool

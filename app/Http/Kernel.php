@@ -6,9 +6,11 @@ use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Middleware\TrustProxies;
+use Pterodactyl\Http\Middleware\EnforceSecurityPolicies;
 use Pterodactyl\Http\Middleware\TrimStrings;
 use Illuminate\Session\Middleware\StartSession;
 use Pterodactyl\Http\Middleware\EncryptCookies;
+use Pterodactyl\Http\Middleware\UpdateLastSeen;
 use Pterodactyl\Http\Middleware\Api\IsValidJson;
 use Pterodactyl\Http\Middleware\VerifyCsrfToken;
 use Pterodactyl\Http\Middleware\VerifyAuthHoneypot;
@@ -65,16 +67,20 @@ class Kernel extends HttpKernel
             StartSession::class,
             ShareErrorsFromSession::class,
             VerifyCsrfToken::class,
+            UpdateLastSeen::class,
             SubstituteBindings::class,
             LanguageMiddleware::class,
+            EnforceSecurityPolicies::class,
         ],
         'api' => [
             EnsureStatefulRequests::class,
             'auth:sanctum',
+            UpdateLastSeen::class,
             IsValidJson::class,
             TrackAPIKey::class,
             RequireTwoFactorAuthentication::class,
             AuthenticateIPAccess::class,
+            EnforceSecurityPolicies::class,
         ],
         'application-api' => [
             SubstituteBindings::class,

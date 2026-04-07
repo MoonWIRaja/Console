@@ -40,4 +40,10 @@ npm start
 - `INTERACTION_CREATE` untuk launcher `Payment`, `Refund`, dan `Support`
 - heartbeat berkala ke `/api/internal/tickets/discord/heartbeat`
 
-Semua request ke panel akan ditandatangani menggunakan `X-Tickets-Signature` dengan `HMAC-SHA256` berdasarkan `TICKET_BRIDGE_SHARED_SECRET`.
+Semua request ke panel akan ditandatangani menggunakan:
+
+- `X-Tickets-Timestamp`
+- `X-Tickets-Nonce`
+- `X-Tickets-Signature`
+
+Signature dibina dengan `HMAC-SHA256` untuk payload `timestamp + "\n" + nonce + "\n" + body` berdasarkan `TICKET_BRIDGE_SHARED_SECRET`. Panel akan reject request yang timestamp terlalu lari, header tak lengkap, atau `nonce` yang dimainkan semula.

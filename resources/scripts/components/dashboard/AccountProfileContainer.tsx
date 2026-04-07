@@ -192,7 +192,7 @@ export default () => {
                     background:
                         radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
                         linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
-                    font-family: var(--font-sans, 'Inter', sans-serif);
+                    font-family: var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
                 }
 
                 .account-auth-shell::before {

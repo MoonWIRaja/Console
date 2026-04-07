@@ -49,9 +49,10 @@ class BuildModificationService
             $merge = Arr::only($data, ['oom_disabled', 'memory', 'swap', 'io', 'cpu', 'threads', 'disk', 'allocation_id']);
 
             $server->forceFill(array_merge($merge, [
-                'database_limit' => Arr::get($data, 'database_limit', 0) ?? null,
-                'allocation_limit' => Arr::get($data, 'allocation_limit', 0) ?? null,
-                'backup_limit' => Arr::get($data, 'backup_limit', 0) ?? 0,
+                'database_limit' => Arr::get($data, 'database_limit', $server->database_limit) ?? null,
+                'allocation_limit' => Arr::get($data, 'allocation_limit', $server->allocation_limit) ?? null,
+                'backup_limit' => Arr::get($data, 'backup_limit', $server->backup_limit) ?? 0,
+                'split_limit' => Arr::get($data, 'split_limit', $server->split_limit) ?? 0,
             ]))->saveOrFail();
 
             return $server->refresh();

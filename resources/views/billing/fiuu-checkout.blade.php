@@ -8,6 +8,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="Thu, 01 Jan 1970 00:00:00 GMT">
     <title>Redirecting to Fiuu Checkout</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&display=swap">
     <style>
         body {
             margin: 0;
@@ -18,7 +19,7 @@
             padding: 24px;
             background: #05080e;
             color: #f8f6ef;
-            font-family: "Space Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
 
         .checkout-card {

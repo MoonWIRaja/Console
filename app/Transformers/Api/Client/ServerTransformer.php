@@ -38,6 +38,7 @@ class ServerTransformer extends BaseClientTransformer
 
         return [
             'server_owner' => $user->id === $server->owner_id,
+            'owner_username' => $server->user?->username ?? 'Unknown owner',
             'identifier' => config('pterodactyl.features.new_server_identifiers')
                 ? $server->identifier
                 : $server->uuidShort,

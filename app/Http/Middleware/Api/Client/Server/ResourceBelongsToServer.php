@@ -74,6 +74,14 @@ class ResourceBelongsToServer
                         throw $exception;
                     }
                     break;
+                case Server::class:
+                    $serverRootId = $server->split_root_server_id ?: $server->id;
+                    $modelRootId = $model->split_root_server_id ?: $model->id;
+
+                    if ($modelRootId !== $serverRootId) {
+                        throw $exception;
+                    }
+                    break;
                 default:
                     // Don't return a 404 here since we want to make sure no one relies
                     // on this middleware in a context in which it will not work. Fail safe.

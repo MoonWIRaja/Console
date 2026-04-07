@@ -448,11 +448,15 @@ class BillingInvoiceService
                     ])
                     ->exists();
 
-                $invoice->forceFill([
-                    'status' => $hasSuccessfulPayment
-                        ? BillingInvoice::STATUS_PAID
-                        : BillingInvoice::STATUS_OPEN,
-                ])->saveOrFail();
+                $targetStatus = $hasSuccessfulPayment
+                    ? BillingInvoice::STATUS_PAID
+                    : BillingInvoice::STATUS_OPEN;
+
+                if ($invoice->status !== $targetStatus) {
+                    $invoice->forceFill([
+                        'status' => $targetStatus,
+                    ])->saveOrFail();
+                }
             }
 
             return $invoice->fresh();
@@ -462,9 +466,15 @@ class BillingInvoiceService
             ? BillingInvoice::STATUS_REFUNDED
             : BillingInvoice::STATUS_PARTIALLY_REFUNDED;
 
-        $invoice->forceFill(['status' => $status])->saveOrFail();
+        if ($invoice->status !== $status) {
+            $invoice->forceFill(['status' => $status])->saveOrFail();
+        }
 
-        if ($invoice->order && $status === BillingInvoice::STATUS_REFUNDED) {
+        if (
+            $invoice->order
+            && $status === BillingInvoice::STATUS_REFUNDED
+            && $invoice->order->status !== BillingOrder::STATUS_REFUNDED
+        ) {
             $invoice->order->forceFill(['status' => BillingOrder::STATUS_REFUNDED])->saveOrFail();
         }
 
