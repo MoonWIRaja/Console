@@ -2449,6 +2449,12 @@ export default () => {
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
+                                <span className={'text-[color:var(--muted-foreground)]'}>Split Limit</span>
+                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                    {selectedNode?.defaults.splitLimit ?? 0}
+                                </span>
+                            </div>
+                            <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Swap</span>
                                 <span className={'font-semibold text-[#f8f6ef]'}>
                                     {selectedNode ? `${selectedNode.defaults.swapMb} MB` : '0 MB'}

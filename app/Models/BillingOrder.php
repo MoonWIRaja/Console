@@ -70,6 +70,7 @@ class BillingOrder extends Model
         'allocation_limit',
         'database_limit',
         'backup_limit',
+        'split_limit',
         'swap',
         'io',
         'oom_disabled',
@@ -110,6 +111,7 @@ class BillingOrder extends Model
         'allocation_limit' => 'integer',
         'database_limit' => 'integer',
         'backup_limit' => 'integer',
+        'split_limit' => 'integer',
         'swap' => 'integer',
         'io' => 'integer',
         'oom_disabled' => 'boolean',
@@ -146,6 +148,7 @@ class BillingOrder extends Model
         'memory_total' => 'required|numeric|min:0',
         'disk_total' => 'required|numeric|min:0',
         'total' => 'required|numeric|min:0',
+        'split_limit' => 'required|integer|min:0',
     ];
 
     /**

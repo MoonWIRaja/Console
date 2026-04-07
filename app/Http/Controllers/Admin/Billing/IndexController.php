@@ -43,6 +43,7 @@ class IndexController extends Controller
                     'default_allocation_limit' => 0,
                     'default_database_limit' => 0,
                     'default_backup_limit' => 0,
+                    'default_split_limit' => 0,
                     'default_swap' => 0,
                     'default_io' => 500,
                     'default_oom_disabled' => true,

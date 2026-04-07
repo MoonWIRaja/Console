@@ -106,6 +106,7 @@ class BillingCatalogService
                         'allocation_limit' => $config->default_allocation_limit,
                         'database_limit' => $config->default_database_limit,
                         'backup_limit' => $config->default_backup_limit,
+                        'split_limit' => $config->default_split_limit,
                         'swap_mb' => $config->default_swap,
                         'io_weight' => $config->default_io,
                         'oom_disabled' => $config->default_oom_disabled,

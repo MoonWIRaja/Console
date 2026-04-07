@@ -22,6 +22,7 @@ class BillingNodeConfigFormRequest extends AdminFormRequest
             'default_allocation_limit' => 'required|integer|min:0',
             'default_database_limit' => 'required|integer|min:0',
             'default_backup_limit' => 'required|integer|min:0',
+            'default_split_limit' => 'required|integer|min:0',
             'default_swap' => 'required|integer|min:-1',
             'default_io' => 'required|integer|between:10,1000',
             'default_oom_disabled' => 'required|in:0,1',

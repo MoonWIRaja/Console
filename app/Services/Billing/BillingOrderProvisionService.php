@@ -100,6 +100,7 @@ class BillingOrderProvisionService
                 'allocation_limit' => $order->allocation_limit,
                 'database_limit' => $order->database_limit,
                 'backup_limit' => $order->backup_limit,
+                'split_limit' => $order->split_limit,
                 'startup' => $order->startup ?: $egg->startup,
                 'image' => $this->resolveDockerImage($egg, $order->docker_image),
                 'environment' => Arr::wrap($order->environment ?? []),

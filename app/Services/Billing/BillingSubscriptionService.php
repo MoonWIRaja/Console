@@ -25,7 +25,7 @@ class BillingSubscriptionService
 
     public function createFromProvisionedOrder(BillingOrder $order): BillingSubscription
     {
-        $order->loadMissing('invoice.payments');
+        $order->loadMissing('invoice.payments', 'server');
 
         $now = CarbonImmutable::now();
         $existing = BillingSubscription::query()->where('billing_order_id', $order->id)->first();
@@ -66,6 +66,7 @@ class BillingSubscriptionService
                 'cpu_cores' => $order->cpu_cores,
                 'memory_gb' => $order->memory_gb,
                 'disk_gb' => $order->disk_gb,
+                'split_limit' => $order->split_limit ?: ($order->server?->split_limit ?? 0),
                 'price_per_vcore' => $order->price_per_vcore,
                 'price_per_gb_ram' => $order->price_per_gb_ram,
                 'price_per_10gb_disk' => $order->price_per_10gb_disk,
@@ -204,6 +205,7 @@ class BillingSubscriptionService
             'allocation_limit' => $server->allocation_limit,
             'database_limit' => $server->database_limit,
             'backup_limit' => $server->backup_limit,
+            'split_limit' => $server->split_limit,
         ]);
 
         $pricing = $this->catalogService->calculatePricing($subscription->nodeConfig, $cpuCores, $memoryGb, $diskGb);
@@ -212,6 +214,7 @@ class BillingSubscriptionService
             'cpu_cores' => $cpuCores,
             'memory_gb' => $memoryGb,
             'disk_gb' => $diskGb,
+            'split_limit' => $server->split_limit,
             'price_per_vcore' => $subscription->nodeConfig->price_per_vcore,
             'price_per_gb_ram' => $subscription->nodeConfig->price_per_gb_ram,
             'price_per_10gb_disk' => $subscription->nodeConfig->price_per_10gb_disk,
@@ -298,6 +301,7 @@ class BillingSubscriptionService
             'allocation_limit' => $server->allocation_limit,
             'database_limit' => $server->database_limit,
             'backup_limit' => $server->backup_limit,
+            'split_limit' => $server->split_limit,
         ]);
 
         $pricing = $this->catalogService->calculatePricing(
@@ -315,6 +319,7 @@ class BillingSubscriptionService
             'price_per_gb_ram' => $subscription->nodeConfig->price_per_gb_ram,
             'price_per_10gb_disk' => $subscription->nodeConfig->price_per_10gb_disk,
             'recurring_total' => $pricing['total'],
+            'split_limit' => $order->split_limit ?: $server->split_limit,
             'upgraded_at' => CarbonImmutable::now(),
         ])->saveOrFail();
 
@@ -387,6 +392,7 @@ class BillingSubscriptionService
             'allocation_limit' => $server->allocation_limit,
             'database_limit' => $server->database_limit,
             'backup_limit' => $server->backup_limit,
+            'split_limit' => $server->split_limit,
         ]);
 
         $subscription->forceFill([
@@ -397,6 +403,7 @@ class BillingSubscriptionService
             'price_per_gb_ram' => $effectiveOrder->price_per_gb_ram,
             'price_per_10gb_disk' => $effectiveOrder->price_per_10gb_disk,
             'recurring_total' => $effectiveOrder->total,
+            'split_limit' => $effectiveOrder->split_limit ?: $server->split_limit,
             'last_paid_invoice_id' => $effectiveOrder->billing_invoice_id,
             'upgraded_at' => CarbonImmutable::now(),
         ])->saveOrFail();

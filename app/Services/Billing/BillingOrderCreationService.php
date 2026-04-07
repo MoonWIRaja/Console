@@ -50,6 +50,7 @@ class BillingOrderCreationService
             'allocation_limit' => $prepared['config']->default_allocation_limit,
             'database_limit' => $prepared['config']->default_database_limit,
             'backup_limit' => $prepared['config']->default_backup_limit,
+            'split_limit' => $prepared['config']->default_split_limit,
             'swap' => $prepared['config']->default_swap,
             'io' => $prepared['config']->default_io,
             'oom_disabled' => $prepared['config']->default_oom_disabled,

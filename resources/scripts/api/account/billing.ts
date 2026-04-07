@@ -36,6 +36,7 @@ export interface BillingNodeCatalog {
         allocationLimit: number;
         databaseLimit: number;
         backupLimit: number;
+        splitLimit: number;
         swapMb: number;
         ioWeight: number;
         oomDisabled: boolean;
@@ -454,6 +455,7 @@ const useBillingCatalog = (config?: ConfigInterface<BillingNodeCatalog[], AxiosE
                     allocationLimit: item.defaults.allocation_limit,
                     databaseLimit: item.defaults.database_limit,
                     backupLimit: item.defaults.backup_limit,
+                    splitLimit: item.defaults.split_limit ?? 0,
                     swapMb: item.defaults.swap_mb,
                     ioWeight: item.defaults.io_weight,
                     oomDisabled: item.defaults.oom_disabled,

@@ -117,23 +117,28 @@
                                 <input type="number" min="0" name="default_backup_limit" class="form-control" value="{{ old('default_backup_limit', $config->default_backup_limit) }}">
                             </div>
                             <div class="form-group col-md-3">
-                                <label class="control-label">Default IO Weight</label>
-                                <input type="number" min="10" max="1000" name="default_io" class="form-control" value="{{ old('default_io', $config->default_io) }}">
+                                <label class="control-label">Default Split Limit</label>
+                                <input type="number" min="0" name="default_split_limit" class="form-control" value="{{ old('default_split_limit', $config->default_split_limit) }}">
+                                <p class="text-muted small">The total number of split child servers this billing plan is allowed to create.</p>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
+                                <label class="control-label">Default IO Weight</label>
+                                <input type="number" min="10" max="1000" name="default_io" class="form-control" value="{{ old('default_io', $config->default_io) }}">
+                            </div>
+                            <div class="form-group col-md-3">
                                 <label class="control-label">Default Swap (MB)</label>
                                 <input type="number" min="-1" name="default_swap" class="form-control" value="{{ old('default_swap', $config->default_swap) }}">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label class="control-label">Disable OOM Killer</label>
                                 <select name="default_oom_disabled" class="form-control">
                                     <option value="1" @if(old('default_oom_disabled', $config->default_oom_disabled) == 1) selected @endif>Yes</option>
                                     <option value="0" @if(old('default_oom_disabled', $config->default_oom_disabled) == 0) selected @endif>No</option>
                                 </select>
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label class="control-label">Start On Completion</label>
                                 <select name="start_on_completion" class="form-control">
                                     <option value="1" @if(old('start_on_completion', $config->start_on_completion) == 1) selected @endif>Yes</option>
