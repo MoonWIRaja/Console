@@ -1,0 +1,282 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    faBoxOpen,
+    faCloudDownloadAlt,
+    faEllipsisH,
+    faLock,
+    faTrashAlt,
+    faUnlock,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import DropdownMenu, { DropdownButtonRow } from '@/components/elements/DropdownMenu';
+import getBackupDownloadUrl from '@/api/server/backups/getBackupDownloadUrl';
+import useFlash from '@/plugins/useFlash';
+import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
+import deleteBackup from '@/api/server/backups/deleteBackup';
+import Can from '@/components/elements/Can';
+import tw from 'twin.macro';
+import getServerBackups from '@/api/swr/getServerBackups';
+import { ServerBackup } from '@/api/server/types';
+import { ServerContext } from '@/state/server';
+import Input from '@/components/elements/Input';
+import { restoreServerBackup } from '@/api/server/backups';
+import http, { httpErrorToHuman } from '@/api/http';
+import { Dialog } from '@/components/elements/dialog';
+import getServer from '@/api/server/getServer';
+
+interface Props {
+    backup: ServerBackup;
+}
+
+export default ({ backup }: Props) => {
+    const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
+    const setServer = ServerContext.useStoreActions((actions) => actions.server.setServer);
+    const [modal, setModal] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [truncate, setTruncate] = useState(false);
+    const isMounted = useRef(true);
+    const restorePollInterval = useRef<number | null>(null);
+    const { clearFlashes, clearAndAddHttpError } = useFlash();
+    const { mutate } = getServerBackups();
+
+    useEffect(
+        () => () => {
+            isMounted.current = false;
+            if (restorePollInterval.current !== null) {
+                window.clearInterval(restorePollInterval.current);
+                restorePollInterval.current = null;
+            }
+        },
+        []
+    );
+
+    const setLoadingSafely = (value: boolean) => {
+        if (isMounted.current) {
+            setLoading(value);
+        }
+    };
+
+    const setModalSafely = (value: string) => {
+        if (isMounted.current) {
+            setModal(value);
+        }
+    };
+
+    const clearRestorePolling = () => {
+        if (restorePollInterval.current !== null) {
+            window.clearInterval(restorePollInterval.current);
+            restorePollInterval.current = null;
+        }
+    };
+
+    const startRestoreCompletionPolling = () => {
+        clearRestorePolling();
+        const startedAt = Date.now();
+
+        restorePollInterval.current = window.setInterval(() => {
+            getServer(uuid)
+                .then(([server]) => {
+                    if (!isMounted.current) {
+                        return;
+                    }
+
+                    setServer(server);
+                    if (server.status !== 'restoring_backup') {
+                        clearRestorePolling();
+                        window.location.reload();
+                    }
+                })
+                .catch(() => {
+                    // Keep polling while restoration is in progress.
+                });
+
+            // Safety stop after 30 minutes to avoid orphaned intervals.
+            if (Date.now() - startedAt > 30 * 60 * 1000) {
+                clearRestorePolling();
+            }
+        }, 5000);
+    };
+
+    const doDownload = () => {
+        setLoading(true);
+        clearFlashes('backups');
+        getBackupDownloadUrl(uuid, backup.uuid)
+            .then((url) => {
+                // @ts-expect-error this is valid
+                window.location = url;
+            })
+            .catch((error) => {
+                console.error(error);
+                clearAndAddHttpError({ key: 'backups', error });
+            })
+            .then(() => setLoadingSafely(false));
+    };
+
+    const doDeletion = () => {
+        setLoading(true);
+        clearFlashes('backups');
+        deleteBackup(uuid, backup.uuid)
+            .then(() =>
+                mutate(
+                    (data) => ({
+                        ...data,
+                        items: data.items.filter((b) => b.uuid !== backup.uuid),
+                        backupCount: data.backupCount - 1,
+                    }),
+                    false
+                )
+            )
+            .catch((error) => {
+                console.error(error);
+                clearAndAddHttpError({ key: 'backups', error });
+                setLoadingSafely(false);
+                setModalSafely('');
+            });
+    };
+
+    const doRestorationAction = () => {
+        setLoading(true);
+        clearFlashes('backups');
+        restoreServerBackup(uuid, backup.uuid, truncate)
+            .then(() =>
+                setServerFromState((s) => ({
+                    ...s,
+                    status: 'restoring_backup',
+                }))
+            )
+            .then(() => startRestoreCompletionPolling())
+            .catch((error) => {
+                console.error(error);
+                clearAndAddHttpError({ key: 'backups', error });
+            })
+            .then(() => setLoadingSafely(false))
+            .then(() => setModalSafely(''));
+    };
+
+    const onLockToggle = () => {
+        if (backup.isLocked && modal !== 'unlock') {
+            return setModal('unlock');
+        }
+
+        http.post(`/api/client/servers/${uuid}/backups/${backup.uuid}/lock`)
+            .then(() =>
+                mutate(
+                    (data) => ({
+                        ...data,
+                        items: data.items.map((b) =>
+                            b.uuid !== backup.uuid
+                                ? b
+                                : {
+                                      ...b,
+                                      isLocked: !b.isLocked,
+                                  }
+                        ),
+                    }),
+                    false
+                )
+            )
+            .catch((error) => alert(httpErrorToHuman(error)))
+            .then(() => setModalSafely(''));
+    };
+
+    return (
+        <>
+            <Dialog.Confirm
+                open={modal === 'unlock'}
+                onClose={() => setModal('')}
+                title={`Unlock "${backup.name}"`}
+                onConfirmed={onLockToggle}
+            >
+                This backup will no longer be protected from automated or accidental deletions.
+            </Dialog.Confirm>
+            <Dialog.Confirm
+                open={modal === 'restore'}
+                onClose={() => setModal('')}
+                confirm={'Restore'}
+                title={`Restore "${backup.name}"`}
+                onConfirmed={() => doRestorationAction()}
+            >
+                <p>
+                    Your server will be stopped. You will not be able to control the power state, access the file
+                    manager, or create additional backups until completed.
+                </p>
+                <p css={tw`-mb-2 mt-4 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
+                    <label htmlFor={'restore_truncate'} css={tw`text-base flex items-center cursor-pointer`}>
+                        <Input
+                            type={'checkbox'}
+                            css={tw`text-red-500! w-5! h-5! mr-2`}
+                            id={'restore_truncate'}
+                            value={'true'}
+                            checked={truncate}
+                            onChange={() => setTruncate((s) => !s)}
+                        />
+                        Delete all files before restoring backup.
+                    </label>
+                </p>
+            </Dialog.Confirm>
+            <Dialog.Confirm
+                title={`Delete "${backup.name}"`}
+                confirm={'Continue'}
+                open={modal === 'delete'}
+                onClose={() => setModal('')}
+                onConfirmed={doDeletion}
+            >
+                This is a permanent operation. The backup cannot be recovered once deleted.
+            </Dialog.Confirm>
+            <SpinnerOverlay visible={loading} fixed />
+            {backup.isSuccessful ? (
+                <DropdownMenu
+                    renderToggle={(onClick) => (
+                        <button
+                            onClick={onClick}
+                            css={tw`p-2 text-neutral-400 transition-colors duration-150 hover:text-[color:var(--primary)]`}
+                        >
+                            <FontAwesomeIcon icon={faEllipsisH} />
+                        </button>
+                    )}
+                >
+                    <div css={tw`text-sm`}>
+                        <Can action={'backup.download'}>
+                            <DropdownButtonRow onClick={doDownload}>
+                                <FontAwesomeIcon fixedWidth icon={faCloudDownloadAlt} css={tw`text-xs`} />
+                                <span css={tw`ml-2`}>Download</span>
+                            </DropdownButtonRow>
+                        </Can>
+                        <Can action={'backup.restore'}>
+                            <DropdownButtonRow onClick={() => setModal('restore')}>
+                                <FontAwesomeIcon fixedWidth icon={faBoxOpen} css={tw`text-xs`} />
+                                <span css={tw`ml-2`}>Restore</span>
+                            </DropdownButtonRow>
+                        </Can>
+                        <Can action={'backup.delete'}>
+                            <>
+                                <DropdownButtonRow onClick={onLockToggle}>
+                                    <FontAwesomeIcon
+                                        fixedWidth
+                                        icon={backup.isLocked ? faUnlock : faLock}
+                                        css={tw`text-xs mr-2`}
+                                    />
+                                    {backup.isLocked ? 'Unlock' : 'Lock'}
+                                </DropdownButtonRow>
+                                {!backup.isLocked && (
+                                    <DropdownButtonRow danger onClick={() => setModal('delete')}>
+                                        <FontAwesomeIcon fixedWidth icon={faTrashAlt} css={tw`text-xs`} />
+                                        <span css={tw`ml-2`}>Delete</span>
+                                    </DropdownButtonRow>
+                                )}
+                            </>
+                        </Can>
+                    </div>
+                </DropdownMenu>
+            ) : (
+                <button
+                    onClick={() => setModal('delete')}
+                    css={tw`p-2 text-neutral-400 transition-colors duration-150 hover:text-red-300`}
+                >
+                    <FontAwesomeIcon icon={faTrashAlt} />
+                </button>
+            )}
+        </>
+    );
+};

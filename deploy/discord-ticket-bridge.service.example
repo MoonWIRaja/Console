@@ -1,0 +1,21 @@
+[Unit]
+Description=Owl's Cottage Discord Ticket Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/pterodactyl/services/discord-ticket-bridge
+Environment=DISCORD_BOT_TOKEN=
+Environment=PANEL_INTERNAL_BASE_URL=https://console.owlscottage.com
+Environment=TICKET_BRIDGE_SHARED_SECRET=
+Environment=DISCORD_RELAY_WEBHOOK_ID=
+Environment=DISCORD_ENABLE_GUILD_MEMBERS=false
+Environment=DISCORD_ENABLE_MESSAGE_CONTENT=false
+Environment=TICKET_BRIDGE_HEARTBEAT_SECONDS=30
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,88 @@
+<?php
+
+namespace Pterodactyl\Observers;
+
+use Carbon\CarbonImmutable;
+use Pterodactyl\Events;
+use Pterodactyl\Models\BillingSubscription;
+use Pterodactyl\Models\Server;
+use Illuminate\Foundation\Bus\DispatchesJobs;
+
+class ServerObserver
+{
+    use DispatchesJobs;
+
+    /**
+     * Listen to the Server creating event.
+     */
+    public function creating(Server $server): void
+    {
+        event(new Events\Server\Creating($server));
+    }
+
+    /**
+     * Listen to the Server created event.
+     */
+    public function created(Server $server): void
+    {
+        event(new Events\Server\Created($server));
+    }
+
+    /**
+     * Listen to the Server deleting event.
+     */
+    public function deleting(Server $server): void
+    {
+        BillingSubscription::query()
+            ->where('server_id', $server->id)
+            ->whereIn('status', BillingSubscription::RESOURCE_RESERVATION_STATUSES)
+            ->update([
+                'status' => BillingSubscription::STATUS_DELETED,
+                'deletion_scheduled_at' => null,
+                'deleted_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
+            ]);
+
+        event(new Events\Server\Deleting($server));
+    }
+
+    /**
+     * Listen to the Server deleted event.
+     */
+    public function deleted(Server $server): void
+    {
+        event(new Events\Server\Deleted($server));
+    }
+
+    /**
+     * Listen to the Server saving event.
+     */
+    public function saving(Server $server): void
+    {
+        event(new Events\Server\Saving($server));
+    }
+
+    /**
+     * Listen to the Server saved event.
+     */
+    public function saved(Server $server): void
+    {
+        event(new Events\Server\Saved($server));
+    }
+
+    /**
+     * Listen to the Server updating event.
+     */
+    public function updating(Server $server): void
+    {
+        event(new Events\Server\Updating($server));
+    }
+
+    /**
+     * Listen to the Server saved event.
+     */
+    public function updated(Server $server): void
+    {
+        event(new Events\Server\Updated($server));
+    }
+}

@@ -1,0 +1,36 @@
+import React from 'react';
+import { Route } from 'react-router';
+import { SwitchTransition } from 'react-transition-group';
+import Fade from '@/components/elements/Fade';
+import styled from 'styled-components/macro';
+import tw from 'twin.macro';
+
+const TransitionWrapper = styled.div`
+    ${tw`relative flex min-h-0 flex-1 flex-col`};
+
+    & > div {
+        ${tw`flex min-h-0 flex-1 flex-col`};
+    }
+
+    & section {
+        ${tw`flex min-h-0 flex-1 flex-col w-full`};
+    }
+`;
+
+const TransitionRouter: React.FC = ({ children }) => {
+    return (
+        <Route
+            render={({ location }) => (
+                <TransitionWrapper>
+                    <SwitchTransition>
+                        <Fade timeout={150} key={location.pathname + location.search} in appear unmountOnExit>
+                            <section>{children}</section>
+                        </Fade>
+                    </SwitchTransition>
+                </TransitionWrapper>
+            )}
+        />
+    );
+};
+
+export default TransitionRouter;

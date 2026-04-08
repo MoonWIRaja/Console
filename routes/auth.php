@@ -1,0 +1,56 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Pterodactyl\Http\Controllers\Auth;
+
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+|
+| Endpoint: /auth
+|
+*/
+
+// These routes are defined so that we can continue to reference them programmatically.
+// They all route to the same controller function which passes off to React.
+Route::get('/login', [Auth\LoginController::class, 'index'])->name('auth.login');
+Route::get('/password', [Auth\LoginController::class, 'index'])->name('auth.forgot-password');
+Route::get('/password/reset/{token}', [Auth\LoginController::class, 'index'])->name('auth.reset');
+Route::get('/signup/pending', [Auth\RegisterController::class, 'pending'])->name('auth.signup.pending');
+
+// Apply a throttle to authentication action endpoints, in addition to captcha
+// checks to slow down manual attack spammers even more. 🤷‍
+//
+// @see \Pterodactyl\Providers\RouteServiceProvider
+Route::middleware(['throttle:authentication', 'auth.honeypot'])->group(function () {
+    // Login endpoints.
+    Route::post('/login', [Auth\LoginController::class, 'login'])
+        ->name('auth.post.login')
+        ->middleware('captcha');
+    Route::post('/login/checkpoint', Auth\LoginCheckpointController::class)->name('auth.login-checkpoint');
+    Route::post('/signup', [Auth\RegisterController::class, 'register'])
+        ->name('auth.post.signup')
+        ->middleware('captcha');
+    Route::post('/signup/verify', [Auth\RegisterController::class, 'verify'])->name('auth.post.signup.verify');
+
+    // Forgot password route. A post to this endpoint will trigger an
+    // email to be sent containing a reset token.
+    Route::post('/password', [Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
+        ->name('auth.post.forgot-password')
+        ->middleware('captcha');
+    Route::post('/password/reset', Auth\ResetPasswordController::class)
+        ->name('auth.reset-password')
+        ->middleware('captcha');
+    Route::post('/trap', Auth\AuthTrapController::class)->name('auth.trap');
+});
+
+// Remove the guest middleware and apply the authenticated middleware to this endpoint,
+// so it cannot be used unless you're already logged in.
+Route::post('/logout', [Auth\LoginController::class, 'logout'])
+    ->withoutMiddleware('guest')
+    ->middleware('auth')
+    ->name('auth.logout');
+
+// Catch any other combinations of routes and pass them off to the React component.
+Route::fallback([Auth\LoginController::class, 'index']);

@@ -1,0 +1,18 @@
+detection:
+  nestNames:
+    - 'Minecraft'
+  nestIds:
+    - 1
+  eggNames: []
+  eggIds: []
+
+excludeEggs:
+  - 28
+
+live:
+  enabled: true
+  syncServerIcon: true
+  runningDescription: |
+    §6Owls Cottage §7| §fconsole.owlscottage.com
+    §7Managed by Pterodactyl
+  server-icon: './server-icon.png'

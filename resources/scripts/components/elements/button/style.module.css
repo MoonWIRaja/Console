@@ -1,0 +1,123 @@
+.button {
+    @apply inline-flex items-center justify-center px-4 py-2;
+    @apply rounded-full border text-sm font-semibold tracking-wide transition-all duration-150;
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.45);
+    }
+
+    &:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    /* Sizing Controls */
+    &.small {
+        @apply h-8 px-3 py-0 text-xs font-semibold focus:ring-2;
+    }
+
+    &.large {
+        @apply px-6 py-3 text-sm;
+    }
+
+    &.secondary {
+        border-color: var(--border);
+        background-color: var(--card);
+        color: var(--foreground);
+
+        &:disabled {
+            background-color: var(--card);
+        }
+    }
+
+    &:disabled {
+        @apply cursor-not-allowed opacity-50;
+    }
+
+    &.square {
+        @apply h-12 w-12 p-0 rounded-xl;
+
+        &.small {
+            @apply w-8 h-8;
+        }
+    }
+}
+
+.primary {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+
+    &:hover {
+        border-color: var(--primary);
+        background-color: var(--primary);
+        color: var(--primary-foreground);
+        filter: brightness(1.06);
+    }
+
+    &:active {
+        filter: brightness(0.95);
+    }
+
+    &.secondary {
+        &:hover,
+        &:active {
+            border-color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.12);
+            color: var(--primary);
+            filter: none;
+        }
+    }
+
+    &:disabled {
+        border-color: var(--primary);
+        background-color: var(--primary);
+        color: var(--primary-foreground);
+    }
+}
+
+.text {
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--foreground);
+
+    &:hover {
+        border-color: var(--primary);
+        background-color: var(--background);
+        color: var(--primary);
+    }
+
+    &:active {
+        background-color: var(--background);
+    }
+
+    &.secondary {
+        &:hover,
+        &:active {
+            background-color: var(--card);
+        }
+    }
+
+    &:disabled {
+        border-color: var(--border);
+        background-color: var(--card);
+        color: var(--foreground);
+    }
+}
+
+.danger {
+    @apply border-[#7f1d1d] bg-[#2a0707] text-[#fee2e2];
+    @apply hover:border-[#ef4444] hover:bg-[#360909] hover:text-white active:bg-[#360909] focus:ring-[#ef4444]/45;
+
+    &.secondary {
+        @apply hover:bg-[#2a0707] active:bg-[#2a0707];
+    }
+
+    &:disabled {
+        @apply border-[#7f1d1d] bg-[#2a0707] text-[#fee2e2];
+    }
+}

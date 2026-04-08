@@ -1,0 +1,253 @@
+<?php
+
+namespace Pterodactyl\Providers;
+
+use Psr\Log\LoggerInterface as Log;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface;
+
+class SettingsServiceProvider extends ServiceProvider
+{
+    /**
+     * An array of configuration keys to override with database values
+     * if they exist.
+     */
+    protected array $keys = [
+        'app:name',
+        'app:logo',
+        'app:auth_logo',
+        'app:website',
+        'app:locale',
+        'turnstile:enabled',
+        'turnstile:secret_key',
+        'turnstile:site_key',
+        'turnstile:verify_domain',
+        'security:enabled',
+        'security:trusted_networks',
+        'security:break_glass:trusted_networks',
+        'security:break_glass:emergency_token',
+        'security:runtime:ip_deny_minutes',
+        'security:runtime:fingerprint_deny_minutes',
+        'security:runtime:route_hold_minutes',
+        'security:auth:enabled',
+        'security:auth:auto_challenge',
+        'security:auth:auto_temp_block',
+        'security:api:enabled',
+        'security:api:revoke_token_on_ip_anomaly',
+        'security:bridge:enabled',
+        'security:webhook:enabled',
+        'security:upload:enabled',
+        'security:upload:quarantine_on_suspicious',
+        'security:upload:suspicious_extensions',
+        'security:origin:enabled',
+        'security:origin:not_controllable_threshold',
+        'security:agent:enabled',
+        'security:agent:heartbeat_ttl_seconds',
+        'security:agent:clock_skew_seconds',
+        'security:agent:secret_rotation_grace_seconds',
+        'security:agent:nonce_ttl_seconds',
+        'security:retention:event_days',
+        'security:retention:incident_days',
+        'pterodactyl:guzzle:timeout',
+        'pterodactyl:guzzle:connect_timeout',
+        'pterodactyl:console:count',
+        'pterodactyl:console:frequency',
+        'pterodactyl:auth:2fa_required',
+        'pterodactyl:client_features:allocations:enabled',
+        'pterodactyl:client_features:allocations:range_start',
+        'pterodactyl:client_features:allocations:range_end',
+        'services:google:enabled',
+        'services:google:client_id',
+        'services:google:client_secret',
+        'services:discord:enabled',
+        'services:discord:client_id',
+        'services:discord:client_secret',
+        'services:discord:application_id',
+        'services:discord:application_public_key',
+        'services:discord:community_enabled',
+        'services:discord:invite_url',
+        'services:discord:guild_id',
+        'services:discord:role_id',
+        'services:discord:bot_token',
+        'admin_logs:new_account:discord_channel_id',
+        'admin_logs:payment:discord_channel_id',
+        'admin_logs:security:discord_channel_id',
+        'admin_logs:login:discord_channel_id',
+        'admin_logs:forgot_password:discord_channel_id',
+        'admin_logs:change_password:discord_channel_id',
+        'admin_logs:change_email:discord_channel_id',
+        'admin_logs:ticket:discord_channel_id',
+        'down_detector:enabled',
+        'down_detector:discord:channel_id',
+        'down_detector:monitor_nodes',
+        'down_detector:monitor_servers',
+        'down_detector:interval_seconds',
+        'down_detector:probe_timeout_ms',
+        'down_detector:failure_threshold',
+        'down_detector:recovery_threshold',
+        'down_detector:node:discord:alert_channel_id',
+        'down_detector:node:periodic_reports_enabled',
+        'down_detector:node:periodic_report_interval_minutes',
+        'down_detector:node:last_periodic_report_at',
+        'down_detector:server:discord:alert_channel_id',
+        'down_detector:server:discord:launcher_channel_id',
+        'down_detector:server:discord:launcher_message_id',
+        'down_detector:last_run_at',
+        'down_detector:last_run_summary',
+        'tickets:enabled',
+        'tickets:auto_create_on_manual_checkout',
+        'tickets:resolve_on_paid',
+        'tickets:discord:launcher_channel_id',
+        'tickets:discord:active_parent_channel_id',
+        'tickets:discord:log_channel_id',
+        'tickets:discord:staff_role_ids',
+        'tickets:discord:launcher_message_id',
+        'tickets:discord:relay_webhook_id',
+        'tickets:discord:relay_webhook_token',
+        'tickets:bridge:shared_secret',
+        'tickets:bridge:last_heartbeat_at',
+        'tickets:bridge:last_heartbeat_meta',
+        'tickets:attachments:max_files_per_message',
+        'tickets:attachments:max_file_size_mb',
+        'billing:currency',
+        'billing:gateway:default',
+        'billing:gateway:manual_mode',
+        'billing:manual:enabled',
+        'billing:bcl:enabled',
+        'billing:bcl:form_url',
+        'billing:invoice_lead_days',
+        'billing:suspend_grace_hours',
+        'billing:delete_grace_hours',
+        'billing:refund_suspend_hours',
+        'billing:refund_delete_after_suspend_hours',
+        'billing:stripe:enabled',
+        'billing:stripe:mode',
+        'billing:stripe:publishable_key',
+        'billing:stripe:secret_key',
+        'billing:stripe:webhook_secret',
+        'billing:stripe:portal_configuration_id',
+        'billing:stripe:automatic_tax_enabled',
+        'billing:stripe:api_version',
+        'billing:stripe:success_url',
+        'billing:stripe:cancel_url',
+        'billing:fiuu:enabled',
+        'billing:fiuu:sandbox',
+        'billing:fiuu:merchant_id',
+        'billing:fiuu:verify_key',
+        'billing:fiuu:request_token',
+        'billing:fiuu:extended_vcode',
+        'billing:fiuu:secret_key',
+        'billing:fiuu:return_url',
+        'billing:fiuu:callback_url',
+        'billing:fiuu:requery_url',
+        'billing:fiuu:recurring_url',
+        'billing:fiuu:refund_url',
+        'billing:fiuu:enabled_methods',
+    ];
+
+    /**
+     * Keys specific to the mail driver that are only grabbed from the database
+     * when using the SMTP driver.
+     */
+    protected array $emailKeys = [
+        'mail:mailers:smtp:host',
+        'mail:mailers:smtp:port',
+        'mail:mailers:smtp:encryption',
+        'mail:mailers:smtp:username',
+        'mail:mailers:smtp:password',
+        'mail:from:address',
+        'mail:from:name',
+    ];
+
+    /**
+     * Keys that are encrypted and should be decrypted when set in the
+     * configuration array.
+     */
+    protected static array $encrypted = [
+        'mail:mailers:smtp:password',
+        'services:google:client_secret',
+        'services:discord:client_secret',
+        'services:discord:bot_token',
+        'tickets:discord:relay_webhook_token',
+        'tickets:bridge:shared_secret',
+        'security:break_glass:emergency_token',
+        'billing:stripe:secret_key',
+        'billing:stripe:webhook_secret',
+        'billing:fiuu:verify_key',
+        'billing:fiuu:secret_key',
+    ];
+
+    /**
+     * Boot the service provider.
+     */
+    public function boot(ConfigRepository $config, Encrypter $encrypter, Log $log, SettingsRepositoryInterface $settings): void
+    {
+        // Only set the email driver settings from the database if we
+        // are configured using SMTP as the driver.
+        if ($config->get('mail.default') === 'smtp') {
+            $this->keys = array_merge($this->keys, $this->emailKeys);
+        }
+
+        try {
+            $values = $settings->all()->mapWithKeys(function ($setting) {
+                return [$setting->key => $setting->value];
+            })->toArray();
+        } catch (QueryException $exception) {
+            $log->notice('A query exception was encountered while trying to load settings from the database: ' . $exception->getMessage());
+
+            return;
+        }
+
+        foreach ($this->keys as $key) {
+            $configKey = str_replace(':', '.', $key);
+            $defaultValue = $config->get($configKey);
+            $value = array_get($values, 'settings::' . $key, $defaultValue);
+            if (in_array($key, self::$encrypted)) {
+                try {
+                    $value = $encrypter->decrypt($value);
+                } catch (DecryptException $exception) {
+                }
+            }
+
+            if (is_string($value)) {
+                switch (strtolower($value)) {
+                    case 'true':
+                    case '(true)':
+                        $value = true;
+                        break;
+                    case 'false':
+                    case '(false)':
+                        $value = false;
+                        break;
+                    case 'empty':
+                    case '(empty)':
+                        $value = '';
+                        break;
+                    case 'null':
+                    case '(null)':
+                        $value = null;
+                }
+            }
+
+            if (is_array($defaultValue) && is_string($value)) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $value = $decoded;
+                } else {
+                    $value = array_values(array_filter(array_map('trim', explode(',', $value))));
+                }
+            }
+
+            $config->set($configKey, $value);
+        }
+    }
+
+    public static function getEncryptedKeys(): array
+    {
+        return self::$encrypted;
+    }
+}
