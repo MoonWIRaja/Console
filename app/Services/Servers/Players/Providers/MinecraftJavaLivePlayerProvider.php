@@ -663,6 +663,18 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             }
         }
 
+        // If the panel cannot reach the Minecraft server directly (e.g. firewall between
+        // panel and node), fall back to reading latest.log via the Wings file API.
+        // This covers servers where direct TCP/UDP from the panel is blocked.
+        if (!$connected && empty($players)) {
+            $logPlayers = $this->playersFromLatestLog($server);
+            if (!empty($logPlayers)) {
+                $players = $logPlayers;
+                $onlineCount = count($logPlayers);
+                $sampleAvailable = true;
+            }
+        }
+
         if ($this->shouldUseConsoleRosterSnapshot($connected, $queryEnabled, $sampleAvailable, $onlineCount, $players)) {
             $consoleSnapshot = $this->consoleRosterSnapshot($server);
             if ($consoleSnapshot !== null && !empty($consoleSnapshot['players'])) {
@@ -1459,8 +1471,10 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         int $onlineCount,
         array $players
     ): bool {
+        // Always attempt the console roster snapshot when we cannot connect directly,
+        // since the Wings websocket path (via commandRepository) is still available.
         if (!$connected) {
-            return false;
+            return true;
         }
 
         if (!$queryEnabled || !$sampleAvailable) {
