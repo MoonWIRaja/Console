@@ -1,10 +1,10 @@
 {
-  "main.js": {
-    "src": "/assets/bundle.8eec623a.js",
-    "integrity": "sha384-sHtxYkZr2a2ukwHRbMX0n9a0OUxO7UqNzSB4OYiNByAiq64IW7VVePu9+Gg3E14O"
+  "147.e3137dc2.js": {
+    "src": "/assets/147.e3137dc2.js",
+    "integrity": "sha384-e2oYtsouBxn+LB14ttrB0zixHj3G7X3D9BbxarzEMzZADgGGGdVwJGbGFvAEdPk4"
   },
-  "vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js": {
-    "src": "/assets/vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js",
-    "integrity": "sha384-Xe/O5uhfBMqpB1D21JHESwRHpc8AkQzIyj8F5x4eD5bT08QUb+hubIsDl0AcUHR4"
+  "main.js": {
+    "src": "/assets/bundle.820a38ce.js",
+    "integrity": "sha384-vCyB6GhoVroSqfYoRM4u2yXMyk0IsIn1iEnUBEfhDxjH0Ehih3CUFM0LIx7Ajpp1"
   }
 }
