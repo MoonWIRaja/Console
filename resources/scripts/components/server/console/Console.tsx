@@ -24,6 +24,7 @@ import {
     parseBedrockRosterNames,
     normalizeConsoleLine,
 } from '@/components/server/console/bedrockRoster';
+import sendPowerCommand from '@/api/server/sendPowerCommand';
 
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
@@ -109,49 +110,49 @@ const clearSharedTranscript = (serverId: string): void => {
 
 const theme = isDark
     ? {
-        background: '#0C0C0C',
-        cursor: 'transparent',
-        cursorAccent: 'transparent',
-        black: th`colors.black`.toString(),
-        red: '#E54B4B',
-        green: '#9ECE58',
-        yellow: '#FAED70',
-        blue: '#396FE2',
-        magenta: '#BB80B3',
-        cyan: '#2DDAFD',
-        white: '#d0d0d0',
-        brightBlack: 'rgba(255, 255, 255, 0.2)',
-        brightRed: '#FF5370',
-        brightGreen: '#C3E88D',
-        brightYellow: '#FFCB6B',
-        brightBlue: '#82AAFF',
-        brightMagenta: '#C792EA',
-        brightCyan: '#89DDFF',
-        brightWhite: '#ffffff',
-        selection: '#FAF089',
-    }
+          background: '#0C0C0C',
+          cursor: 'transparent',
+          cursorAccent: 'transparent',
+          black: th`colors.black`.toString(),
+          red: '#E54B4B',
+          green: '#9ECE58',
+          yellow: '#FAED70',
+          blue: '#396FE2',
+          magenta: '#BB80B3',
+          cyan: '#2DDAFD',
+          white: '#d0d0d0',
+          brightBlack: 'rgba(255, 255, 255, 0.2)',
+          brightRed: '#FF5370',
+          brightGreen: '#C3E88D',
+          brightYellow: '#FFCB6B',
+          brightBlue: '#82AAFF',
+          brightMagenta: '#C792EA',
+          brightCyan: '#89DDFF',
+          brightWhite: '#ffffff',
+          selection: '#FAF089',
+      }
     : {
-        background: '#0C0C0C',
-        cursor: 'transparent',
-        cursorAccent: 'transparent',
-        black: '#111827',
-        red: '#dc2626',
-        green: '#16a34a',
-        yellow: '#ca8a04',
-        blue: '#2563eb',
-        magenta: '#7c3aed',
-        cyan: '#0891b2',
-        white: '#111827',
-        brightBlack: '#6b7280',
-        brightRed: '#ef4444',
-        brightGreen: '#22c55e',
-        brightYellow: '#eab308',
-        brightBlue: '#3b82f6',
-        brightMagenta: '#8b5cf6',
-        brightCyan: '#06b6d4',
-        brightWhite: '#0f172a',
-        selection: '#d1d5db',
-    };
+          background: '#0C0C0C',
+          cursor: 'transparent',
+          cursorAccent: 'transparent',
+          black: '#111827',
+          red: '#dc2626',
+          green: '#16a34a',
+          yellow: '#ca8a04',
+          blue: '#2563eb',
+          magenta: '#7c3aed',
+          cyan: '#0891b2',
+          white: '#111827',
+          brightBlack: '#6b7280',
+          brightRed: '#ef4444',
+          brightGreen: '#22c55e',
+          brightYellow: '#eab308',
+          brightBlue: '#3b82f6',
+          brightMagenta: '#8b5cf6',
+          brightCyan: '#06b6d4',
+          brightWhite: '#0f172a',
+          selection: '#d1d5db',
+      };
 
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
@@ -188,6 +189,7 @@ export default ({
     const { connected, instance } = ServerContext.useStoreState((state) => state.socket);
     const [canSendCommands] = usePermissions(['control.console']);
     const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
+    const serverUuid = ServerContext.useStoreState((state) => state.server.data?.uuid || '');
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const { name: siteName } = useSiteBranding();
@@ -629,12 +631,16 @@ export default ({
                 <div className={styles.sidebar_header}>
                     <div className={styles.sidebar_header_left}>
                         <h3 className={styles.sidebar_title}>
-                            <span className={classNames('material-icons-round text-[18px]', {
-                                'text-green-400': status === 'running',
-                                'text-yellow-400': status === 'starting' || status === 'stopping',
-                                'text-red-400': status === 'offline',
-                                'text-gray-400': status === null,
-                            })}>terminal</span>
+                            <span
+                                className={classNames('material-icons-round text-[18px]', {
+                                    'text-green-400': status === 'running',
+                                    'text-yellow-400': status === 'starting' || status === 'stopping',
+                                    'text-red-400': status === 'offline',
+                                    'text-gray-400': status === null,
+                                })}
+                            >
+                                terminal
+                            </span>
                             Console
                         </h3>
                         {shareNotice && <p className={styles.sidebar_notice}>{shareNotice}</p>}
@@ -645,7 +651,10 @@ export default ({
                             title={'Start Server'}
                             aria-label={'Start Server'}
                             className={styles.sidebar_action}
-                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'start')}
+                            onClick={() =>
+                                serverUuid &&
+                                void sendPowerCommand(serverUuid, 'start').catch((error) => console.error(error))
+                            }
                         >
                             <span className={'material-icons-round text-[18px] text-green-400'}>play_arrow</span>
                         </button>
@@ -654,7 +663,10 @@ export default ({
                             title={'Restart Server'}
                             aria-label={'Restart Server'}
                             className={styles.sidebar_action}
-                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'restart')}
+                            onClick={() =>
+                                serverUuid &&
+                                void sendPowerCommand(serverUuid, 'restart').catch((error) => console.error(error))
+                            }
                         >
                             <span className={'material-icons-round text-[18px] text-amber-400'}>restart_alt</span>
                         </button>
@@ -663,7 +675,10 @@ export default ({
                             title={'Stop Server'}
                             aria-label={'Stop Server'}
                             className={styles.sidebar_action}
-                            onClick={() => instance && instance.send(SocketRequest.SET_STATE, 'stop')}
+                            onClick={() =>
+                                serverUuid &&
+                                void sendPowerCommand(serverUuid, 'stop').catch((error) => console.error(error))
+                            }
                         >
                             <span className={'material-icons-round text-[18px] text-red-400'}>stop</span>
                         </button>

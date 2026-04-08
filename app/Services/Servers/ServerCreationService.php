@@ -13,6 +13,7 @@ use Pterodactyl\Models\Allocation;
 use Illuminate\Database\ConnectionInterface;
 use Pterodactyl\Models\Objects\DeploymentObject;
 use Pterodactyl\Repositories\Eloquent\ServerRepository;
+use Pterodactyl\Services\DownDetector\DownDetectorAutoRestartService;
 use Pterodactyl\Repositories\Wings\DaemonServerRepository;
 use Pterodactyl\Services\Deployment\FindViableNodesService;
 use Pterodactyl\Repositories\Eloquent\ServerVariableRepository;
@@ -33,6 +34,7 @@ class ServerCreationService
         private ServerDeletionService $serverDeletionService,
         private ServerVariableRepository $serverVariableRepository,
         private VariableValidatorService $validatorService,
+        private DownDetectorAutoRestartService $autoRestart,
     ) {
     }
 
@@ -165,6 +167,7 @@ class ServerCreationService
             'split_limit' => Arr::get($data, 'split_limit') ?? 0,
             'split_parent_server_id' => Arr::get($data, 'split_parent_server_id'),
             'split_root_server_id' => Arr::get($data, 'split_root_server_id'),
+            'auto_restart_on_crash' => Arr::get($data, 'auto_restart_on_crash', $this->autoRestart->defaultEnabled()),
         ]);
 
         return $model;

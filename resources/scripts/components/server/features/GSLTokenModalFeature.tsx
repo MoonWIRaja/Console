@@ -5,10 +5,11 @@ import tw from 'twin.macro';
 import Button from '@/components/elements/Button';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
-import { SocketEvent, SocketRequest } from '@/components/server/events';
+import { SocketEvent } from '@/components/server/events';
 import Field from '@/components/elements/Field';
 import updateStartupVariable from '@/api/server/updateStartupVariable';
 import { Form, Formik } from 'formik';
+import sendPowerCommand from '@/api/server/sendPowerCommand';
 
 interface Values {
     gslToken: string;
@@ -47,13 +48,11 @@ const GSLTokenModalFeature = () => {
 
         updateStartupVariable(uuid, 'STEAM_ACC', values.gslToken)
             .then(() => {
-                if (instance) {
-                    instance.send(SocketRequest.SET_STATE, 'restart');
+                if (uuid) {
+                    return sendPowerCommand(uuid, 'restart');
                 }
-
-                setLoading(false);
-                setVisible(false);
             })
+            .then(() => setVisible(false))
             .catch((error) => {
                 console.error(error);
                 clearAndAddHttpError({ key: 'feature:gslToken', error });

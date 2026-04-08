@@ -25,6 +25,7 @@ class DownDetectorRunnerService
         private DownDetectorSettingsService $settings,
         private DownDetectorProbeService $probe,
         private DownDetectorDiscordService $discord,
+        private DownDetectorAutoRestartService $autoRestart,
     ) {
     }
 
@@ -257,8 +258,8 @@ class DownDetectorRunnerService
         try {
             $details = $this->probe->probeServer($server, $timeoutMs);
         } catch (Throwable $exception) {
-            if ($this->isIntentionallyStopped($latestPowerEvent, $monitor, $now, $intervalSeconds)) {
-                return $this->ignoredObservation('manual_stop', sprintf('Server `%s` was stopped manually.', $server->name));
+            if ($ignored = $this->autoRestart->ignoredObservationForPowerIntent($server, $latestPowerEvent, $now, $intervalSeconds)) {
+                return $ignored;
             }
 
             return [
@@ -284,8 +285,8 @@ class DownDetectorRunnerService
         }
 
         if ($state !== 'running') {
-            if ($this->isIntentionallyStopped($latestPowerEvent, $monitor, $now, $intervalSeconds)) {
-                return $this->ignoredObservation('manual_stop', sprintf('Server `%s` was stopped manually.', $server->name));
+            if ($ignored = $this->autoRestart->ignoredObservationForPowerIntent($server, $latestPowerEvent, $now, $intervalSeconds)) {
+                return $ignored;
             }
 
             return [
@@ -306,6 +307,8 @@ class DownDetectorRunnerService
             ];
         }
 
+        $this->autoRestart->clearStopIntentIfRunning($server);
+
         $host = $this->resolveProbeHost($server);
         $port = (int) ($server->allocation?->port ?? 0);
         if ($host === null || $port < 1) {
@@ -323,6 +326,10 @@ class DownDetectorRunnerService
         try {
             $this->probe->probeTcpPort($host, $port, $timeoutMs);
         } catch (Throwable $exception) {
+            if ($ignored = $this->autoRestart->ignoredObservationForPowerIntent($server, $latestPowerEvent, $now, $intervalSeconds)) {
+                return $ignored;
+            }
+
             return [
                 'status' => DownDetectorMonitor::STATUS_DOWN,
                 'reason' => 'port_probe_failed',
@@ -457,7 +464,7 @@ class DownDetectorRunnerService
         $monitor->current_status = $toStatus;
         $monitor->last_status_changed_at = $checkedAt;
 
-        DownDetectorIncident::query()->create([
+        $incident = DownDetectorIncident::query()->create([
             'monitor_id' => $monitor->id,
             'from_status' => $fromStatus,
             'to_status' => $toStatus,
@@ -471,6 +478,17 @@ class DownDetectorRunnerService
             'summary' => $observation['summary'],
             'reason' => $observation['reason'],
         ];
+
+        if (
+            $toStatus === DownDetectorMonitor::STATUS_DOWN
+            && $monitor->monitorable_type === Server::class
+        ) {
+            $server = Server::query()->with(['node', 'allocation', 'transfer'])->find((int) $monitor->monitorable_id);
+
+            if ($server) {
+                $this->autoRestart->handleDownTransition($server, $monitor, $incident, $observation, $checkedAt);
+            }
+        }
     }
 
     private function latestPowerEvents(Collection $servers): array

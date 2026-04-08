@@ -47,6 +47,7 @@ use Pterodactyl\Models\Subdomains\ServerSubdomain;
  * @property int $split_limit
  * @property int|null $split_parent_server_id
  * @property int|null $split_root_server_id
+ * @property bool $auto_restart_on_crash
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $installed_at
@@ -184,6 +185,7 @@ class Server extends Model implements Identifiable
         'split_limit' => 'sometimes|nullable|integer|min:0',
         'split_parent_server_id' => 'nullable|integer|min:1',
         'split_root_server_id' => 'nullable|integer|min:1',
+        'auto_restart_on_crash' => 'sometimes|boolean',
     ];
 
     /**
@@ -208,6 +210,7 @@ class Server extends Model implements Identifiable
         'split_limit' => 'integer',
         'split_parent_server_id' => 'integer',
         'split_root_server_id' => 'integer',
+        'auto_restart_on_crash' => 'boolean',
         self::CREATED_AT => 'datetime',
         self::UPDATED_AT => 'datetime',
         'deleted_at' => 'datetime',

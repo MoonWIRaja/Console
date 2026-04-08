@@ -26,6 +26,13 @@ export interface StartupResponse {
     eggs: StartupEggOption[];
     variables: ServerEggVariable[];
     dockerImages: Record<string, string>;
+    autoRestartOnCrash: boolean;
+    autoRestartDefaults: {
+        enabled: boolean;
+        delaySeconds: number;
+        maxAttempts: number;
+        windowMinutes: number;
+    };
 }
 
 export default (uuid: string, initialData?: StartupResponse | null, config?: ConfigInterface<StartupResponse>) =>
@@ -51,6 +58,13 @@ export default (uuid: string, initialData?: StartupResponse | null, config?: Con
                     dockerImages: egg.docker_images || [],
                 })),
                 dockerImages: data.meta.docker_images || {},
+                autoRestartOnCrash: !!data.meta.auto_restart_on_crash,
+                autoRestartDefaults: {
+                    enabled: !!data.meta.auto_restart_defaults?.enabled,
+                    delaySeconds: Number(data.meta.auto_restart_defaults?.delay_seconds || 30),
+                    maxAttempts: Number(data.meta.auto_restart_defaults?.max_attempts || 3),
+                    windowMinutes: Number(data.meta.auto_restart_defaults?.window_minutes || 15),
+                },
             };
         },
         { initialData: initialData || undefined, errorRetryCount: 3, ...(config || {}) }

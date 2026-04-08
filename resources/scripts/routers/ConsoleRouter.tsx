@@ -8,24 +8,24 @@ import TransferListener from '@/components/server/TransferListener';
 import WebsocketHandler from '@/components/server/WebsocketHandler';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 import { ServerError } from '@/components/elements/ScreenBlock';
-import { SocketRequest } from '@/components/server/events';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import sendPowerCommandApi from '@/api/server/sendPowerCommand';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
     const [error, setError] = useState('');
 
     const serverId = ServerContext.useStoreState((state) => state.server.data?.id);
+    const serverUuid = ServerContext.useStoreState((state) => state.server.data?.uuid || '');
     const serverName = ServerContext.useStoreState((state) => state.server.data?.name || 'Server');
     const status = ServerContext.useStoreState((state) => state.status.value);
-    const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const connected = ServerContext.useStoreState((state) => state.socket.connected);
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
     const clearServerState = ServerContext.useStoreActions((actions) => actions.clearServerState);
 
     const sendPowerCommand = (command: 'start' | 'restart' | 'stop') => {
-        if (instance && connected) {
-            instance.send(SocketRequest.SET_STATE, command);
+        if (serverUuid && connected) {
+            void sendPowerCommandApi(serverUuid, command).catch((error) => console.error(error));
         }
     };
 
@@ -143,7 +143,7 @@ export default () => {
                     </div>
                     <div style={{ flex: '0 0 auto' }}>
                         <Link
-                            to={serverId ? `/server/${serverId}` : '/'}
+                            to={serverId ? `/server/${match.params.id}` : '/'}
                             style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',

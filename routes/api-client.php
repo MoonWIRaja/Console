@@ -192,6 +192,7 @@ Route::group([
         Route::put('/variable', [Client\Servers\StartupController::class, 'update']);
         Route::put('/command', [Client\Servers\StartupController::class, 'updateCommand']);
         Route::post('/command/reset', [Client\Servers\StartupController::class, 'resetCommand']);
+        Route::put('/auto-restart', [Client\Servers\StartupController::class, 'updateAutoRestart']);
         Route::put('/egg', [Client\Servers\StartupController::class, 'changeEgg']);
     });
 

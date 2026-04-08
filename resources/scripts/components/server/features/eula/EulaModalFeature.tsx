@@ -6,7 +6,8 @@ import Button from '@/components/elements/Button';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
-import { SocketEvent, SocketRequest } from '@/components/server/events';
+import { SocketEvent } from '@/components/server/events';
+import sendPowerCommand from '@/api/server/sendPowerCommand';
 
 const EulaModalFeature = () => {
     const [visible, setVisible] = useState(false);
@@ -40,12 +41,10 @@ const EulaModalFeature = () => {
         saveFileContents(uuid, 'eula.txt', 'eula=true')
             .then(() => {
                 if (status === 'offline' && instance) {
-                    instance.send(SocketRequest.SET_STATE, 'restart');
+                    return sendPowerCommand(uuid, 'restart');
                 }
-
-                setLoading(false);
-                setVisible(false);
             })
+            .then(() => setVisible(false))
             .catch((error) => {
                 console.error(error);
                 clearAndAddHttpError({ key: 'feature:eula', error });

@@ -528,6 +528,60 @@
                                 </div>
                             </div>
 
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <div class="form-group">
+                                        <label>Auto Restart Default</label>
+                                        <select class="form-control" name="server[auto_restart_default_enabled]">
+                                            <option value="1" @if(data_get($config, 'server.auto_restart_default_enabled')) selected @endif>Enabled</option>
+                                            <option value="0" @if(!data_get($config, 'server.auto_restart_default_enabled')) selected @endif>Disabled</option>
+                                        </select>
+                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                            New servers inherit this default. Existing servers keep their current value.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="form-group">
+                                        <label>Restart Delay Seconds</label>
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            min="10"
+                                            max="600"
+                                            name="server[auto_restart_delay_seconds]"
+                                            value="{{ old('server.auto_restart_delay_seconds', data_get($config, 'server.auto_restart_delay_seconds', 30)) }}"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="form-group">
+                                        <label>Max Auto Restarts</label>
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            min="1"
+                                            max="20"
+                                            name="server[auto_restart_max_attempts]"
+                                            value="{{ old('server.auto_restart_max_attempts', data_get($config, 'server.auto_restart_max_attempts', 3)) }}"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="form-group">
+                                        <label>Retry Window Minutes</label>
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            min="1"
+                                            max="1440"
+                                            name="server[auto_restart_window_minutes]"
+                                            value="{{ old('server.auto_restart_window_minutes', data_get($config, 'server.auto_restart_window_minutes', 15)) }}"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-group" style="margin-bottom: 0;">
                                 <button type="submit" class="btn btn-primary">Save Server Setup</button>
                             </div>

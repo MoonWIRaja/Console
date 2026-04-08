@@ -1,21 +1,8 @@
 import http from '@/api/http';
-import { ServerEggVariable } from '@/api/server/types';
 import { rawDataToServerEggVariable } from '@/api/transformers';
-import type { StartupEggOption } from '@/api/swr/getServerStartup';
+import type { StartupEggOption, StartupResponse } from '@/api/swr/getServerStartup';
 
 export type StartupProfileEgg = StartupEggOption;
-
-interface StartupResponse {
-    invocation: string;
-    currentDockerImage: string;
-    rawStartupCommand: string;
-    defaultStartupCommand: string;
-    dockerImages: Record<string, string>;
-    nest: { id: number; name: string };
-    currentEgg: { id: number; name: string };
-    eggs: StartupProfileEgg[];
-    variables: ServerEggVariable[];
-}
 
 export default async (uuid: string, nestId: number, eggId: number, dockerImage?: string): Promise<StartupResponse> => {
     const payload: Record<string, unknown> = { nest_id: nestId, egg_id: eggId };
@@ -38,5 +25,12 @@ export default async (uuid: string, nestId: number, eggId: number, dockerImage?:
             dockerImages: egg.docker_images || [],
         })),
         variables: ((data.data || []) as any[]).map(rawDataToServerEggVariable),
+        autoRestartOnCrash: !!data.meta.auto_restart_on_crash,
+        autoRestartDefaults: {
+            enabled: !!data.meta.auto_restart_defaults?.enabled,
+            delaySeconds: Number(data.meta.auto_restart_defaults?.delay_seconds || 30),
+            maxAttempts: Number(data.meta.auto_restart_defaults?.max_attempts || 3),
+            windowMinutes: Number(data.meta.auto_restart_defaults?.window_minutes || 15),
+        },
     };
 };

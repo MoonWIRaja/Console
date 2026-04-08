@@ -4,6 +4,7 @@ import { ServerContext } from '@/state/server';
 import { PowerAction } from '@/components/server/console/ServerConsoleContainer';
 import { Dialog } from '@/components/elements/dialog';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import sendPowerCommand from '@/api/server/sendPowerCommand';
 
 interface PowerButtonProps {
     className?: string;
@@ -13,7 +14,7 @@ interface PowerButtonProps {
 export default ({ className, variant = 'default' }: PowerButtonProps) => {
     const [open, setOpen] = useState(false);
     const status = ServerContext.useStoreState((state) => state.status.value);
-    const instance = ServerContext.useStoreState((state) => state.socket.instance);
+    const uuid = ServerContext.useStoreState((state) => state.server.data?.uuid || '');
 
     const killable = status === 'stopping';
     const onButtonClick = (
@@ -25,10 +26,12 @@ export default ({ className, variant = 'default' }: PowerButtonProps) => {
             return setOpen(true);
         }
 
-        if (instance) {
-            setOpen(false);
-            instance.send('set state', action === 'kill-confirmed' ? 'kill' : action);
-        }
+        if (!uuid) return;
+
+        setOpen(false);
+        void sendPowerCommand(uuid, action === 'kill-confirmed' ? 'kill' : action).catch((error) =>
+            console.error(error)
+        );
     };
 
     useEffect(() => {

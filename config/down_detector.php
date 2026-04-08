@@ -20,6 +20,10 @@ return [
         'last_periodic_report_at' => null,
     ],
     'server' => [
+        'auto_restart_default_enabled' => false,
+        'auto_restart_delay_seconds' => 30,
+        'auto_restart_max_attempts' => 3,
+        'auto_restart_window_minutes' => 15,
         'discord' => [
             'alert_channel_id' => env('DOWN_DETECTOR_SERVER_ALERT_CHANNEL_ID'),
             'launcher_channel_id' => env('DOWN_DETECTOR_SERVER_LAUNCHER_CHANNEL_ID'),

@@ -23,6 +23,8 @@ import getNestEggs, { NestEgg } from '@/api/server/getNestEggs';
 import { usePermissions } from '@/plugins/usePermissions';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import ToggleSwitch from '@/components/ui/toggle-switch';
+import updateStartupAutoRestart from '@/api/server/updateStartupAutoRestart';
 
 const normalizeCommand = (value: string): string =>
     value
@@ -69,6 +71,8 @@ const StartupContainer = () => {
     const [setupLoading, setSetupLoading] = useState(false);
     const [nestOptionsLoading, setNestOptionsLoading] = useState(false);
     const [nestEggsLoading, setNestEggsLoading] = useState(false);
+    const [autoRestartOnCrash, setAutoRestartOnCrash] = useState(false);
+    const [autoRestartSaving, setAutoRestartSaving] = useState(false);
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const [canEditStartup] = usePermissions(['startup.update']);
     const lastSavedCommand = useRef('');
@@ -97,6 +101,13 @@ const StartupContainer = () => {
             eggs: [],
             variables: variables.variables,
             dockerImages: variables.dockerImage ? { [variables.dockerImage]: variables.dockerImage } : {},
+            autoRestartOnCrash: false,
+            autoRestartDefaults: {
+                enabled: false,
+                delaySeconds: 30,
+                maxAttempts: 3,
+                windowMinutes: 15,
+            },
         }),
         [variables.invocation, variables.dockerImage, variables.variables]
     );
@@ -183,6 +194,7 @@ const StartupContainer = () => {
         setSelectedDockerImage(
             data.currentDockerImage || variables.dockerImage || Object.values(data.dockerImages || {})[0] || ''
         );
+        setAutoRestartOnCrash(!!data.autoRestartOnCrash);
     }, [
         data?.rawStartupCommand,
         data?.currentDockerImage,
@@ -190,6 +202,7 @@ const StartupContainer = () => {
         currentNestId,
         variables.dockerImage,
         data?.eggs,
+        data?.autoRestartOnCrash,
     ]);
 
     useEffect(() => {
@@ -314,6 +327,8 @@ const StartupContainer = () => {
                                   currentEgg: response.currentEgg,
                                   eggs: response.eggs,
                                   variables: response.variables,
+                                  autoRestartOnCrash: response.autoRestartOnCrash,
+                                  autoRestartDefaults: response.autoRestartDefaults,
                               }
                             : current,
                     false
@@ -328,6 +343,7 @@ const StartupContainer = () => {
                 setSelectedEggId(response.currentEgg.id);
                 setSelectedDockerImage(response.currentDockerImage || selectedDockerImage);
                 setStartupDraft(response.rawStartupCommand || '');
+                setAutoRestartOnCrash(response.autoRestartOnCrash);
             })
             .catch((error) => {
                 console.error(error);
@@ -340,6 +356,37 @@ const StartupContainer = () => {
                 setChangeEggOpen(false);
             });
     }, [uuid, selectedNestId, selectedEggId, selectedDockerImage, data, canEditStartup]);
+
+    const updateAutoRestart = (enabled: boolean) => {
+        if (!canEditStartup || autoRestartSaving) return;
+
+        const previous = autoRestartOnCrash;
+        setAutoRestartOnCrash(enabled);
+        setAutoRestartSaving(true);
+        clearFlashes('startup:auto-restart');
+
+        updateStartupAutoRestart(uuid, enabled)
+            .then((response) => {
+                setAutoRestartOnCrash(response.enabled);
+                mutate(
+                    (current) =>
+                        current
+                            ? {
+                                  ...current,
+                                  autoRestartOnCrash: response.enabled,
+                                  autoRestartDefaults: response.defaults,
+                              }
+                            : current,
+                    false
+                );
+            })
+            .catch((error) => {
+                console.error(error);
+                setAutoRestartOnCrash(previous);
+                clearAndAddHttpError({ key: 'startup:auto-restart', error });
+            })
+            .then(() => setAutoRestartSaving(false));
+    };
 
     useEffect(() => {
         if (!canEditStartup || !data || !hasDockerOnlyChange) return;
@@ -468,71 +515,121 @@ const StartupContainer = () => {
                 style={{ WebkitOverflowScrolling: 'touch' }}
             >
                 <div css={tw`xl:flex`}>
-                    <TitledGreyBox
-                        title={
-                            <div css={tw`flex items-center justify-between gap-3`}>
-                                <p css={tw`text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]`}>
-                                    Startup Command
-                                </p>
-                                {canEditStartup && (
-                                    <InteractiveHoverButton
-                                        type={'button'}
-                                        text={'Recovery'}
-                                        variant={'warning'}
-                                        className={'h-8 min-w-0 px-3 text-xs'}
-                                        onClick={() => setRecoveryOpen(true)}
-                                    />
-                                )}
-                            </div>
-                        }
-                        css={tw`flex-1`}
-                    >
-                        <Dialog.Confirm
-                            open={recoveryOpen}
-                            title={'Recover startup command'}
-                            confirm={'Recover'}
-                            onClose={() => setRecoveryOpen(false)}
-                            onConfirmed={recoverStartupCommand}
-                        >
-                            Reset startup command to the default service command?
-                        </Dialog.Confirm>
-
-                        <FlashMessageRender byKey={'startup:command'} css={tw`mb-3`} />
-
-                        <div css={tw`space-y-3 px-1 py-2`}>
-                            <Textarea
-                                value={startupDraft}
-                                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-                                    setStartupDraft(event.currentTarget.value)
-                                }
-                                rows={4}
-                                readOnly={!canEditStartup}
-                                css={tw`font-mono`}
-                                style={{ backgroundColor: 'var(--card)' }}
-                            />
-                            {canEditStartup && commandSaving && (
-                                <div
-                                    css={tw`flex items-center justify-end gap-2 text-xs text-[color:var(--text-subtle)]`}
-                                >
-                                    <Spinner size={Spinner.Size.SMALL} />
-                                    <span>Auto-saving...</span>
-                                </div>
-                            )}
-                            <div
-                                css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}
-                            >
-                                <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
-                                    Preview
-                                </p>
-                                <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>{commandPreview.preview}</p>
-                                {commandPreview.placeholders.length > 0 && (
-                                    <p css={tw`mt-2 text-xs text-[color:var(--text-subtle)]`}>
-                                        Placeholders: {commandPreview.placeholders.join(', ')}
+                    <div css={tw`flex-1`}>
+                        <TitledGreyBox
+                            title={
+                                <div css={tw`flex items-center justify-between gap-3`}>
+                                    <p
+                                        css={tw`text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]`}
+                                    >
+                                        Startup Command
                                     </p>
+                                    {canEditStartup && (
+                                        <InteractiveHoverButton
+                                            type={'button'}
+                                            text={'Recovery'}
+                                            variant={'warning'}
+                                            className={'h-8 min-w-0 px-3 text-xs'}
+                                            onClick={() => setRecoveryOpen(true)}
+                                        />
+                                    )}
+                                </div>
+                            }
+                            css={tw`flex-1`}
+                        >
+                            <Dialog.Confirm
+                                open={recoveryOpen}
+                                title={'Recover startup command'}
+                                confirm={'Recover'}
+                                onClose={() => setRecoveryOpen(false)}
+                                onConfirmed={recoverStartupCommand}
+                            >
+                                Reset startup command to the default service command?
+                            </Dialog.Confirm>
+
+                            <FlashMessageRender byKey={'startup:command'} css={tw`mb-3`} />
+
+                            <div css={tw`space-y-6 px-1 py-2`}>
+                                <Textarea
+                                    value={startupDraft}
+                                    onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                        setStartupDraft(event.currentTarget.value)
+                                    }
+                                    rows={4}
+                                    readOnly={!canEditStartup}
+                                    css={tw`font-mono`}
+                                    style={{ backgroundColor: 'var(--card)' }}
+                                />
+                                {canEditStartup && commandSaving && (
+                                    <div
+                                        css={tw`flex items-center justify-end gap-2 text-xs text-[color:var(--text-subtle)]`}
+                                    >
+                                        <Spinner size={Spinner.Size.SMALL} />
+                                        <span>Auto-saving...</span>
+                                    </div>
                                 )}
+                                <div
+                                    css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}
+                                >
+                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                        Preview
+                                    </p>
+                                    <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>
+                                        {commandPreview.preview}
+                                    </p>
+                                    {commandPreview.placeholders.length > 0 && (
+                                        <p css={tw`mt-2 text-xs text-[color:var(--text-subtle)]`}>
+                                            Placeholders: {commandPreview.placeholders.join(', ')}
+                                        </p>
+                                    )}
+                                </div>
+                                <div css={tw`border-t border-[color:var(--border)] pt-5`}>
+                                    <div css={tw`mb-3 flex items-center justify-between gap-3`}>
+                                        <div css={tw`min-w-0`}>
+                                            <p
+                                                css={tw`text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]`}
+                                            >
+                                                Auto Restart
+                                            </p>
+                                            <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>
+                                                Restart automatically after an unexpected crash. Manual Stop or Kill
+                                                from the panel will not trigger auto restart.
+                                            </p>
+                                        </div>
+                                        {autoRestartSaving && <Spinner size={Spinner.Size.SMALL} />}
+                                    </div>
+                                    <FlashMessageRender byKey={'startup:auto-restart'} css={tw`mb-3`} />
+                                    <div css={tw`space-y-4`}>
+                                        <div css={tw`flex items-center justify-between gap-4`}>
+                                            <div css={tw`min-w-0`}>
+                                                <p css={tw`text-sm font-semibold text-[#f8f6ef]`}>
+                                                    Auto Restart When Crashed
+                                                </p>
+                                                <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>
+                                                    Turn this on to automatically restart the server after an unexpected
+                                                    crash.
+                                                </p>
+                                            </div>
+                                            <ToggleSwitch
+                                                id={`startup-auto-restart-${uuid}`}
+                                                checked={autoRestartOnCrash}
+                                                disabled={!canEditStartup || autoRestartSaving}
+                                                onChange={updateAutoRestart}
+                                                label={autoRestartOnCrash ? 'On' : 'Off'}
+                                            />
+                                        </div>
+                                        <div
+                                            css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 text-xs text-[color:var(--text-subtle)]`}
+                                        >
+                                            Crash recovery policy: wait {data.autoRestartDefaults.delaySeconds} seconds
+                                            before restart, allow up to {data.autoRestartDefaults.maxAttempts} tries
+                                            every {data.autoRestartDefaults.windowMinutes} minutes.
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </TitledGreyBox>
+                        </TitledGreyBox>
+                    </div>
                     <TitledGreyBox
                         title={
                             <div css={tw`flex items-center justify-between gap-3`}>

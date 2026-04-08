@@ -16,9 +16,11 @@ use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\GetStartupRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\ResetStartupCommandRequest;
+use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\UpdateStartupAutoRestartRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\UpdateStartupCommandRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\UpdateStartupEggRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Startup\UpdateStartupVariableRequest;
+use Pterodactyl\Services\DownDetector\DownDetectorAutoRestartService;
 
 class StartupController extends ClientApiController
 {
@@ -29,6 +31,7 @@ class StartupController extends ClientApiController
         private StartupCommandService $startupCommandService,
         private ServerVariableRepository $repository,
         private StartupProfileCleanupService $startupProfileCleanupService,
+        private DownDetectorAutoRestartService $autoRestart,
     ) {
         parent::__construct();
     }
@@ -264,6 +267,29 @@ class StartupController extends ClientApiController
             ->toArray();
     }
 
+    public function updateAutoRestart(UpdateStartupAutoRestartRequest $request, Server $server): JsonResponse
+    {
+        $enabled = (bool) $request->boolean('enabled');
+        $original = (bool) $server->auto_restart_on_crash;
+
+        if ($enabled !== $original) {
+            $server->forceFill(['auto_restart_on_crash' => $enabled])->save();
+
+            Activity::event('server:startup.auto_restart.updated')
+                ->subject($server)
+                ->property([
+                    'old' => $original,
+                    'new' => $enabled,
+                ])
+                ->log();
+        }
+
+        return new JsonResponse([
+            'enabled' => (bool) $server->fresh()->auto_restart_on_crash,
+            'defaults' => $this->buildAutoRestartMeta(),
+        ]);
+    }
+
     private function buildStartupMeta(Server $server, string $startup): array
     {
         $server->loadMissing(['nest', 'egg']);
@@ -275,6 +301,8 @@ class StartupController extends ClientApiController
             'current_docker_image' => $server->image,
             'raw_startup_command' => $server->startup,
             'default_startup_command' => $server->egg->startup,
+            'auto_restart_on_crash' => (bool) $server->auto_restart_on_crash,
+            'auto_restart_defaults' => $this->buildAutoRestartMeta(),
             'nest' => [
                 'id' => $server->nest_id,
                 'name' => $server->nest->name ?? 'Unknown Nest',
@@ -298,6 +326,18 @@ class StartupController extends ClientApiController
                 ])
                 ->values()
                 ->toArray(),
+        ];
+    }
+
+    private function buildAutoRestartMeta(): array
+    {
+        $defaults = $this->autoRestart->defaults();
+
+        return [
+            'enabled' => (bool) $defaults['enabled'],
+            'delay_seconds' => (int) $defaults['delay_seconds'],
+            'max_attempts' => (int) $defaults['max_attempts'],
+            'window_minutes' => (int) $defaults['window_minutes'],
         ];
     }
 

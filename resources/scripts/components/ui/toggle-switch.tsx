@@ -7,6 +7,7 @@ interface ToggleSwitchProps {
     id?: string;
     className?: string;
     label?: string;
+    disabled?: boolean;
 }
 
 const Wrapper = styled.div`
@@ -48,6 +49,14 @@ const Wrapper = styled.div`
         text-indent: -9999px;
         width: 100%;
         user-select: none;
+    }
+
+    .switch.is-disabled {
+        opacity: 0.6;
+    }
+
+    .switch.is-disabled .switch-label {
+        cursor: not-allowed;
     }
 
     .switch-label:before {
@@ -114,16 +123,24 @@ const Wrapper = styled.div`
     }
 `;
 
-const ToggleSwitch = ({ checked, onChange, id = 'toggle-switch', className, label }: ToggleSwitchProps) => {
+const ToggleSwitch = ({
+    checked,
+    onChange,
+    id = 'toggle-switch',
+    className,
+    label,
+    disabled = false,
+}: ToggleSwitchProps) => {
     return (
         <Wrapper className={className}>
             {label && <span className='switch-text'>{label}</span>}
-            <div className='switch'>
+            <div className={`switch${disabled ? ' is-disabled' : ''}`}>
                 <input
                     className='switch-check'
                     id={id}
                     type='checkbox'
                     checked={checked}
+                    disabled={disabled}
                     onChange={(e) => onChange(e.currentTarget.checked)}
                 />
                 <label className='switch-label' htmlFor={id}>

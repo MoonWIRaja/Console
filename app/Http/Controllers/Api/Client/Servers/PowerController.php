@@ -8,13 +8,17 @@ use Pterodactyl\Facades\Activity;
 use Pterodactyl\Repositories\Wings\DaemonPowerRepository;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\SendPowerRequest;
+use Pterodactyl\Services\DownDetector\DownDetectorAutoRestartService;
 
 class PowerController extends ClientApiController
 {
     /**
      * PowerController constructor.
      */
-    public function __construct(private DaemonPowerRepository $repository)
+    public function __construct(
+        private DaemonPowerRepository $repository,
+        private DownDetectorAutoRestartService $autoRestart,
+    )
     {
         parent::__construct();
     }
@@ -28,7 +32,11 @@ class PowerController extends ClientApiController
             $request->input('signal')
         );
 
-        Activity::event(strtolower("server:power.{$request->input('signal')}"))->log();
+        $this->autoRestart->recordManualIntent($server, (string) $request->input('signal'));
+
+        Activity::event(strtolower("server:power.{$request->input('signal')}"))
+            ->subject($server)
+            ->log();
 
         return $this->returnNoContent();
     }

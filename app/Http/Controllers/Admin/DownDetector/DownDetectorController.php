@@ -59,6 +59,7 @@ class DownDetectorController extends Controller
                 'server_launcher_ready' => filled(config('services.discord.bot_token'))
                     && filled(data_get($config, 'server.discord.launcher_channel_id'))
                     && filled(data_get($config, 'server.discord.launcher_message_id')),
+                'server_auto_restart_default_enabled' => (bool) data_get($config, 'server.auto_restart_default_enabled', false),
                 'last_run_at_human' => $config['last_run_at']
                     ? CarbonImmutable::parse($config['last_run_at'])->format('Y-m-d H:i:s T')
                     : 'Never',

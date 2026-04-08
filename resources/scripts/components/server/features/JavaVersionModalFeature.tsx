@@ -6,12 +6,13 @@ import Button from '@/components/elements/Button';
 import setSelectedDockerImage from '@/api/server/setSelectedDockerImage';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
-import { SocketEvent, SocketRequest } from '@/components/server/events';
+import { SocketEvent } from '@/components/server/events';
 import useWebsocketEvent from '@/plugins/useWebsocketEvent';
 import Can from '@/components/elements/Can';
 import getServerStartup from '@/api/swr/getServerStartup';
 import InputSpinner from '@/components/elements/InputSpinner';
 import Select from '@/components/ui/select';
+import sendPowerCommand from '@/api/server/sendPowerCommand';
 
 const MATCH_ERRORS = [
     'minecraft 1.17 requires running the server with java 16 or above',
@@ -56,10 +57,11 @@ const JavaVersionModalFeature = () => {
         setSelectedDockerImage(uuid, selectedVersion)
             .then(() => {
                 if (status === 'offline' && instance) {
-                    instance.send(SocketRequest.SET_STATE, 'restart');
+                    return sendPowerCommand(uuid, 'restart');
                 }
                 setVisible(false);
             })
+            .then(() => setVisible(false))
             .catch((error) => clearAndAddHttpError({ key: 'feature:javaVersion', error }))
             .then(() => setLoading(false));
     };

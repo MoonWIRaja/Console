@@ -35,6 +35,10 @@ class DownDetectorSettingsService
                 'last_periodic_report_at' => $this->normalizedString(config('down_detector.node.last_periodic_report_at')),
             ],
             'server' => [
+                'auto_restart_default_enabled' => (bool) config('down_detector.server.auto_restart_default_enabled', false),
+                'auto_restart_delay_seconds' => max((int) config('down_detector.server.auto_restart_delay_seconds', 30), 10),
+                'auto_restart_max_attempts' => max((int) config('down_detector.server.auto_restart_max_attempts', 3), 1),
+                'auto_restart_window_minutes' => max((int) config('down_detector.server.auto_restart_window_minutes', 15), 1),
                 'discord' => [
                     'alert_channel_id' => $this->normalizedString(config('down_detector.server.discord.alert_channel_id')) ?? $legacyChannel,
                     'launcher_channel_id' => $this->normalizedString(config('down_detector.server.discord.launcher_channel_id')),
@@ -83,6 +87,10 @@ class DownDetectorSettingsService
             'down_detector:monitor_servers' => (bool) data_get($input, 'monitor_servers', true),
             'down_detector:server:discord:alert_channel_id' => $this->normalizedString(data_get($input, 'server.discord.alert_channel_id')),
             'down_detector:server:discord:launcher_channel_id' => $this->normalizedString(data_get($input, 'server.discord.launcher_channel_id')),
+            'down_detector:server:auto_restart_default_enabled' => (bool) data_get($input, 'server.auto_restart_default_enabled', false),
+            'down_detector:server:auto_restart_delay_seconds' => max((int) data_get($input, 'server.auto_restart_delay_seconds', 30), 10),
+            'down_detector:server:auto_restart_max_attempts' => max((int) data_get($input, 'server.auto_restart_max_attempts', 3), 1),
+            'down_detector:server:auto_restart_window_minutes' => max((int) data_get($input, 'server.auto_restart_window_minutes', 15), 1),
         ];
 
         foreach ($payload as $key => $value) {
