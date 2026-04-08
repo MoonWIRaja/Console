@@ -1256,14 +1256,32 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         }
 
         $officialUuid = $this->resolveOfficialUuidByName($resolvedName);
-        if ($officialUuid === '' || $officialUuid !== $candidateUuid) {
-            return null;
+
+        // If Mojang API returned a UUID, verify it matches what the server reported.
+        if ($officialUuid !== '') {
+            if ($officialUuid !== $candidateUuid) {
+                return null;
+            }
+
+            return [
+                'name' => $resolvedName,
+                'uuid' => $officialUuid,
+            ];
         }
 
-        return [
-            'name' => $resolvedName,
-            'uuid' => $officialUuid,
-        ];
+        // Mojang API was unreachable or returned no result.
+        // When the server is running with online-mode=true, the server itself
+        // has already verified the player's identity with Mojang — the UUID
+        // provided by the server IS the official Mojang UUID. Trust it directly.
+        // UUID version 4 (random) is the format Mojang uses for online accounts.
+        if ($this->isMojangStyleUuid($candidateUuid)) {
+            return [
+                'name' => $resolvedName,
+                'uuid' => $candidateUuid,
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -1293,6 +1311,29 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         }
 
         return $this->isGenericPlayerName($current) && !$this->isGenericPlayerName($candidate);
+    }
+
+    /**
+     * Check whether a UUID looks like a valid Mojang online-mode UUID.
+     * Mojang uses version-4 (random) UUIDs for online accounts.
+     * Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (normalized without dashes)
+     */
+    private function isMojangStyleUuid(string $uuid): bool
+    {
+        // UUID must be 32 hex chars (normalized, no dashes)
+        if (!preg_match('/^[0-9a-f]{32}$/i', $uuid)) {
+            return false;
+        }
+
+        // Version nibble (13th char, 0-indexed) must be '4'
+        if ($uuid[12] !== '4') {
+            return false;
+        }
+
+        // Variant nibble (17th char) must be 8, 9, a, or b
+        $variant = hexdec($uuid[16]);
+
+        return $variant >= 8 && $variant <= 11;
     }
 
     private function isGenericPlayerName(string $name): bool
@@ -1834,6 +1875,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         }
 
         $cacheKey = 'players:mcjava:mojang-uuid:' . md5($lookup);
+        $cacheKeyNetErr = 'players:mcjava:mojang-neterr:' . md5($lookup);
         $cached = Cache::get($cacheKey);
         if (is_string($cached)) {
             $resolved = $cached === '__none__' ? '' : $this->normalizeUuid($cached);
@@ -1842,6 +1884,15 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             return $resolved;
         }
 
+        // Skip Mojang API call if we recently experienced a network error for this name.
+        // This prevents hammering a blocked API endpoint on every request.
+        if (Cache::has($cacheKeyNetErr)) {
+            $this->officialUuidCacheByName[$lookup] = '';
+
+            return '';
+        }
+
+        $networkError = false;
         try {
             $response = Http::timeout(2)
                 ->connectTimeout(2)
@@ -1858,8 +1909,30 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                     return $resolved;
                 }
             }
+
+            if ($response->status() === 404) {
+                // Player does not exist on Mojang — cache this as a definitive negative.
+                Cache::put($cacheKey, '__none__', now()->addMinutes(30));
+                $this->officialUuidCacheByName[$lookup] = '';
+
+                return '';
+            }
+
+            // Non-404 non-OK response: treat as transient failure.
+            $networkError = true;
         } catch (Throwable) {
-            // Network failures are expected occasionally; keep graceful fallback behavior.
+            // Network failures (timeout, DNS, firewall) — do not cache as definitive.
+            $networkError = true;
+        }
+
+        if ($networkError) {
+            // Cache only the network-error flag (short TTL) so we don't retry every request,
+            // but don't write '__none__' to the main key — that would permanently suppress
+            // the player even when the API becomes reachable again.
+            Cache::put($cacheKeyNetErr, true, now()->addMinutes(5));
+            $this->officialUuidCacheByName[$lookup] = '';
+
+            return '';
         }
 
         Cache::put($cacheKey, '__none__', now()->addMinutes(30));
