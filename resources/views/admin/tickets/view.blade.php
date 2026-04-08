@@ -616,13 +616,8 @@
                 </form>
                 @if($ticket->status !== 'closed')
                     <div class="box-footer">
-                        <form method="POST" action="{{ route('admin.tickets.update', $ticket->id) }}">
+                        <form method="POST" action="{{ route('admin.tickets.close', $ticket->id) }}">
                             @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="status" value="closed">
-                            @if($ticket->assigned_admin_id)
-                                <input type="hidden" name="assigned_admin_id" value="{{ $ticket->assigned_admin_id }}">
-                            @endif
                             <button type="submit" class="btn btn-danger btn-block">Close Ticket</button>
                         </form>
                     </div>

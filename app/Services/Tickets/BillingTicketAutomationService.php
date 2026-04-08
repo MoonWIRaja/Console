@@ -8,6 +8,7 @@ use Pterodactyl\Models\User;
 use Pterodactyl\Models\Ticket;
 use Pterodactyl\Models\BillingPayment;
 use Pterodactyl\Models\BillingInvoice;
+use Pterodactyl\Models\BillingInvoiceItem;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Services\Discord\DiscordCommunityService;
 
@@ -53,12 +54,7 @@ class BillingTicketAutomationService
             'billing_invoice_id' => $invoice->id,
             'billing_order_id' => $invoice->billing_order_id,
             'billing_subscription_id' => $invoice->subscription_id,
-            'body' => sprintf(
-                'This support ticket was created automatically for invoice %s (%s %.2f).',
-                $invoice->invoice_number,
-                $invoice->currency,
-                (float) $invoice->grand_total
-            ),
+            'body' => $this->buildManualCheckoutBody($invoice),
         ], [
             'source' => Ticket::SOURCE_CHECKOUT,
             'status' => Ticket::STATUS_WAITING_FOR_USER,
@@ -199,5 +195,71 @@ class BillingTicketAutomationService
         } catch (Throwable $exception) {
             report($exception);
         }
+    }
+
+    private function buildManualCheckoutBody(BillingInvoice $invoice): string
+    {
+        if ($invoice->type !== BillingInvoice::TYPE_UPGRADE) {
+            return sprintf(
+                'This support ticket was created automatically for invoice %s (%s %.2f).',
+                $invoice->invoice_number,
+                $invoice->currency,
+                (float) $invoice->grand_total
+            );
+        }
+
+        $invoice->loadMissing('items', 'subscription', 'order');
+
+        $upgradeItem = $invoice->items->firstWhere('type', BillingInvoiceItem::TYPE_UPGRADE_PRORATION);
+        $currentMonthly = (float) Arr::get($upgradeItem?->meta ?? [], 'current_monthly_total', $invoice->subscription?->recurring_total ?? 0);
+        $newMonthly = (float) Arr::get($upgradeItem?->meta ?? [], 'new_monthly_total', $currentMonthly);
+        $monthlyIncrease = round(max($newMonthly - $currentMonthly, 0), 2);
+
+        $parts = [
+            sprintf('This support ticket was created automatically for upgrade invoice %s.', $invoice->invoice_number),
+            sprintf('Immediate prorated charge: %s %.2f.', $invoice->currency, (float) $invoice->grand_total),
+        ];
+
+        if ($monthlyIncrease > 0) {
+            $parts[] = sprintf(
+                'Recurring monthly increase: %s %.2f (%s %.2f -> %s %.2f per month).',
+                $invoice->currency,
+                $monthlyIncrease,
+                $invoice->currency,
+                $currentMonthly,
+                $invoice->currency,
+                $newMonthly
+            );
+        }
+
+        $resourceChangeSummary = $this->describeUpgradeResources($invoice);
+        if ($resourceChangeSummary !== null) {
+            $parts[] = sprintf('Requested change: %s.', $resourceChangeSummary);
+        }
+
+        return implode(' ', $parts);
+    }
+
+    private function describeUpgradeResources(BillingInvoice $invoice): ?string
+    {
+        if (!$invoice->subscription || !$invoice->order) {
+            return null;
+        }
+
+        $changes = [];
+
+        if ((int) $invoice->subscription->cpu_cores !== (int) $invoice->order->cpu_cores) {
+            $changes[] = sprintf('CPU %d -> %d vCores', $invoice->subscription->cpu_cores, $invoice->order->cpu_cores);
+        }
+
+        if ((int) $invoice->subscription->memory_gb !== (int) $invoice->order->memory_gb) {
+            $changes[] = sprintf('RAM %d -> %d GB', $invoice->subscription->memory_gb, $invoice->order->memory_gb);
+        }
+
+        if ((int) $invoice->subscription->disk_gb !== (int) $invoice->order->disk_gb) {
+            $changes[] = sprintf('Disk %d -> %d GB', $invoice->subscription->disk_gb, $invoice->order->disk_gb);
+        }
+
+        return $changes === [] ? null : implode(', ', $changes);
     }
 }

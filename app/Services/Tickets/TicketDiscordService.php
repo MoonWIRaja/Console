@@ -5,6 +5,7 @@ namespace Pterodactyl\Services\Tickets;
 use RuntimeException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +29,12 @@ class TicketDiscordService
         $ticket = $this->syncRequesterDiscordIdentity($ticket);
 
         if ($ticket->discord_thread_id) {
+            // Discord can be slightly eventual-consistent immediately after a thread is created.
+            // Trust a very recent thread link first so the initial message relay does not spawn a duplicate.
+            if ($ticket->discord_last_synced_at && $ticket->discord_last_synced_at->gt(now()->subMinutes(2))) {
+                return $ticket;
+            }
+
             if ($this->threadIsAccessible($ticket->discord_thread_id)) {
                 return $this->syncThreadMembers($ticket, $ticket->discord_thread_id);
             }
@@ -188,11 +195,17 @@ class TicketDiscordService
     public function scheduleTicketSyncAfterResponse(int $ticketId): void
     {
         app()->terminating(function () use ($ticketId) {
+            $lock = Cache::lock(sprintf('tickets:discord:sync:%d', $ticketId), 15);
+            if (!$lock->get()) {
+                return;
+            }
+
             $ticket = Ticket::query()
                 ->with(['messages.attachments', 'messages.author', 'assignedAdmin', 'invoice', 'payment', 'subscription', 'order'])
                 ->find($ticketId);
 
             if (!$ticket) {
+                $lock->release();
                 return;
             }
 
@@ -201,6 +214,8 @@ class TicketDiscordService
                 $this->syncPendingMessages($ticket);
             } catch (\Throwable $exception) {
                 report($exception);
+            } finally {
+                $lock->release();
             }
         });
     }
@@ -208,8 +223,14 @@ class TicketDiscordService
     public function scheduleMessageRelayAfterResponse(int $messageId): void
     {
         app()->terminating(function () use ($messageId) {
+            $lock = Cache::lock(sprintf('tickets:discord:message:%d', $messageId), 15);
+            if (!$lock->get()) {
+                return;
+            }
+
             $message = TicketMessage::query()->with(['ticket', 'attachments', 'author'])->find($messageId);
             if (!$message) {
+                $lock->release();
                 return;
             }
 
@@ -217,6 +238,8 @@ class TicketDiscordService
                 $this->relayMessage($message);
             } catch (\Throwable $exception) {
                 report($exception);
+            } finally {
+                $lock->release();
             }
         });
     }

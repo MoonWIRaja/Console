@@ -73,6 +73,22 @@ class ViewController extends Controller
         return redirect()->route('admin.tickets.view', $ticket->id);
     }
 
+    public function close(Ticket $ticket): RedirectResponse
+    {
+        $ticket = $this->tickets->updateStatus($ticket, Ticket::STATUS_CLOSED, $ticket->assigned_admin_id);
+
+        try {
+            $this->discord->closeTicketThread($ticket, 'Ticket closed from admin panel');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->alert->warning('Ticket was closed in the panel, but the Discord thread could not be deleted automatically.')->flash();
+        }
+
+        $this->alert->success('Ticket updated.')->flash();
+
+        return redirect()->route('admin.tickets.view', $ticket->id);
+    }
+
     public function reopen(Ticket $ticket): RedirectResponse
     {
         $this->tickets->reopen($ticket, request()->user());

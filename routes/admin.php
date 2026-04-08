@@ -175,6 +175,7 @@ Route::group(['prefix' => 'tickets'], function () {
     Route::get('/{ticket:id}', [Admin\Tickets\ViewController::class, 'view'])->name('admin.tickets.view');
     Route::post('/{ticket:id}/messages', [Admin\Tickets\ViewController::class, 'postMessage'])->name('admin.tickets.messages.store');
     Route::patch('/{ticket:id}', [Admin\Tickets\ViewController::class, 'update'])->name('admin.tickets.update');
+    Route::post('/{ticket:id}/close', [Admin\Tickets\ViewController::class, 'close'])->name('admin.tickets.close');
     Route::post('/{ticket:id}/reopen', [Admin\Tickets\ViewController::class, 'reopen'])->name('admin.tickets.reopen');
 });
 

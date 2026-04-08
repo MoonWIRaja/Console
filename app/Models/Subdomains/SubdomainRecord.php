@@ -44,14 +44,12 @@ class SubdomainRecord extends Model
 
     public function eggs(): BelongsToMany
     {
-        return $this->belongsToMany(Egg::class, 'subdomain_record_egg', 'subdomain_record_id', 'egg_id')
-            ->withTimestamps();
+        return $this->belongsToMany(Egg::class, 'subdomain_record_egg', 'subdomain_record_id', 'egg_id');
     }
 
     public function nests(): BelongsToMany
     {
-        return $this->belongsToMany(Nest::class, 'subdomain_record_nest', 'subdomain_record_id', 'nest_id')
-            ->withTimestamps();
+        return $this->belongsToMany(Nest::class, 'subdomain_record_nest', 'subdomain_record_id', 'nest_id');
     }
 
     public function subdomains(): HasMany

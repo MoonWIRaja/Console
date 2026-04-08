@@ -2,6 +2,7 @@ import useSWR, { ConfigInterface } from 'swr';
 import { AxiosError } from 'axios';
 import http from '@/api/http';
 import { useUserSWRKey } from '@/plugins/useSWRKey';
+import { withAccountSwrConfig } from '@/api/account/swr';
 
 export interface LinkedOAuthAccount {
     displayName: string | null;
@@ -49,7 +50,7 @@ const useOAuthAccounts = (config?: ConfigInterface<OAuthProviderStatus[], AxiosE
                     : null,
             }));
         },
-        { revalidateOnMount: true, revalidateOnFocus: false, ...(config || {}) }
+        withAccountSwrConfig(config)
     );
 };
 

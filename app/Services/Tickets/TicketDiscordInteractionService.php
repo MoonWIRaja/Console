@@ -230,8 +230,8 @@ class TicketDiscordInteractionService
 
     private function closeThreadTicket(array $payload, ?UserOAuthAccount $account): array
     {
-        if (!$account?->user || !$this->isDiscordStaff($account, $payload)) {
-            return $this->ephemeral('Only linked admin staff can close tickets from Discord.');
+        if (!$this->isDiscordStaff($account, $payload)) {
+            return $this->ephemeral('Only Discord staff roles or linked admins can close tickets from Discord.');
         }
 
         $threadId = (string) ($payload['channel_id'] ?? '');
@@ -244,15 +244,22 @@ class TicketDiscordInteractionService
             return ['type' => 6];
         }
 
-        $this->tickets->updateStatus($ticket, Ticket::STATUS_CLOSED, $account->user->id);
+        $actorUserId = $account?->user?->id ?: null;
+        $actorName = $account?->user?->username
+            ?: (string) ($payload['member']['user']['username'] ?? $payload['user']['username'] ?? 'Discord staff');
+
+        $ticket = $this->tickets->updateStatus($ticket, Ticket::STATUS_CLOSED, $actorUserId);
+
+        try {
+            $this->discord->closeTicketThread($ticket, sprintf('Ticket %s closed by %s from Discord', $ticket->ticket_number, $actorName));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->ephemeral('The ticket was closed in the panel, but Discord could not delete the thread automatically.');
+        }
 
         return [
             'type' => 6,
-            'actions' => [[
-                'type' => 'delete_channel',
-                'channel_id' => $threadId,
-                'reason' => sprintf('Ticket %s closed by %s', $ticket->ticket_number, $account->user->username),
-            ]],
         ];
     }
 
@@ -403,15 +410,13 @@ class TicketDiscordInteractionService
         ];
     }
 
-    private function isDiscordStaff(UserOAuthAccount $account, array $payload): bool
+    private function isDiscordStaff(?UserOAuthAccount $account, array $payload): bool
     {
-        if (!$account->user?->root_admin) {
-            return false;
-        }
+        $user = $account?->user;
 
         $requiredRoles = $this->settings->staffRoleIds();
         if ($requiredRoles === []) {
-            return true;
+            return (bool) $user?->root_admin;
         }
 
         $roles = array_values(array_filter(array_map(
@@ -422,6 +427,6 @@ class TicketDiscordInteractionService
             )
         )));
 
-        return array_intersect($requiredRoles, $roles) !== [];
+        return (bool) ($user?->root_admin || array_intersect($requiredRoles, $roles) !== []);
     }
 }

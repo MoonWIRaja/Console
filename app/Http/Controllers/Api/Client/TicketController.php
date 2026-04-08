@@ -62,7 +62,6 @@ class TicketController extends ClientApiController
     {
         $this->authorize('view', $ticket);
         $ticket = $this->tickets->markRead($ticket, $request->user());
-        $this->discord->scheduleTicketSyncAfterResponse($ticket->id);
 
         return [
             'data' => $this->transformer->detail($ticket, $request->user()),

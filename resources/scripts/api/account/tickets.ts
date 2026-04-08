@@ -2,6 +2,7 @@ import useSWR, { ConfigInterface } from 'swr';
 import { AxiosError } from 'axios';
 import http from '@/api/http';
 import { useUserSWRKey } from '@/plugins/useSWRKey';
+import { withAccountSwrConfig } from '@/api/account/swr';
 
 export interface TicketAttachment {
     id: number;
@@ -159,7 +160,7 @@ export const useTickets = (config?: ConfigInterface<TicketSummary[], AxiosError>
             const { data } = await http.get('/api/client/account/tickets');
             return (data.data || []).map(mapTicketSummary);
         },
-        { revalidateOnMount: true, revalidateOnFocus: false, ...(config || {}) }
+        withAccountSwrConfig(config)
     );
 };
 
@@ -172,7 +173,7 @@ export const useTicket = (ticketId?: number | null, config?: ConfigInterface<Tic
             const { data } = await http.get(`/api/client/account/tickets/${ticketId}`);
             return mapTicketDetail(data.data);
         },
-        { revalidateOnMount: true, revalidateOnFocus: false, ...(config || {}) }
+        withAccountSwrConfig(config)
     );
 };
 

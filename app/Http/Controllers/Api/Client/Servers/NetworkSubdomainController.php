@@ -42,12 +42,12 @@ class NetworkSubdomainController extends ClientApiController
     {
         $subdomain = $server->subdomains()->whereKey($subdomainId)->firstOrFail();
 
-        $this->service->delete($subdomain);
-
         Activity::event('server:subdomain.delete')
             ->subject($subdomain)
             ->property('subdomain', $subdomain->full_domain)
             ->log();
+
+        $this->service->delete($subdomain);
 
         return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
     }

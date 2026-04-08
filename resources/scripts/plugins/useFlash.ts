@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Actions, useStoreActions } from 'easy-peasy';
 import { FlashStore } from '@/state/flashes';
 import { ApplicationStore } from '@/state';
@@ -15,11 +16,14 @@ const useFlash = (): Actions<FlashStore> => {
 const useFlashKey = (key: string): KeyedFlashStore => {
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
 
-    return {
-        addError: (message, title) => addFlash({ key, message, title, type: 'error' }),
-        clearFlashes: () => clearFlashes(key),
-        clearAndAddHttpError: (error) => clearAndAddHttpError({ key, error }),
-    };
+    return useMemo(
+        () => ({
+            addError: (message, title) => addFlash({ key, message, title, type: 'error' }),
+            clearFlashes: () => clearFlashes(key),
+            clearAndAddHttpError: (error) => clearAndAddHttpError({ key, error }),
+        }),
+        [addFlash, clearAndAddHttpError, clearFlashes, key]
+    );
 };
 
 export { useFlashKey };

@@ -4,6 +4,8 @@ namespace Pterodactyl\Providers;
 
 use Throwable;
 use Pterodactyl\Models;
+use Pterodactyl\Models\Security\SecurityAgent;
+use Pterodactyl\Models\Subdomains\ServerSubdomain;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Pagination\Paginator;
@@ -45,9 +47,14 @@ class AppServiceProvider extends ServiceProvider
             'egg' => Models\Egg::class,
             'egg_variable' => Models\EggVariable::class,
             'schedule' => Models\Schedule::class,
+            'security_agent' => SecurityAgent::class,
             'server' => Models\Server::class,
+            'server_subdomain' => ServerSubdomain::class,
             'ssh_key' => Models\UserSSHKey::class,
             'task' => Models\Task::class,
+            'ticket' => Models\Ticket::class,
+            'ticket_attachment' => Models\TicketAttachment::class,
+            'ticket_message' => Models\TicketMessage::class,
             'user' => Models\User::class,
         ]);
     }

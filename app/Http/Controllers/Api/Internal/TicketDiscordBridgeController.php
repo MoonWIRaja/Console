@@ -123,27 +123,31 @@ class TicketDiscordBridgeController extends Controller
         }
 
         if ($payload['event_type'] === 'THREAD_DELETE') {
+            if ($ticket->status !== Ticket::STATUS_CLOSED) {
+                $ticket = $this->tickets->updateStatus($ticket, Ticket::STATUS_CLOSED);
+            }
+
             $ticket->forceFill(
-                $ticket->status === Ticket::STATUS_CLOSED
-                    ? [
-                        'discord_thread_id' => null,
-                        'discord_parent_channel_id' => null,
-                        'discord_sync_status' => Ticket::DISCORD_SYNC_SKIPPED,
-                        'discord_last_synced_at' => now(),
-                        'discord_last_error' => null,
-                    ]
-                    : [
-                        'discord_sync_status' => Ticket::DISCORD_SYNC_FAILED,
-                        'discord_last_error' => 'The linked Discord thread was deleted.',
-                    ]
+                [
+                    'discord_thread_id' => null,
+                    'discord_parent_channel_id' => null,
+                    'discord_sync_status' => Ticket::DISCORD_SYNC_SKIPPED,
+                    'discord_last_synced_at' => now(),
+                    'discord_last_error' => null,
+                ]
             )->saveOrFail();
         } elseif ($payload['event_type'] === 'THREAD_UPDATE') {
+            $threadArchived = (bool) Arr::get($payload, 'thread.archived', false);
+            $threadLocked = (bool) Arr::get($payload, 'thread.locked', false);
+
+            if (($threadArchived || $threadLocked) && $ticket->status !== Ticket::STATUS_CLOSED) {
+                $ticket = $this->tickets->updateStatus($ticket, Ticket::STATUS_CLOSED);
+            }
+
             $ticket->forceFill([
                 'discord_sync_status' => Ticket::DISCORD_SYNC_SYNCED,
                 'discord_last_synced_at' => now(),
-                'discord_last_error' => Arr::get($payload, 'thread.archived')
-                    ? 'The Discord thread is archived. New replies will reopen activity on the panel side.'
-                    : null,
+                'discord_last_error' => null,
             ])->saveOrFail();
         }
 
@@ -284,12 +288,12 @@ class TicketDiscordBridgeController extends Controller
 
     private function canAuthorAsStaff(Ticket $ticket, ?UserOAuthAccount $authorAccount, array $messagePayload): bool
     {
-        if (!$authorAccount?->user) {
-            return false;
-        }
-
         if ($this->discordStaffAllowed($messagePayload)) {
             return true;
+        }
+
+        if (!$authorAccount?->user) {
+            return false;
         }
 
         return $authorAccount->user->root_admin

@@ -2,6 +2,7 @@ import useSWR, { ConfigInterface } from 'swr';
 import { AxiosError } from 'axios';
 import http from '@/api/http';
 import { useUserSWRKey } from '@/plugins/useSWRKey';
+import { withAccountSwrConfig } from '@/api/account/swr';
 
 export interface DiscordCommunityStatus {
     enabled: boolean;
@@ -36,7 +37,7 @@ const useDiscordCommunityStatus = (config?: ConfigInterface<DiscordCommunityStat
                 roleAssigned: !!item.role_assigned,
             };
         },
-        { revalidateOnMount: true, revalidateOnFocus: false, ...(config || {}) }
+        withAccountSwrConfig(config)
     );
 };
 
