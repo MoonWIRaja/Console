@@ -1,0 +1,10 @@
+{
+  "main.js": {
+    "src": "/assets/bundle.8eec623a.js",
+    "integrity": "sha384-sHtxYkZr2a2ukwHRbMX0n9a0OUxO7UqNzSB4OYiNByAiq64IW7VVePu9+Gg3E14O"
+  },
+  "vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js": {
+    "src": "/assets/vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8eec623a.js",
+    "integrity": "sha384-Xe/O5uhfBMqpB1D21JHESwRHpc8AkQzIyj8F5x4eD5bT08QUb+hubIsDl0AcUHR4"
+  }
+}
