@@ -24,6 +24,11 @@ abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
         return [
             'filters' => [
                 [
+                    'id' => PlayerScope::ALL,
+                    'label' => 'All Players',
+                    'description' => 'All player records currently known to this provider.',
+                ],
+                [
                     'id' => PlayerScope::ONLINE,
                     'label' => 'Online Players',
                     'description' => 'Only players currently connected.',

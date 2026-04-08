@@ -6,6 +6,8 @@ use Throwable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Pterodactyl\Models\Server;
+use GuzzleHttp\Exception\TransferException;
+use Pterodactyl\Exceptions\Http\Server\FileSizeTooLargeException;
 use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Repositories\Wings\DaemonCommandRepository;
 use Pterodactyl\Services\Servers\Players\GameType;
@@ -81,6 +83,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
     public function capabilities(Server $server): array
     {
         $status = $this->status($server);
+        $properties = $this->serverProperties($server);
 
         $notes = [];
         if (($status['query_enabled'] ?? false) === false) {
@@ -93,6 +96,11 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
 
         return [
             'filters' => [
+                [
+                    'id' => PlayerScope::ALL,
+                    'label' => 'All Players',
+                    'description' => 'All trusted player records recovered from live data and server files.',
+                ],
                 [
                     'id' => PlayerScope::ONLINE,
                     'label' => 'Online Players',
@@ -112,6 +120,15 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             'action_groups' => $this->actionGroups(),
             'tabs' => ['overview', 'inventory', 'statistics'],
             'notes' => $notes,
+            'state' => [
+                'status_connected' => (bool) ($status['connected'] ?? false),
+                'query_enabled' => (bool) ($status['query_enabled'] ?? false),
+                'sample_available' => (bool) ($status['sample_available'] ?? false),
+                'online_count' => max(0, (int) ($status['online_count'] ?? 0)),
+                'online_mode_enabled' => $this->booleanProperty($properties, 'online-mode'),
+                'status_enabled' => $this->booleanProperty($properties, 'enable-status'),
+                'known_player_records' => count($this->players($server)),
+            ],
             'integrations' => [
                 [
                     'id' => 'minecraft_query',
@@ -431,6 +448,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         $lastOnlineNames = $this->lastOnlineNames($server);
         $status = $this->status($server);
         $online = (array) ($status['players'] ?? []);
+        $userCacheEntries = $this->readUserCacheEntries($server);
         $operators = $this->readOps($server);
         $banned = $this->readBanned($server);
         $resolvedOnlineNames = [];
@@ -479,6 +497,48 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             if (!$this->isGenericPlayerName($name)) {
                 $resolvedOnlineNames[(int) $index] = $name;
             }
+        }
+
+        foreach ($userCacheEntries as $item) {
+            $rawName = trim((string) ($item['name'] ?? ''));
+            $uuid = $this->normalizeUuid((string) ($item['uuid'] ?? ''));
+            $name = $this->resolveDisplayName($rawName, $uuid, $knownNames);
+            if ($name === '') {
+                continue;
+            }
+
+            $identity = $this->verifiedJavaIdentity($server, $name, $uuid);
+            if ($identity === null) {
+                continue;
+            }
+
+            $name = $identity['name'];
+            $uuid = $identity['uuid'];
+            $key = 'uuid:' . $uuid;
+
+            if (!isset($byKey[$key])) {
+                $byKey[$key] = [
+                    'id' => $uuid,
+                    'name' => $name,
+                    'uuid' => $uuid,
+                    'source_id' => $uuid,
+                    'status' => 'offline',
+                    'ping' => 0,
+                    'role' => 'player',
+                    'is_operator' => false,
+                    'is_admin' => false,
+                    'banned' => false,
+                    'country' => '',
+                    'avatar_url' => $this->avatarFor($name, $uuid),
+                    'last_seen_at' => '',
+                    'is_dummy' => false,
+                ];
+            } elseif ($this->shouldReplaceDisplayName((string) ($byKey[$key]['name'] ?? ''), $name)) {
+                $byKey[$key]['name'] = $name;
+                $byKey[$key]['avatar_url'] = $this->avatarFor($name, $uuid);
+            }
+
+            $this->rememberPlayerName($knownNames, $uuid, $name);
         }
 
         foreach ($operators as $item) {
@@ -1648,12 +1708,45 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                 if (trim($content) !== '') {
                     return $content;
                 }
+            } catch (FileSizeTooLargeException) {
+                $content = $this->readTextFileTail($server, $path, $maxBytes);
+                if (trim($content) !== '') {
+                    return $content;
+                }
             } catch (Throwable) {
                 continue;
             }
         }
 
         return '';
+    }
+
+    private function readTextFileTail(Server $server, string $path, int $maxBytes): string
+    {
+        try {
+            $response = $this->fileRepository
+                ->setServer($server)
+                ->getHttpClient()
+                ->get(
+                    sprintf('/api/servers/%s/files/contents', $server->uuid),
+                    [
+                        'query' => ['file' => $path],
+                    ]
+                );
+        } catch (TransferException|Throwable) {
+            return '';
+        }
+
+        $content = (string) $response->getBody();
+        if ($content === '') {
+            return '';
+        }
+
+        if ($maxBytes > 0 && strlen($content) > $maxBytes) {
+            return substr($content, -$maxBytes);
+        }
+
+        return $content;
     }
 
     private function normalizeLogLine(string $line): string
@@ -1836,8 +1929,26 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             return $this->userCacheByNameCache[$server->id];
         }
 
-        $raw = $this->readJsonArrayFile($server, '/usercache.json');
         $normalized = [];
+
+        foreach ($this->readUserCacheEntries($server) as $entry) {
+            $name = trim((string) ($entry['name'] ?? ''));
+            $uuid = $this->normalizeUuid((string) ($entry['uuid'] ?? ''));
+            $normalized[mb_strtolower($name)] = $uuid;
+        }
+
+        $this->userCacheByNameCache[$server->id] = $normalized;
+
+        return $normalized;
+    }
+
+    /**
+     * @return array<int, array{name: string, uuid: string}>
+     */
+    private function readUserCacheEntries(Server $server): array
+    {
+        $raw = $this->readJsonArrayFile($server, '/usercache.json');
+        $result = [];
 
         foreach ($raw as $entry) {
             if (!is_array($entry)) {
@@ -1850,12 +1961,13 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                 continue;
             }
 
-            $normalized[mb_strtolower($name)] = $uuid;
+            $result[] = [
+                'name' => $name,
+                'uuid' => $uuid,
+            ];
         }
 
-        $this->userCacheByNameCache[$server->id] = $normalized;
-
-        return $normalized;
+        return $result;
     }
 
     private function avatarFor(string $name, string $uuid): string
@@ -1976,6 +2088,31 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         $bytes[8] = chr((ord($bytes[8]) & 0x3F) | 0x80);
 
         return $this->normalizeUuid(bin2hex($bytes));
+    }
+
+    /**
+     * @param array<string, string> $properties
+     */
+    private function booleanProperty(array $properties, string $key): ?bool
+    {
+        if (!array_key_exists($key, $properties)) {
+            return null;
+        }
+
+        $value = strtolower(trim((string) $properties[$key]));
+        if ($value === '') {
+            return null;
+        }
+
+        if (in_array($value, ['true', '1', 'yes', 'on'], true)) {
+            return true;
+        }
+
+        if (in_array($value, ['false', '0', 'no', 'off'], true)) {
+            return false;
+        }
+
+        return null;
     }
 
     /**

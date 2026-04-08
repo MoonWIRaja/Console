@@ -218,6 +218,11 @@ abstract class AbstractDummyPlayerProvider implements PlayerProviderInterface
     {
         return [
             [
+                'id' => PlayerScope::ALL,
+                'label' => 'All Players',
+                'description' => 'All player records currently known to this provider.',
+            ],
+            [
                 'id' => PlayerScope::ONLINE,
                 'label' => 'Online Players',
                 'description' => 'Only players currently connected.',

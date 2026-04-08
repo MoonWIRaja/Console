@@ -49,6 +49,7 @@ export interface PlayersCapabilities {
     action_groups: PlayerActionGroup[];
     tabs: string[];
     notes: string[];
+    state?: Record<string, unknown>;
     integrations: Record<string, unknown>;
 }
 

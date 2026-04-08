@@ -59,6 +59,12 @@ const clampPercent = (value: number): number => Math.max(0, Math.min(100, value)
 
 const defaultPlayerFilters: TSelectData[] = [
     {
+        id: 'all',
+        label: 'All Players',
+        value: 'all',
+        description: 'All player records currently known to the panel.',
+    },
+    {
         id: 'online',
         label: 'Online Players',
         value: 'online',
@@ -78,7 +84,7 @@ const defaultPlayerFilters: TSelectData[] = [
     },
 ];
 
-const allowedPlayerScopes: PlayerScope[] = ['online', 'operators', 'banned'];
+const allowedPlayerScopes: PlayerScope[] = ['all', 'online', 'operators', 'banned'];
 
 const scopeCount = (scope: PlayerScope, data?: PlayersListResponse | null): number => {
     if (!data) return 0;
@@ -97,6 +103,104 @@ const scopeCount = (scope: PlayerScope, data?: PlayersListResponse | null): numb
         default:
             return data.counts.total;
     }
+};
+
+const capabilitiesState = (data?: PlayersListResponse | null): Record<string, unknown> => {
+    const state = data?.capabilities?.state;
+
+    return state && typeof state === 'object' ? state : {};
+};
+
+const stateBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
+
+const stateNumber = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const buildMinecraftJavaEmptyMessage = (data: PlayersListResponse, scope: PlayerScope): string => {
+    const state = capabilitiesState(data);
+    const knownRecords = stateNumber(state.known_player_records) ?? data.counts.total;
+    const onlineCount = stateNumber(state.online_count) ?? data.counts.online;
+    const statusConnected = stateBoolean(state.status_connected);
+    const queryEnabled = stateBoolean(state.query_enabled);
+    const sampleAvailable = stateBoolean(state.sample_available);
+    const onlineModeEnabled = stateBoolean(state.online_mode_enabled);
+    const statusEnabled = stateBoolean(state.status_enabled);
+
+    if (scope === 'online') {
+        if (onlineModeEnabled === false) {
+            return 'Live player lookup is disabled because online-mode=false in server.properties. Enable online-mode=true and restart the server.';
+        }
+
+        if (statusEnabled === false) {
+            return knownRecords > 0
+                ? 'The live online roster is disabled because enable-status=false in server.properties. Switch to All Players to browse saved player records.'
+                : 'The live online roster is disabled because enable-status=false in server.properties. Enable it and restart the server.';
+        }
+
+        if (statusConnected === false) {
+            return knownRecords > 0
+                ? 'The panel could not reach the Minecraft status endpoint right now. Switch to All Players to browse saved records recovered from server files.'
+                : 'The panel could not reach the Minecraft status endpoint right now, so no live roster could be recovered.';
+        }
+
+        if ((onlineCount ?? 0) === 0) {
+            return knownRecords > 0
+                ? 'No players are online right now. Switch to All Players, Operators, or Banned to browse saved player records.'
+                : 'No players are online right now.';
+        }
+
+        if (queryEnabled === false && sampleAvailable === false) {
+            return knownRecords > 0
+                ? 'The server is online, but it is not exposing a trusted live roster right now. Switch to All Players to browse saved records.'
+                : 'The server is online, but it is not exposing a trusted live roster right now. Enable query or let the panel recover identities from server files.';
+        }
+
+        return 'No live player entries matched the current view.';
+    }
+
+    if (scope === 'operators') {
+        return knownRecords > 0
+            ? 'No operators were found in the current player records.'
+            : 'No saved player records were found yet. Once players join, the panel can recover trusted identities from server files.';
+    }
+
+    if (scope === 'banned') {
+        return knownRecords > 0
+            ? 'No banned players were found in the current player records.'
+            : 'No saved player records were found yet. Once players join, the panel can recover trusted identities from server files.';
+    }
+
+    if (onlineModeEnabled === false) {
+        return 'Trusted player records are unavailable because online-mode=false in server.properties. Enable online-mode=true and restart the server.';
+    }
+
+    return 'No saved player records were found yet. Once players join, the panel can recover trusted identities from server files such as usercache.json.';
+};
+
+const buildPlayersEmptyMessage = (
+    data: PlayersListResponse | null,
+    scope: PlayerScope,
+    search: string
+): string => {
+    if (search) {
+        return 'No players matched current filter.';
+    }
+
+    if (!data) {
+        return 'Player data is still loading.';
+    }
+
+    if (data.game.type === 'minecraft_java') {
+        return buildMinecraftJavaEmptyMessage(data, scope);
+    }
+
+    if (canUseBedrockConsoleRoster(data)) {
+        return 'Waiting for the Bedrock live roster snapshot. The panel refreshes it automatically from the console list command when online-mode is enabled.';
+    }
+
+    return scope === 'all'
+        ? 'No player records are available for this server yet.'
+        : 'No players matched this filter yet.';
 };
 
 const isGenericPlayerName = (name?: string | null): boolean => {
@@ -945,7 +1049,19 @@ const ServerConsoleContainer = () => {
                 description: item.description,
             }));
 
-        return normalized.map((item) => {
+        const withAll =
+            normalized.some((item) => item.id === 'all')
+                ? normalized
+                : [
+                    {
+                        id: 'all',
+                        label: 'All Players',
+                        description: 'All player records currently known to the panel.',
+                    },
+                    ...normalized,
+                ];
+
+        return withAll.map((item) => {
             const scope = item.id as PlayerScope;
             const count = scopeCount(scope, effectivePlayersData);
 
@@ -2466,13 +2582,11 @@ const ServerConsoleContainer = () => {
                                                 'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-[color:var(--text-subtle)]'
                                             }
                                         >
-                                            {debouncedPlayerSearch
-                                                ? 'No players matched current filter.'
-                                                : effectivePlayersData?.game.type === 'minecraft_java'
-                                                  ? 'No live player data is available right now. The Players panel only works on Minecraft Java servers with online mode enabled. To use it, open server.properties, set online-mode=true, save the file, and restart the server.'
-                                                  : canUseBedrockConsoleRoster(effectivePlayersData)
-                                                    ? 'Waiting for the Bedrock live roster snapshot. The panel refreshes it automatically from the console list command when online-mode is enabled.'
-                                                    : 'No live player data available for this server yet.'}
+                                            {buildPlayersEmptyMessage(
+                                                effectivePlayersData,
+                                                playerScope,
+                                                debouncedPlayerSearch
+                                            )}
                                         </p>
                                     )}
 
