@@ -19,6 +19,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import Select, { TSelectData } from '@/components/ui/select';
 import { httpErrorToHuman } from '@/api/http';
 import useFlash from '@/plugins/useFlash';
+import getServerSubdomains from '@/api/server/network/getServerSubdomains';
 import {
     getServerPlayerInventory,
     getServerPlayerProfile,
@@ -795,6 +796,7 @@ const ServerConsoleContainer = () => {
     const username = useStoreState((state: ApplicationStore) => state.user.data!.username);
     const email = useStoreState((state: ApplicationStore) => state.user.data!.email);
     const { addFlash, clearFlashes } = useFlash();
+    const { data: subdomainsData } = getServerSubdomains();
 
     const allocation = ServerContext.useStoreState((state) => {
         const match = state.server.data!.allocations.find((item) => item.isDefault);
@@ -2472,6 +2474,30 @@ const ServerConsoleContainer = () => {
                                             {allocation}
                                         </span>
                                     </div>
+                                    {(subdomainsData?.items || []).map((subdomain) => (
+                                        <div key={subdomain.id} className={'flex items-start justify-between gap-3'}>
+                                            <span className={'text-[color:var(--text-subtle)]'}>Subdomain:</span>
+                                            <span
+                                                className={
+                                                    'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
+                                                }
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(subdomain.fullDomain).then(() => {
+                                                        clearFlashes('console:copy');
+                                                        addFlash({
+                                                            key: 'console:copy',
+                                                            type: 'success',
+                                                            title: 'Copied!',
+                                                            message: `Subdomain "${subdomain.fullDomain}" copied to clipboard.`,
+                                                        });
+                                                    }).catch(() => undefined);
+                                                }}
+                                                title="Click to copy"
+                                            >
+                                                {subdomain.fullDomain}
+                                            </span>
+                                        </div>
+                                    ))}
                                     <div className={'flex items-start justify-between gap-3'}>
                                         <span className={'text-[color:var(--text-subtle)]'}>Status:</span>
                                         <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>

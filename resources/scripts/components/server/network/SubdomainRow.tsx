@@ -101,9 +101,14 @@ const SubdomainRow = ({ subdomain, onDeleted }: Props) => {
                     </div>
                     <div className={'mr-4 flex-1 md:w-56'}>
                         <CopyOnClick text={subdomain.fullDomain}>
-                            <Code dark className={'w-full truncate'}>
+                            <span
+                                className={
+                                    'max-w-[100%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-left font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
+                                }
+                                title="Click to copy"
+                            >
                                 {subdomain.fullDomain}
-                            </Code>
+                            </span>
                         </CopyOnClick>
                         <Label>Hostname</Label>
                     </div>
