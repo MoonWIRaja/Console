@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(php *)",
+      "Bash(truncate *)",
+      "Bash(find *)"
+    ]
+  },
+  "$version": 3
+}
