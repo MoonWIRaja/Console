@@ -779,6 +779,28 @@ const mapSlotsToGrid = (
     return grid;
 };
 
+const ServerClock = () => {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formattedTime = time.toLocaleTimeString('en-US', {
+        timeZone: 'UTC',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+
+    return (
+        <span className={'sc-12e2ts-13 hQcRzU text-xs font-mono font-medium text-[color:var(--text-subtle)] bg-[color:var(--primary)]/10 px-2 py-1 rounded-md'}>
+            UTC Time: {formattedTime}
+        </span>
+    );
+};
+
 const ServerConsoleContainer = () => {
     const name = ServerContext.useStoreState((state) => state.server.data!.name);
     const status = ServerContext.useStoreState((state) => state.status.value);
@@ -2297,6 +2319,7 @@ const ServerConsoleContainer = () => {
                                     />
                                     Live Console
                                 </h2>
+                                <ServerClock />
                             </div>
                             <div className={'server-console-panel-body min-w-0 flex-1 overflow-hidden'}>
                                 <Spinner.Suspense>
