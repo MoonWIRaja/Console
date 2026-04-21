@@ -90,6 +90,36 @@ class FileController extends ClientApiController
     }
 
     /**
+     * Returns the total disk usage (in bytes) for a given directory by running
+     * `du -sb` directly on the host volume path. This is instant compared to
+     * recursive API walking and does not trigger rate limits.
+     *
+     * GET /api/client/servers/{server}/files/size?directory=/some/path
+     */
+    public function directorySize(ListFilesRequest $request, Server $server): JsonResponse
+    {
+        $directory = $request->get('directory', '/');
+        $normalizedDirectory = $this->normalizePath((string) $directory);
+
+        // Build the absolute host path using Wings' configured data path.
+        // We use the sudo wrapper because www-data cannot access root-owned volumes.
+        $volumeBase = $this->wingsVolumesPath();
+        $safePath = $volumeBase . '/' . $server->uuid . $normalizedDirectory;
+
+        // Run the privileged ptero-du wrapper via sudo.
+        // The wrapper handles path traversal checks and has root access to du.
+        $output = shell_exec('/usr/bin/sudo -n /usr/local/bin/ptero-du ' . escapeshellarg($safePath) . ' 2>&1');
+        
+        if (empty($output)) {
+            return new JsonResponse(['size' => 0]);
+        }
+
+        $size = (int) explode("\t", trim((string) $output))[0];
+
+        return new JsonResponse(['size' => $size]);
+    }
+
+    /**
      * Return the contents of a specified file for the user.
      *
      * @throws \Throwable
@@ -412,6 +442,24 @@ class FileController extends ClientApiController
         }
 
         return false;
+    }
+
+    /**
+     * Resolves the Wings volumes directory from /etc/pterodactyl/config.yml,
+     * falling back to the standard default path.
+     */
+    private function wingsVolumesPath(): string
+    {
+        $configFile = '/etc/pterodactyl/config.yml';
+        if (is_readable($configFile)) {
+            $yaml = file_get_contents($configFile);
+            // Look for:  data: /var/lib/pterodactyl/volumes
+            if (preg_match('/^\s*data:\s*(.+)$/m', (string) $yaml, $m)) {
+                return rtrim(trim($m[1]), '/');
+            }
+        }
+
+        return '/var/lib/pterodactyl/volumes';
     }
 
     private function normalizePath(string $path): string

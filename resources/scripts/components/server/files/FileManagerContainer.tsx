@@ -21,6 +21,7 @@ import { useStoreActions } from '@/state/hooks';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { FileActionCheckbox } from '@/components/server/files/SelectFileCheckbox';
 import { hashToPath } from '@/helpers';
+import getFolderSize from '@/api/server/files/getFolderSize';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 import style from './style.module.css';
@@ -63,6 +64,7 @@ export default () => {
     const [search, setSearch] = useState('');
     const [indexing, setIndexing] = useState(false);
     const [indexedEntries, setIndexedEntries] = useState<FileObject[]>([]);
+    const [folderSizes, setFolderSizes] = useState<Record<string, number | 'calculating'>>({});
 
     useEffect(() => {
         clearFlashes('files');
@@ -73,6 +75,43 @@ export default () => {
     useEffect(() => {
         mutate();
     }, [directory]);
+
+    // Auto-calculate sizes for all folders in the current directory.
+    // Each folder gets one independent request to /files/size (backend runs du -sb).
+    // Requests are sent in parallel — no rate limit risk since it's a single HTTP
+    // call per folder hitting our own Laravel backend, not Wings recursively.
+    useEffect(() => {
+        if (!files || !id) return;
+
+        const folders = files.filter((f) => !f.isFile && !f.isSymlink);
+
+        if (folders.length === 0) {
+            setFolderSizes({});
+            return;
+        }
+
+        const initialSizes: Record<string, number | 'calculating'> = {};
+        for (const folder of folders) {
+            initialSizes[folder.name] = 'calculating';
+        }
+        setFolderSizes(initialSizes);
+
+        let cancelled = false;
+        const base = directory && directory !== '/' ? directory.replace(/\/+$/, '') : '';
+
+        for (const folder of folders) {
+            const folderPath = `${base}/${folder.name}`;
+            getFolderSize(id, folderPath).then((size) => {
+                if (!cancelled) {
+                    setFolderSizes((prev) => ({ ...prev, [folder.name]: size }));
+                }
+            });
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [files, directory, id]);
 
     useEffect(() => {
         const keyword = search.trim();
@@ -295,7 +334,7 @@ export default () => {
                                         </p>
                                     )}
                                     {sortFiles(visibleFiles).map((file) => (
-                                        <FileObjectRow key={file.key} file={file} />
+                                        <FileObjectRow key={file.key} file={file} folderSize={!file.isFile ? folderSizes[file.name] : undefined} />
                                     ))}
                                     <MassActionsBar />
                                 </div>

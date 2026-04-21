@@ -1,10 +1,10 @@
 {
-  "147.e3137dc2.js": {
-    "src": "/assets/147.e3137dc2.js",
-    "integrity": "sha384-e2oYtsouBxn+LB14ttrB0zixHj3G7X3D9BbxarzEMzZADgGGGdVwJGbGFvAEdPk4"
-  },
   "main.js": {
-    "src": "/assets/bundle.fe72d7fb.js",
-    "integrity": "sha384-HWK8k29v+XQxe97YcU+Noj6N1BPmMHkqKNT6eh6HMHoOQB9iU77dm3Da4lGqBXo7"
+    "src": "/assets/bundle.8dc99e82.js",
+    "integrity": "sha384-XaWaBxvBINP89vg68V4a26FdG7Zi8lW/tQbSo9nyIfLoQYld9utgplxhrM2Gt+1e"
+  },
+  "vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8dc99e82.js": {
+    "src": "/assets/vendors-node_modules_cross-fetch_dist_browser-ponyfill_js.8dc99e82.js",
+    "integrity": "sha384-Xe/O5uhfBMqpB1D21JHESwRHpc8AkQzIyj8F5x4eD5bT08QUb+hubIsDl0AcUHR4"
   }
 }

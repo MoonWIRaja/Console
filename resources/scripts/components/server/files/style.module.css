@@ -35,6 +35,21 @@
     }
 }
 
+.calculating_dots {
+    letter-spacing: 0.15em;
+    animation: folderSizePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes folderSizePulse {
+    0%,
+    100% {
+        opacity: 0.25;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
 .file_row {
     @apply mb-2 flex cursor-pointer items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] text-base no-underline;
     @apply transition-colors duration-150 hover:border-[color:var(--primary)] hover:bg-[color:var(--background)] hover:text-[color:var(--foreground)];

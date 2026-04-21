@@ -42,7 +42,7 @@ const Clickable: React.FC<{ file: FileObject }> = memo(({ file, children }) => {
     );
 }, isEqual);
 
-const FileObjectRow = ({ file }: { file: FileObject }) => {
+const FileObjectRow = ({ file, folderSize }: { file: FileObject; folderSize?: number | 'calculating' }) => {
     const iconName = getVscodeIconName(file);
     const iconUrl = `${VSCODE_ICON_BASE}/${iconName}`;
 
@@ -77,9 +77,17 @@ const FileObjectRow = ({ file }: { file: FileObject }) => {
                     )}
                 </div>
                 <div css={tw`flex-1 truncate`}>{file.name}</div>
-                {file.isFile && (
+                {file.isFile ? (
                     <div css={tw`mr-4 hidden w-1/6 text-right text-xs text-[color:var(--text-subtle)] sm:block`}>
                         {bytesToString(file.size)}
+                    </div>
+                ) : folderSize !== undefined && (
+                    <div css={tw`mr-4 hidden w-1/6 text-right text-xs text-[color:var(--text-subtle)] sm:block`}>
+                        {folderSize === 'calculating' ? (
+                            <span className={styles.calculating_dots}>· · ·</span>
+                        ) : (
+                            bytesToString(folderSize)
+                        )}
                     </div>
                 )}
                 <div
@@ -96,11 +104,16 @@ const FileObjectRow = ({ file }: { file: FileObject }) => {
     );
 };
 
-export default memo(FileObjectRow, (prevProps, nextProps) => {
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    const { isArchiveType, isEditable, ...prevFile } = prevProps.file;
-    const { isArchiveType: nextIsArchiveType, isEditable: nextIsEditable, ...nextFile } = nextProps.file;
-    /* eslint-enable @typescript-eslint/no-unused-vars */
+export default memo(
+    ({ file, folderSize }: { file: FileObject; folderSize?: number | 'calculating' }) => (
+        <FileObjectRow file={file} folderSize={folderSize} />
+    ),
+    (prevProps, nextProps) => {
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        const { isArchiveType, isEditable, ...prevFile } = prevProps.file;
+        const { isArchiveType: nextIsArchiveType, isEditable: nextIsEditable, ...nextFile } = nextProps.file;
+        /* eslint-enable @typescript-eslint/no-unused-vars */
 
-    return isEqual(prevFile, nextFile);
-});
+        return isEqual(prevFile, nextFile) && prevProps.folderSize === nextProps.folderSize;
+    }
+);
