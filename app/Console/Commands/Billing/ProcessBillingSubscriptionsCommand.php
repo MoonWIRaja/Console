@@ -601,11 +601,6 @@ class ProcessBillingSubscriptionsCommand extends Command
             ->where('grace_delete_at', '<=', $now)
             ->chunkById(100, function ($subscriptions) use ($now) {
                 foreach ($subscriptions as $subscription) {
-                    $invoice = $this->currentOverdueInvoice($subscription, $now);
-                    if (!$invoice) {
-                        continue;
-                    }
-
                     try {
                         if ($subscription->server) {
                             $this->serverDeletionService->withForce()->handle($subscription->server);
