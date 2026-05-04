@@ -115,7 +115,7 @@ class BillingSubscriptionService
         if (!$subscription->isRenewWindowOpen()) {
             throw new DisplayException(sprintf(
                 'This subscription can only be renewed within %d days of the billing deadline.',
-                BillingSubscription::RENEWAL_WINDOW_DAYS
+                BillingSubscription::renewWindowDays()
             ));
         }
 

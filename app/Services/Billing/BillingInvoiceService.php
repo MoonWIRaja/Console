@@ -13,6 +13,7 @@ use Pterodactyl\Models\BillingPayment;
 use Pterodactyl\Models\BillingRefund;
 use Pterodactyl\Models\BillingInvoiceItem;
 use Pterodactyl\Models\BillingSubscription;
+use Pterodactyl\Models\BillingGameProfile;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Notifications\BillingInvoiceIssued;
 
@@ -99,7 +100,7 @@ class BillingInvoiceService
 
     public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false): BillingInvoice
     {
-        $subscription->loadMissing('user', 'nodeConfig', 'lastPaidInvoice');
+        $subscription->loadMissing('user', 'nodeConfig', 'lastPaidInvoice', 'order', 'gameProfile', 'server');
 
         if (!$subscription->hasAttachedServer()) {
             throw new DisplayException('This subscription no longer has a server attached.');
@@ -120,13 +121,14 @@ class BillingInvoiceService
             $snapshot = $this->profileService->snapshot($profile);
             $subtotal = (float) $subscription->recurring_total;
             $tax = $this->taxCalculationService->calculate(BillingInvoice::TYPE_RENEWAL, $snapshot, $subtotal);
+            $orderAttributes = $this->resolveSubscriptionOrderAttributes($subscription);
 
             $order = BillingOrder::query()->create([
                 'user_id' => $subscription->user_id,
                 'billing_node_config_id' => $subscription->billing_node_config_id,
-                'billing_game_profile_id' => $subscription->billing_game_profile_id,
-                'node_id' => $subscription->nodeConfig?->node_id ?? $subscription->order?->node_id,
-                'egg_id' => $subscription->order?->egg_id ?? $subscription->gameProfile?->egg_id,
+                'billing_game_profile_id' => $orderAttributes['billing_game_profile_id'],
+                'node_id' => $orderAttributes['node_id'],
+                'egg_id' => $orderAttributes['egg_id'],
                 'server_id' => $subscription->server_id,
                 'order_type' => BillingOrder::TYPE_RENEWAL,
                 'status' => BillingOrder::STATUS_AWAITING_PAYMENT,
@@ -292,13 +294,14 @@ class BillingInvoiceService
             $quote = $this->quoteUpgrade($subscription, $data);
             $profile = $this->profileService->getOrCreateForUser($subscription->user);
             $snapshot = $this->profileService->snapshot($profile);
+            $orderAttributes = $this->resolveSubscriptionOrderAttributes($subscription);
 
             $order = BillingOrder::query()->create([
                 'user_id' => $subscription->user_id,
                 'billing_node_config_id' => $subscription->billing_node_config_id,
-                'billing_game_profile_id' => $subscription->billing_game_profile_id,
-                'node_id' => $subscription->nodeConfig?->node_id ?? $subscription->order?->node_id,
-                'egg_id' => $subscription->order?->egg_id ?? $subscription->gameProfile?->egg_id,
+                'billing_game_profile_id' => $orderAttributes['billing_game_profile_id'],
+                'node_id' => $orderAttributes['node_id'],
+                'egg_id' => $orderAttributes['egg_id'],
                 'server_id' => $subscription->server_id,
                 'order_type' => BillingOrder::TYPE_UPGRADE,
                 'status' => BillingOrder::STATUS_AWAITING_PAYMENT,
@@ -588,5 +591,34 @@ class BillingInvoiceService
                 $invoice->fresh()
             );
         }
+    }
+
+    /**
+     * Resolve the billing order linkage for subscriptions created before billing metadata existed.
+     *
+     * @return array{billing_game_profile_id: int|null, node_id: int|null, egg_id: int|null}
+     */
+    private function resolveSubscriptionOrderAttributes(BillingSubscription $subscription): array
+    {
+        $nodeId = $subscription->nodeConfig?->node_id
+            ?? $subscription->order?->node_id
+            ?? $subscription->server?->node_id;
+        $eggId = $subscription->order?->egg_id
+            ?? $subscription->gameProfile?->egg_id
+            ?? $subscription->server?->egg_id;
+
+        $gameProfileId = $subscription->billing_game_profile_id;
+        if (!$gameProfileId && $subscription->billing_node_config_id && $eggId) {
+            $gameProfileId = BillingGameProfile::query()
+                ->where('billing_node_config_id', $subscription->billing_node_config_id)
+                ->where('egg_id', $eggId)
+                ->value('id');
+        }
+
+        return [
+            'billing_game_profile_id' => $gameProfileId ? (int) $gameProfileId : null,
+            'node_id' => $nodeId ? (int) $nodeId : null,
+            'egg_id' => $eggId ? (int) $eggId : null,
+        ];
     }
 }

@@ -204,6 +204,13 @@ class BillingController extends ClientApiController
             throw new DisplayException('Stripe subscriptions renew automatically. Use retry payment on a failed renewal invoice or open the customer portal to update your card.');
         }
 
+        if (!$subscription->isRenewWindowOpen()) {
+            throw new DisplayException(sprintf(
+                'This subscription can only be renewed within %d days of the billing deadline.',
+                BillingSubscription::renewWindowDays()
+            ));
+        }
+
         $invoice = $this->invoiceService->createRenewalInvoice($subscription, true);
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);

@@ -19,7 +19,11 @@ class BillingCatalogService
     /**
      * Return a normalized availability snapshot for a billing-enabled node.
      */
-    public function getAvailability(BillingNodeConfig $config, ?BillingSubscription $excludingSubscription = null): array
+    public function getAvailability(
+        BillingNodeConfig $config,
+        ?BillingSubscription $excludingSubscription = null,
+        ?BillingOrder $excludingOrder = null
+    ): array
     {
         $config->loadMissing('node', 'gameProfiles.egg.nest', 'gameProfiles.egg.variables');
 
@@ -27,6 +31,7 @@ class BillingCatalogService
             ->where('billing_node_config_id', $config->id)
             ->whereIn('status', BillingOrder::ACTIVE_RESERVATION_STATUSES)
             ->where('order_type', BillingOrder::TYPE_NEW_SERVER)
+            ->when($excludingOrder, fn ($query) => $query->where('id', '!=', $excludingOrder->id))
             ->whereNull('server_id')
             ->whereNull('provisioned_at')
             ->selectRaw('COALESCE(SUM(memory_gb), 0) as memory_gb')

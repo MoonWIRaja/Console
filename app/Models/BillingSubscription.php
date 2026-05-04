@@ -18,7 +18,7 @@ class BillingSubscription extends Model
     public const STATUS_SUSPENDED = 'suspended';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_DELETED = 'deleted';
-    public const RENEWAL_WINDOW_DAYS = 2;
+    public const RENEWAL_WINDOW_DAYS = 7;
 
     public const RESOURCE_RESERVATION_STATUSES = [
         self::STATUS_PENDING_ACTIVATION,
@@ -164,7 +164,7 @@ class BillingSubscription extends Model
             return null;
         }
 
-        return CarbonImmutable::instance($this->renews_at)->subDays(self::RENEWAL_WINDOW_DAYS);
+        return CarbonImmutable::instance($this->renews_at)->subDays(self::renewWindowDays());
     }
 
     public function isRenewWindowOpen(?CarbonImmutable $now = null): bool
@@ -189,6 +189,11 @@ class BillingSubscription extends Model
         $now ??= CarbonImmutable::now();
 
         return $availableAt->lessThanOrEqualTo($now);
+    }
+
+    public static function renewWindowDays(): int
+    {
+        return max((int) config('billing.renewal_window_days', self::RENEWAL_WINDOW_DAYS), 1);
     }
 
     public function isInGraceWindow(?CarbonImmutable $now = null): bool

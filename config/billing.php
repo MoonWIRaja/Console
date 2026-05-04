@@ -3,6 +3,7 @@
 return [
     'currency' => env('BILLING_CURRENCY', 'MYR'),
     'invoice_lead_days' => (int) env('BILLING_INVOICE_LEAD_DAYS', 7),
+    'renewal_window_days' => (int) env('BILLING_RENEWAL_WINDOW_DAYS', 7),
     'suspend_grace_hours' => (int) env('BILLING_SUSPEND_GRACE_HOURS', 24),
     'delete_grace_hours' => (int) env('BILLING_DELETE_GRACE_HOURS', 72),
     'refund_suspend_hours' => (int) env('BILLING_REFUND_SUSPEND_HOURS', 5),

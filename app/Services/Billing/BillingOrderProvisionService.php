@@ -57,7 +57,7 @@ class BillingOrderProvisionService
             throw new \RuntimeException('Only paid or manually approved billing orders can be provisioned.');
         }
 
-        $availability = $this->catalogService->getAvailability($order->nodeConfig);
+        $availability = $this->catalogService->getAvailability($order->nodeConfig, excludingOrder: $order);
         if ($availability['memory_remaining_gb'] < $order->memory_gb) {
             throw new \RuntimeException('There is no longer enough RAM available for this order.');
         }
