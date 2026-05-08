@@ -2,7 +2,6 @@
 
 namespace Pterodactyl\Services\Schedules;
 
-use Exception;
 use Pterodactyl\Models\Schedule;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Pterodactyl\Jobs\Schedule\RunTaskJob;
@@ -54,7 +53,7 @@ class ProcessScheduleService
 
                     return;
                 }
-            } catch (\Exception $exception) {
+            } catch (\Throwable $exception) {
                 if (!$exception instanceof DaemonConnectionException) {
                     // If we encountered some exception during this process that wasn't just an
                     // issue connecting to Wings run the failed sequence for a job. Otherwise we
@@ -76,7 +75,7 @@ class ProcessScheduleService
             // @see https://github.com/pterodactyl/panel/issues/2550
             try {
                 $this->dispatcher->dispatchNow($job);
-            } catch (\Exception $exception) {
+            } catch (\Throwable $exception) {
                 $job->failed($exception);
 
                 throw $exception;
