@@ -126,7 +126,7 @@ export default ({
                                                     type={'button'}
                                                     onClick={onClose}
                                                     className={
-                                                        'group !absolute !right-3 !top-3 !rounded-[10px] !border !border-[#2D4A3E] !bg-[#F5EFD5] !text-[#742220] hover:!border-[#2D4A3E] hover:!bg-[rgba(45,74,62,0.12)] hover:!text-[#2D4A3E] focus:!ring-[#2D4A3E] focus:!ring-offset-[#FEF9E1] sm:!right-4 sm:!top-4 md:!right-6 md:!top-6'
+                                                        'group !absolute !right-3 !top-3 !h-10 !w-10 !rounded-[12px] !border-2 !border-[#2D4A3E] !bg-[#F5EFD5] !text-[#742220] !shadow-[2px_2px_0_0_#2D4A3E] hover:!-translate-x-0.5 hover:!-translate-y-0.5 hover:!border-[#2D4A3E] hover:!bg-[#FEF9E1] hover:!text-[#2D4A3E] hover:!shadow-[3px_3px_0_0_#2D4A3E] focus:!ring-[#2D4A3E] focus:!ring-offset-[#FEF9E1] sm:!right-4 sm:!top-4 md:!right-6 md:!top-6'
                                                     }
                                                 >
                                                     <XIcon className={styles.close_icon} />

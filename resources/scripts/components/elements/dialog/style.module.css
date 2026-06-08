@@ -4,6 +4,18 @@
 
 .panel {
     @apply relative mx-auto flex w-full max-w-xl flex-col overflow-y-auto rounded-[1.35rem] border p-3 text-left text-[#742220] shadow-none transition-all duration-150 sm:p-4 md:p-6;
+    --foreground: #742220;
+    --text-subtle: rgba(116, 34, 32, 0.62);
+    --muted-foreground: rgba(116, 34, 32, 0.48);
+    --background: #FEF9E1;
+    --card: #F5EFD5;
+    --surface-subtle: #F5EFD5;
+    --surface-elevated: #F5EFD5;
+    --surface-border: #E8E0C8;
+    --border: #E8E0C8;
+    --ring: #2D4A3E;
+    --primary: #2D4A3E;
+    --primary-rgb: 45, 74, 62;
     border-color: #2D4A3E;
     border-width: 2px;
     max-height: calc(100vh - 8rem);
@@ -15,12 +27,101 @@
     box-shadow: 4px 4px 0px 0px #2D4A3E;
 }
 
+.panel :global(.Fade__Container-sc-1p0gm8n-0:empty) {
+    display: none;
+}
+
+.panel label,
+.panel :global(.Label-sc-g780ms-0),
+.panel :global(.control-label) {
+    color: rgba(116, 34, 32, 0.68) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.12em !important;
+}
+
+.panel input:not([type='checkbox']):not([type='radio']),
+.panel textarea,
+.panel select,
+.panel :global(.Input-sc-19rce1w-0):not([type='checkbox']):not([type='radio']) {
+    border: 2px solid #E8E0C8 !important;
+    background: #F5EFD5 !important;
+    color: #742220 !important;
+    box-shadow: none !important;
+}
+
+.panel input:not([type='checkbox']):not([type='radio']):focus,
+.panel textarea:focus,
+.panel select:focus,
+.panel :global(.Input-sc-19rce1w-0):not([type='checkbox']):not([type='radio']):focus {
+    border-color: #2D4A3E !important;
+    box-shadow: 0 0 0 2px rgba(45, 74, 62, 0.18) !important;
+}
+
+.panel input::placeholder,
+.panel textarea::placeholder {
+    color: rgba(116, 34, 32, 0.38) !important;
+}
+
+.panel input[type='checkbox'],
+.panel input[type='radio'],
+.panel :global(.Input-sc-19rce1w-0[type='checkbox']),
+.panel :global(.Input-sc-19rce1w-0[type='radio']) {
+    border: 2px solid #2D4A3E !important;
+    background-color: #F5EFD5 !important;
+    color: #2D4A3E !important;
+}
+
+.panel :global(.input-help),
+.panel :global(.text-gray-400),
+.panel :global(.text-gray-500),
+.panel :global(.text-neutral-300),
+.panel :global(.text-neutral-400) {
+    color: rgba(116, 34, 32, 0.58) !important;
+}
+
+.panel :global(.input-help.error) {
+    color: #B42318 !important;
+}
+
+.panel code,
+.panel pre {
+    border: 2px solid #2D4A3E !important;
+    background: #F5EFD5 !important;
+    color: #742220 !important;
+}
+
+.panel button[class*='relative'][class*='inline-flex'][class*='rounded-full'] {
+    border-color: #2D4A3E !important;
+    background-color: #F5EFD5 !important;
+    color: #742220 !important;
+    box-shadow: none !important;
+}
+
+.panel button[class*='relative'][class*='inline-flex'][class*='rounded-full']:hover {
+    border-color: #2D4A3E !important;
+    color: #742220 !important;
+}
+
+.panel button[class*='relative'][class*='inline-flex'][class*='rounded-full'] > span:nth-child(2) {
+    color: #FEF9E1 !important;
+}
+
+.panel button[class*='relative'][class*='inline-flex'][class*='rounded-full'] > span:last-child {
+    background: #2D4A3E !important;
+    box-shadow: 0 0 24px rgba(45, 74, 62, 0.34) !important;
+}
+
+.panel button[class*='relative'][class*='inline-flex'][class*='rounded-full']:disabled > span:last-child {
+    background: rgba(45, 74, 62, 0.38) !important;
+    box-shadow: none !important;
+}
+
 .title {
     @apply pr-12 font-mono text-2xl font-black tracking-tight text-[#742220];
 }
 
 .close_icon {
-    @apply h-5 w-5 text-[#742220] transition-transform duration-100 group-hover:rotate-90 group-hover:text-[#2D4A3E];
+    @apply h-5 w-5 text-[#742220] transition-transform duration-150 group-hover:rotate-90 group-hover:text-[#2D4A3E];
 }
 
 .dialog_icon {
