@@ -53,7 +53,9 @@ class DatabaseController extends ClientApiController
     {
         try {
             $database = Activity::event('server:database.create')->transaction(function ($log) use ($request, $server) {
-                $server->databases()->lockForUpdate();
+                if ($server->databases()->lockForUpdate()->count() >= $server->database_limit) {
+                    throw new DisplayException('Cannot create additional databases on this server: limit has been reached.');
+                }
 
                 $database = $this->deployDatabaseService->handle($server, $request->validated());
 
@@ -86,11 +88,7 @@ class DatabaseController extends ClientApiController
         Activity::event('server:database.rotate-password')
             ->subject($database)
             ->property('name', $database->database)
-            ->transaction(function () use ($database) {
-                $database->lockForUpdate();
-
-                $this->passwordService->handle($database);
-            });
+            ->transaction(fn () => $this->passwordService->handle($database));
 
         return $this->fractal->item($database->refresh())
             ->parseIncludes(['password'])

@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Pterodactyl\Models\Node;
 use Pterodactyl\Models\User;
+use Pterodactyl\Enum\JwtScope;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\UnencryptedToken;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
@@ -15,6 +16,8 @@ use Pterodactyl\Extensions\Lcobucci\JWT\Encoding\TimestampDates;
 class NodeJWTService
 {
     private array $claims = [];
+
+    private array $scopes = [];
 
     private ?User $user = null;
 
@@ -28,6 +31,18 @@ class NodeJWTService
     public function setClaims(array $claims): self
     {
         $this->claims = $claims;
+
+        return $this;
+    }
+
+    /**
+     * Set the subsystem scopes this JWT is authorized for. Wings 1.12.2+ verifies
+     * that the token carries the scope matching the endpoint being accessed
+     * (e.g. "websocket", "file-download"), in addition to the permissions claim.
+     */
+    public function setScopes(JwtScope ...$scopes): self
+    {
+        $this->scopes = $scopes;
 
         return $this;
     }
@@ -83,6 +98,13 @@ class NodeJWTService
 
         foreach ($this->claims as $key => $value) {
             $builder = $builder->withClaim($key, $value);
+        }
+
+        // Wings 1.12.2+ rejects a token unless it advertises the scope for the
+        // subsystem it is presented to. Older Wings simply ignores this claim, so
+        // emitting it is safe across versions.
+        if (!empty($this->scopes)) {
+            $builder = $builder->withClaim('scope', implode(' ', array_map(fn (JwtScope $scope) => $scope->value, $this->scopes)));
         }
 
         if (!is_null($this->user)) {
