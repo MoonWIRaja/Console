@@ -31,15 +31,15 @@ export default ({ tokens, open, onClose }: RecoveryTokenDialogProps) => {
             <CopyOnClick text={tokens.join('\n')} showInNotification={false}>
                 <pre
                     className={
-                        'mt-6 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 font-mono text-sm leading-6 text-[color:var(--foreground)]'
+                        'mt-6 rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-3 font-mono text-sm font-semibold leading-6 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                     }
                 >
                     {grouped.map((value) => (
                         <span key={value.join('_')} className={'block'}>
                             {value[0]}
-                            <span className={'mx-2 selection:bg-[color:var(--card)] selection:text-white'}>&nbsp;</span>
+                            <span className={'mx-2 selection:bg-[#2D4A3E] selection:text-[#FEF9E1]'}>&nbsp;</span>
                             {value[1]}
-                            <span className={'selection:bg-[color:var(--card)] selection:text-white'}>&nbsp;</span>
+                            <span className={'selection:bg-[#2D4A3E] selection:text-[#FEF9E1]'}>&nbsp;</span>
                         </span>
                     ))}
                 </pre>

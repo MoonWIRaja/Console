@@ -40,7 +40,10 @@ const DisableTOTPDialog = () => {
     return (
         <form id={'disable-totp-form'} className={'mt-6 font-mono'} onSubmit={submit}>
             <FlashMessageRender byKey={'account:two-step'} className={'-mt-2 mb-6'} />
-            <label className={'block pb-1 text-xs uppercase tracking-wide text-neutral-400'} htmlFor={'totp-password'}>
+            <label
+                className={'block pb-1 text-xs font-bold uppercase tracking-wide text-[rgba(116,34,32,0.62)]'}
+                htmlFor={'totp-password'}
+            >
                 Password
             </label>
             <Input.Text
@@ -50,7 +53,7 @@ const DisableTOTPDialog = () => {
                 value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.currentTarget.value)}
                 className={
-                    '!rounded-lg !border !border-[color:var(--border)] !bg-[color:var(--background)] !text-[color:var(--foreground)] placeholder:!text-[color:var(--muted-foreground)] focus:!ring-2 focus:!ring-[color:var(--primary)]'
+                    '!rounded-lg !border !border-[#E8E0C8] !bg-[#F5EFD5] !text-[#742220] placeholder:!text-[rgba(116,34,32,0.38)] focus:!border-[#2D4A3E] focus:!ring-2 focus:!ring-[#2D4A3E]'
                 }
                 required
             />

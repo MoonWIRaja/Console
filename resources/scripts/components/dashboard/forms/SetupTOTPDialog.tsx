@@ -63,7 +63,7 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
             <FlashMessageRender byKey={'account:two-step'} className={'mt-4'} />
             <div
                 className={
-                    'mx-auto mt-6 flex h-56 w-56 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3'
+                    'mx-auto mt-6 flex h-56 w-56 items-center justify-center rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-3 shadow-[4px_4px_0_0_#2D4A3E]'
                 }
             >
                 {!token ? (
@@ -73,11 +73,11 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                 )}
             </div>
             <CopyOnClick text={token?.secret}>
-                <p className={'mt-3 text-center font-mono text-sm tracking-wide text-[#f8f6ef]'}>
+                <p className={'mt-4 text-center font-mono text-sm font-bold tracking-wide text-[#742220]'}>
                     {token?.secret?.match(/.{1,4}/g)?.join(' ') || 'Loading...'}
                 </p>
             </CopyOnClick>
-            <p id={'totp-code-description'} className={'mt-6 text-sm text-neutral-300'}>
+            <p id={'totp-code-description'} className={'mt-6 text-sm leading-6 text-[rgba(116,34,32,0.62)]'}>
                 Scan the QR code above using the two-step authentication app of your choice. Then, enter the 6-digit
                 code generated into the field below.
             </p>
@@ -89,7 +89,7 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                     setValue(e.currentTarget.value.replace(/\D/g, '').slice(0, 6))
                 }
                 className={
-                    'mt-3 !rounded-lg !border !border-[color:var(--border)] !bg-[color:var(--background)] !text-[color:var(--foreground)] placeholder:!text-[color:var(--muted-foreground)] focus:!ring-2 focus:!ring-[color:var(--primary)]'
+                    'mt-3 !rounded-lg !border !border-[#E8E0C8] !bg-[#F5EFD5] !text-[#742220] placeholder:!text-[rgba(116,34,32,0.38)] focus:!border-[#2D4A3E] focus:!ring-2 focus:!ring-[#2D4A3E]'
                 }
                 placeholder={'000000'}
                 type={'text'}
@@ -99,14 +99,14 @@ const ConfigureTwoFactorForm = ({ onTokens }: Props) => {
                 maxLength={6}
                 required
             />
-            <label htmlFor={'totp-password'} className={'mt-3 block text-xs uppercase tracking-wide text-neutral-400'}>
+            <label htmlFor={'totp-password'} className={'mt-3 block text-xs font-bold uppercase tracking-wide text-[rgba(116,34,32,0.62)]'}>
                 Account Password
             </label>
             <Input.Text
                 id={'totp-password'}
                 variant={Input.Text.Variants.Loose}
                 className={
-                    'mt-1 !rounded-lg !border !border-[color:var(--border)] !bg-[color:var(--background)] !text-[color:var(--foreground)] placeholder:!text-[color:var(--muted-foreground)] focus:!ring-2 focus:!ring-[color:var(--primary)]'
+                    'mt-1 !rounded-lg !border !border-[#E8E0C8] !bg-[#F5EFD5] !text-[#742220] placeholder:!text-[rgba(116,34,32,0.38)] focus:!border-[#2D4A3E] focus:!ring-2 focus:!ring-[#2D4A3E]'
                 }
                 type={'password'}
                 value={password}

@@ -17,7 +17,7 @@ type Props = {
     onSaved?: () => void;
 };
 
-const labelClass = 'mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500';
+const labelClass = 'mb-2 block text-[10px] font-bold uppercase tracking-widest text-[rgba(116,34,32,0.62)]';
 
 export default ({ cardClass, variant = 'card', onSaved }: Props) => {
     const { addFlash } = useFlash();
@@ -78,13 +78,13 @@ export default ({ cardClass, variant = 'card', onSaved }: Props) => {
             {isDialog ? (
                 <div
                     className={
-                        'mb-6 rounded-2xl border border-[color:var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+                        'mb-6 rounded-2xl border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                     }
                 >
                     <div className={'flex min-w-0 flex-wrap items-start justify-between gap-4'}>
                         <div className={'min-w-0 flex-1'}>
-                            <p className={'text-sm font-semibold tracking-wide text-[#f8f6ef]'}>Invoice profile</p>
-                            <p className={'mt-1 break-words text-xs leading-6 text-gray-400'}>
+                            <p className={'text-sm font-bold tracking-wide text-[#742220]'}>Invoice profile</p>
+                            <p className={'mt-1 break-words text-xs leading-6 text-[rgba(116,34,32,0.62)]'}>
                                 These details will be printed on invoices and receipts. Complete all required fields
                                 before checkout.
                             </p>
@@ -93,8 +93,8 @@ export default ({ cardClass, variant = 'card', onSaved }: Props) => {
                             <span
                                 className={`shrink-0 rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] ${
                                     formIsComplete
-                                        ? 'border-[color:var(--primary)] bg-[rgba(var(--primary-rgb),0.08)] text-[color:var(--primary)]'
-                                        : 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+                                        ? 'border-[#2D4A3E] bg-[rgba(45,74,62,0.10)] text-[#2D4A3E]'
+                                        : 'border-[#E59F2F] bg-[rgba(229,159,47,0.14)] text-[#742220]'
                                 }`}
                             >
                                 {formIsComplete ? 'Checkout Ready' : 'Incomplete'}
@@ -132,7 +132,7 @@ export default ({ cardClass, variant = 'card', onSaved }: Props) => {
                     {!formIsComplete && missingFieldLabels && (
                         <div
                             className={
-                                'min-w-0 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-xs leading-6 text-amber-100'
+                                'min-w-0 rounded-xl border border-[#E59F2F] bg-[rgba(229,159,47,0.14)] px-4 py-3 text-xs leading-6 text-[#742220]'
                             }
                         >
                             Missing required fields: {missingFieldLabels}.
@@ -218,7 +218,7 @@ export default ({ cardClass, variant = 'card', onSaved }: Props) => {
                         </div>
                         <label
                             className={
-                                'min-w-0 md:col-span-2 flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-gray-200'
+                                'min-w-0 md:col-span-2 flex items-center gap-3 rounded-xl border border-[#E8E0C8] bg-[#F5EFD5] px-4 py-3 text-sm text-[#742220]'
                             }
                         >
                             <Input
@@ -230,7 +230,7 @@ export default ({ cardClass, variant = 'card', onSaved }: Props) => {
                         </label>
                     </div>
 
-                    <div className={'flex justify-stretch border-t border-[color:var(--border)] pt-5 sm:justify-end'}>
+                    <div className={'flex justify-stretch border-t border-[#2D4A3E] pt-5 sm:justify-end'}>
                         <InteractiveHoverButton
                             type={'submit'}
                             text={saving ? 'Saving...' : 'Save Billing Details'}

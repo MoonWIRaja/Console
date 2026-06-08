@@ -3,7 +3,7 @@
 }
 
 .panel {
-    @apply relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-[1.35rem] border text-left text-[#742220];
+    @apply relative mx-auto flex w-full max-w-xl flex-col overflow-y-auto rounded-[1.35rem] border p-3 text-left text-[#742220] shadow-none transition-all duration-150 sm:p-4 md:p-6;
     border-color: #2D4A3E;
     border-width: 2px;
     max-height: calc(100vh - 8rem);
@@ -16,7 +16,7 @@
 }
 
 .title {
-    @apply mb-1 pr-4 font-mono text-2xl font-black tracking-tight text-[#742220];
+    @apply pr-12 font-mono text-2xl font-black tracking-tight text-[#742220];
 }
 
 .close_icon {

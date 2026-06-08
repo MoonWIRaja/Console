@@ -96,17 +96,10 @@ export default ({
                                     variants={variants}
                                     className={[styles.panel, panelClassName || ''].join(' ').trim()}
                                 >
-                                    <div
-                                        className={[
-                                            'bg-transparent px-5 pt-5 md:px-6 md:pt-6',
-                                            hasBody ? 'pb-3' : 'pb-5',
-                                        ]
-                                            .join(' ')
-                                            .trim()}
-                                    >
+                                    <div className={'min-w-0'}>
                                         <div className={'flex items-start justify-between gap-4'}>
-                                            <div className={'min-w-0 flex-1'}>
-                                                <div className={'flex items-center'}>
+                                            <div className={'min-w-0 flex-1 pr-10'}>
+                                                <div className={'flex items-start'}>
                                                     {iconPosition !== 'container' && icon}
                                                     <div className={'min-w-0'}>
                                                         {title && (
@@ -116,7 +109,9 @@ export default ({
                                                         )}
                                                         {description && (
                                                             <HDialog.Description
-                                                                className={'text-sm text-[color:var(--text-subtle)]'}
+                                                                className={
+                                                                    'mt-2 text-sm leading-6 text-[color:var(--text-subtle)]'
+                                                                }
                                                             >
                                                                 {description}
                                                             </HDialog.Description>
@@ -131,7 +126,7 @@ export default ({
                                                     type={'button'}
                                                     onClick={onClose}
                                                     className={
-                                                        'group !rounded-[10px] !border !border-[#2D4A3E] !bg-[#F5EFD5] !text-[#742220] hover:!border-[#2D4A3E] hover:!bg-[rgba(45,74,62,0.12)] hover:!text-[#2D4A3E] focus:!ring-[#2D4A3E] focus:!ring-offset-[#FEF9E1]'
+                                                        'group !absolute !right-3 !top-3 !rounded-[10px] !border !border-[#2D4A3E] !bg-[#F5EFD5] !text-[#742220] hover:!border-[#2D4A3E] hover:!bg-[rgba(45,74,62,0.12)] hover:!text-[#2D4A3E] focus:!ring-[#2D4A3E] focus:!ring-offset-[#FEF9E1] sm:!right-4 sm:!top-4 md:!right-6 md:!top-6'
                                                     }
                                                 >
                                                     <XIcon className={styles.close_icon} />
@@ -140,7 +135,7 @@ export default ({
                                         </div>
                                     </div>
                                     {hasBody && (
-                                        <div className={'flex overflow-y-auto px-5 pb-4 pt-1 md:px-6'}>
+                                        <div className={'mt-4 flex min-w-0 overflow-y-auto'}>
                                             {iconPosition === 'container' && icon}
                                             <div
                                                 className={[
