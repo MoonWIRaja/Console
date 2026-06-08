@@ -60,7 +60,7 @@ const AllocationRow = ({ allocation }: Props) => {
     };
 
     return (
-        <GreyRowBox $hoverable={false} className={'flex-wrap md:flex-nowrap mt-2'}>
+        <GreyRowBox $hoverable={false} className={'mt-2 flex-wrap md:flex-nowrap'}>
             <div className={'flex items-center w-full md:w-auto'}>
                 <div className={'pl-4 pr-6 text-[color:var(--text-subtle)]'}>
                     <FontAwesomeIcon icon={faNetworkWired} />
@@ -87,9 +87,7 @@ const AllocationRow = ({ allocation }: Props) => {
             <div className={'mt-4 w-full md:mt-0 md:flex-1 md:w-auto'}>
                 <InputSpinner visible={loading}>
                     <Textarea
-                        className={
-                            'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:var(--primary)]'
-                        }
+                        className={'border-[#2D4A3E] bg-[#F5EFD5] hover:border-[#2D4A3E]'}
                         placeholder={'Notes'}
                         defaultValue={allocation.notes || undefined}
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setAllocationNotes(e.currentTarget.value)}
@@ -100,7 +98,7 @@ const AllocationRow = ({ allocation }: Props) => {
                 {allocation.isDefault ? (
                     <Button
                         size={Button.Sizes.Small}
-                        className={'!border-[#2f5e1b] !bg-[#12220b] !text-[color:var(--primary)]'}
+                        className={'!border-green-700/40 !bg-green-700/20 !text-green-700'}
                         disabled
                     >
                         Primary

@@ -6,8 +6,9 @@ import { Actions, useStoreActions } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import { httpErrorToHuman } from '@/api/http';
 import tw from 'twin.macro';
-import { Dialog } from '@/components/elements/dialog';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import Modal from '@/components/elements/Modal';
+import Button from '@/components/elements/Button';
 
 export default () => {
     const server = ServerContext.useStoreState((state) => state.server.data!);
@@ -67,20 +68,30 @@ export default () => {
 
     return (
         <TitledGreyBox title={'Reinstall Server'} css={tw`relative`}>
-            <Dialog.Confirm
-                open={modalVisible}
-                title={'Confirm server reinstallation'}
-                confirm={'Yes, reinstall server'}
-                onClose={() => setModalVisible(false)}
-                onConfirmed={reinstall}
-            >
-                Your server will be stopped and some files may be deleted or modified during this process, are you sure
-                you wish to continue?
-            </Dialog.Confirm>
+            <Modal visible={modalVisible} dismissable top={false} onDismissed={() => setModalVisible(false)}>
+                <h2 css={tw`mb-3 text-2xl text-[color:var(--foreground)]`}>Confirm server reinstallation</h2>
+                <p css={tw`text-sm leading-7 text-[color:var(--text-subtle)]`}>
+                    Your server will be stopped and some files may be deleted or modified during this process, are you
+                    sure you wish to continue?
+                </p>
+                <div css={tw`mt-6 flex flex-wrap justify-end border-t border-[color:var(--primary)] pt-5`}>
+                    <Button
+                        type={'button'}
+                        isSecondary
+                        css={tw`w-full sm:w-auto sm:mr-2`}
+                        onClick={() => setModalVisible(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button type={'button'} color={'red'} css={tw`mt-4 w-full sm:mt-0 sm:w-auto`} onClick={reinstall}>
+                        Yes, reinstall server
+                    </Button>
+                </div>
+            </Modal>
             <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                 Reinstalling your server will stop it, and then re-run the installation script that initially set it
                 up.&nbsp;
-                <strong css={tw`font-medium text-[#f8f6ef]`}>
+                <strong css={tw`font-medium text-[color:var(--foreground)]`}>
                     Some files may be deleted or modified during this process, please back up your data before
                     continuing.
                 </strong>

@@ -14,6 +14,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Pterodactyl\Exceptions\Http\Server\ServerStateConflictException;
+use Pterodactyl\Models\Discord\ServerDiscordAgent;
+use Pterodactyl\Models\Discord\ServerDiscordIntegration;
+use Pterodactyl\Models\Discord\ServerPlayerLink;
+use Pterodactyl\Models\Discord\ServerPlayerSnapshot;
 use Pterodactyl\Models\Subdomains\ServerSubdomain;
 
 /**
@@ -303,6 +307,26 @@ class Server extends Model implements Identifiable
     public function subdomains(): HasMany
     {
         return $this->hasMany(ServerSubdomain::class, 'server_id');
+    }
+
+    public function discordIntegration(): HasOne
+    {
+        return $this->hasOne(ServerDiscordIntegration::class, 'server_id');
+    }
+
+    public function discordAgent(): HasOne
+    {
+        return $this->hasOne(ServerDiscordAgent::class, 'server_id');
+    }
+
+    public function playerSnapshots(): HasMany
+    {
+        return $this->hasMany(ServerPlayerSnapshot::class, 'server_id');
+    }
+
+    public function playerLinks(): HasMany
+    {
+        return $this->hasMany(ServerPlayerLink::class, 'server_id');
     }
 
     /**

@@ -109,9 +109,9 @@
 
             return '<div> \
                 <span> \
-                    <img class="img-rounded img-bordered-xs" src="https://www.gravatar.com/avatar/' + escapeHtml(data.md5) + '?s=120" style="height:28px;margin-top:-4px;" alt="User Image"> \
+                    <img class="img-rounded img-bordered-xs admin-avatar-sm" src="https://www.gravatar.com/avatar/' + escapeHtml(data.md5) + '?s=120" alt="User Image"> \
                 </span> \
-                <span style="padding-left:5px;"> \
+                <span class="admin-inline-pad-left-xs"> \
                     ' + escapeHtml(data.name_first) + ' ' + escapeHtml(data.name_last) + ' (<strong>' + escapeHtml(data.email) + '</strong>) \
                 </span> \
             </div>';

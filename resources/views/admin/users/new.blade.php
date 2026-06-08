@@ -92,7 +92,7 @@
                     <div class="alert alert-info">
                         <p>Providing a user password is optional. New user emails prompt users to create a password the first time they login. If a password is provided here you will need to find a different method of providing it to the user.</p>
                     </div>
-                    <div id="gen_pass" class=" alert alert-success" style="display:none;margin-bottom: 10px;"></div>
+                    <div id="gen_pass" class="alert alert-success admin-hidden admin-text-gap-bottom"></div>
                     <div class="form-group">
                         <label for="pass" class="control-label">Password</label>
                         <div>

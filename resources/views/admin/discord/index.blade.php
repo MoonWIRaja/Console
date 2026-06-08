@@ -274,6 +274,7 @@
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="tab" value="bot">
+                        <input type="hidden" name="services:discord:community_enabled" value="{{ $communityEnabled ? 'true' : 'false' }}">
 
                         <div class="row">
                             <div class="col-md-8">
@@ -290,7 +291,7 @@
                                             <div class="form-group col-md-6">
                                                 <label class="control-label">Bot Token</label>
                                                 <input type="text" class="form-control" name="services:discord:bot_token" value="" autocomplete="new-password" placeholder="{{ filled(config('services.discord.bot_token')) ? 'Stored securely. Leave blank to keep.' : 'paste bot token here' }}">
-                                                <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">Leave blank to keep the current bot token. Enter <code>!e</code> to clear it.</p>
+                                                <p class="text-muted small admin-help-tight">Leave blank to keep the current bot token. Enter <code>!e</code> to clear it.</p>
                                             </div>
                                         </div>
                                         <div class="row">
@@ -318,7 +319,7 @@
                                     <div class="box-body">
                                         <p><strong>Discord OAuth ready:</strong> {{ $oauthReady ? 'Yes' : 'No' }}</p>
                                         <p><strong>Bot ready:</strong> {{ $botReady ? 'Yes' : 'No' }}</p>
-                                        <p class="text-muted" style="margin-bottom: 0;">Ticket launcher and other Discord bridge features still use their dedicated settings inside <a href="{{ route('admin.tickets.settings') }}">Support Tickets</a>.</p>
+                                        <p class="text-muted admin-text-last">Ticket launcher and other Discord bridge features still use their dedicated settings inside <a href="{{ route('admin.tickets.settings') }}">Support Tickets</a>.</p>
                                     </div>
                                 </div>
                             </div>
@@ -345,7 +346,7 @@
                                                 <option value="true" @if($communityEnabled) selected @endif>Enabled</option>
                                                 <option value="false" @if(!$communityEnabled) selected @endif>Disabled</option>
                                             </select>
-                                            <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">Allow linked Discord users to join your Discord server and receive a role automatically from the account page.</p>
+                                            <p class="text-muted small admin-help-tight">Allow linked Discord users to join your Discord server and receive a role automatically from the account page.</p>
                                         </div>
                                         <div class="row">
                                             <div class="form-group col-md-6">
@@ -361,7 +362,7 @@
                                             <label class="control-label">Invite URL</label>
                                             <input type="text" class="form-control" name="services:discord:invite_url" value="{{ old('services:discord:invite_url', config('services.discord.invite_url')) }}" placeholder="https://discord.gg/example">
                                         </div>
-                                        <div class="form-group" style="margin-bottom: 0;">
+                                        <div class="form-group admin-form-group-tight">
                                             <label class="control-label">Bot Token</label>
                                             <input type="text" class="form-control" name="services:discord:bot_token" value="" autocomplete="new-password" placeholder="{{ filled(config('services.discord.bot_token')) ? 'Stored securely. Leave blank to keep.' : 'paste bot token here' }}">
                                         </div>
@@ -380,7 +381,7 @@
                                     <div class="box-body">
                                         <p><strong>Discord OAuth</strong> must be enabled and configured in <a href="{{ route('admin.oauth') }}">OAuth Settings</a>.</p>
                                         <p><strong>Bot token</strong> must belong to a bot already inside the guild.</p>
-                                        <p class="text-muted" style="margin-bottom: 0;">The bot must be able to add members and manage the configured role.</p>
+                                        <p class="text-muted admin-text-last">The bot must be able to add members and manage the configured role.</p>
                                     </div>
                                 </div>
                             </div>

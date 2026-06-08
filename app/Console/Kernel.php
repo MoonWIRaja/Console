@@ -12,6 +12,7 @@ use Pterodactyl\Console\Commands\Billing\ProcessBillingSubscriptionsCommand;
 use Pterodactyl\Console\Commands\DownDetector\RunDownDetectorCommand;
 use Pterodactyl\Console\Commands\Security\MonitorSecurityAgentsCommand;
 use Pterodactyl\Services\Telemetry\TelemetryCollectionService;
+use Pterodactyl\Console\Commands\Discord\SyncServerDiscordAgentsCommand;
 use Pterodactyl\Console\Commands\Schedule\ProcessRunnableCommand;
 use Pterodactyl\Console\Commands\Maintenance\PruneOrphanedBackupsCommand;
 use Pterodactyl\Console\Commands\Maintenance\CleanServiceBackupFilesCommand;
@@ -39,6 +40,7 @@ class Kernel extends ConsoleKernel
         $schedule->command(ProcessBillingSubscriptionsCommand::class)->everyMinute()->withoutOverlapping();
         $schedule->command(RunDownDetectorCommand::class)->everyMinute()->withoutOverlapping();
         $schedule->command(MonitorSecurityAgentsCommand::class)->everyMinute()->withoutOverlapping();
+        $schedule->command(SyncServerDiscordAgentsCommand::class)->everyMinute()->withoutOverlapping();
         $schedule->command(CleanServiceBackupFilesCommand::class)->daily();
 
         if (config('backups.prune_age')) {

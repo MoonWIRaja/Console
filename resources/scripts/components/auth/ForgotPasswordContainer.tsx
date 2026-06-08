@@ -182,17 +182,17 @@ const ForgotPasswordContainer = () => {
                             <div
                                 className='mb-4 rounded-[1.35rem] px-4 py-3'
                                 style={{
-                                    border: '1px solid rgba(245, 231, 198, 0.12)',
-                                    backgroundColor: '#2D2D2D',
+                                    border: '1px solid rgba(75, 58, 47, 0.18)',
+                                    backgroundColor: 'rgba(75, 58, 47, 0.07)',
                                 }}
                             >
                                 <h2
                                     className='text-[0.72rem] font-extrabold uppercase tracking-[0.18em]'
-                                    style={{ color: '#F5E7C6' }}
+                                    style={{ color: '#4B3A2F' }}
                                 >
                                     Reset Password
                                 </h2>
-                                <p className='mt-2 text-sm leading-7' style={{ color: '#A0A0A0' }}>
+                                <p className='mt-2 text-sm leading-7' style={{ color: 'rgba(75, 58, 47, 0.60)' }}>
                                     {mode === 'request'
                                         ? 'Enter your account email to receive a 6-digit PIN.'
                                         : `Enter the PIN sent to ${email} and set your new password.`}

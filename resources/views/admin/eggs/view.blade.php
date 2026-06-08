@@ -36,7 +36,7 @@
                             <div class="form-group no-margin-bottom">
                                 <label for="pName" class="control-label">Egg File</label>
                                 <div>
-                                    <input type="file" name="import_file" class="form-control" style="border: 0;margin-left:-10px;" />
+                                    <input type="file" name="import_file" class="form-control admin-file-input-offset" />
                                     <p class="text-muted small no-margin-bottom">If you would like to replace settings for this Egg by uploading a new JSON file, simply select it here and press "Update Egg". This will not change any existing startup strings or Docker images for existing servers.</p>
                                 </div>
                             </div>
@@ -182,7 +182,7 @@
                 <div class="box-footer">
                     {!! csrf_field() !!}
                     <button type="submit" name="_method" value="PATCH" class="btn btn-primary btn-sm pull-right">Save</button>
-                    <a href="{{ route('admin.nests.egg.export', $egg->id) }}" class="btn btn-sm btn-info pull-right" style="margin-right:10px;">Export</a>
+                    <a href="{{ route('admin.nests.egg.export', $egg->id) }}" class="btn btn-sm btn-info pull-right admin-inline-gap-md">Export</a>
                     <button id="deleteButton" type="submit" name="_method" value="DELETE" class="btn btn-danger btn-sm muted muted-hover">
                         <i class="fa fa-trash-o"></i>
                     </button>

@@ -120,7 +120,7 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
             {({ isSubmitting, values, setFieldValue }) => (
                 <Form css={tw`m-0`}>
                     <FlashMessageRender byKey={'schedule:task'} css={tw`mb-4`} />
-                    <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>{task ? 'Edit Task' : 'Create Task'}</h2>
+                    <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>{task ? 'Edit Task' : 'Create Task'}</h2>
                     <div css={tw`flex`}>
                         <div css={tw`mr-2 w-1/3`}>
                             <Label>Action</Label>
@@ -226,7 +226,7 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                             </div>
                         )}
                     </div>
-                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
+                    <div className={'mt-6 sc-card-inner p-4'}>
                         <FormikSwitch
                             name={'continueOnFailure'}
                             description={'Future tasks will be run when this task fails.'}

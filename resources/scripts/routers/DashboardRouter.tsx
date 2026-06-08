@@ -19,6 +19,8 @@ const BILLING_TOPBAR_TITLES = {
     orders: 'My Billing Orders',
 } as const;
 
+const dashboardPaperBackground = '#D6D2C7';
+
 export default () => {
     const location = useLocation();
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -28,6 +30,7 @@ export default () => {
     );
     const isDashboardHome = location.pathname === '/';
     const isBillingPage = location.pathname === '/billing';
+    const isAccountPage = location.pathname === '/account';
     const billingSectionParam = new URLSearchParams(location.search).get('section');
     const billingTopbarTitle =
         BILLING_TOPBAR_TITLES[billingSectionParam as keyof typeof BILLING_TOPBAR_TITLES] || BILLING_TOPBAR_TITLES.plan;
@@ -107,7 +110,8 @@ export default () => {
             className='fixed inset-0 z-0 overflow-hidden'
             style={{
                 height: '100dvh',
-                backgroundColor: 'var(--background)',
+                background: isAccountPage ? dashboardPaperBackground : undefined,
+                backgroundColor: isAccountPage ? undefined : 'var(--background)',
             }}
         >
             <DashboardTopbar
@@ -144,11 +148,12 @@ export default () => {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        backgroundColor: 'var(--background)',
+                        background: isAccountPage ? dashboardPaperBackground : undefined,
+                        backgroundColor: isAccountPage ? undefined : 'var(--background)',
                         color: 'var(--foreground)',
                         minHeight: 0,
                         minWidth: 0,
-                        overflow: 'hidden',
+                        overflow: isMobileViewport ? 'auto' : 'hidden',
                         fontFamily:
                             "var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                     }}

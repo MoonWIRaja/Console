@@ -13,7 +13,8 @@ const Container = styled.label`
         ${tw`cursor-pointer`};
 
         &:hover {
-            ${tw`border-[#2d3c1f] bg-[color:var(--background)]`};
+            border-color: var(--primary);
+            background: var(--surface-subtle);
         }
     }
 
@@ -55,7 +56,7 @@ const PermissionRow = ({ permission, disabled }: Props) => {
                     {pkey}
                 </Label>
                 {permissions[key].keys[pkey].length > 0 && (
-                    <p css={tw`mt-1 text-xs text-neutral-400`}>{permissions[key].keys[pkey]}</p>
+                    <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>{permissions[key].keys[pkey]}</p>
                 )}
             </div>
         </Container>

@@ -6,6 +6,7 @@ use Throwable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Http\Requests\Admin\Security\StoreSecurityAgentRequest;
@@ -22,9 +23,14 @@ use Pterodactyl\Services\Security\Agents\SecurityAgentService;
 use Pterodactyl\Services\Security\SecurityCenterSettingsService;
 use Pterodactyl\Services\Security\SecuritySelfTestService;
 use Pterodactyl\Services\Security\SecurityRuleBootstrapService;
+use Pterodactyl\Services\Security\SecurityVocabulary;
 
 class SecurityController extends Controller
 {
+    private const TABLE_PER_PAGE = 25;
+    private const OVERVIEW_INCIDENTS_PER_PAGE = 10;
+    private const QUARANTINE_STATUSES = ['quarantined'];
+
     private const TABS = ['overview', 'rules', 'incidents', 'live-events', 'agents', 'quarantine', 'settings'];
 
     public function __construct(
@@ -58,15 +64,19 @@ class SecurityController extends Controller
                 'quarantined_artifacts' => SecurityQuarantineArtifact::query()->where('status', 'quarantined')->count(),
                 'pending_actions' => SecurityAction::query()->whereIn('status', ['pending', 'dispatched'])->count(),
             ],
-            'incidents' => SecurityIncident::query()->latest('last_seen_at')->limit(50)->get(),
-            'events' => SecurityEvent::query()->with(['incident', 'rule'])->latest()->limit(100)->get(),
+            'overviewIncidents' => $this->incidentPaginator($request, 'overview_incidents_verdict', 'overview_incidents_page', self::OVERVIEW_INCIDENTS_PER_PAGE),
+            'overviewIncidentFilter' => $this->filterMeta($request, 'overview_incidents_verdict', SecurityVocabulary::verdicts(), 'overview_incidents_page', 'All verdicts', 'Verdict'),
+            'incidents' => $this->incidentPaginator($request, 'incidents_verdict', 'incidents_page', self::TABLE_PER_PAGE),
+            'incidentFilter' => $this->filterMeta($request, 'incidents_verdict', SecurityVocabulary::verdicts(), 'incidents_page', 'All verdicts', 'Verdict'),
+            'events' => $this->eventPaginator($request),
+            'eventFilter' => $this->filterMeta($request, 'events_verdict', SecurityVocabulary::verdicts(), 'events_page', 'All verdicts', 'Verdict'),
             'agents' => SecurityAgent::query()->with('node')->latest()->get(),
-            'artifacts' => SecurityQuarantineArtifact::query()->latest('quarantined_at')->limit(100)->get(),
+            'artifacts' => $this->artifactPaginator($request),
+            'artifactFilter' => $this->filterMeta($request, 'artifacts_status', self::QUARANTINE_STATUSES, 'artifacts_page', 'All artifact statuses'),
             'actions' => SecurityAction::query()->with(['agent', 'incident'])->latest()->limit(100)->get(),
             'nodes' => Node::query()->orderBy('name')->get(),
             'missingNodes' => $missingNodes,
             'defaultAgentCapabilities' => implode(', ', $this->agents->defaultCapabilities()),
-            'latestSelfTest' => $this->selfTest->latest(),
             'provisionedAgent' => session('security_agent_provisioned'),
             'provisionedAgents' => session('security_agents_provisioned', []),
         ]);
@@ -171,5 +181,70 @@ class SecurityController extends Controller
         return redirect()->route('admin.security', ['tab' => 'agents'])
             ->with('security_agent_provisioned', $agents[0] ?? null)
             ->with('security_agents_provisioned', $agents);
+    }
+
+    private function incidentPaginator(Request $request, string $filterName, string $pageName, int $perPage): LengthAwarePaginator
+    {
+        $query = SecurityIncident::query()->latest('last_seen_at');
+        $this->applyFieldFilter($query, $request, $filterName, 'verdict', SecurityVocabulary::verdicts());
+
+        return $query->paginate($perPage, ['*'], $pageName)->appends($request->except($pageName));
+    }
+
+    private function eventPaginator(Request $request): LengthAwarePaginator
+    {
+        $query = SecurityEvent::query()->with(['incident', 'rule'])->latest();
+        $this->applyFieldFilter($query, $request, 'events_verdict', 'verdict', SecurityVocabulary::verdicts());
+
+        return $query->paginate(self::TABLE_PER_PAGE, ['*'], 'events_page')->appends($request->except('events_page'));
+    }
+
+    private function artifactPaginator(Request $request): LengthAwarePaginator
+    {
+        $query = SecurityQuarantineArtifact::query()->latest('quarantined_at');
+        $this->applyFieldFilter($query, $request, 'artifacts_status', 'status', self::QUARANTINE_STATUSES);
+
+        return $query->paginate(self::TABLE_PER_PAGE, ['*'], 'artifacts_page')->appends($request->except('artifacts_page'));
+    }
+
+    private function applyFieldFilter($query, Request $request, string $name, string $field, array $allowed): void
+    {
+        $value = $this->selectedOption($request, $name, $allowed);
+
+        if ($value !== null) {
+            $query->where($field, $value);
+        }
+    }
+
+    private function filterMeta(Request $request, string $name, array $options, string $pageName, string $placeholder, string $label = 'Status'): array
+    {
+        return [
+            'name' => $name,
+            'value' => $this->selectedOption($request, $name, $options),
+            'options' => $this->statusOptions($options),
+            'pageName' => $pageName,
+            'placeholder' => $placeholder,
+            'label' => $label,
+        ];
+    }
+
+    private function selectedOption(Request $request, string $name, array $allowed): ?string
+    {
+        $value = (string) $request->query($name, '');
+
+        if ($value === '') {
+            return null;
+        }
+
+        return in_array($value, $allowed, true) ? $value : null;
+    }
+
+    private function statusOptions(array $statuses): array
+    {
+        return array_reduce($statuses, function (array $options, string $status): array {
+            $options[$status] = ucwords(str_replace(['_', ':', '.', '-'], ' ', $status));
+
+            return $options;
+        }, []);
     }
 }

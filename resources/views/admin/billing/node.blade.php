@@ -24,7 +24,7 @@
                     <strong>{{ $availability['disk_remaining_gb'] }} GB Storage</strong>,
                     <strong>{{ $availability['free_allocations'] }} free allocation(s)</strong>.
                 </p>
-                <p class="text-muted" style="margin: 8px 0 0;">
+                <p class="text-muted admin-text-gap-top-sm">
                     vCore is treated as a per-order limit only. RAM and Storage are the live sellable stock for billing.
                     Current breakdown: <strong>{{ $availability['billing_memory_remaining_gb'] }} GB billing RAM</strong> vs
                     <strong>{{ $availability['node_memory_remaining_gb'] }} GB physical node RAM</strong>,
@@ -170,12 +170,12 @@
                                 <div class="row">
                                     @foreach($nests as $nest)
                                         <div class="col-md-4 col-sm-6">
-                                            <label style="display: block; border: 1px solid #d2d6de; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; cursor: pointer;">
+                                            <label class="admin-choice-card">
                                                 <input
                                                     type="checkbox"
                                                     name="nest_ids[]"
                                                     value="{{ $nest->id }}"
-                                                    style="margin-right: 8px;"
+                                                    class="admin-choice-card-input"
                                                     @php($checkedNestIds = collect(old('nest_ids', $selectedNestIds ?? []))->map(fn ($id) => (int) $id))
                                                     @if($checkedNestIds->contains($nest->id)) checked @endif
                                                 >
@@ -185,7 +185,7 @@
                                         </div>
                                     @endforeach
                                 </div>
-                                <p class="text-muted small" style="margin-top: 10px;">
+                                <p class="text-muted small admin-text-gap-md">
                                     Tick one or more nests. Every egg under the selected nest list will be exposed automatically on this billing node.
                                 </p>
                             </div>

@@ -80,6 +80,12 @@ require('codemirror/mode/vue/vue');
 require('codemirror/mode/xml/xml');
 require('codemirror/mode/yaml/yaml');
 
+const EDITOR_TEXTURE = [
+    'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+    'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+    'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+].join(', ');
+
 const EditorContainer = styled.div`
     min-height: 20rem;
     height: 100%;
@@ -92,8 +98,9 @@ const EditorContainer = styled.div`
     .CodeMirror {
         height: 100% !important;
         ${tw`border-0`};
-        background: var(--card);
-        color: #e5e7eb;
+        background-color: #F5EFD5 !important;
+        background-image: ${EDITOR_TEXTURE} !important;
+        color: #742220 !important;
         font-size: 13px;
         line-height: 1.5rem;
     }
@@ -101,7 +108,8 @@ const EditorContainer = styled.div`
     .CodeMirror-scroll,
     .CodeMirror-sizer,
     .CodeMirror-lines {
-        background: var(--card) !important;
+        background-color: transparent !important;
+        background-image: none !important;
     }
 
     .CodeMirror-code,
@@ -112,67 +120,112 @@ const EditorContainer = styled.div`
     .CodeMirror-gutters,
     .CodeMirror-gutter,
     .CodeMirror-linenumbers,
-    .CodeMirror-linenumber,
     .CodeMirror-gutter-wrapper,
     .CodeMirror-gutter-elt,
     .CodeMirror-foldgutter,
     .CodeMirror-foldgutter-open,
-    .CodeMirror-foldgutter-folded,
-    .cm-s-ayu-mirage .CodeMirror-gutters,
-    .cm-s-ayu-mirage .CodeMirror-gutter,
-    .cm-s-ayu-mirage .CodeMirror-linenumbers,
-    .cm-s-ayu-mirage .CodeMirror-linenumber,
-    .cm-s-ayu-mirage .CodeMirror-foldgutter,
-    .cm-s-ayu-mirage .CodeMirror-foldgutter-open,
-    .cm-s-ayu-mirage .CodeMirror-foldgutter-folded {
-        background: var(--card) !important;
-        background-color: var(--card) !important;
-        border-right-color: var(--border) !important;
+    .CodeMirror-foldgutter-folded {
+        background-color: #EDE6D0 !important;
+        background-image: none !important;
+        border-right-color: #2D4A3E !important;
     }
 
     .CodeMirror-gutters {
-        border-right: 1px solid var(--border) !important;
-    }
-
-    .CodeMirror-cursor {
-        border-left: 2px solid var(--primary) !important;
-    }
-
-    .CodeMirror-selected {
-        background: rgba(var(--primary-rgb), 0.18) !important;
-    }
-
-    .CodeMirror-activeline-background {
-        background: rgba(var(--primary-rgb), 0.06);
-    }
-
-    .CodeMirror-hints {
-        ${tw`rounded-lg border border-[color:var(--border)]`};
-        background: var(--card) !important;
-        color: #e5e7eb;
-        box-shadow: 0 16px 28px rgba(12, 12, 12, 0.55);
-        z-index: 60;
-    }
-
-    .CodeMirror-hint {
-        color: #e5e7eb;
-    }
-
-    .CodeMirror-hint-active {
-        background: rgba(var(--primary-rgb), 0.16) !important;
-        color: var(--primary) !important;
+        border-right: 1px solid #2D4A3E !important;
     }
 
     .CodeMirror-linenumber {
         padding: 1px 12px 0 12px !important;
-        color: #9ca3af;
+        color: rgba(116, 34, 32, 0.45) !important;
+    }
+
+    .CodeMirror-cursor {
+        border-left: 2px solid #2D4A3E !important;
+    }
+
+    .CodeMirror-selected {
+        background: rgba(45, 74, 62, 0.18) !important;
+    }
+
+    .CodeMirror-activeline-background {
+        background: rgba(45, 74, 62, 0.06) !important;
+    }
+
+    .CodeMirror-hints {
+        ${tw`rounded-lg`};
+        border: 1px solid #2D4A3E !important;
+        background-color: #F5EFD5 !important;
+        background-image: ${EDITOR_TEXTURE} !important;
+        color: #742220 !important;
+        box-shadow: 4px 4px 0px 0px #2D4A3E;
+        z-index: 60;
+    }
+
+    .CodeMirror-hint {
+        color: #742220 !important;
+    }
+
+    .CodeMirror-hint-active {
+        background: rgba(45, 74, 62, 0.16) !important;
+        color: #2D4A3E !important;
     }
 
     .CodeMirror-foldmarker {
-        color: var(--primary);
+        color: #2D4A3E;
         text-shadow: none;
         margin-left: 0.25rem;
         margin-right: 0.25rem;
+    }
+
+    .CodeMirror-dialog {
+        background-color: #F5EFD5 !important;
+        border-bottom: 2px solid #2D4A3E !important;
+        color: #742220 !important;
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .CodeMirror-dialog input {
+        background-color: #FEF9E1 !important;
+        border: 1px solid #2D4A3E !important;
+        border-radius: 6px !important;
+        color: #742220 !important;
+        padding: 3px 8px !important;
+        font-size: 12px !important;
+        outline: none !important;
+        margin: 0 6px !important;
+    }
+
+    .CodeMirror-dialog input:focus {
+        border-color: #2D4A3E !important;
+        box-shadow: 2px 2px 0px 0px #2D4A3E !important;
+    }
+
+    .CodeMirror-dialog button {
+        background-color: #EDE6D0 !important;
+        border: 1px solid #2D4A3E !important;
+        border-radius: 6px !important;
+        color: #742220 !important;
+        padding: 2px 10px !important;
+        font-size: 11px !important;
+        cursor: pointer !important;
+        margin-left: 4px !important;
+    }
+
+    .CodeMirror-dialog button:hover {
+        background-color: #2D4A3E !important;
+        color: #FEF9E1 !important;
+    }
+
+    .CodeMirror-search-hint {
+        color: rgba(116, 34, 32, 0.55) !important;
+        font-size: 11px !important;
+    }
+
+    .CodeMirror-search-hint::after {
+        content: ' — Enter: next  Shift+Enter: prev  Esc: close';
+        color: rgba(116, 34, 32, 0.4);
+        font-size: 10px;
     }
 `;
 
@@ -185,6 +238,7 @@ export interface Props {
     onContentChanged?: (content: string) => void;
     fetchContent: (callback: () => Promise<string>) => void;
     onContentSaved: () => void;
+    onEditorCreated?: (editor: CodeMirror.Editor) => void;
 }
 
 const findModeByFilename = (filename: string) => {
@@ -372,11 +426,11 @@ const normalizeHelperHints = (
 
 const buildSmartHints = (editor: CodeMirror.Editor, options?: Record<string, unknown>) => {
     const cursor = editor.getCursor();
-    const token = editor.getTokenAt(cursor);
-    const tokenOffset = Math.max(0, cursor.ch - token.start);
-    const prefix = getCompletionPrefix(token.string || '', tokenOffset);
+    const lineToPos = editor.getLine(cursor.line).slice(0, cursor.ch);
+    const prefix = lineToPos.match(COMPLETION_WORD)?.[0] || '';
     const from = CodeMirror.Pos(cursor.line, cursor.ch - prefix.length);
     const to = cursor;
+    const token = editor.getTokenAt(cursor);
     const helperApi = CodeMirror as typeof CodeMirror & {
         hint?: {
             auto?: {
@@ -430,6 +484,7 @@ export default ({
     onContentSaved,
     onModeChanged,
     onContentChanged,
+    onEditorCreated,
 }: Props) => {
     const [editor, setEditor] = useState<CodeMirror.Editor>();
 
@@ -438,7 +493,7 @@ export default ({
 
         const e = CodeMirror.fromTextArea(node, {
             mode: 'text/plain',
-            theme: 'ayu-mirage',
+            theme: 'default',
             indentUnit: 4,
             smartIndent: true,
             tabSize: 4,
@@ -464,6 +519,14 @@ export default ({
             extraKeys: {
                 'Ctrl-Space': 'autocomplete',
                 'Cmd-Space': 'autocomplete',
+                'Ctrl-F': 'findPersistent',
+                'Cmd-F': 'findPersistent',
+                'Ctrl-H': 'replace',
+                'Cmd-H': 'replace',
+                'Ctrl-G': 'findNext',
+                'Cmd-G': 'findNext',
+                'Shift-Ctrl-G': 'findPrev',
+                'Shift-Cmd-G': 'findPrev',
             },
             hintOptions: {
                 hint: buildSmartHints,
@@ -473,6 +536,64 @@ export default ({
             },
         });
 
+        // Inject Next/Prev buttons into CodeMirror search dialog when it opens
+        const wrapper = e.getWrapperElement();
+        const observer = new MutationObserver(() => {
+            const dialog = wrapper.querySelector('.CodeMirror-dialog');
+            if (!dialog || dialog.querySelector('.cm-search-nav')) return;
+
+            const btnStyle = [
+                'display:inline-flex',
+                'align-items:center',
+                'margin-left:6px',
+                'padding:2px 10px',
+                'font-size:11px',
+                'border:1px solid #2D4A3E',
+                'border-radius:6px',
+                'background:#F5EFD5',
+                'color:#742220',
+                'cursor:pointer',
+                'transition:background 0.15s',
+            ].join(';');
+
+            const next = document.createElement('button');
+            next.type = 'button';
+            next.textContent = '↓ Next';
+            next.title = 'Next match (Ctrl+G)';
+            next.setAttribute('style', btnStyle);
+            next.className = 'cm-search-nav';
+            next.onmouseenter = () => { next.style.background = '#EDE6D0'; };
+            next.onmouseleave = () => { next.style.background = '#F5EFD5'; };
+            next.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                e.execCommand('findNext');
+                const input = dialog.querySelector<HTMLInputElement>('.CodeMirror-search-field');
+                if (input) input.focus();
+            });
+
+            const prev = document.createElement('button');
+            prev.type = 'button';
+            prev.textContent = '↑ Prev';
+            prev.title = 'Prev match (Shift+Ctrl+G)';
+            prev.setAttribute('style', btnStyle);
+            prev.className = 'cm-search-nav';
+            prev.onmouseenter = () => { prev.style.background = '#EDE6D0'; };
+            prev.onmouseleave = () => { prev.style.background = '#F5EFD5'; };
+            prev.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                e.execCommand('findPrev');
+                const input = dialog.querySelector<HTMLInputElement>('.CodeMirror-search-field');
+                if (input) input.focus();
+            });
+
+            dialog.appendChild(next);
+            dialog.appendChild(prev);
+        });
+        observer.observe(wrapper, { childList: true, subtree: true });
+
+        onEditorCreated?.(e);
         setEditor(e);
     }, []);
 

@@ -57,8 +57,24 @@ export default () => {
                         className={
                             'min-h-0 flex-1 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4'
                         }
+                        style={{
+                            backgroundImage: `
+                                radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.08), transparent 28%),
+                                repeating-linear-gradient(
+                                    135deg,
+                                    rgba(var(--primary-rgb), 0.035) 0,
+                                    rgba(var(--primary-rgb), 0.035) 1px,
+                                    transparent 1px,
+                                    transparent 14px
+                                )
+                            `,
+                        }}
                     >
-                        <div className={'h-full overflow-y-auto pr-1'}>
+                        <div
+                            className={
+                                'h-full overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                            }
+                        >
                             {data?.items.map((activity) => (
                                 <ActivityLogEntry key={activity.id} activity={activity}>
                                     <span />

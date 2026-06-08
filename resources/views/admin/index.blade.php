@@ -13,15 +13,15 @@
 @endsection
 
 @section('content')
-<div class="row admin-full-row" style="margin-left: 0; margin-right: 0; width: 100%;">
-    <div class="col-xs-12 admin-full-col" style="float: none; width: 100%; max-width: none; padding-left: 0; padding-right: 0;">
+<div class="row admin-full-row">
+    <div class="col-xs-12 admin-full-col">
         <div class="box
             @if($version->isLatestPanel())
                 box-success
             @else
                 box-danger
             @endif
-        " style="display: block; width: 100%; max-width: none; margin-left: 0; margin-right: 0;">
+        ">
             <div class="box-header with-border">
                 <h3 class="box-title">System Information</h3>
             </div>
@@ -35,19 +35,19 @@
         </div>
     </div>
 </div>
-<div class="row">
-    <div class="col-xs-6 col-sm-3 text-center">
-        <a href="{{ $version->getDiscord() }}"><button class="btn btn-warning" style="width:100%;"><i class="fa fa-fw fa-support"></i> Get Help <small>(via Discord)</small></button></a>
+<div class="row admin-overview-actions">
+    <div class="col-xs-6 col-sm-3 text-center admin-overview-action-col">
+        <a href="{{ $version->getDiscord() }}" class="btn btn-warning admin-overview-action-btn"><i class="fa fa-fw fa-support"></i> Get Help <small>(via Discord)</small></a>
     </div>
-    <div class="col-xs-6 col-sm-3 text-center">
-        <a href="https://pterodactyl.io"><button class="btn btn-primary" style="width:100%;"><i class="fa fa-fw fa-link"></i> Documentation</button></a>
+    <div class="col-xs-6 col-sm-3 text-center admin-overview-action-col">
+        <a href="https://pterodactyl.io" class="btn btn-primary admin-overview-action-btn"><i class="fa fa-fw fa-link"></i> Documentation</a>
     </div>
     <div class="clearfix visible-xs-block">&nbsp;</div>
-    <div class="col-xs-6 col-sm-3 text-center">
-        <a href="https://github.com/pterodactyl/panel"><button class="btn btn-primary" style="width:100%;"><i class="fa fa-fw fa-support"></i> GitHub</button></a>
+    <div class="col-xs-6 col-sm-3 text-center admin-overview-action-col">
+        <a href="https://github.com/pterodactyl/panel" class="btn btn-primary admin-overview-action-btn"><i class="fa fa-fw fa-support"></i> GitHub</a>
     </div>
-    <div class="col-xs-6 col-sm-3 text-center">
-        <a href="{{ $version->getDonations() }}"><button class="btn btn-success" style="width:100%;"><i class="fa fa-fw fa-money"></i> Support the Project</button></a>
+    <div class="col-xs-6 col-sm-3 text-center admin-overview-action-col">
+        <a href="{{ $version->getDonations() }}" class="btn btn-success admin-overview-action-btn"><i class="fa fa-fw fa-money"></i> Support the Project</a>
     </div>
 </div>
 @endsection

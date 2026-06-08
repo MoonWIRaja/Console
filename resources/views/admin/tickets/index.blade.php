@@ -47,7 +47,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-4" style="padding-top: 25px;">
+                        <div class="col-md-4 admin-pad-top-xl">
                             <button type="submit" class="btn btn-primary">Apply Filters</button>
                             <a href="{{ route('admin.tickets') }}" class="btn btn-default">Reset</a>
                         </div>

@@ -34,13 +34,13 @@
             <div class="box-header with-border">
                 <h3 class="box-title">Existing Allocations</h3>
             </div>
-            <div class="box-body table-responsive no-padding" style="overflow-x: visible">
-                <table class="table table-hover" style="margin-bottom:0;">
+            <div class="box-body table-responsive no-padding admin-overflow-visible">
+                <table class="table table-hover admin-table-tight">
                     <tr>
                         <th>
                             <input type="checkbox" class="select-all-files hidden-xs" data-action="selectAll">
                         </th>
-                        <th>IP Address <i class="fa fa-fw fa-minus-square" style="font-weight:normal;color:#d9534f;cursor:pointer;" data-toggle="modal" data-target="#allocationModal"></i></th>
+                        <th>IP Address <i class="fa fa-fw fa-minus-square text-red admin-icon-action" data-toggle="modal" data-target="#allocationModal"></i></th>
                         <th>IP Alias</th>
                         <th>Port</th>
                         <th>Assigned To</th>

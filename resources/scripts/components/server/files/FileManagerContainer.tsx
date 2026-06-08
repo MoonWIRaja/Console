@@ -250,7 +250,18 @@ export default () => {
     };
 
     if (error) {
-        return <ServerError message={httpErrorToHuman(error)} onRetry={() => mutate()} />;
+        return (
+            <ServerContentBlock
+                title={'File Manager'}
+                showFlashKey={'files'}
+                hideFooter
+                className={'content-container-full px-4 py-4'}
+            >
+                <div className={'flex min-h-[360px] items-center justify-center'}>
+                    <ServerError message={httpErrorToHuman(error)} onRetry={() => mutate()} />
+                </div>
+            </ServerContentBlock>
+        );
     }
 
     return (
@@ -262,14 +273,11 @@ export default () => {
         >
             <ErrorBoundary>
                 <div
-                    className={
-                        'flex min-h-0 flex-1 flex-col rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] lg:h-[calc(100dvh-9rem)] lg:min-h-[420px]'
-                    }
+                    className={'sc-card flex min-h-0 flex-1 flex-col lg:h-[calc(100dvh-9rem)] lg:min-h-[420px]'}
                 >
                     <div
-                        className={
-                            'sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3'
-                        }
+                        className={'sticky top-0 z-20 px-4 py-3'}
+                        style={{ borderBottom: '2px solid #2D4A3E', background: '#F5EFD5', borderRadius: '20px 20px 0 0' }}
                     >
                         <div className={'flex flex-wrap-reverse items-start xl:flex-nowrap'}>
                             <FileManagerBreadcrumbs

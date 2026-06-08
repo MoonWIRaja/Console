@@ -139,6 +139,71 @@ class SplitServerService
         return $child->refresh();
     }
 
+    public function update(Server $current, Server $target, array $data): void
+    {
+        $root = $this->resolveRootServer($current);
+        $family = $this->familyFor($root);
+        $split = $family->firstWhere('id', $target->id);
+
+        if (!$split) {
+            throw new DisplayException('That split server does not belong to this server family.');
+        }
+
+        if ($split->id === $root->id) {
+            throw new DisplayException('The root server resources cannot be edited from the split page.');
+        }
+
+        $parent = $split->splitParentServer()->first();
+        if (!$parent) {
+            throw new DisplayException('This split server no longer has a valid parent server.');
+        }
+
+        $newCpu    = (int) Arr::get($data, 'cpu');
+        $newMemory = (int) Arr::get($data, 'memory');
+        $newDisk   = (int) Arr::get($data, 'disk');
+        $newSwap   = (int) Arr::get($data, 'swap');
+
+        $deltaCpu    = $newCpu - $split->cpu;
+        $deltaMemory = $newMemory - $split->memory;
+        $deltaDisk   = $newDisk - $split->disk;
+        $deltaSwap   = $newSwap - $split->swap;
+
+        $parentAvailable = $this->availableResources($parent);
+
+        if ($deltaCpu > 0 && $deltaCpu > $parentAvailable['cpu']) {
+            throw new DisplayException('The parent server does not have enough CPU available for this change.');
+        }
+        if ($deltaMemory > 0 && $deltaMemory > $parentAvailable['memory']) {
+            throw new DisplayException('The parent server does not have enough memory available for this change.');
+        }
+        if ($deltaDisk > 0 && $deltaDisk > $parentAvailable['disk']) {
+            throw new DisplayException('The parent server does not have enough disk available for this change.');
+        }
+        if ($deltaSwap > 0 && $deltaSwap > $parentAvailable['swap']) {
+            throw new DisplayException('The parent server does not have enough swap available for this change.');
+        }
+
+        $newName = trim((string) Arr::get($data, 'name'));
+
+        $this->buildModificationService->handle($split, $this->buildPayload($split, [
+            'memory' => $newMemory,
+            'disk'   => $newDisk,
+            'swap'   => $newSwap,
+            'cpu'    => $newCpu,
+        ]));
+
+        if ($newName !== $split->name) {
+            $split->forceFill(['name' => $newName])->save();
+        }
+
+        $this->buildModificationService->handle($parent, $this->buildPayload($parent, [
+            'memory' => $parent->memory - $deltaMemory,
+            'disk'   => $parent->disk - $deltaDisk,
+            'swap'   => $parent->swap - $deltaSwap,
+            'cpu'    => $parent->cpu - $deltaCpu,
+        ]));
+    }
+
     public function delete(Server $current, Server $target, ?string $confirmName = null): void
     {
         $root = $this->resolveRootServer($current);

@@ -126,7 +126,7 @@
     </div>
     <div class="col-sm-4">
         <div class="box box-primary">
-            <div class="box-body" style="padding-bottom: 0px;">
+            <div class="box-body admin-pad-bottom-none">
                 <div class="row">
                     @if($server->isSuspended())
                         <div class="col-sm-12">

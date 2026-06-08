@@ -15,6 +15,7 @@ import { ServerContext } from '@/state/server';
 import FormikSwitch from '@/components/elements/FormikSwitch';
 import Can from '@/components/elements/Can';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import ModalContext from '@/context/ModalContext';
 
 interface Values {
     name: string;
@@ -24,12 +25,13 @@ interface Values {
 
 const ModalContent = ({ ...props }: RequiredModalProps) => {
     const { isSubmitting } = useFormikContext<Values>();
+    const { dismiss } = React.useContext(ModalContext);
 
     return (
         <Modal {...props} showSpinnerOverlay={isSubmitting}>
             <Form>
                 <FlashMessageRender byKey={'backups:create'} css={tw`mb-4`} />
-                <h2 css={tw`text-2xl mb-6`}>Create server backup</h2>
+                <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Create server backup</h2>
                 <Field
                     name={'name'}
                     label={'Backup name'}
@@ -50,7 +52,9 @@ const ModalContent = ({ ...props }: RequiredModalProps) => {
                     </FormikFieldWrapper>
                 </div>
                 <Can action={'backup.delete'}>
-                    <div css={tw`mt-6 rounded border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-inner`}>
+                    <div
+                        css={tw`mt-6 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-subtle)] p-4`}
+                    >
                         <FormikSwitch
                             name={'isLocked'}
                             label={'Locked'}
@@ -58,8 +62,17 @@ const ModalContent = ({ ...props }: RequiredModalProps) => {
                         />
                     </div>
                 </Can>
-                <div css={tw`flex justify-end mt-6`}>
-                    <Button type={'submit'} disabled={isSubmitting}>
+                <div css={tw`mt-6 flex flex-wrap justify-end border-t border-[color:var(--primary)] pt-5`}>
+                    <Button
+                        type={'button'}
+                        isSecondary
+                        disabled={isSubmitting}
+                        css={tw`w-full sm:w-auto sm:mr-2`}
+                        onClick={dismiss}
+                    >
+                        Cancel
+                    </Button>
+                    <Button type={'submit'} disabled={isSubmitting} css={tw`mt-4 w-full sm:mt-0 sm:w-auto`}>
                         Start backup
                     </Button>
                 </div>
@@ -109,7 +122,11 @@ export default () => {
                     <ModalContent appear visible={visible} onDismissed={() => setVisible(false)} />
                 </Formik>
             )}
-            <InteractiveHoverButton className={'w-full sm:w-auto'} text={'Create Backup'} onClick={() => setVisible(true)} />
+            <InteractiveHoverButton
+                className={'w-full sm:w-auto'}
+                text={'Create Backup'}
+                onClick={() => setVisible(true)}
+            />
         </>
     );
 };

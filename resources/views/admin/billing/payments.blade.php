@@ -11,6 +11,16 @@
 @section('content')
     @include('admin.billing.partials.nav')
     <div class="box">
+        <div class="box-header with-border admin-billing-box-header">
+            <h3 class="box-title">Billing Payments</h3>
+            @include('admin.billing.partials.table-filter', [
+                'name' => 'status',
+                'value' => $selectedPaymentStatus,
+                'options' => $paymentStatusOptions,
+                'pageName' => 'page',
+                'placeholder' => 'All payment statuses',
+            ])
+        </div>
         <div class="box-body table-responsive no-padding">
             <table class="table table-hover">
                 <thead>
@@ -39,6 +49,8 @@
                 </tbody>
             </table>
         </div>
-        <div class="box-footer clearfix">{{ $payments->links() }}</div>
+        <div class="box-footer clearfix">
+            @include('admin.billing.partials.table-pagination', ['paginator' => $payments])
+        </div>
     </div>
 @endsection

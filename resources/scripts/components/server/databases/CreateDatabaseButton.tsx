@@ -92,7 +92,7 @@ export default () => {
                         }}
                     >
                         <FlashMessageRender byKey={'database:create'} css={tw`mb-6`} />
-                        <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Create new database</h2>
+                        <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Create new database</h2>
                         <Form css={tw`m-0`}>
                             <Field
                                 type={'string'}
@@ -112,7 +112,7 @@ export default () => {
                                     }
                                 />
                             </div>
-                            <div css={tw`flex flex-wrap justify-end mt-6`}>
+                            <div css={tw`mt-6 flex flex-wrap justify-end border-t border-[color:var(--primary)] pt-5`}>
                                 <Button
                                     type={'button'}
                                     isSecondary

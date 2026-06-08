@@ -9,8 +9,8 @@ const providerIcons: Record<'google' | 'discord', string> = {
 };
 
 const providerAccent: Record<'google' | 'discord', string> = {
-    google: 'text-[#f8f6ef]',
-    discord: 'text-[#5865F2]',
+    google: 'text-[#742220]',
+    discord: 'text-[#2D4A3E]',
 };
 
 export default () => {
@@ -71,12 +71,12 @@ export default () => {
     return (
         <section
             className={
-                'mt-6 min-w-0 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
+                'sc-card mt-6 min-w-0 overflow-hidden p-6'
             }
         >
             <div className={'mb-5'}>
-                <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Linked Accounts</h2>
-                <p className={'mt-2 text-xs text-gray-400'}>
+                <h2 className={'text-lg font-bold tracking-tight text-[#742220]'}>Linked Accounts</h2>
+                <p className={'mt-2 text-xs text-[rgba(116,34,32,0.58)]'}>
                     Link or re-link Google and Discord here for an existing panel account. New signups can also link
                     these providers during signup before the first login.
                 </p>
@@ -90,7 +90,7 @@ export default () => {
                         <section
                             key={provider.provider}
                             className={
-                                'min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.03)]'
+                                'sc-card-inner min-w-0 p-5'
                             }
                         >
                             <div className={'flex items-start justify-between gap-4'}>
@@ -100,13 +100,13 @@ export default () => {
                                             src={provider.account.avatar}
                                             alt={`${provider.label} avatar`}
                                             className={
-                                                'h-11 w-11 rounded-full border border-[color:var(--border)] object-cover'
+                                                'h-11 w-11 rounded-full border border-[#2D4A3E] object-cover'
                                             }
                                         />
                                     ) : (
                                         <div
                                             className={
-                                                'flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--accent)]'
+                                                'flex h-11 w-11 items-center justify-center rounded-full border border-[#2D4A3E] bg-[#EDE6D0]'
                                             }
                                         >
                                             <i
@@ -117,8 +117,8 @@ export default () => {
                                         </div>
                                     )}
                                     <div className={'min-w-0'}>
-                                        <h3 className={'text-base font-bold text-[#f8f6ef]'}>{provider.label}</h3>
-                                        <p className={'mt-1 break-words text-xs text-gray-400'}>
+                                        <h3 className={'text-base font-bold text-[#742220]'}>{provider.label}</h3>
+                                        <p className={'mt-1 break-words text-xs text-[rgba(116,34,32,0.58)]'}>
                                             {describeProvider(provider)}
                                         </p>
                                     </div>
@@ -128,8 +128,8 @@ export default () => {
                                         provider.linked
                                             ? 'border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-[color:var(--primary)]'
                                             : provider.available
-                                            ? 'border-slate-500/60 text-slate-300'
-                                            : 'border-red-500/40 text-red-300'
+                                            ? 'border-[#2D4A3E]/60 text-[#2D4A3E]'
+                                            : 'border-red-500/40 text-red-700'
                                     }`}
                                 >
                                     {provider.linked ? 'Linked' : provider.available ? 'Ready' : 'Unavailable'}
@@ -137,7 +137,7 @@ export default () => {
                             </div>
 
                             {provider.account?.email && (
-                                <p className={'mt-4 break-all text-xs text-slate-300'}>{provider.account.email}</p>
+                                <p className={'mt-4 break-all text-xs text-[rgba(116,34,32,0.72)]'}>{provider.account.email}</p>
                             )}
 
                             <div className={'mt-5 flex min-w-0 flex-wrap gap-3'}>
@@ -146,7 +146,7 @@ export default () => {
                                     onClick={() => onLink(provider)}
                                     disabled={!provider.available || busyProvider === provider.provider}
                                     className={
-                                        'group relative inline-flex h-10 w-full min-w-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 text-[11px] font-semibold uppercase tracking-wide text-[#f8f6ef] transition-all duration-300 hover:border-[color:var(--primary)] focus:outline-none sm:w-auto sm:min-w-[9rem] disabled:cursor-not-allowed disabled:opacity-50'
+                                        'group relative inline-flex h-10 w-full min-w-0 items-center justify-center overflow-hidden rounded-full border border-[#2D4A3E] bg-[#FEF9E1] px-5 text-[11px] font-semibold uppercase tracking-wide text-[#742220] transition-all duration-300 hover:border-[#2D4A3E] focus:outline-none sm:w-auto sm:min-w-[9rem] disabled:cursor-not-allowed disabled:opacity-50'
                                     }
                                 >
                                     <span className={'relative z-20'}>
@@ -169,7 +169,7 @@ export default () => {
                                         onClick={() => void onUnlink(provider)}
                                         disabled={busyProvider === provider.provider}
                                         className={
-                                            'inline-flex h-10 w-full min-w-0 items-center justify-center rounded-full border border-red-500/35 px-5 text-[11px] font-semibold uppercase tracking-wide text-red-300 transition-colors hover:border-red-500 hover:bg-red-500/10 sm:w-auto sm:min-w-[8rem] disabled:cursor-not-allowed disabled:opacity-50'
+                                            'inline-flex h-10 w-full min-w-0 items-center justify-center rounded-full border border-red-600/40 px-5 text-[11px] font-semibold uppercase tracking-wide text-red-700 transition-colors hover:border-red-600 hover:bg-red-500/10 sm:w-auto sm:min-w-[8rem] disabled:cursor-not-allowed disabled:opacity-50'
                                         }
                                     >
                                         {busyProvider === provider.provider ? 'Working...' : 'Unlink'}

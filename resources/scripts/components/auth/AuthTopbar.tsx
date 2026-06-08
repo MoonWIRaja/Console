@@ -1,7 +1,7 @@
 import React from 'react';
 import useSiteBranding from '@/hooks/useSiteBranding';
 
-const DASHBOARD_VERSION = 'V2.5.0';
+const DASHBOARD_VERSION = 'V3.0.0';
 const DASHBOARD_CHANNEL = 'BETA';
 
 const AuthTopbar = () => {
@@ -23,7 +23,7 @@ const AuthTopbar = () => {
                     minWidth: 'fit-content',
                 }}>
                     <span style={{
-                        color: 'rgba(248, 246, 239, 0.82)',
+                        color: '#FEF9E1',
                         fontSize: '0.76rem',
                         fontWeight: 800,
                         letterSpacing: '0.18em',
@@ -38,14 +38,13 @@ const AuthTopbar = () => {
                         justifyContent: 'center',
                         padding: '0.35rem 0.5rem',
                         borderRadius: '999px',
-                        background: 'rgba(245, 231, 198, 0.16)',
-                        color: 'rgb(245, 231, 198)',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: '#FEF9E1',
                         fontSize: '9px',
                         fontWeight: 800,
                         letterSpacing: '0.16em',
                         textTransform: 'uppercase',
-                        border: '1px solid rgba(245, 231, 198, 0.14)',
-                        boxShadow: 'rgba(255, 255, 255, 0.06) 0px 1px 0px inset',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
                         whiteSpace: 'nowrap',
                     }}>
                         {DASHBOARD_CHANNEL}

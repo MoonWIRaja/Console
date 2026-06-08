@@ -12,18 +12,38 @@ interface Props {
 }
 
 const TitledGreyBox = ({ icon, title, children, className }: Props) => (
-    <div css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-none`} className={className}>
-        <div css={tw`rounded-t-xl border-b border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
+    <div
+        css={tw`relative overflow-hidden rounded-[22px]`}
+        style={{
+            border: '2px solid #2D4A3E',
+            backgroundColor: '#FEF9E1',
+            backgroundImage: [
+                'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+            ].join(', '),
+            boxShadow: '4px 4px 0px 0px #2D4A3E',
+            color: 'var(--foreground)',
+        }}
+        className={className}
+    >
+        <div
+            css={tw`rounded-t-[20px] border-b p-4`}
+            style={{
+                borderColor: '#2D4A3E',
+                background: '#F5EFD5',
+            }}
+        >
             {typeof title === 'string' ? (
-                <p css={tw`text-sm font-bold uppercase tracking-wide text-[#f8f6ef]`}>
-                    {icon && <FontAwesomeIcon icon={icon} css={tw`mr-2 text-[color:var(--primary)]`} />}
+                <p css={tw`text-sm font-bold uppercase tracking-wide`} style={{ color: '#742220' }}>
+                    {icon && <FontAwesomeIcon icon={icon} css={tw`mr-2`} style={{ color: '#2D4A3E' }} />}
                     {title}
                 </p>
             ) : (
                 title
             )}
         </div>
-        <div css={tw`p-3 text-[#f8f6ef]`}>{children}</div>
+        <div css={tw`p-4`} style={{ color: '#742220' }}>{children}</div>
     </div>
 );
 

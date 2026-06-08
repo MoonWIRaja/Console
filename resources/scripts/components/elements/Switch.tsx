@@ -1,48 +1,7 @@
-import React, { useMemo } from 'react';
-import styled from 'styled-components/macro';
-import { v4 } from 'uuid';
+import React, { useMemo, useState } from 'react';
 import tw from 'twin.macro';
 import Label from '@/components/elements/Label';
-import Input from '@/components/elements/Input';
-
-const ToggleContainer = styled.div`
-    ${tw`relative select-none w-12 leading-normal`};
-
-    & > input[type='checkbox'] {
-        ${tw`hidden`};
-
-        &:checked + label {
-            border-color: var(--primary);
-            background-color: rgba(var(--primary-rgb), 0.18);
-            ${tw`shadow-none`};
-        }
-
-        &:checked + label:before {
-            right: 0.125rem;
-            border-color: var(--primary);
-            background: var(--primary);
-        }
-    }
-
-    & > label {
-        ${tw`mb-0 block h-6 cursor-pointer overflow-hidden rounded-full border shadow-inner`};
-        border-color: var(--border);
-        background-color: var(--background);
-        transition: all 75ms linear;
-
-        &::before {
-            ${tw`absolute block h-5 w-5 rounded-full border`};
-            border-color: var(--border);
-            background-color: var(--foreground);
-            top: 0.125rem;
-            right: calc(50% + 0.125rem);
-            //width: 1.25rem;
-            //height: 1.25rem;
-            content: '';
-            transition: all 75ms ease-in;
-        }
-    }
-`;
+import Select from '@/components/ui/select';
 
 export interface SwitchProps {
     name: string;
@@ -55,31 +14,53 @@ export interface SwitchProps {
 }
 
 const Switch = ({ name, label, description, defaultChecked, readOnly, onChange, children }: SwitchProps) => {
-    const uuid = useMemo(() => v4(), []);
+    const [checked, setChecked] = useState(!!defaultChecked);
+    const selectData = useMemo(
+        () => [
+            { id: `${name}-on`, label: 'On', value: 'on' },
+            { id: `${name}-off`, label: 'Off', value: 'off' },
+        ],
+        [name]
+    );
+
+    const handleChange = (value: string) => {
+        if (readOnly) return;
+
+        const nextChecked = value === 'on';
+        setChecked(nextChecked);
+        onChange?.({
+            currentTarget: { checked: nextChecked, name },
+            target: { checked: nextChecked, name },
+        } as React.ChangeEvent<HTMLInputElement>);
+    };
 
     return (
         <div css={tw`flex items-center`}>
-            <ToggleContainer css={tw`flex-none`}>
+            <div css={tw`w-32 flex-none`}>
                 {children || (
-                    <Input
-                        id={uuid}
-                        name={name}
-                        type={'checkbox'}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange && onChange(e)}
-                        defaultChecked={defaultChecked}
-                        disabled={readOnly}
-                    />
+                    <>
+                        <input type={'hidden'} name={name} value={checked ? '1' : '0'} disabled={readOnly} />
+                        <Select
+                            compact
+                            disabled={readOnly}
+                            value={checked ? 'on' : 'off'}
+                            defaultValue={checked ? 'on' : 'off'}
+                            title={label ? `Choose ${label}` : 'Choose Status'}
+                            openDirection={'down'}
+                            data={selectData}
+                            onChange={handleChange}
+                        />
+                    </>
                 )}
-                <Label htmlFor={uuid} />
-            </ToggleContainer>
+            </div>
             {(label || description) && (
                 <div css={tw`ml-4 w-full`}>
                     {label && (
-                        <Label css={[tw`cursor-pointer`, !!description && tw`mb-0`]} htmlFor={uuid}>
+                        <Label css={[tw`cursor-pointer`, !!description && tw`mb-0`]}>
                             {label}
                         </Label>
                     )}
-                    {description && <p css={tw`mt-2 text-sm text-neutral-300`}>{description}</p>}
+                    {description && <p css={tw`mt-2 text-sm text-[color:var(--text-subtle)]`}>{description}</p>}
                 </div>
             )}
         </div>

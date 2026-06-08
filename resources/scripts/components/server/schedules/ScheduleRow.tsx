@@ -12,7 +12,7 @@ export default ({ schedule }: { schedule: Schedule }) => (
             <FontAwesomeIcon icon={faCalendarAlt} fixedWidth />
         </div>
         <div css={tw`flex-1 md:ml-4`}>
-            <p css={tw`text-[#f8f6ef]`}>{schedule.name}</p>
+            <p css={tw`text-[color:var(--foreground)]`}>{schedule.name}</p>
             <p css={tw`text-xs text-[color:var(--text-subtle)]`}>
                 Last run at: {schedule.lastRunAt ? format(schedule.lastRunAt, "MMM do 'at' h:mma") : 'never'}
             </p>
@@ -22,8 +22,8 @@ export default ({ schedule }: { schedule: Schedule }) => (
                 css={[
                     tw`rounded px-3 py-1 text-xs uppercase sm:hidden`,
                     schedule.isActive
-                        ? tw`bg-green-700 text-green-100`
-                        : tw`border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
+                        ? tw`border border-green-600 bg-green-600/20 text-green-700`
+                        : tw`border border-[#EDE6D0] bg-[#F5EFD5] text-[#742220]`,
                 ]}
             >
                 {schedule.isActive ? 'Active' : 'Inactive'}
@@ -35,8 +35,8 @@ export default ({ schedule }: { schedule: Schedule }) => (
                 css={[
                     tw`hidden rounded px-3 py-1 text-xs uppercase sm:block`,
                     schedule.isActive && !schedule.isProcessing
-                        ? tw`bg-green-700 text-green-100`
-                        : tw`border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
+                        ? tw`border border-green-600 bg-green-600/20 text-green-700`
+                        : tw`border border-[#EDE6D0] bg-[#F5EFD5] text-[#742220]`,
                 ]}
             >
                 {schedule.isProcessing ? 'Processing' : schedule.isActive ? 'Active' : 'Inactive'}

@@ -3,15 +3,24 @@
 }
 
 .panel {
-    @apply relative mx-auto w-full max-w-xl rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] text-left text-gray-100;
+    @apply relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-[1.35rem] border text-left text-[#742220];
+    border-color: #2D4A3E;
+    border-width: 2px;
+    max-height: calc(100vh - 8rem);
+    background-color: #FEF9E1;
+    background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px);
+    box-shadow: 4px 4px 0px 0px #2D4A3E;
 }
 
 .title {
-    @apply mb-2 pr-4 font-mono text-xl font-bold text-[color:var(--primary)];
+    @apply mb-1 pr-4 font-mono text-2xl font-black tracking-tight text-[#742220];
 }
 
 .close_icon {
-    @apply h-5 w-5 text-gray-100 transition-transform duration-100 group-hover:rotate-90;
+    @apply h-5 w-5 text-[#742220] transition-transform duration-100 group-hover:rotate-90 group-hover:text-[#2D4A3E];
 }
 
 .dialog_icon {

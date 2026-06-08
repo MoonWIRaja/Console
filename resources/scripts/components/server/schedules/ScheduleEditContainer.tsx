@@ -8,7 +8,7 @@ import DeleteScheduleButton from '@/components/server/schedules/DeleteScheduleBu
 import Can from '@/components/elements/Can';
 import useFlash from '@/plugins/useFlash';
 import { ServerContext } from '@/state/server';
-import PageContentBlock from '@/components/elements/PageContentBlock';
+import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import tw from 'twin.macro';
 import { Button } from '@/components/elements/button/index';
 import ScheduleTaskRow from '@/components/server/schedules/ScheduleTaskRow';
@@ -24,9 +24,9 @@ interface Params {
 }
 
 const CronBox = ({ title, value }: { title: string; value: string }) => (
-    <div css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}>
+    <div className={'sc-card-inner p-3'}>
         <p css={tw`text-sm text-[color:var(--text-subtle)]`}>{title}</p>
-        <p css={tw`text-xl font-medium text-[#f8f6ef]`}>{value}</p>
+        <p css={tw`text-xl font-medium text-[color:var(--foreground)]`}>{value}</p>
     </div>
 );
 
@@ -79,7 +79,7 @@ export default () => {
     }, []);
 
     return (
-        <PageContentBlock title={'Schedules'} className={'content-container-full px-4 xl:px-6'}>
+        <ServerContentBlock title={'Schedules'} className={'content-container-full px-4 py-4 xl:px-6'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedule || isLoading ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={8} className='min-h-[360px]' />
@@ -87,20 +87,19 @@ export default () => {
                 <>
                     <ScheduleCronRow
                         cron={schedule.cron}
-                        css={tw`mb-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:hidden`}
+                        className={'mb-4 sc-card-inner p-3 sm:hidden'}
                     />
-                    <div
-                        css={tw`overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]`}
-                    >
+                    <div className={'sc-card overflow-hidden'}>
                         <div
-                            css={tw`rounded-t-xl border-b border-[color:var(--border)] bg-[color:var(--background)] p-3 sm:flex sm:items-center sm:p-6`}
+                            css={tw`p-3 sm:flex sm:items-center sm:p-6`}
+                            style={{ borderBottom: '2px solid #2D4A3E', background: '#F5EFD5', borderRadius: '20px 20px 0 0' }}
                         >
                             <div css={tw`flex-1`}>
-                                <h3 css={tw`flex items-center text-2xl text-[#f8f6ef]`}>
+                                <h3 css={tw`flex items-center text-2xl text-[color:var(--foreground)]`}>
                                     {schedule.name}
                                     {schedule.isProcessing ? (
                                         <span
-                                            css={tw`ml-4 flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-px text-xs uppercase text-[color:var(--primary)]`}
+                                            className={'ml-4 sc-card-inner flex items-center rounded-full px-2 py-px text-xs uppercase sc-accent'}
                                         >
                                             <Spinner css={tw`w-3! h-3! mr-2`} />
                                             Processing
@@ -116,7 +115,7 @@ export default () => {
                                     ) : (
                                         <span css={tw`text-[color:var(--text-subtle)]`}>n/a</span>
                                     )}
-                                    <span css={tw`ml-4 border-l-2 border-[color:var(--border)] py-px pl-4`}>
+                                    <span css={tw`ml-4 py-px pl-4`} style={{ borderLeft: '2px solid #2D4A3E' }}>
                                         Next run at:&nbsp;
                                         {schedule.nextRunAt ? (
                                             format(schedule.nextRunAt, "MMM do 'at' h:mma")
@@ -142,7 +141,7 @@ export default () => {
                             <CronBox title={'Month'} value={schedule.cron.month} />
                             <CronBox title={'Day (Week)'} value={schedule.cron.dayOfWeek} />
                         </div>
-                        <div css={tw`rounded-b-xl bg-[color:var(--card)]`}>
+                        <div css={tw`rounded-b-[1.35rem] bg-transparent`}>
                             {schedule.tasks.length > 0
                                 ? schedule.tasks
                                       .sort((a, b) =>
@@ -174,6 +173,6 @@ export default () => {
                     </div>
                 </>
             )}
-        </PageContentBlock>
+        </ServerContentBlock>
     );
 };

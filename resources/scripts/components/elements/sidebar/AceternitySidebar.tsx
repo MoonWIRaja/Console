@@ -163,16 +163,15 @@ function DesktopSidebar({ children, className, topOffset = 0 }: SidebarBodyProps
                     top: `${topOffset}px`,
                     left: 0,
                     zIndex: 20,
-                    background: '#2D2D2D',
+                    background: '#2D4A3E',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid rgba(245, 231, 198, 0.12)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.08)',
                     fontFamily:
                         "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                     overflow: 'visible',
                     flexShrink: 0,
-                    boxShadow:
-                        'inset 1px 0 0 rgba(255, 255, 255, 0.03), inset -1px 0 0 rgba(255, 255, 255, 0.02), 0 20px 48px rgba(0, 0, 0, 0.24)',
+                    boxShadow: 'none',
                 }}
                 className={`sidebar-desktop-shell ${className || ''}`}
             >
@@ -201,7 +200,7 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: '#2D2D2D',
+                        background: '#2D4A3E',
                         padding: '12px 16px',
                         fontFamily:
                             "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
@@ -210,11 +209,11 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                         left: 0,
                         right: 0,
                         zIndex: 1000,
-                        borderBottom: '1px solid rgba(245, 231, 198, 0.12)',
-                        boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                        boxShadow: 'none',
                     }}
                 >
-                    <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 900 }}>{name}</div>
+                    <div style={{ color: '#F26430', fontSize: '14px', fontWeight: 900 }}>{name}</div>
                     <button
                         onClick={() => setOpen(!open)}
                         style={{
@@ -262,14 +261,14 @@ function MobileSidebar({ children, className, showMobileHeader = true, topOffset
                                 left: 0,
                                 height: `calc(100vh - ${topOffset}px)`,
                                 width: '288px',
-                                background: '#2D2D2D',
+                                background: '#2D4A3E',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 fontFamily:
                                     "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
-                                borderRight: '1px solid rgba(245, 231, 198, 0.12)',
-                                boxShadow: '0 24px 52px rgba(0, 0, 0, 0.28)',
+                                borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                                boxShadow: 'none',
                             }}
                             className='sidebar-mobile-shell'
                         >
@@ -392,14 +391,12 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 height: expanded ? 'auto' : '48px',
                 padding: expanded ? '11px 12px' : '0',
                 textDecoration: 'none',
-                color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                color: active ? '#E09F3E' : '#F26430',
                 background: active
-                    ? 'linear-gradient(100deg, rgba(var(--primary-rgb), 0.32), rgba(var(--primary-rgb), 0.12))'
-                    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.015))',
-                border: `1px solid ${active ? 'rgba(var(--primary-rgb), 0.34)' : 'rgba(255, 255, 255, 0.07)'}`,
-                boxShadow: active
-                    ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 24px rgba(var(--primary-rgb), 0.12), 0 0 20px rgba(var(--primary-rgb), 0.14)'
-                    : 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'transparent',
+                border: `1px solid ${active ? 'rgba(255, 255, 255, 0.10)' : 'transparent'}`,
+                boxShadow: 'none',
                 borderRadius: expanded ? '14px' : '16px',
                 margin: expanded ? '4px 0' : '6px auto',
                 transition: 'all 0.2s ease',
@@ -419,7 +416,7 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'transparent',
-                    color: active ? '#eff7dc' : 'rgba(248, 246, 239, 0.78)',
+                    color: active ? '#E09F3E' : '#F26430',
                     boxShadow: 'none',
                 }}
             >
@@ -453,15 +450,15 @@ export const SidebarLink = ({ link, active, className }: SidebarLinkProps) => {
                 transform: 'translateY(-50%)',
                 padding: '8px 12px',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.10)',
                 background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)), rgba(7, 10, 15, 0.98)',
-                color: '#eff7dc',
+                    '#742220',
+                color: '#F26430',
                 fontSize: '0.72rem',
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                boxShadow: '0 18px 34px rgba(0, 0, 0, 0.38), 0 0 18px rgba(var(--primary-rgb), 0.12)',
+                boxShadow: 'none',
                 pointerEvents: 'none',
                 zIndex: 80,
                 whiteSpace: 'nowrap',

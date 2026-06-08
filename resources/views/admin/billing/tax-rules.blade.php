@@ -33,6 +33,16 @@
         </div>
         <div class="col-md-8">
             <div class="box">
+                <div class="box-header with-border admin-billing-box-header">
+                    <h3 class="box-title">Tax Rules</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'status',
+                        'value' => $selectedRuleStatus,
+                        'options' => $ruleStatusOptions,
+                        'pageName' => 'page',
+                        'placeholder' => 'All rule statuses',
+                    ])
+                </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
                         <thead><tr><th>Name</th><th>Country</th><th>Type</th><th>Value</th><th>Priority</th><th>Active</th></tr></thead>
@@ -51,6 +61,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $rules])
                 </div>
             </div>
         </div>

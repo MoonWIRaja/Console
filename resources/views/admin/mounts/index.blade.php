@@ -62,7 +62,7 @@
                 <form action="{{ route('admin.mounts') }}" method="POST">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true" style="color: #FFFFFF">&times;</span>
+                            <span aria-hidden="true" class="admin-close-white">&times;</span>
                         </button>
 
                         <h4 class="modal-title">Create Mount</h4>

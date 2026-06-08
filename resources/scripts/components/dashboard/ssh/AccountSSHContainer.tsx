@@ -26,6 +26,7 @@ export default () => {
             <FlashMessageRender byKey={'account'} />
             <div css={tw`grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-2`}>
                 <section
+                    className={'sc-card-inner'}
                     css={tw`min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>Add SSH Key</h2>
@@ -35,6 +36,7 @@ export default () => {
                 </section>
 
                 <section
+                    className={'sc-card-inner'}
                     css={tw`min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)] flex flex-col`}
                 >
                     <h2 css={tw`mb-4 text-center text-xl font-bold text-neutral-100`}>SSH Keys</h2>

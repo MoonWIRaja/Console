@@ -13,7 +13,7 @@ import {
 } from '@/components/elements/sidebar/AceternitySidebar';
 
 export const DASHBOARD_TOPBAR_HEIGHT = 88;
-const DASHBOARD_VERSION = 'V2.5.0';
+const DASHBOARD_VERSION = 'V3.0.0';
 const DASHBOARD_CHANNEL = 'BETA';
 
 interface Props {
@@ -26,6 +26,8 @@ interface Props {
     showSearch?: boolean;
     centerTitle?: string;
     centerSubtitle?: string;
+    showSidebarControl?: boolean;
+    showServerSwitcher?: boolean;
 }
 
 const getServerAddress = (server: Server) => {
@@ -48,6 +50,8 @@ const DashboardTopbar = ({
     showSearch = false,
     centerTitle,
     centerSubtitle,
+    showSidebarControl = true,
+    showServerSwitcher = true,
 }: Props) => {
     const { name, logo } = useSiteBranding();
     const history = useHistory();
@@ -198,66 +202,123 @@ const DashboardTopbar = ({
         history.push(`/server/${serverId}`);
     };
 
-    const sidebarControl = !isMobileViewport ? (
-        <button
-            type='button'
-            onClick={handleDesktopSidebarToggle}
-            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '46px',
-                height: '46px',
-                borderRadius: '14px',
-                border: '1px solid rgba(245, 231, 198, 0.12)',
-                background: 'rgba(245, 231, 198, 0.06)',
-                color: 'rgba(245, 231, 198, 0.76)',
-                cursor: 'pointer',
-                flexShrink: 0,
-            }}
-        >
-            <svg
-                aria-hidden='true'
-                focusable='false'
-                width='16'
-                height='16'
-                viewBox='0 0 320 512'
-                fill='currentColor'
-                style={{ transform: isSidebarCollapsed ? 'rotate(180deg)' : 'none' }}
+    const sidebarControl = showSidebarControl
+        ? !isMobileViewport ? (
+            <button
+                type='button'
+                className='topbar-icon-btn'
+                onClick={handleDesktopSidebarToggle}
+                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '14px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#FEF9E1',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    boxShadow: 'none',
+                }}
             >
-                <path d='M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z' />
-            </svg>
-        </button>
-    ) : isSidebarOpen && onCloseSidebar ? (
-        <button
-            type='button'
-            onClick={onCloseSidebar}
-            aria-label='Close sidebar'
-            title='Close sidebar'
-            style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '46px',
-                height: '46px',
-                borderRadius: '14px',
-                border: '1px solid rgba(245, 231, 198, 0.12)',
-                background: 'rgba(245, 231, 198, 0.06)',
-                color: 'rgba(245, 231, 198, 0.76)',
-                cursor: 'pointer',
-                flexShrink: 0,
-            }}
-        >
-            <svg aria-hidden='true' focusable='false' width='16' height='16' viewBox='0 0 352 512' fill='currentColor'>
-                <path d='M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z' />
-            </svg>
-        </button>
-    ) : null;
+                <svg
+                    aria-hidden='true'
+                    focusable='false'
+                    width='16'
+                    height='16'
+                    viewBox='0 0 320 512'
+                    fill='currentColor'
+                    style={{ transform: isSidebarCollapsed ? 'rotate(180deg)' : 'none' }}
+                >
+                    <path d='M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z' />
+                </svg>
+            </button>
+        ) : isSidebarOpen && onCloseSidebar ? (
+            <button
+                type='button'
+                onClick={onCloseSidebar}
+                aria-label='Close sidebar'
+                title='Close sidebar'
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '14px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#FEF9E1',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    boxShadow: 'none',
+                }}
+            >
+                <svg aria-hidden='true' focusable='false' width='16' height='16' viewBox='0 0 352 512' fill='currentColor'>
+                    <path d='M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z' />
+                </svg>
+            </button>
+        ) : null
+        : null;
 
     return (
+        <>
+        <style>{`
+            .topbar-icon-btn:hover {
+                color: rgba(255, 255, 255, 0.90) !important;
+            }
+            .topbar-header {
+                position: fixed;
+            }
+            .topbar-header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                z-index: 0;
+                clip-path: inset(0);
+                background-image:
+                    repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                    repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                    repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px);
+            }
+            .topbar-header > * {
+                position: relative;
+                z-index: 1;
+            }
+            .server-switcher-popup {
+                position: relative;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+            }
+            .server-switcher-popup::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                pointer-events: none;
+                z-index: 0;
+                background-image:
+                    repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(255,255,255,0.06) 4.5px, rgba(255,255,255,0.06) 5px),
+                    repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(255,255,255,0.06) 4.5px, rgba(255,255,255,0.06) 5px),
+                    repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(255,255,255,0.06) 4.5px, rgba(255,255,255,0.06) 5px);
+            }
+            .server-switcher-popup > * {
+                position: relative;
+                z-index: 1;
+            }
+        `}</style>
         <header
+            className='topbar-header'
             style={{
                 position: 'fixed',
                 top: 0,
@@ -270,10 +331,8 @@ const DashboardTopbar = ({
                 justifyContent: 'space-between',
                 gap: isMobileViewport ? '10px' : '16px',
                 padding: isMobileViewport ? '0 12px' : '0 16px',
-                borderBottom: '1px solid rgba(245, 231, 198, 0.12)',
-                background: '#2D2D2D',
-                backdropFilter: 'blur(12px)',
-                boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                background: '#742220',
                 fontFamily:
                     "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
             }}
@@ -288,7 +347,7 @@ const DashboardTopbar = ({
                     flex: 1,
                 }}
             >
-                {isMobileViewport && onOpenSidebar && !isSidebarOpen && (
+                {showSidebarControl && isMobileViewport && onOpenSidebar && !isSidebarOpen && (
                     <button
                         type='button'
                         onClick={onOpenSidebar}
@@ -300,11 +359,13 @@ const DashboardTopbar = ({
                             width: '44px',
                             height: '44px',
                             borderRadius: '14px',
-                            border: '1px solid rgba(245, 231, 198, 0.12)',
-                            background: 'rgba(245, 231, 198, 0.06)',
-                            color: 'rgba(245, 231, 198, 0.76)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            backdropFilter: 'blur(8px)',
+                            color: '#FEF9E1',
                             cursor: 'pointer',
                             flexShrink: 0,
+                            boxShadow: 'none',
                         }}
                     >
                         <span className='material-icons-round' style={{ fontSize: '22px' }}>
@@ -340,7 +401,7 @@ const DashboardTopbar = ({
                     <div style={{ minWidth: 0 }}>
                         <div
                             style={{
-                                color: '#F5E7C6',
+                                color: '#FEF9E1',
                                 fontSize: isMobileViewport ? '1rem' : '1.1rem',
                                 fontWeight: 700,
                                 whiteSpace: 'nowrap',
@@ -357,44 +418,49 @@ const DashboardTopbar = ({
                 <div
                     style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}
                 >
-                    <button
-                        ref={switcherButtonRef}
-                        type='button'
-                        onClick={handleServerSwitcherToggle}
-                        aria-label='Switch server'
-                        title='Switch server'
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '46px',
-                            height: '46px',
-                            borderRadius: '14px',
-                            border: '1px solid rgba(245, 231, 198, 0.12)',
-                            background: 'rgba(245, 231, 198, 0.06)',
-                            color: '#F5E7C6',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
-                        }}
-                    >
-                        <svg
-                            aria-hidden='true'
-                            focusable='false'
-                            width='18'
-                            height='18'
-                            viewBox='0 0 512 512'
-                            fill='currentColor'
+                    {showServerSwitcher && (
+                        <button
+                            ref={switcherButtonRef}
+                            type='button'
+                            onClick={handleServerSwitcherToggle}
+                            aria-label='Switch server'
+                            title='Switch server'
+                            className='topbar-icon-btn'
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '46px',
+                                height: '46px',
+                                borderRadius: '14px',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                background: 'rgba(255, 255, 255, 0.06)',
+                                backdropFilter: 'blur(8px)',
+                                color: '#FEF9E1',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                boxShadow: 'none',
+                            }}
                         >
-                            <path d='M0 168v-16c0-13.255 10.745-24 24-24h360V80c0-21.367 25.899-32.042 40.971-16.971l80 80c9.372 9.373 9.372 24.569 0 33.941l-80 80C409.956 271.982 384 261.456 384 240v-48H24c-13.255 0-24-10.745-24-24zm488 152H128v-48c0-21.314-25.862-32.08-40.971-16.971l-80 80c-9.372 9.373-9.372 24.569 0 33.941l80 80C102.057 463.997 128 453.437 128 432v-48h360c13.255 0 24-10.745 24-24v-16c0-13.255-10.745-24-24-24z' />
-                        </svg>
-                    </button>
+                            <svg
+                                aria-hidden='true'
+                                focusable='false'
+                                width='18'
+                                height='18'
+                                viewBox='0 0 512 512'
+                                fill='currentColor'
+                            >
+                                <path d='M0 168v-16c0-13.255 10.745-24 24-24h360V80c0-21.367 25.899-32.042 40.971-16.971l80 80c9.372 9.373 9.372 24.569 0 33.941l-80 80C409.956 271.982 384 261.456 384 240v-48H24c-13.255 0-24-10.745-24-24zm488 152H128v-48c0-21.314-25.862-32.08-40.971-16.971l-80 80c-9.372 9.373-9.372 24.569 0 33.941l80 80C102.057 463.997 128 453.437 128 432v-48h360c13.255 0 24-10.745 24-24v-16c0-13.255-10.745-24-24-24z' />
+                            </svg>
+                        </button>
+                    )}
 
                     {sidebarControl}
 
-                    {serverSwitcherOpen && (
+                    {showServerSwitcher && serverSwitcherOpen && (
                         <div
                             ref={switcherPopoverRef}
+                            className='server-switcher-popup'
                             style={{
                                 position: isMobileViewport ? 'fixed' : 'absolute',
                                 top: isMobileViewport ? `${DASHBOARD_TOPBAR_HEIGHT + 12}px` : 'calc(100% + 12px)',
@@ -404,14 +470,13 @@ const DashboardTopbar = ({
                                 maxHeight: 'min(72vh, 520px)',
                                 overflow: 'hidden',
                                 borderRadius: '18px',
-                                border: '1px solid rgba(245, 231, 198, 0.12)',
-                                background: '#2D2D2D',
-                                boxShadow: '0 24px 56px rgba(0, 0, 0, 0.38)',
-                                backdropFilter: 'blur(16px)',
+                                border: '1px solid rgba(255, 255, 255, 0.14)',
+                                background: 'rgba(254, 249, 225, 0.18)',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.30)',
                                 zIndex: 60,
                             }}
                         >
-                            <div style={{ padding: '14px', borderBottom: '1px solid rgba(245, 231, 198, 0.08)' }}>
+                            <div style={{ padding: '14px', borderBottom: '1px solid rgba(116, 34, 32, 0.15)' }}>
                                 <div
                                     style={{
                                         display: 'flex',
@@ -420,8 +485,8 @@ const DashboardTopbar = ({
                                         height: '48px',
                                         padding: '0 14px',
                                         borderRadius: '14px',
-                                        border: '1px solid rgba(245, 231, 198, 0.08)',
-                                        background: 'rgba(255, 255, 255, 0.02)',
+                                        border: '1px solid rgba(116, 34, 32, 0.15)',
+                                        background: 'rgba(255, 255, 255, 0.10)',
                                     }}
                                 >
                                     <svg
@@ -431,7 +496,7 @@ const DashboardTopbar = ({
                                         height='14'
                                         viewBox='0 0 512 512'
                                         fill='currentColor'
-                                        style={{ color: 'rgba(248, 246, 239, 0.54)', flexShrink: 0 }}
+                                        style={{ color: 'rgba(116, 34, 32, 0.50)', flexShrink: 0 }}
                                     >
                                         <path d='M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z' />
                                     </svg>
@@ -447,7 +512,7 @@ const DashboardTopbar = ({
                                             border: 'none',
                                             outline: 'none',
                                             background: 'transparent',
-                                            color: 'var(--foreground)',
+                                            color: '#742220',
                                             fontSize: '0.92rem',
                                         }}
                                     />
@@ -459,7 +524,7 @@ const DashboardTopbar = ({
                                     <div
                                         style={{
                                             padding: '18px 14px',
-                                            color: 'rgba(248, 246, 239, 0.68)',
+                                            color: 'rgba(116, 34, 32, 0.55)',
                                             fontSize: '0.82rem',
                                         }}
                                     >
@@ -483,7 +548,7 @@ const DashboardTopbar = ({
                                     <div
                                         style={{
                                             padding: '18px 14px',
-                                            color: 'rgba(248, 246, 239, 0.68)',
+                                            color: 'rgba(116, 34, 32, 0.55)',
                                             fontSize: '0.82rem',
                                         }}
                                     >
@@ -505,9 +570,9 @@ const DashboardTopbar = ({
                                                 width: '100%',
                                                 padding: '12px 14px',
                                                 borderRadius: '14px',
-                                                border: '1px solid rgba(255, 255, 255, 0.06)',
-                                                background: 'rgba(255, 255, 255, 0.02)',
-                                                color: 'var(--foreground)',
+                                                border: '1px solid rgba(116, 34, 32, 0.12)',
+                                                background: 'rgba(255, 255, 255, 0.10)',
+                                                color: '#742220',
                                                 cursor: 'pointer',
                                                 textAlign: 'left',
                                                 transition: 'all 0.18s ease',
@@ -522,9 +587,9 @@ const DashboardTopbar = ({
                                                     width: '38px',
                                                     height: '38px',
                                                     borderRadius: '12px',
-                                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                                    background: 'rgba(255, 255, 255, 0.03)',
-                                                    color: 'rgba(248, 246, 239, 0.82)',
+                                                    border: '1px solid rgba(116, 34, 32, 0.15)',
+                                                    background: 'rgba(255, 255, 255, 0.12)',
+                                                    color: 'rgba(116, 34, 32, 0.70)',
                                                     flexShrink: 0,
                                                 }}
                                             >
@@ -543,7 +608,7 @@ const DashboardTopbar = ({
                                                 <p
                                                     style={{
                                                         margin: 0,
-                                                        color: 'rgba(248, 246, 239, 0.96)',
+                                                        color: '#742220',
                                                         fontSize: '0.92rem',
                                                         fontWeight: 700,
                                                         whiteSpace: 'nowrap',
@@ -556,7 +621,7 @@ const DashboardTopbar = ({
                                                 <p
                                                     style={{
                                                         margin: '4px 0 0',
-                                                        color: 'rgba(174, 183, 194, 0.72)',
+                                                        color: 'rgba(116, 34, 32, 0.50)',
                                                         fontSize: '0.75rem',
                                                         whiteSpace: 'nowrap',
                                                         overflow: 'hidden',
@@ -587,7 +652,7 @@ const DashboardTopbar = ({
                 >
                     <span
                         style={{
-                            color: 'rgba(248, 246, 239, 0.82)',
+                            color: '#FEF9E1',
                             fontSize: '0.76rem',
                             fontWeight: 800,
                             letterSpacing: '0.18em',
@@ -604,14 +669,15 @@ const DashboardTopbar = ({
                             justifyContent: 'center',
                             padding: '0.35rem 0.5rem',
                             borderRadius: '999px',
-                            background: 'rgba(245, 231, 198, 0.16)',
-                            color: '#F5E7C6',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            color: '#FEF9E1',
                             fontSize: '9px',
                             fontWeight: 800,
                             letterSpacing: '0.16em',
                             textTransform: 'uppercase',
-                            border: '1px solid rgba(245, 231, 198, 0.14)',
-                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            backdropFilter: 'blur(8px)',
+                            boxShadow: 'none',
                             whiteSpace: 'nowrap',
                         }}
                     >
@@ -640,13 +706,14 @@ const DashboardTopbar = ({
                             height: '48px',
                             borderRadius: '16px',
                             border: '1px solid rgba(255, 255, 255, 0.08)',
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            backdropFilter: 'blur(8px)',
+                            boxShadow: 'none',
                         }}
                     >
                         <span
                             style={{
-                                color: 'rgba(248, 246, 239, 0.5)',
+                                color: 'rgba(255, 255, 255, 0.45)',
                                 fontSize: '0.72rem',
                                 fontWeight: 800,
                                 letterSpacing: '0.18em',
@@ -673,7 +740,7 @@ const DashboardTopbar = ({
                         />
                         <span
                             className='material-icons-round'
-                            style={{ fontSize: '20px', color: 'rgba(248, 246, 239, 0.58)' }}
+                            style={{ fontSize: '20px', color: 'rgba(242, 100, 48, 0.55)' }}
                         >
                             search
                         </span>
@@ -702,15 +769,15 @@ const DashboardTopbar = ({
                             padding: '10px 16px',
                             borderRadius: '16px',
                             border: '1px solid rgba(255, 255, 255, 0.08)',
-                            background:
-                                'linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02)), rgba(255, 255, 255, 0.025)',
-                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            backdropFilter: 'blur(8px)',
+                            boxShadow: 'none',
                             textAlign: 'center',
                         }}
                     >
                         <span
                             style={{
-                                color: 'rgba(248, 246, 239, 0.96)',
+                                color: '#FEF9E1',
                                 fontSize: '0.92rem',
                                 fontWeight: 800,
                                 letterSpacing: '0.04em',
@@ -724,7 +791,7 @@ const DashboardTopbar = ({
                         {centerSubtitle ? (
                             <span
                                 style={{
-                                    color: 'rgba(248, 246, 239, 0.52)',
+                                    color: 'rgba(255, 255, 255, 0.45)',
                                     fontSize: '0.68rem',
                                     fontWeight: 800,
                                     letterSpacing: '0.18em',
@@ -741,6 +808,7 @@ const DashboardTopbar = ({
                 </div>
             )}
         </header>
+        </>
     );
 };
 

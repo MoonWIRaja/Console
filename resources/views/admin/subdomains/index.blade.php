@@ -44,7 +44,7 @@
                                     <td>{{ $domain->subdomains_count }}</td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.subdomains.domains.edit', $domain) }}" class="btn btn-xs btn-default">Edit</a>
-                                        <form action="{{ route('admin.subdomains.domains.delete', $domain) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('Delete this domain?');">
+                                        <form action="{{ route('admin.subdomains.domains.delete', $domain) }}" method="POST" class="admin-inline-form" onsubmit="return confirm('Delete this domain?');">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-xs btn-danger">Delete</button>
@@ -90,7 +90,7 @@
                                     <td>{{ $record->nests->pluck('name')->implode(', ') }}</td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.subdomains.records.edit', $record) }}" class="btn btn-xs btn-default">Edit</a>
-                                        <form action="{{ route('admin.subdomains.records.delete', $record) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('Delete this template?');">
+                                        <form action="{{ route('admin.subdomains.records.delete', $record) }}" method="POST" class="admin-inline-form" onsubmit="return confirm('Delete this template?');">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-xs btn-danger">Delete</button>

@@ -62,7 +62,7 @@ export default ({ backup, className }: Props) => {
                     )}
                 </div>
                 <div css={tw`flex flex-col truncate`}>
-                    <div css={tw`mb-1 flex items-center text-sm text-[#f8f6ef]`}>
+                    <div css={tw`mb-1 flex items-center text-sm text-[color:var(--foreground)]`}>
                         {backup.completedAt !== null && !backup.isSuccessful && (
                             <span
                                 css={tw`bg-red-500 py-px px-2 rounded-full text-white text-xs uppercase border border-red-600 mr-2`}

@@ -12,7 +12,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import getServerStartup from '@/api/swr/getServerStartup';
 import isEqual from 'react-fast-compare';
 import { ServerContext } from '@/state/server';
-import Select from '@/components/elements/Select';
+import Select from '@/components/ui/select';
 
 interface Props {
     variable: ServerEggVariable;
@@ -62,7 +62,7 @@ const VariableBox = ({ variable }: Props) => {
             title={
                 <p className='text-sm uppercase'>
                     {!variable.isEditable && (
-                        <span className='mr-2 mb-1 rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 text-xs text-[color:var(--foreground)]'>
+                        <span className='mr-2 mb-1 sc-card-inner rounded-full px-2 py-1 text-xs sc-text'>
                             Read Only
                         </span>
                     )}
@@ -96,19 +96,22 @@ const VariableBox = ({ variable }: Props) => {
                         {selectValues.length > 0 ? (
                             <>
                                 <Select
-                                    onChange={(e) => setVariableValue(e.currentTarget.value)}
+                                    onChange={(value) => setVariableValue(value)}
+                                    value={variable.serverValue ?? variable.defaultValue}
                                     defaultValue={variable.serverValue ?? variable.defaultValue}
                                     disabled={!canEdit || !variable.isEditable}
-                                >
-                                    {selectValues.map((selectValue) => {
+                                    title={`Choose ${variable.name}`}
+                                    openDirection={'down'}
+                                    data={selectValues.map((selectValue) => {
                                         const value = selectValue.replace('in:', '');
-                                        return (
-                                            <option key={`${variable.envVariable}_${value}`} value={value}>
-                                                {value}
-                                            </option>
-                                        );
+
+                                        return {
+                                            id: `${variable.envVariable}_${value}`,
+                                            label: value,
+                                            value,
+                                        };
                                     })}
-                                </Select>
+                                />
                             </>
                         ) : (
                             <>

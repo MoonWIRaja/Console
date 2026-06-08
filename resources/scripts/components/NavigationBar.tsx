@@ -144,7 +144,7 @@ const SidebarSection = ({ label, items, defaultExpanded = false }: SidebarSectio
                         padding: '8px 10px 6px',
                         border: 'none',
                         background: 'transparent',
-                        color: 'rgba(248, 246, 239, 0.62)',
+                        color: 'rgba(255, 255, 255, 0.55)',
                         cursor: 'pointer',
                         textAlign: 'left',
                     }}
@@ -166,7 +166,7 @@ const SidebarSection = ({ label, items, defaultExpanded = false }: SidebarSectio
                         className='material-icons-round'
                         style={{
                             fontSize: '18px',
-                            color: 'rgba(248, 246, 239, 0.54)',
+                            color: 'rgba(255, 255, 255, 0.55)',
                             transform: isExpanded ? 'rotate(0deg)' : 'rotate(180deg)',
                             transition: 'transform 0.2s ease',
                             flexShrink: 0,
@@ -191,7 +191,7 @@ const SidebarSection = ({ label, items, defaultExpanded = false }: SidebarSectio
                             width: '22px',
                             height: '1px',
                             borderRadius: '999px',
-                            background: 'rgba(255, 255, 255, 0.12)',
+                            background: 'rgba(255, 255, 255, 0.15)',
                         }}
                     />
                 </div>
@@ -254,7 +254,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
         <div
             ref={footerRef}
             style={{
-                borderTop: '1px solid rgba(245, 231, 198, 0.12)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.12)',
                 padding: '14px 12px 12px',
                 background: 'transparent',
                 position: 'relative',
@@ -308,7 +308,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         style={{
                             fontSize: '14px',
                             fontWeight: 700,
-                            color: '#F5E7C6',
+                            color: '#FEF9E1',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -321,7 +321,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         <span>{userName}</span>
                         <span
                             className='material-icons-round'
-                            style={{ fontSize: '18px', color: 'rgba(248, 246, 239, 0.56)' }}
+                            style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.55)' }}
                         >
                             {menuOpen ? 'expand_less' : 'expand_more'}
                         </span>
@@ -339,15 +339,15 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         left: expanded ? '12px' : '8px',
                         right: expanded ? '12px' : 'auto',
                         bottom: 'calc(100% + 8px)',
-                        border: '1px solid rgba(245, 231, 198, 0.12)',
-                        background: '#2D2D2D',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        background: '#1F3A30',
                         borderRadius: '16px',
                         padding: '10px',
                         width: expanded ? 'auto' : '240px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
-                        boxShadow: '0 22px 46px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.30)',
                         zIndex: 50,
                     }}
                 >
@@ -363,7 +363,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                             className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
                             style={{
                                 width: '100%',
-                                color: '#F5E7C6',
+                                color: '#FEF9E1',
                                 background: 'transparent',
                             }}
                         >
@@ -376,9 +376,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         borderRadius: '999px',
-                                        border: '1px solid rgba(245, 231, 198, 0.12)',
-                                        background: 'rgba(245, 231, 198, 0.06)',
-                                        color: '#F5E7C6',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        color: '#FEF9E1',
                                     }}
                                 >
                                     <span className='material-icons-round' style={{ fontSize: '16px' }}>
@@ -405,7 +405,7 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                         className='group flex cursor-pointer items-center justify-between gap-2 rounded-[14px] p-3 transition-colors hover:bg-[color:var(--accent)]'
                         style={{
                             width: '100%',
-                            color: '#A0A0A0',
+                            color: 'rgba(255, 200, 200, 0.70)',
                             cursor: 'pointer',
                             border: 'none',
                             background: 'transparent',
@@ -421,9 +421,9 @@ const UserFooter = ({ userName, onLogout }: { userName: string; onLogout: () => 
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     borderRadius: '999px',
-                                    border: '1px solid rgba(245, 231, 198, 0.12)',
-                                    background: 'rgba(245, 231, 198, 0.06)',
-                                    color: '#F5E7C6',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    color: '#FEF9E1',
                                 }}
                             >
                                 <span className='material-icons-round' style={{ fontSize: '16px' }}>
@@ -582,59 +582,34 @@ export default ({
             <style>{`
                 .sidebar-desktop-shell {
                     position: relative;
+                    overflow: hidden;
                 }
                 .sidebar-desktop-shell::after {
-                    content: '';
-                    position: absolute;
-                    top: 10px;
-                    bottom: 10px;
-                    right: -1px;
-                    width: 2px;
-                    border-radius: 999px;
-                    background: linear-gradient(
-                        180deg,
-                        rgba(255, 255, 255, 0.28) 0%,
-                        rgba(255, 255, 255, 0.08) 46%,
-                        rgba(255, 255, 255, 0.25) 100%
-                    );
-                    box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.11);
-                    pointer-events: none;
+                    display: none;
                 }
                 .sidebar-desktop-shell::before {
                     content: '';
                     position: absolute;
-                    top: 10px;
-                    right: -5px;
-                    width: 10px;
-                    height: 54px;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 1) 0%,
-                        rgba(var(--primary-rgb), 0.92) 34%,
-                        rgba(var(--primary-rgb), 0.35) 60%,
-                        rgba(var(--primary-rgb), 0) 100%
-                    );
-                    animation: sidebar-neon-flow 3.2s linear infinite;
-                    filter: drop-shadow(0 0 12px rgba(var(--primary-rgb), 0.9));
+                    inset: 0;
                     pointer-events: none;
+                    z-index: 0;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px);
                 }
-                @keyframes sidebar-neon-flow {
-                    from {
-                        transform: translateY(0);
-                    }
-                    to {
-                        transform: translateY(calc(100vh - 76px));
-                    }
+                .sidebar-desktop-shell > * {
+                    position: relative;
+                    z-index: 1;
+                }
+                .sidebar-link:hover,
+                .sidebar-link:hover div,
+                .sidebar-link:hover span {
+                    color: #FEF9E1 !important;
                 }
                 .sidebar-link:hover {
-                    color: #eff7dc !important;
-                    background: linear-gradient(
-                        90deg,
-                        rgba(var(--primary-rgb), 0.22),
-                        rgba(var(--primary-rgb), 0.08)
-                    ) !important;
-                    border-color: rgba(var(--primary-rgb), 0.3) !important;
+                    background: rgba(255, 255, 255, 0.10) !important;
+                    border-color: rgba(255, 255, 255, 0.12) !important;
                 }
                 .sidebar-scroll-region {
                     scrollbar-width: none;
@@ -722,19 +697,27 @@ export const ServerNavigationBar = ({
         if (lower.includes('user')) return 'group';
         if (lower.includes('backup')) return 'backup';
         if (lower.includes('network')) return 'hub';
+        if (lower.includes('discord')) return 'forum';
         if (lower.includes('startup')) return 'bolt';
         if (lower.includes('setting')) return 'settings';
         if (lower.includes('activity')) return 'show_chart';
         return 'circle';
     };
 
+    const serverRootPath = `/server/${serverId}`;
+
+    const buildServerRouteHref = (path: string) =>
+        path === '/' ? `${serverRootPath}/` : `${serverRootPath}${path.replace('/*', '')}`;
+
     // Helper to match the URL exactly
     const matchUrl = (path: string) => {
         const currentPath = location.pathname;
-        const targetPath = `/server/${serverId}${path.replace('/*', '')}`;
+
         if (path === '/') {
-            return currentPath === `/server/${serverId}`;
+            return currentPath === serverRootPath || currentPath === `${serverRootPath}/`;
         }
+
+        const targetPath = buildServerRouteHref(path);
         return currentPath.startsWith(targetPath);
     };
 
@@ -747,7 +730,7 @@ export const ServerNavigationBar = ({
 
     const serverRouteItems: SidebarSectionLinkItem[] = visibleRoutes.map((route) => ({
         label: route.name,
-        href: `/server/${serverId}${route.path.replace('/*', '')}`,
+        href: buildServerRouteHref(route.path),
         icon: createIcon(getIconForRoute(route.name)),
         active: matchUrl(route.path),
     }));
@@ -758,91 +741,56 @@ export const ServerNavigationBar = ({
             .filter((item): item is SidebarSectionLinkItem => !!item);
 
     const overviewItems = getSectionItems(['Console']);
-    const configurationItems = getSectionItems(['Schedules', 'Network', 'Startup', 'Settings']);
     const managementItems = getSectionItems(['Files', 'Databases', 'Backups', 'Split']);
+    const configurationItems = getSectionItems(['Schedules', 'Network', 'Discord', 'Startup', 'Settings']);
     const accessAndLogsItems = getSectionItems(['Users', 'Activity']);
 
-    const adminItems: SidebarSectionLinkItem[] = rootAdmin
-        ? [
-              {
-                  label: 'Admin Panel',
-                  href: '/admin',
-                  icon: createIcon('admin_panel_settings'),
-                  external: true,
-                  active: location.pathname.startsWith('/admin'),
-              },
-              ...(!adminServerId
-                  ? []
-                  : [
-                        {
-                            label: 'Admin Server',
-                            href: `/admin/servers/view/${adminServerId}`,
-                            icon: createIcon('tune'),
-                            external: true,
-                            active: false,
-                        },
-                    ]),
-          ]
-        : [];
+    const adminItems: SidebarSectionLinkItem[] =
+        rootAdmin && adminServerId
+            ? [
+                  {
+                      label: 'Admin Server',
+                      href: `/admin/servers/view/${adminServerId}`,
+                      icon: createIcon('tune'),
+                      external: true,
+                      active: false,
+                  },
+              ]
+            : [];
 
     return (
         <>
             <style>{`
                 .sidebar-desktop-shell {
                     position: relative;
+                    overflow: hidden;
                 }
                 .sidebar-desktop-shell::after {
-                    content: '';
-                    position: absolute;
-                    top: 10px;
-                    bottom: 10px;
-                    right: -1px;
-                    width: 2px;
-                    border-radius: 999px;
-                    background: linear-gradient(
-                        180deg,
-                        rgba(255, 255, 255, 0.28) 0%,
-                        rgba(255, 255, 255, 0.08) 46%,
-                        rgba(255, 255, 255, 0.25) 100%
-                    );
-                    box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.11);
-                    pointer-events: none;
+                    display: none;
                 }
                 .sidebar-desktop-shell::before {
                     content: '';
                     position: absolute;
-                    top: 10px;
-                    right: -5px;
-                    width: 10px;
-                    height: 54px;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 1) 0%,
-                        rgba(var(--primary-rgb), 0.92) 34%,
-                        rgba(var(--primary-rgb), 0.35) 60%,
-                        rgba(var(--primary-rgb), 0) 100%
-                    );
-                    animation: sidebar-neon-flow 3.2s linear infinite;
-                    filter: drop-shadow(0 0 12px rgba(var(--primary-rgb), 0.9));
+                    inset: 0;
                     pointer-events: none;
+                    z-index: 0;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px);
                 }
-                @keyframes sidebar-neon-flow {
-                    from {
-                        transform: translateY(0);
-                    }
-                    to {
-                        transform: translateY(calc(100vh - 76px));
-                    }
+                .sidebar-desktop-shell > * {
+                    position: relative;
+                    z-index: 1;
+                }
+                .sidebar-link:hover,
+                .sidebar-link:hover div,
+                .sidebar-link:hover span {
+                    color: #FEF9E1 !important;
                 }
                 .sidebar-link:hover {
-                    color: #eff7dc !important;
-                    background: linear-gradient(
-                        90deg,
-                        rgba(var(--primary-rgb), 0.22),
-                        rgba(var(--primary-rgb), 0.08)
-                    ) !important;
-                    border-color: rgba(var(--primary-rgb), 0.3) !important;
+                    background: rgba(255, 255, 255, 0.10) !important;
+                    border-color: rgba(255, 255, 255, 0.12) !important;
                 }
                 .sidebar-scroll-region {
                     scrollbar-width: none;
@@ -865,10 +813,10 @@ export const ServerNavigationBar = ({
                         style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 12px' }}
                     >
                         <SidebarSection label='Overview' items={overviewItems} defaultExpanded />
-                        <SidebarSection label='Configuration' items={configurationItems} defaultExpanded />
                         <SidebarSection label='Management' items={managementItems} defaultExpanded />
+                        <SidebarSection label='Configuration' items={configurationItems} defaultExpanded />
                         <SidebarSection label='Access & Logs' items={accessAndLogsItems} defaultExpanded />
-                        <SidebarSection label='Admin' items={adminItems} />
+                        {adminItems.length > 0 && <SidebarSection label='Admin' items={adminItems} />}
                     </nav>
                     <div style={{ padding: '0 12px 8px' }}>
                         <SidebarLink

@@ -1,5 +1,6 @@
 .icons {
-    @apply mx-2 flex space-x-1 text-gray-400 transition-colors duration-100;
+    @apply mx-2 flex space-x-1 transition-colors duration-100;
+    color: var(--text-subtle);
 
     & svg {
         @apply h-5 w-auto cursor-pointer px-1 py-px hover:text-[color:var(--primary)];
@@ -7,9 +8,11 @@
 }
 
 .description {
-    @apply mt-1 line-clamp-2 break-words pr-4 text-sm text-neutral-300;
+    @apply mt-1 line-clamp-2 break-words pr-4 text-sm;
+    color: var(--text-subtle);
 
     & strong {
-        @apply break-all font-semibold text-[#f8f6ef];
+        @apply break-all font-semibold;
+        color: var(--foreground);
     }
 }

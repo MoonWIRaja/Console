@@ -1,28 +1,29 @@
 /* ============================================================
-   Admin Panel — Custom Sidebar (Matching React Neon Sidebar)
+   Admin Panel — Custom Sidebar
+   Base variables align with the current server/admin theme.
    ============================================================ */
 
-/* ---------- Theme Variables (Aligned to Dashboard shell) ---------- */
+/* ---------- Theme Variables ---------- */
 :root {
-    --admin-background: rgb(34, 34, 34);
-    --admin-foreground: rgb(245, 231, 198);
-    --admin-card: rgb(34, 34, 34);
-    --admin-card-foreground: rgb(245, 231, 198);
-    --admin-primary: rgb(245, 231, 198);
-    --admin-primary-foreground: rgb(34, 34, 34);
-    --admin-muted-foreground: rgba(245, 231, 198, 0.74);
-    --admin-border: rgba(245, 231, 198, 0.18);
-    --admin-accent: rgba(245, 231, 198, 0.10);
-    --admin-destructive: rgb(245, 231, 198);
-    --admin-primary-rgb: 245, 231, 198;
-    --admin-background-rgb: 34, 34, 34;
-    --admin-card-rgb: 34, 34, 34;
-    --admin-primary-glow-soft: rgba(245, 231, 198, 0.18);
-    --admin-primary-glow-medium: rgba(245, 231, 198, 0.28);
-    --admin-primary-glow-strong: rgba(245, 231, 198, 0.40);
-    --admin-surface-elevated: rgb(45, 45, 45);
-    --admin-surface-elevated-rgb: 45, 45, 45;
-    --admin-text-subtle: #A0A0A0;
+    --admin-background: rgb(214, 210, 199);
+    --admin-foreground: rgb(116, 34, 32);
+    --admin-card: rgb(254, 249, 225);
+    --admin-card-foreground: rgb(116, 34, 32);
+    --admin-primary: rgb(116, 34, 32);
+    --admin-primary-foreground: rgb(254, 249, 225);
+    --admin-muted-foreground: rgba(116, 34, 32, 0.62);
+    --admin-border: rgba(45, 74, 62, 0.28);
+    --admin-accent: rgb(45, 74, 62);
+    --admin-destructive: rgb(116, 34, 32);
+    --admin-primary-rgb: 116, 34, 32;
+    --admin-background-rgb: 214, 210, 199;
+    --admin-card-rgb: 254, 249, 225;
+    --admin-primary-glow-soft: rgba(116, 34, 32, 0.18);
+    --admin-primary-glow-medium: rgba(116, 34, 32, 0.28);
+    --admin-primary-glow-strong: rgba(116, 34, 32, 0.40);
+    --admin-surface-elevated: rgb(254, 249, 225);
+    --admin-surface-elevated-rgb: 254, 249, 225;
+    --admin-text-subtle: rgba(116, 34, 32, 0.58);
     --admin-topbar-height: 88px;
     --admin-sidebar-collapsed-width: 72px;
     --admin-sidebar-expanded-width: 288px;
@@ -449,10 +450,10 @@ body.fixed {
     justify-content: space-between;
     gap: 16px;
     padding: 0 16px;
-    border-bottom: 1px solid rgba(var(--admin-primary-rgb), 0.12);
-    background: var(--admin-surface-elevated);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: #742220;
+    backdrop-filter: none;
+    box-shadow: none;
 }
 
 .admin-topbar-left,
@@ -472,8 +473,9 @@ body.fixed {
 .admin-topbar-center {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
-    width: min(34rem, calc(100% - 28rem));
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(24rem, 40vw);
     min-width: 0;
     display: flex;
     justify-content: center;
@@ -504,7 +506,7 @@ body.fixed {
 }
 
 .admin-topbar-brand-title {
-    color: #F5E7C6;
+    color: #FEF9E1;
     font-size: 1.1rem;
     font-weight: 700;
     line-height: 1.05;
@@ -533,64 +535,101 @@ body.fixed {
 }
 
 .admin-topbar-icon,
-.admin-topbar-link {
+.admin-topbar-link,
+.admin-topbar-user {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 46px;
     height: 46px;
     border-radius: 14px;
-    border: 1px solid rgba(245, 231, 198, 0.12);
-    background: rgba(245, 231, 198, 0.06);
-    color: rgba(245, 231, 198, 0.76) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
+    color: #FEF9E1 !important;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: none;
     text-decoration: none !important;
     transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    backdrop-filter: blur(8px);
 }
 
 .admin-topbar-link {
-    color: #F5E7C6 !important;
+    color: #FEF9E1 !important;
 }
 
 .admin-topbar-icon:hover,
-.admin-topbar-link:hover {
-    color: #F5E7C6 !important;
-    border-color: rgba(245, 231, 198, 0.18);
-    background: rgba(245, 231, 198, 0.08);
+.admin-topbar-link:hover,
+.admin-topbar-user:hover {
+    color: #FEF9E1 !important;
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.admin-topbar-toggle-mobile-icon {
-    display: none;
-    font-size: 22px;
-}
-
-#adminSidebarToggleArrow {
+#adminSidebarToggleDesktop > svg {
     transform: none;
     transition: transform 0.2s ease;
 }
 
-.admin-topbar-user {
+#adminSidebarToggleMobile {
+    display: none !important;
+}
+
+.admin-topbar-toggle-mobile-icon {
+    display: inline-flex;
+    font-size: 22px;
+}
+
+.admin-topbar-right {
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+    min-width: fit-content;
+}
+
+.admin-topbar-meta {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
-    max-width: 18rem;
-    min-width: 0;
-    height: 46px;
-    padding: 0 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(var(--admin-primary-rgb), 0.12);
-    background: rgba(var(--admin-primary-rgb), 0.06);
-    color: var(--admin-foreground) !important;
-    text-decoration: none !important;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.admin-topbar-version {
+    color: #FEF9E1;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-topbar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
+    color: #FEF9E1;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+}
+
+.admin-topbar-user {
+    max-width: 46px;
+    min-width: 46px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
 }
 
 .admin-topbar-user-copy {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    display: none;
 }
 
 .admin-topbar-user-name {
@@ -610,52 +649,52 @@ body.fixed {
 }
 
 .admin-topbar-avatar {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 999px;
     object-fit: cover;
     flex-shrink: 0;
-    border: 1px solid rgba(var(--admin-primary-rgb), 0.24);
+    border: 0;
 }
 
 .admin-topbar-title-card {
     display: flex;
-    width: min(100%, 34rem);
+    width: 100%;
     min-width: 0;
     flex-direction: column;
-    gap: 3px;
-    padding: 12px 18px;
-    border-radius: 18px;
-    border: 1px solid rgba(var(--admin-primary-rgb), 0.12);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02)),
-        rgba(var(--admin-card-rgb), 0.92);
+    gap: 4px;
+    padding: 10px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
     text-align: center;
-    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.18);
+    box-shadow: none;
     pointer-events: auto;
 }
 
 .admin-topbar-eyebrow {
-    color: var(--admin-text-subtle);
-    font-size: 0.65rem;
-    font-weight: 700;
+    color: rgba(254, 249, 225, 0.82);
+    font-size: 0.56rem;
+    font-weight: 800;
     letter-spacing: 0.18em;
     text-transform: uppercase;
 }
 
 .admin-topbar-title {
-    color: var(--admin-foreground);
-    font-size: 1rem;
-    font-weight: 700;
+    color: #FEF9E1;
+    font-size: 0.92rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .admin-topbar-subtitle {
-    color: var(--admin-text-subtle);
-    font-size: 0.76rem;
-    line-height: 1.35;
+    color: rgba(254, 249, 225, 0.88);
+    font-size: 0.68rem;
+    line-height: 1.25;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1262,16 +1301,22 @@ h5 .small, h5 small, h6 .small, h6 small {
         max-width: 9rem;
     }
 
-    #adminSidebarToggleArrow {
+    #adminSidebarToggleDesktop {
+        display: none !important;
+    }
+
+    #adminSidebarToggleMobile {
+        display: inline-flex !important;
+    }
+
+    #adminSidebarToggleDesktop > svg {
         display: none;
     }
 
-    .admin-topbar-toggle-mobile-icon {
-        display: inline-flex;
-    }
-
     .admin-topbar-user {
-        padding: 0 10px;
+        width: 44px;
+        min-width: 44px;
+        padding: 0;
     }
 
     .admin-sticky-footer {

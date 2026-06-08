@@ -117,7 +117,7 @@ const AddSplitButton = ({ overview, onCreated }: Props) => {
                         }}
                     >
                         <FlashMessageRender byKey={'server:split'} />
-                        <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Create split server</h2>
+                        <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Create split server</h2>
                         <Form css={tw`m-0`}>
                             <div css={tw`grid gap-4 md:grid-cols-2`}>
                                 <Field
@@ -162,7 +162,7 @@ const AddSplitButton = ({ overview, onCreated }: Props) => {
 
                             <Can action={['user.read', 'user.create']}>
                                 <div
-                                    css={tw`mt-6 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4`}
+                                    css={tw`mt-6 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-subtle)] p-4`}
                                 >
                                     <FormikSwitch
                                         name={'copy_subusers'}
@@ -174,7 +174,7 @@ const AddSplitButton = ({ overview, onCreated }: Props) => {
                                 </div>
                             </Can>
 
-                            <div css={tw`mt-6 flex flex-wrap justify-end`}>
+                            <div css={tw`mt-6 flex flex-wrap justify-end border-t border-[color:var(--primary)] pt-5`}>
                                 <Button
                                     type={'button'}
                                     isSecondary

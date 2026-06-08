@@ -24,7 +24,7 @@
                             <input type="text" name="filter[email]" class="form-control pull-right" value="{{ request()->input('filter.email') }}" placeholder="Search">
                             <div class="input-group-btn">
                                 <button type="submit" class="btn btn-default"><i class="fa fa-search"></i></button>
-                                <a href="{{ route('admin.users.new') }}"><button type="button" class="btn btn-sm btn-primary" style="border-radius: 0 3px 3px 0;margin-left:-1px;">Create New</button></a>
+                                <a href="{{ route('admin.users.new') }}"><button type="button" class="btn btn-sm btn-primary admin-btn-adjoin">Create New</button></a>
                             </div>
                         </div>
                     </form>
@@ -80,7 +80,7 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="text-center"><img src="https://www.gravatar.com/avatar/{{ md5(strtolower($user->email)) }}?s=100" style="height:20px;" class="img-circle" /></td>
+                                <td class="text-center"><img src="https://www.gravatar.com/avatar/{{ md5(strtolower($user->email)) }}?s=100" class="img-circle admin-avatar-xs" /></td>
                             </tr>
                         @endforeach
                     </tbody>

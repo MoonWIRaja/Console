@@ -5,6 +5,7 @@ import isEqual from 'react-fast-compare';
 import Spinner from '@/components/elements/Spinner';
 import Features from '@feature/Features';
 import Console from '@/components/server/console/Console';
+import ConsoleBackground from '@/components/server/console/ConsoleBackground';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import { Alert } from '@/components/elements/alert';
 import { useStoreState, useStoreActions } from 'easy-peasy';
@@ -110,6 +111,33 @@ const capabilitiesState = (data?: PlayersListResponse | null): Record<string, un
     const state = data?.capabilities?.state;
 
     return state && typeof state === 'object' ? state : {};
+};
+
+const capabilitiesIntegrations = (data?: PlayersListResponse | null): Record<string, any> => {
+    const integrations = data?.capabilities?.integrations;
+
+    return integrations && typeof integrations === 'object' ? integrations as Record<string, any> : {};
+};
+
+const buildPlayerProviderLabel = (data?: PlayersListResponse | null): string => {
+    const agent = capabilitiesIntegrations(data).discord_agent;
+    if (!agent) {
+        return data?.game.label || 'Loading player provider...';
+    }
+
+    if (agent.connection_status === 'connected') {
+        return 'Synced by Discord Agent';
+    }
+
+    if (agent.install_status === 'needs_restart') {
+        return 'Agent installed. Restart server to activate.';
+    }
+
+    if (agent.enabled) {
+        return 'Agent offline. Using panel fallback.';
+    }
+
+    return data?.game.label || 'Loading player provider...';
 };
 
 const stateBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
@@ -337,15 +365,15 @@ const withBedrockConsoleRoster = (
 const toneClass = (tone?: string): string => {
     switch (tone) {
         case 'success':
-            return 'border-green-500/40 bg-green-500/10 text-green-200 hover:border-green-400';
+            return 'border-[#2D4A3E] bg-[#F5EFD5] text-[#2D4A3E] hover:border-[#2D4A3E] hover:bg-[rgba(45,74,62,0.12)]';
         case 'warning':
-            return 'border-amber-500/40 bg-amber-500/10 text-amber-100 hover:border-amber-400';
+            return 'border-[#f59e0b] bg-[#F5EFD5] text-[#742220] hover:border-[#d97706] hover:bg-[rgba(245,158,11,0.12)]';
         case 'danger':
-            return 'border-red-500/40 bg-red-500/10 text-red-100 hover:border-red-400';
+            return 'border-[#742220] bg-[#F5EFD5] text-[#742220] hover:border-[#5f1c1a] hover:bg-[rgba(116,34,32,0.12)]';
         case 'neutral':
-            return 'border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--foreground)] hover:border-[color:var(--primary)]';
+            return 'border-[#2D4A3E] bg-[#F5EFD5] text-[#742220] hover:border-[#2D4A3E] hover:bg-[rgba(45,74,62,0.12)]';
         default:
-            return 'border-[color:var(--primary)]/35 bg-[color:var(--primary)]/10 text-[color:var(--foreground)] hover:border-[color:var(--primary)]';
+            return 'border-[#2D4A3E] bg-[#F5EFD5] text-[#742220] hover:border-[#2D4A3E] hover:bg-[rgba(45,74,62,0.12)]';
     }
 };
 
@@ -478,6 +506,18 @@ const extractGamemodeFromStatistics = (stats?: PlayerStatisticsResponse | null):
     return '-';
 };
 
+const extractGamemodeFromProfile = (profile?: PlayerProfileResponse | null): string => {
+    const gamemode = profile?.player.meta?.current_gamemode;
+
+    return typeof gamemode === 'string' && gamemode.trim() !== '' ? gamemode : '-';
+};
+
+const formatPlayerPing = (ping?: number | null): string => {
+    const value = Number(ping || 0);
+
+    return value > 0 ? `${value}ms` : '-';
+};
+
 const remapBanActionGroup = (groups: PlayerActionGroup[], banned: boolean): PlayerActionGroup[] =>
     groups.map((group) => ({
         ...group,
@@ -589,7 +629,10 @@ const actionFieldsFor = (action: PlayerAction): ActionField[] => {
 const PlayerAvatar = ({ player, size = 36 }: { player: ServerPlayer; size?: number }) => {
     const avatarSources = useMemo(() => {
         const normalizedUuid = (player.uuid || '').trim();
+        const compactUuid = normalizedUuid.replace(/-/g, '');
         const normalizedName = (player.name || '').trim();
+        const normalizedId = (player.id || '').trim();
+        const compactId = normalizedId.replace(/-/g, '');
         const sources: string[] = [];
 
         if (player.avatar_url) {
@@ -597,8 +640,14 @@ const PlayerAvatar = ({ player, size = 36 }: { player: ServerPlayer; size?: numb
         }
 
         if (normalizedUuid) {
-            sources.push(`https://mc-heads.net/avatar/${encodeURIComponent(normalizedUuid)}/64`);
-            sources.push(`https://minotar.net/avatar/${encodeURIComponent(normalizedUuid)}/64`);
+            if (compactUuid) {
+                sources.push(`https://mc-heads.net/avatar/${encodeURIComponent(compactUuid)}/64`);
+                sources.push(`https://minotar.net/avatar/${encodeURIComponent(compactUuid)}/64`);
+            }
+            if (compactUuid !== normalizedUuid) {
+                sources.push(`https://mc-heads.net/avatar/${encodeURIComponent(normalizedUuid)}/64`);
+                sources.push(`https://minotar.net/avatar/${encodeURIComponent(normalizedUuid)}/64`);
+            }
         }
 
         if (normalizedName) {
@@ -606,8 +655,19 @@ const PlayerAvatar = ({ player, size = 36 }: { player: ServerPlayer; size?: numb
             sources.push(`https://minotar.net/avatar/${encodeURIComponent(normalizedName)}/64`);
         }
 
+        if (normalizedId && normalizedId !== normalizedUuid && normalizedId !== normalizedName) {
+            if (compactId) {
+                sources.push(`https://mc-heads.net/avatar/${encodeURIComponent(compactId)}/64`);
+                sources.push(`https://minotar.net/avatar/${encodeURIComponent(compactId)}/64`);
+            }
+            if (compactId !== normalizedId) {
+                sources.push(`https://mc-heads.net/avatar/${encodeURIComponent(normalizedId)}/64`);
+                sources.push(`https://minotar.net/avatar/${encodeURIComponent(normalizedId)}/64`);
+            }
+        }
+
         return Array.from(new Set(sources));
-    }, [player.avatar_url, player.name, player.uuid]);
+    }, [player.avatar_url, player.id, player.name, player.uuid]);
 
     const [sourceIndex, setSourceIndex] = useState(0);
 
@@ -849,6 +909,7 @@ const ServerConsoleContainer = () => {
     const [playerActionContext, setPlayerActionContext] = useState<Record<string, string>>({});
     const [playerActionFormError, setPlayerActionFormError] = useState<string | null>(null);
     const [playerGamemodeHint, setPlayerGamemodeHint] = useState<string | null>(null);
+    const [playerActionGamemodeLabel, setPlayerActionGamemodeLabel] = useState<string>('-');
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerProfileResponse | null>(null);
     const [selectedInventory, setSelectedInventory] = useState<PlayerInventoryResponse | null>(null);
     const [selectedStatistics, setSelectedStatistics] = useState<PlayerStatisticsResponse | null>(null);
@@ -874,6 +935,7 @@ const ServerConsoleContainer = () => {
         () => withBedrockConsoleRoster(playersData, bedrockConsoleRoster, playerScope, debouncedPlayerSearch),
         [playersData, bedrockConsoleRoster, playerScope, debouncedPlayerSearch]
     );
+    const playerProviderLabel = useMemo(() => buildPlayerProviderLabel(effectivePlayersData), [effectivePlayersData]);
 
     const playersUnavailableReason = (() => {
         if (conflictStatus === 'installing') {
@@ -907,6 +969,16 @@ const ServerConsoleContainer = () => {
             pendingBedrockRoster.current = null;
             setPlayersError(playersUnavailableReason || 'Player data is temporarily unavailable.');
 
+            return;
+        }
+
+        // Don't poll for players when the server is offline or stopping - avoids sending
+        // unnecessary commands (like "list uuids") to a server that isn't running.
+        if (status === 'offline' || status === 'stopping') {
+            setPlayersLoading(false);
+            setPlayersData(null);
+            setBedrockConsoleRoster(null);
+            pendingBedrockRoster.current = null;
             return;
         }
 
@@ -952,7 +1024,7 @@ const ServerConsoleContainer = () => {
             active = false;
             window.clearInterval(interval);
         };
-    }, [uuid, playerScope, debouncedPlayerSearch, inConflictState, playersUnavailableReason]);
+    }, [uuid, playerScope, debouncedPlayerSearch, inConflictState, playersUnavailableReason, status]);
 
     useEffect(() => {
         if (!connected || !instance || inConflictState || !canUseBedrockConsoleRoster(playersData)) {
@@ -1049,10 +1121,10 @@ const ServerConsoleContainer = () => {
     const statusBadgeClass = classNames(
         'rounded-lg border px-2 py-0.5 text-xs font-bold',
         status === 'running'
-            ? 'border-green-500/40 bg-green-500/10 text-green-400'
+            ? 'border-green-700/60 bg-green-100 text-green-800'
             : status === 'offline' || status === null
-                ? 'border-red-500/40 bg-red-500/10 text-red-400'
-                : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                ? 'border-red-700/40 bg-red-100 text-red-800'
+                : 'border-amber-700/40 bg-amber-100 text-amber-900'
     );
 
     const playerFilterOptions = useMemo<TSelectData[]>(() => {
@@ -1174,7 +1246,15 @@ const ServerConsoleContainer = () => {
         () => extractGamemodeFromStatistics(selectedStatistics),
         [selectedStatistics]
     );
-    const currentGamemode = playerGamemodeHint || currentGamemodeFromStats;
+    const currentGamemodeFromProfile = extractGamemodeFromProfile(selectedPlayer);
+    const currentGamemode =
+        playerGamemodeHint || (currentGamemodeFromStats !== '-' ? currentGamemodeFromStats : currentGamemodeFromProfile);
+    const displayedActionGamemode =
+        playerActionGamemodeLabel === 'Unavailable' || playerActionGamemodeLabel === 'Loading from playerdata...'
+            ? currentGamemode !== '-'
+                ? currentGamemode
+                : playerActionGamemodeLabel
+            : playerActionGamemodeLabel || currentGamemode || '-';
 
     const actionDialogFields = useMemo(
         () => (playerActionTarget ? actionFieldsFor(playerActionTarget) : []),
@@ -1233,6 +1313,7 @@ const ServerConsoleContainer = () => {
         setPlayerActionDialogOpen(false);
         setPlayerActionTarget(null);
         setPlayerActionFormError(null);
+        setPlayerActionGamemodeLabel('-');
         setPlayerGamemodeHint(null);
 
         try {
@@ -1241,7 +1322,8 @@ const ServerConsoleContainer = () => {
             setSelectedInventory(inventory);
             setSelectedStatistics(statistics);
             const detectedMode = extractGamemodeFromStatistics(statistics);
-            setPlayerGamemodeHint(detectedMode !== '-' ? detectedMode : null);
+            const profileMode = extractGamemodeFromProfile(profile);
+            setPlayerGamemodeHint(detectedMode !== '-' ? detectedMode : profileMode !== '-' ? profileMode : null);
         } catch (error) {
             setSelectedPlayer(null);
             setSelectedInventory(null);
@@ -1258,6 +1340,7 @@ const ServerConsoleContainer = () => {
         setPlayerActionDialogOpen(false);
         setPlayerActionTarget(null);
         setPlayerActionFormError(null);
+        setPlayerActionGamemodeLabel('-');
         setPlayerActionNotice(null);
         setPlayerActionLoading(null);
         setPlayerGamemodeHint(null);
@@ -1272,6 +1355,7 @@ const ServerConsoleContainer = () => {
     const openPlayerActionDialog = (action: PlayerAction): void => {
         const initialContext: Record<string, string> = {};
         const defaultFields = actionFieldsFor(action);
+        const initialGamemode = currentGamemode !== '-' ? currentGamemode : '-';
 
         defaultFields.forEach((field) => {
             if (field.type === 'select') {
@@ -1285,12 +1369,56 @@ const ServerConsoleContainer = () => {
 
         if (action.id === 'minecraft.gamemode') {
             initialContext.mode = normalizeGamemodeValue(currentGamemode);
+            setPlayerActionGamemodeLabel(initialGamemode === '-' ? 'Loading from playerdata...' : initialGamemode);
+        } else {
+            setPlayerActionGamemodeLabel('-');
         }
 
         setPlayerActionContext(initialContext);
         setPlayerActionFormError(null);
         setPlayerActionTarget(action);
         setPlayerActionDialogOpen(true);
+
+        if (action.id === 'minecraft.gamemode' && selectedPlayer?.player.id) {
+            const playerId = selectedPlayer.player.id;
+
+            Promise.allSettled([
+                getServerPlayerProfile(uuid, playerId),
+                getServerPlayerStatistics(uuid, playerId),
+            ])
+                .then(([profileResult, statisticsResult]) => {
+                    const profile = profileResult.status === 'fulfilled' ? profileResult.value : selectedPlayer;
+                    const statistics = statisticsResult.status === 'fulfilled' ? statisticsResult.value : selectedStatistics;
+                    const detectedMode = extractGamemodeFromStatistics(statistics);
+                    const profileMode = extractGamemodeFromProfile(profile);
+                    const resolvedMode = detectedMode !== '-' ? detectedMode : profileMode;
+
+                    if (profileResult.status === 'fulfilled') {
+                        setSelectedPlayer(profile);
+                    }
+                    if (statisticsResult.status === 'fulfilled') {
+                        setSelectedStatistics(statistics);
+                    }
+                    if (resolvedMode === '-') {
+                        if (currentGamemode === '-') {
+                            setPlayerActionGamemodeLabel('Unavailable');
+                        }
+                        return;
+                    }
+
+                    setPlayerGamemodeHint(resolvedMode);
+                    setPlayerActionGamemodeLabel(resolvedMode);
+                    setPlayerActionContext((current) => ({
+                        ...current,
+                        mode: normalizeGamemodeValue(resolvedMode),
+                    }));
+                })
+                .catch(() => {
+                    if (currentGamemode === '-') {
+                        setPlayerActionGamemodeLabel('Unavailable');
+                    }
+                });
+        }
     };
 
     const refreshSelectedPlayerDetails = async (): Promise<void> => {
@@ -1361,7 +1489,41 @@ const ServerConsoleContainer = () => {
             const command = response.command_preview ? `\nCommand: ${response.command_preview}` : '';
             setPlayerActionNotice(`${response.message}${command}`);
             if (actionId === 'minecraft.gamemode') {
-                setPlayerGamemodeHint(gamemodeLabelFromValue(String(context.mode || 'survival')));
+                const nextGamemode = gamemodeLabelFromValue(String(context.mode || 'survival'));
+                setPlayerGamemodeHint(nextGamemode);
+                setPlayerActionGamemodeLabel(nextGamemode);
+                setSelectedPlayer((current) => {
+                    if (!current) return current;
+
+                    return {
+                        ...current,
+                        player: {
+                            ...current.player,
+                            meta: {
+                                ...(current.player.meta || {}),
+                                current_gamemode: nextGamemode,
+                            },
+                        },
+                    };
+                });
+                setSelectedStatistics((current) => {
+                    if (!current) return current;
+
+                    return {
+                        ...current,
+                        categories: current.categories.map((category) => ({
+                            ...category,
+                            entries: (category.entries || []).map((entry) =>
+                                entry.label.toLowerCase() === 'gamemode'
+                                    ? {
+                                          ...entry,
+                                          value: nextGamemode,
+                                      }
+                                    : entry
+                            ),
+                        })),
+                    };
+                });
             }
             if (actionId === 'ban' || actionId === 'unban') {
                 const willBeBanned = actionId === 'ban';
@@ -1398,22 +1560,29 @@ const ServerConsoleContainer = () => {
                         }
                     }}
                 >
-                    <div className={'absolute inset-0 bg-[color:var(--card)]/75'} />
+                    <div className={'absolute inset-0 bg-[#101711]/70 backdrop-blur-sm'} />
                     <div
                         className={
-                            'relative z-[10000] w-[92vw] max-w-[640px] rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4 shadow-[0_24px_54px_rgba(0,0,0,0.45)]'
+                            'relative z-[10000] max-h-[calc(100vh-8rem)] w-[92vw] max-w-[640px] overflow-y-auto rounded-[1.35rem] border-2 p-3 text-[#742220] shadow-none transition-all duration-150 sm:p-4 md:p-6'
                         }
+                        style={{
+                            borderColor: '#2D4A3E',
+                            backgroundColor: '#FEF9E1',
+                            backgroundImage:
+                                'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px), repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px), repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                            boxShadow: '#2D4A3E 4px 4px 0 0',
+                        }}
                     >
-                        <div className={'mb-3 flex items-start justify-between gap-3'}>
+                        <div className={'mb-5 flex items-start justify-between gap-4'}>
                             <div>
                                 <h3
                                     className={
-                                        'text-sm font-bold uppercase tracking-wide text-[color:var(--foreground)]'
+                                        'text-2xl font-bold tracking-wide text-[#742220]'
                                     }
                                 >
                                     {playerActionTarget ? `Run: ${playerActionTarget.label}` : 'Run Action'}
                                 </h3>
-                                <p className={'mt-1 text-xs text-[color:var(--text-subtle)]'}>
+                                <p className={'mt-2 text-sm leading-6 text-[rgba(116,34,32,0.72)]'}>
                                     {playerActionTarget?.description ||
                                         'Configure action details and confirm execution.'}
                                 </p>
@@ -1422,29 +1591,42 @@ const ServerConsoleContainer = () => {
                                 type={'button'}
                                 onClick={closePlayerActionDialog}
                                 className={
-                                    'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-xs font-semibold text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)]'
+                                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border-2 border-[#2D4A3E] bg-[#F5EFD5] text-[#742220] transition-colors hover:bg-[rgba(45,74,62,0.12)] hover:text-[#2D4A3E] focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/40'
                                 }
+                                aria-label={'Close action dialog'}
                             >
-                                Close
+                                <svg
+                                    xmlns={'http://www.w3.org/2000/svg'}
+                                    viewBox={'0 0 20 20'}
+                                    fill={'currentColor'}
+                                    aria-hidden={'true'}
+                                    className={'h-5 w-5'}
+                                >
+                                    <path
+                                        fillRule={'evenodd'}
+                                        d={'M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z'}
+                                        clipRule={'evenodd'}
+                                    />
+                                </svg>
                             </button>
                         </div>
 
-                        <div className={'max-h-[76vh] space-y-4 overflow-y-auto pr-1'}>
+                        <div className={'space-y-4'}>
                             {playerActionTarget?.id === 'minecraft.gamemode' && (
                                 <div
                                     className={
-                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'
+                                        'rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                     }
                                 >
                                     <p
                                         className={
-                                            'text-[11px] uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                            'text-[11px] font-bold uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                         }
                                     >
                                         Current Gamemode
                                     </p>
-                                    <p className={'mt-1 text-sm font-semibold text-[color:var(--foreground)]'}>
-                                        {currentGamemode || '-'}
+                                    <p className={'mt-1 text-sm font-semibold text-[#742220]'}>
+                                        {displayedActionGamemode}
                                     </p>
                                 </div>
                             )}
@@ -1453,15 +1635,16 @@ const ServerConsoleContainer = () => {
                                 <div key={field.key} className={'space-y-1.5'}>
                                     <label
                                         className={
-                                            'block text-[11px] font-bold uppercase tracking-wide text-[color:var(--foreground)]'
+                                            'block text-[11px] font-bold uppercase tracking-wide text-[#742220]'
                                         }
                                     >
                                         {field.label}
                                     </label>
                                     {field.type === 'select' ? (
                                         <Select
+                                            key={`${field.key}-${playerActionContext[field.key] || field.options?.[0]?.value || ''}`}
                                             data={field.options || []}
-                                            defaultValue={playerActionContext[field.key] || field.options?.[0]?.value}
+                                            value={playerActionContext[field.key] || field.options?.[0]?.value}
                                             title={field.label}
                                             compact
                                             onChange={(value) =>
@@ -1475,7 +1658,7 @@ const ServerConsoleContainer = () => {
                                         <textarea
                                             autoFocus
                                             className={
-                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none transition-colors placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                'w-full rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-sm font-medium text-[#742220] outline-none transition-colors placeholder:text-[rgba(116,34,32,0.42)] focus:border-[#2D4A3E] focus:ring-2 focus:ring-[#2D4A3E]/25'
                                             }
                                             rows={4}
                                             placeholder={field.placeholder}
@@ -1493,7 +1676,7 @@ const ServerConsoleContainer = () => {
                                         <input
                                             autoFocus
                                             className={
-                                                'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none transition-colors placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
+                                                'w-full rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-sm font-medium text-[#742220] outline-none transition-colors placeholder:text-[rgba(116,34,32,0.42)] focus:border-[#2D4A3E] focus:ring-2 focus:ring-[#2D4A3E]/25'
                                             }
                                             type={field.type === 'number' ? 'number' : 'text'}
                                             min={field.type === 'number' ? 1 : undefined}
@@ -1511,7 +1694,7 @@ const ServerConsoleContainer = () => {
                                         />
                                     )}
                                     {field.helpText && (
-                                        <p className={'text-[11px] text-[color:var(--text-subtle)]'}>
+                                        <p className={'text-[11px] text-[rgba(116,34,32,0.72)]'}>
                                             {field.helpText}
                                         </p>
                                     )}
@@ -1521,7 +1704,7 @@ const ServerConsoleContainer = () => {
                             {actionDialogFields.length === 0 && (
                                 <div
                                     className={
-                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs text-[color:var(--foreground)]'
+                                        'rounded-[18px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-xs font-medium text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                     }
                                 >
                                     This action does not require additional input.
@@ -1531,18 +1714,18 @@ const ServerConsoleContainer = () => {
                             {playerActionFormError && (
                                 <div
                                     className={
-                                        'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'
+                                        'rounded-[18px] border-2 border-[#742220] bg-[rgba(116,34,32,0.1)] px-4 py-3 text-xs font-semibold text-[#742220]'
                                     }
                                 >
                                     {playerActionFormError}
                                 </div>
                             )}
 
-                            <div className={'flex items-center justify-end gap-2 pt-1'}>
+                            <div className={'mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#2D4A3E] pt-5'}>
                                 <button
                                     type={'button'}
                                     className={
-                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)]'
+                                        'group relative inline-flex h-10 min-w-[8.5rem] cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#2D4A3E] bg-[#F5EFD5] px-6 text-xs font-semibold uppercase tracking-wide text-[#742220] transition-colors hover:bg-[rgba(45,74,62,0.12)] hover:text-[#2D4A3E] disabled:cursor-not-allowed disabled:opacity-60'
                                     }
                                     onClick={closePlayerActionDialog}
                                     disabled={!!playerActionLoading}
@@ -1552,7 +1735,7 @@ const ServerConsoleContainer = () => {
                                 <button
                                     type={'button'}
                                     className={
-                                        'rounded-lg border border-[color:var(--primary)] bg-[color:var(--primary)]/12 px-3 py-2 text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--primary)]/20 disabled:cursor-not-allowed disabled:opacity-60'
+                                        'group relative inline-flex h-10 min-w-[10.75rem] cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#2D4A3E] bg-[#2D4A3E] px-6 text-xs font-bold uppercase tracking-wide text-[#FEF9E1] transition-colors hover:bg-[#233b32] disabled:cursor-not-allowed disabled:opacity-60'
                                     }
                                     onClick={() => void runPlayerAction()}
                                     disabled={!!playerActionLoading}
@@ -1574,7 +1757,7 @@ const ServerConsoleContainer = () => {
                 onClose={closePlayerDialog}
                 preventExternalClose={playerActionDialogOpen}
                 title={selectedPlayer?.player?.name ? `${selectedPlayer.player.name} Profile` : 'Player Profile'}
-                panelClassName={'!w-[90vw] !max-w-[90vw] !h-[90vh]'}
+                panelClassName={'!w-[90vw] !max-w-[90vw] !h-[90vh] !border-2 !border-[#2D4A3E] !bg-[#FEF9E1] !text-[#742220] !shadow-[4px_4px_0_0_#2D4A3E]'}
                 contentClassName={'!flex !h-full !max-h-[calc(90vh-7rem)] !flex-col overflow-hidden'}
             >
                 <div className={'mt-4 flex min-h-0 flex-1 flex-col gap-4'}>
@@ -1598,14 +1781,14 @@ const ServerConsoleContainer = () => {
                         <>
                             <div
                                 className={
-                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                 }
                             >
                                 <div className={'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
                                     <div className={'flex items-start gap-3'}>
                                         <div
                                             className={
-                                                'flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'
+                                                'flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-xl border-2 border-[#2D4A3E] bg-[#EDE6D0]'
                                             }
                                         >
                                             <PlayerAvatar player={selectedPlayer.player} size={72} />
@@ -1614,7 +1797,7 @@ const ServerConsoleContainer = () => {
                                             <div className={'flex flex-wrap items-center gap-2'}>
                                                 <h3
                                                     className={
-                                                        'truncate text-xl font-bold text-[color:var(--foreground)]'
+                                                        'truncate text-xl font-bold uppercase tracking-wide text-[#742220]'
                                                     }
                                                 >
                                                     {selectedPlayer.player.name}
@@ -1623,8 +1806,8 @@ const ServerConsoleContainer = () => {
                                                     className={classNames(
                                                         'rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
                                                         selectedPlayer.player.status === 'online'
-                                                            ? 'border-green-500/40 bg-green-500/10 text-green-300'
-                                                            : 'border-neutral-500/40 bg-neutral-500/10 text-neutral-300'
+                                                            ? 'border-[#2D4A3E] bg-[rgba(45,74,62,0.12)] text-[#2D4A3E]'
+                                                            : 'border-[#742220]/40 bg-[rgba(116,34,32,0.08)] text-[#742220]'
                                                     )}
                                                 >
                                                     {selectedPlayer.player.status}
@@ -1632,7 +1815,7 @@ const ServerConsoleContainer = () => {
                                                 {selectedPlayer.player.is_operator && (
                                                     <span
                                                         className={
-                                                            'rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200'
+                                                            'rounded-md border border-[#f59e0b] bg-[rgba(245,158,11,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#742220]'
                                                         }
                                                     >
                                                         Operator
@@ -1641,7 +1824,7 @@ const ServerConsoleContainer = () => {
                                                 {selectedPlayer.player.is_admin && (
                                                     <span
                                                         className={
-                                                            'rounded-md border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-200'
+                                                            'rounded-md border border-[#2D4A3E] bg-[rgba(45,74,62,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2D4A3E]'
                                                         }
                                                     >
                                                         Admin
@@ -1650,7 +1833,7 @@ const ServerConsoleContainer = () => {
                                                 {selectedPlayer.player.banned && (
                                                     <span
                                                         className={
-                                                            'rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200'
+                                                            'rounded-md border border-[#742220] bg-[rgba(116,34,32,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#742220]'
                                                         }
                                                     >
                                                         Banned
@@ -1659,30 +1842,30 @@ const ServerConsoleContainer = () => {
                                             </div>
                                             <div
                                                 className={
-                                                    'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-subtle)]'
+                                                    'mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[rgba(116,34,32,0.72)]'
                                                 }
                                             >
                                                 <code
                                                     className={
-                                                        'rounded border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-[10px] text-[color:var(--foreground)]'
+                                                        'rounded border border-[#2D4A3E] bg-[#FEF9E1] px-2 py-1 text-[10px] text-[#742220]'
                                                     }
                                                 >
                                                     {selectedPlayer.player.uuid || selectedPlayer.player.id}
                                                 </code>
-                                                <span>Ping: {selectedPlayer.player.ping}ms</span>
+                                                <span>Ping: {formatPlayerPing(selectedPlayer.player.ping)}</span>
                                                 {selectedPlayer.player.country ? (
                                                     <span>Country: {selectedPlayer.player.country}</span>
                                                 ) : null}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={'text-right text-[11px] text-[color:var(--text-subtle)]'}>
+                                    <div className={'text-right text-[11px] text-[rgba(116,34,32,0.72)]'}>
                                         <p>{selectedPlayer.game.label}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className={'flex flex-wrap gap-2 border-b border-[color:var(--border)] pb-2'}>
+                            <div className={'flex flex-wrap gap-2 border-b-2 border-[#2D4A3E] pb-2'}>
                                 {playerTabs.map((tab) => (
                                     <button
                                         key={tab}
@@ -1693,8 +1876,8 @@ const ServerConsoleContainer = () => {
                                         className={classNames(
                                             'rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors',
                                             playerDialogTab === tab
-                                                ? 'border border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-[color:var(--foreground)]'
-                                                : 'border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[color:var(--primary)]'
+                                                ? 'border-2 border-[#2D4A3E] bg-[#2D4A3E] text-[#FEF9E1]'
+                                                : 'border-2 border-[#2D4A3E] bg-[#F5EFD5] text-[#742220] hover:bg-[rgba(45,74,62,0.12)]'
                                         )}
                                     >
                                         {tabLabel(tab)}
@@ -1705,7 +1888,7 @@ const ServerConsoleContainer = () => {
                             {playerActionNotice && (
                                 <div
                                     className={
-                                        'whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-[color:var(--foreground)]'
+                                        'whitespace-pre-line rounded-lg border-2 border-[#2D4A3E] bg-[#F5EFD5] px-3 py-2 text-xs text-[#742220]'
                                     }
                                 >
                                     {playerActionNotice}
@@ -1719,14 +1902,14 @@ const ServerConsoleContainer = () => {
                                             <section
                                                 key={group.id}
                                                 className={
-                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                 }
                                             >
-                                                <h4 className={'text-sm font-bold text-[color:var(--foreground)]'}>
+                                                <h4 className={'text-sm font-bold uppercase tracking-wide text-[#742220]'}>
                                                     {group.title}
                                                 </h4>
                                                 {group.description && (
-                                                    <p className={'mt-1 text-[11px] text-[color:var(--text-subtle)]'}>
+                                                    <p className={'mt-1 text-[11px] text-[rgba(116,34,32,0.72)]'}>
                                                         {group.description}
                                                     </p>
                                                 )}
@@ -1757,13 +1940,13 @@ const ServerConsoleContainer = () => {
                                         {(effectivePlayersData?.capabilities.notes || []).length > 0 && (
                                             <section
                                                 className={
-                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-3'
+                                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-3 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                 }
                                             >
                                                 {(effectivePlayersData?.capabilities.notes || []).map((note, idx) => (
                                                     <p
                                                         key={`${note}-${idx}`}
-                                                        className={'text-[11px] text-[color:var(--text-subtle)]'}
+                                                        className={'text-[11px] text-[rgba(116,34,32,0.72)]'}
                                                     >
                                                         {note}
                                                     </p>
@@ -1775,10 +1958,50 @@ const ServerConsoleContainer = () => {
 
                                 {playerDialogTab === 'inventory' && (
                                     <div className={'space-y-4'}>
+                                        {!selectedInventory?.available && (selectedInventory?.summary || []).length > 0 && (
+                                            <section
+                                                className={
+                                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
+                                                }
+                                            >
+                                                <h4
+                                                    className={
+                                                        'mb-3 text-sm font-bold uppercase tracking-wide text-[#742220]'
+                                                    }
+                                                >
+                                                    Inventory Summary
+                                                </h4>
+                                                <div
+                                                    className={
+                                                        'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3'
+                                                    }
+                                                >
+                                                    {(selectedInventory?.summary || []).map((entry) => (
+                                                        <div
+                                                            key={`${entry.label}-${entry.value}`}
+                                                            className={
+                                                                'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] px-3 py-2 text-[#742220]'
+                                                            }
+                                                        >
+                                                            <p
+                                                                className={
+                                                                    'text-[10px] uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
+                                                                }
+                                                            >
+                                                                {entry.label}
+                                                            </p>
+                                                            <p className={'mt-1 text-sm font-semibold text-[#742220]'}>
+                                                                {entry.value}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        )}
                                         {!selectedInventory?.available && (
                                             <div
                                                 className={
-                                                    'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-[color:var(--text-subtle)]'
+                                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-xs text-[rgba(116,34,32,0.72)] shadow-[4px_4px_0_0_#2D4A3E]'
                                                 }
                                             >
                                                 {selectedInventory?.message ||
@@ -1790,12 +2013,12 @@ const ServerConsoleContainer = () => {
                                                 {(selectedInventory.summary || []).length > 0 && (
                                                     <section
                                                         className={
-                                                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                                            'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                         }
                                                     >
                                                         <h4
                                                             className={
-                                                                'mb-3 text-sm font-bold text-[color:var(--foreground)]'
+                                                                'mb-3 text-sm font-bold uppercase tracking-wide text-[#742220]'
                                                             }
                                                         >
                                                             Inventory Summary
@@ -1809,19 +2032,19 @@ const ServerConsoleContainer = () => {
                                                                 <div
                                                                     key={`${entry.label}-${entry.value}`}
                                                                     className={
-                                                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2'
+                                                                        'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] px-3 py-2 text-[#742220]'
                                                                     }
                                                                 >
                                                                     <p
                                                                         className={
-                                                                            'text-[10px] uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                                                            'text-[10px] uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                                                         }
                                                                     >
                                                                         {entry.label}
                                                                     </p>
                                                                     <p
                                                                         className={
-                                                                            'mt-1 text-sm font-semibold text-[color:var(--foreground)]'
+                                                                            'mt-1 text-sm font-semibold text-[#742220]'
                                                                         }
                                                                     >
                                                                         {entry.value}
@@ -1835,7 +2058,7 @@ const ServerConsoleContainer = () => {
                                                 {(selectedInventory.sections || []).length === 0 && (
                                                     <section
                                                         className={
-                                                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-xs text-[color:var(--text-subtle)]'
+                                                            'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] px-4 py-3 text-xs text-[rgba(116,34,32,0.72)] shadow-[4px_4px_0_0_#2D4A3E]'
                                                         }
                                                     >
                                                         No inventory sections were returned for this player.
@@ -1845,12 +2068,12 @@ const ServerConsoleContainer = () => {
                                                 {useMinecraftInventoryLayout && minecraftInventoryLayout ? (
                                                     <section
                                                         className={
-                                                            'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                                            'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                         }
                                                     >
                                                         <div
                                                             className={
-                                                                'overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4'
+                                                                'overflow-x-auto rounded-xl border-2 border-[#2D4A3E] bg-[#FEF9E1] p-4 text-[#742220]'
                                                             }
                                                         >
                                                             <div className={'min-w-[780px]'}>
@@ -1859,7 +2082,7 @@ const ServerConsoleContainer = () => {
                                                                         <div>
                                                                             <span
                                                                                 className={
-                                                                                    'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                                                                    'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                                                                 }
                                                                             >
                                                                                 <span
@@ -1873,7 +2096,7 @@ const ServerConsoleContainer = () => {
                                                                             </span>
                                                                             <div
                                                                                 className={
-                                                                                    'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-2'
+                                                                                    'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] p-2'
                                                                                 }
                                                                             >
                                                                                 <div className={'flex flex-col gap-2'}>
@@ -1904,14 +2127,14 @@ const ServerConsoleContainer = () => {
                                                                         <div>
                                                                             <span
                                                                                 className={
-                                                                                    'mb-1 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                                                                    'mb-1 block text-xs font-semibold uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                                                                 }
                                                                             >
                                                                                 Offhand
                                                                             </span>
                                                                             <div
                                                                                 className={
-                                                                                    'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-2'
+                                                                                    'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] p-2'
                                                                                 }
                                                                             >
                                                                                 {renderMinecraftSlot(
@@ -1927,7 +2150,7 @@ const ServerConsoleContainer = () => {
                                                                     <div>
                                                                         <span
                                                                             className={
-                                                                                'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                                                                'mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                                                             }
                                                                         >
                                                                             <span
@@ -1941,7 +2164,7 @@ const ServerConsoleContainer = () => {
                                                                         </span>
                                                                         <div
                                                                             className={
-                                                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3'
+                                                                                'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] p-3'
                                                                             }
                                                                         >
                                                                             <div className={'grid grid-cols-9 gap-2'}>
@@ -1959,12 +2182,12 @@ const ServerConsoleContainer = () => {
 
                                                                             <div
                                                                                 className={
-                                                                                    'mt-4 border-t border-[color:var(--border)] pt-4'
+                                                                                    'mt-4 border-t border-[#2D4A3E] pt-4'
                                                                                 }
                                                                             >
                                                                                 <span
                                                                                     className={
-                                                                                        'mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-subtle)]'
+                                                                                        'mb-2 block text-xs font-semibold uppercase tracking-wide text-[rgba(116,34,32,0.72)]'
                                                                                     }
                                                                                 >
                                                                                     Hotbar
@@ -2002,7 +2225,7 @@ const ServerConsoleContainer = () => {
                                                         <section
                                                             key={section.id}
                                                             className={
-                                                                'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                                                'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                             }
                                                         >
                                                             <div
@@ -2012,14 +2235,14 @@ const ServerConsoleContainer = () => {
                                                             >
                                                                 <h4
                                                                     className={
-                                                                        'text-sm font-bold text-[color:var(--foreground)]'
+                                                                        'text-sm font-bold uppercase tracking-wide text-[#742220]'
                                                                     }
                                                                 >
                                                                     {section.title}
                                                                 </h4>
                                                                 <span
                                                                     className={
-                                                                        'rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]'
+                                                                        'rounded-md border border-[#2D4A3E] bg-[#FEF9E1] px-2 py-0.5 text-[10px] font-semibold text-[#742220]'
                                                                     }
                                                                 >
                                                                     {section.slots.length} slots
@@ -2029,7 +2252,7 @@ const ServerConsoleContainer = () => {
                                                             {section.slots.length === 0 ? (
                                                                 <div
                                                                     className={
-                                                                        'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-3 text-xs text-[color:var(--text-subtle)]'
+                                                                        'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] px-3 py-3 text-xs text-[rgba(116,34,32,0.72)]'
                                                                     }
                                                                 >
                                                                     No item data in this section.
@@ -2044,13 +2267,13 @@ const ServerConsoleContainer = () => {
                                                                         <div
                                                                             key={`${section.id}-${slot.slot}`}
                                                                             className={
-                                                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-2'
+                                                                                'rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] p-2 text-[#742220]'
                                                                             }
                                                                         >
                                                                             <div className={'flex items-center gap-2'}>
                                                                                 <div
                                                                                     className={
-                                                                                        'flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-[color:var(--border)] bg-[color:var(--background)]'
+                                                                                        'flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-[#2D4A3E] bg-[#EDE6D0]'
                                                                                     }
                                                                                 >
                                                                                     <PlayerItemIcon
@@ -2061,7 +2284,7 @@ const ServerConsoleContainer = () => {
                                                                                 <div className={'min-w-0 flex-1'}>
                                                                                     <p
                                                                                         className={
-                                                                                            'truncate text-xs font-semibold text-[color:var(--foreground)]'
+                                                                                            'truncate text-xs font-semibold text-[#742220]'
                                                                                         }
                                                                                     >
                                                                                         {slot.item_name}
@@ -2069,7 +2292,7 @@ const ServerConsoleContainer = () => {
                                                                                 </div>
                                                                                 <span
                                                                                     className={
-                                                                                        'rounded-md border border-[color:var(--primary)]/30 bg-[color:var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[color:var(--foreground)]'
+                                                                                        'rounded-md border border-[#2D4A3E] bg-[rgba(45,74,62,0.12)] px-1.5 py-0.5 text-[10px] font-bold text-[#2D4A3E]'
                                                                                     }
                                                                                 >
                                                                                     x{slot.count}
@@ -2077,7 +2300,7 @@ const ServerConsoleContainer = () => {
                                                                             </div>
                                                                             <div
                                                                                 className={
-                                                                                    'mt-2 flex items-center justify-between gap-2 text-[10px] text-[color:var(--text-subtle)]'
+                                                                                    'mt-2 flex items-center justify-between gap-2 text-[10px] text-[rgba(116,34,32,0.72)]'
                                                                                 }
                                                                             >
                                                                                 <span>Slot {slot.slot}</span>
@@ -2102,7 +2325,7 @@ const ServerConsoleContainer = () => {
                                         {!selectedStatistics?.available && (
                                             <div
                                                 className={
-                                                    'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 text-xs text-[color:var(--text-subtle)]'
+                                                    'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-3 text-xs text-[rgba(116,34,32,0.72)] shadow-[4px_4px_0_0_#2D4A3E]'
                                                 }
                                             >
                                                 {selectedStatistics?.message ||
@@ -2114,12 +2337,12 @@ const ServerConsoleContainer = () => {
                                                 <section
                                                     key={category.id}
                                                     className={
-                                                        'rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4'
+                                                        'sc-card-inner rounded-[22px] border-2 border-[#2D4A3E] bg-[#F5EFD5] p-4 text-[#742220] shadow-[4px_4px_0_0_#2D4A3E]'
                                                     }
                                                 >
                                                     <h4
                                                         className={
-                                                            'mb-3 text-sm font-bold text-[color:var(--foreground)]'
+                                                            'mb-3 text-sm font-bold uppercase tracking-wide text-[#742220]'
                                                         }
                                                     >
                                                         {category.title}
@@ -2129,15 +2352,15 @@ const ServerConsoleContainer = () => {
                                                             <div
                                                                 key={`${category.id}-${entry.label}`}
                                                                 className={
-                                                                    'flex items-center justify-between rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-xs'
+                                                                    'flex items-center justify-between rounded-lg border border-[#2D4A3E] bg-[#FEF9E1] px-3 py-2 text-xs text-[#742220]'
                                                                 }
                                                             >
-                                                                <span className={'text-[color:var(--text-subtle)]'}>
+                                                                <span className={'text-[rgba(116,34,32,0.72)]'}>
                                                                     {entry.label}
                                                                 </span>
                                                                 <span
                                                                     className={
-                                                                        'font-semibold text-[color:var(--foreground)]'
+                                                                        'font-semibold text-[#742220]'
                                                                     }
                                                                 >
                                                                     {entry.value}
@@ -2163,7 +2386,20 @@ const ServerConsoleContainer = () => {
                     min-height: 0;
                     flex-direction: column;
                     overflow: hidden;
-                    background: transparent;
+                    background: var(--background);
+                    font-family: var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+                }
+
+                .server-console-shell::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    z-index: 0;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px);
                 }
 
                 .server-console-layout {
@@ -2189,45 +2425,70 @@ const ServerConsoleContainer = () => {
                     }
                 }
 
-                .server-console-shell::before {
+                .server-console-panel {
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 22px;
+                    border: 2px solid var(--primary);
+                    background: var(--surface-elevated);
+                    box-shadow: 4px 4px 0px 0px var(--primary);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .server-console-panel::before {
                     content: '';
                     position: absolute;
                     inset: 0;
                     pointer-events: none;
-                    background:
-                        radial-gradient(500px 180px at 8% 0%, rgba(var(--primary-rgb), 0.16), transparent 68%),
-                        radial-gradient(460px 190px at 92% 0%, rgba(var(--primary-rgb), 0.08), transparent 70%),
-                        linear-gradient(
-                            180deg,
-                            rgba(245, 231, 198, 0.028) 0%,
-                            rgba(245, 231, 198, 0.012) 22%,
-                            transparent 60%
-                        );
-                    opacity: 0.9;
-                }
-
-                .server-console-panel {
-                    overflow: hidden;
-                    border-radius: 1rem;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(160deg, rgba(245, 231, 198, 0.05), rgba(245, 231, 198, 0.015) 44%),
-                        var(--surface-elevated);
-                    box-shadow:
-                        inset 0 1px 0 rgba(245, 231, 198, 0.06),
-                        0 26px 40px -34px rgba(0, 0, 0, 0.9),
-                        0 0 36px rgba(var(--primary-rgb), 0.08);
+                    z-index: 1;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px);
                 }
 
                 .server-console-panel-head {
-                    background:
-                        linear-gradient(180deg, rgba(245, 231, 198, 0.04), rgba(245, 231, 198, 0.012)),
-                        var(--surface-subtle);
+                    background: #F5EFD5;
+                    border-bottom: 2px solid #E8E0C8;
                 }
 
                 .server-console-panel-body {
-                    background: #0c0c0c;
-                    border-radius: 0 0 1rem 1rem;
+                    position: relative;
+                    background: transparent;
+                    border-radius: 0 0 18px 18px;
+                    overflow: hidden;
+                }
+
+                .server-console-stat-card {
+                    border-radius: 16px;
+                    border: 1.5px solid #E8E0C8;
+                    background: #F5EFD5;
+                    padding: 1rem;
+                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .server-console-stat-card:hover {
+                    border-color: #2D4A3E;
+                    box-shadow: 2px 2px 0px 0px #2D4A3E;
+                }
+
+                .server-console-progress-track {
+                    height: 0.38rem;
+                    width: 100%;
+                    overflow: hidden;
+                    border-radius: 999px;
+                    background: #E8E0C8;
+                }
+
+                .server-console-progress-fill {
+                    height: 100%;
+                    border-radius: inherit;
+                    transition: width 0.7s ease;
+                    background: linear-gradient(90deg, #2D4A3E, #4A7A65);
+                }
+
+                .server-console-progress-fill-alert {
+                    background: linear-gradient(90deg, #9B2335, #C0392B);
                 }
 
                 .server-console-inline-toggle {
@@ -2241,20 +2502,18 @@ const ServerConsoleContainer = () => {
                     width: 28px;
                     height: 84px;
                     transform: translateY(-50%);
-                    border: 1px solid var(--surface-border);
+                    border: 2px solid #2D4A3E;
                     border-right: 0;
-                    border-radius: 0.75rem 0 0 0.75rem;
-                    background: var(--surface-elevated);
-                    color: var(--text-subtle);
-                    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.28);
-                    backdrop-filter: blur(12px);
-                    transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+                    border-radius: 12px 0 0 12px;
+                    background: #FEF9E1;
+                    color: #742220;
+                    box-shadow: -4px 0 0px #2D4A3E;
+                    transition: color 0.18s ease, background 0.18s ease;
                 }
 
                 .server-console-inline-toggle:hover {
-                    color: var(--primary);
-                    border-color: rgba(var(--primary-rgb), 0.5);
-                    box-shadow: -10px 0 28px rgba(var(--primary-rgb), 0.14);
+                    background: #F5EFD5;
+                    color: #2D4A3E;
                 }
 
                 @media (min-width: 1280px) {
@@ -2265,10 +2524,11 @@ const ServerConsoleContainer = () => {
             `}</style>
 
             <div
-                className={'server-console-shell w-full overflow-x-hidden text-[color:var(--foreground)]'}
+                className={'server-console-shell w-full overflow-x-hidden'}
                 style={{
                     fontFamily:
-                        "var(--font-mono, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
+                        "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
+                    color: 'var(--foreground)',
                 }}
             >
                 <FlashMessageRender byKey={'console:copy'} className={'absolute right-4 top-4 z-[9998] w-auto max-w-sm'} />
@@ -2304,124 +2564,122 @@ const ServerConsoleContainer = () => {
                                     'server-console-panel-head flex items-center justify-between border-b border-[color:var(--border)] px-4 py-3'
                                 }
                             >
-                                <h2
-                                    className={
-                                        'flex items-center text-sm font-bold uppercase tracking-wide text-[#f8f6ef]'
-                                    }
-                                >
+                                <div className={'flex items-center gap-3'}>
                                     <span
-                                        className={classNames('mr-2 h-2 w-2 rounded-full', {
-                                            'animate-pulse bg-green-500': status === 'running',
-                                            'bg-red-500': status === 'offline' || status === null,
-                                            'animate-pulse bg-yellow-500':
+                                        className={classNames('h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2', {
+                                            'animate-pulse bg-green-400 ring-green-500/30': status === 'running',
+                                            'bg-red-500 ring-red-500/30': status === 'offline' || status === null,
+                                            'animate-pulse bg-yellow-400 ring-yellow-500/30':
                                                 status !== 'running' && status !== 'offline' && status !== null,
                                         })}
                                     />
-                                    Live Console
-                                </h2>
+                                    <h2 className={'text-sm font-bold uppercase tracking-widest text-[color:var(--foreground)]'}>
+                                        Live Console
+                                    </h2>
+                                </div>
                                 <ServerClock />
                             </div>
                             <div className={'server-console-panel-body min-w-0 flex-1 overflow-hidden'}>
-                                <Spinner.Suspense>
-                                    <Console />
-                                </Spinner.Suspense>
+                                <ConsoleBackground />
+                                <div style={{ position: 'relative', zIndex: 4, height: '100%' }}>
+                                    <Spinner.Suspense>
+                                        <Console />
+                                    </Spinner.Suspense>
+                                </div>
                             </div>
                         </div>
 
-                        <div className={'server-console-panel p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.06)]'}>
-                            <h3 className={'mb-6 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
-                                Server Statistics
-                            </h3>
-                            <div className={'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4'}>
-                                <div className={'space-y-2'}>
-                                    <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
-                                            CPU Usage
-                                        </span>
+                        <div className={'server-console-panel p-6'}>
+                            <div className={'mb-5 flex items-center justify-between'}>
+                                <h3 className={'text-sm font-bold uppercase tracking-widest'} style={{ color: '#742220' }}>
+                                    Server Statistics
+                                </h3>
+                                <span className={'rounded-full border px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest'} style={{ borderColor: '#2D4A3E', color: '#2D4A3E', background: '#F5EFD5' }}>
+                                    Live
+                                </span>
+                            </div>
+                            <div className={'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'}>
+                                {/* CPU */}
+                                <div className={'server-console-stat-card'}>
+                                    <div className={'mb-3 flex items-center gap-2'}>
+                                        <span className={'material-icons-round text-[18px]'} style={{ color: '#2D4A3E' }}>memory</span>
+                                        <span className={'text-[10px] font-bold uppercase tracking-widest'} style={{ color: 'rgba(116,34,32,0.55)' }}>CPU Load</span>
                                     </div>
-                                    <div className={'text-3xl font-black text-[#f8f6ef]'}>{stats.cpu.toFixed(1)}%</div>
-                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
+                                    <div className={'mb-3 tabular-nums'}>
+                                        <span className={'text-3xl font-black'} style={{ color: '#742220' }}>{stats.cpu.toFixed(1)}</span>
+                                        <span className={'ml-0.5 text-lg font-normal'} style={{ color: 'rgba(116,34,32,0.45)' }}>%</span>
+                                    </div>
+                                    <div className={'server-console-progress-track'}>
                                         <div
-                                            className={
-                                                'h-2 rounded-none bg-[color:var(--primary)] transition-all duration-500'
-                                            }
+                                            className={cpuPercent >= 90 ? 'server-console-progress-fill server-console-progress-fill-alert' : 'server-console-progress-fill'}
                                             style={{ width: `${cpuPercent}%` }}
                                         />
                                     </div>
+                                    {limits.cpu > 0 && (
+                                        <p className={'mt-1.5 text-[10px]'} style={{ color: 'rgba(116,34,32,0.45)' }}>Limit: {limits.cpu}%</p>
+                                    )}
                                 </div>
 
-                                <div className={'space-y-2'}>
-                                    <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
-                                            Memory Usage
-                                        </span>
+                                {/* Memory */}
+                                <div className={'server-console-stat-card'}>
+                                    <div className={'mb-3 flex items-center gap-2'}>
+                                        <span className={'material-icons-round text-[18px]'} style={{ color: '#2D4A3E' }}>developer_board</span>
+                                        <span className={'text-[10px] font-bold uppercase tracking-widest'} style={{ color: 'rgba(116,34,32,0.55)' }}>Memory</span>
                                     </div>
-                                    <div className={'text-2xl font-black text-[#f8f6ef]'}>
-                                        {bytesToString(stats.memory)}
-                                        <span className={'text-lg font-normal text-[color:var(--text-subtle)]'}>
-                                            {' '}
+                                    <div className={'mb-3 tabular-nums'}>
+                                        <span className={'text-2xl font-black'} style={{ color: '#742220' }}>{bytesToString(stats.memory)}</span>
+                                        <span className={'ml-1 text-xs font-normal'} style={{ color: 'rgba(116,34,32,0.45)' }}>
                                             / {memoryLimitBytes > 0 ? bytesToString(memoryLimitBytes) : '\u221E'}
                                         </span>
                                     </div>
-                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
+                                    <div className={'server-console-progress-track'}>
                                         <div
-                                            className={
-                                                'h-2 rounded-none bg-[rgba(245,231,198,0.72)] transition-all duration-500'
-                                            }
+                                            className={memoryPercent >= 90 ? 'server-console-progress-fill server-console-progress-fill-alert' : 'server-console-progress-fill'}
                                             style={{ width: `${memoryPercent}%` }}
                                         />
                                     </div>
                                 </div>
 
-                                <div className={'space-y-2'}>
-                                    <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
-                                            Disk Usage
-                                        </span>
+                                {/* Disk */}
+                                <div className={'server-console-stat-card'}>
+                                    <div className={'mb-3 flex items-center gap-2'}>
+                                        <span className={'material-icons-round text-[18px]'} style={{ color: '#2D4A3E' }}>storage</span>
+                                        <span className={'text-[10px] font-bold uppercase tracking-widest'} style={{ color: 'rgba(116,34,32,0.55)' }}>Disk</span>
                                     </div>
-                                    <div className={'text-2xl font-black text-[#f8f6ef]'}>
-                                        {bytesToString(stats.disk)}
-                                        <span className={'text-lg font-normal text-[color:var(--text-subtle)]'}>
-                                            {' '}
+                                    <div className={'mb-3 tabular-nums'}>
+                                        <span className={'text-2xl font-black'} style={{ color: '#742220' }}>{bytesToString(stats.disk)}</span>
+                                        <span className={'ml-1 text-xs font-normal'} style={{ color: 'rgba(116,34,32,0.45)' }}>
                                             / {diskLimitBytes > 0 ? bytesToString(diskLimitBytes) : '\u221E'}
                                         </span>
                                     </div>
-                                    <div className={'h-2 w-full rounded-full bg-[rgba(245,231,198,0.08)]'}>
+                                    <div className={'server-console-progress-track'}>
                                         <div
-                                            className={
-                                                'h-2 rounded-none bg-[rgba(245,231,198,0.48)] transition-all duration-500'
-                                            }
+                                            className={diskPercent >= 90 ? 'server-console-progress-fill server-console-progress-fill-alert' : 'server-console-progress-fill'}
                                             style={{ width: `${diskPercent}%` }}
                                         />
                                     </div>
                                 </div>
 
-                                <div className={'space-y-2'}>
-                                    <div className={'flex items-end justify-between'}>
-                                        <span className={'text-sm font-medium text-[color:var(--text-subtle)]'}>
-                                            Network
-                                        </span>
+                                {/* Network */}
+                                <div className={'server-console-stat-card'}>
+                                    <div className={'mb-3 flex items-center gap-2'}>
+                                        <span className={'material-icons-round text-[18px]'} style={{ color: '#2D4A3E' }}>speed</span>
+                                        <span className={'text-[10px] font-bold uppercase tracking-widest'} style={{ color: 'rgba(116,34,32,0.55)' }}>Network</span>
                                     </div>
-                                    <div className={'flex flex-col space-y-1'}>
-                                        <div
-                                            className={
-                                                'flex items-center text-sm font-bold text-[color:var(--foreground)]'
-                                            }
-                                        >
-                                            <span className={'material-icons-round mr-1 text-base text-green-500'}>
-                                                arrow_downward
-                                            </span>
-                                            {bytesToString(networkRate.rx)}/s
+                                    <div className={'flex flex-col gap-2'}>
+                                        <div className={'flex items-center justify-between rounded-lg px-3 py-2'} style={{ background: '#F5EFD5', border: '1px solid #E8E0C8' }}>
+                                            <div className={'flex items-center gap-1.5'}>
+                                                <span className={'material-icons-round text-sm'} style={{ color: '#2D4A3E' }}>arrow_downward</span>
+                                                <span className={'text-[10px] font-bold uppercase tracking-wide'} style={{ color: 'rgba(116,34,32,0.55)' }}>In</span>
+                                            </div>
+                                            <span className={'text-sm font-bold tabular-nums'} style={{ color: '#742220' }}>{bytesToString(networkRate.rx)}/s</span>
                                         </div>
-                                        <div
-                                            className={
-                                                'flex items-center text-sm font-bold text-[color:var(--foreground)]'
-                                            }
-                                        >
-                                            <span className={'material-icons-round mr-1 text-base text-blue-500'}>
-                                                arrow_upward
-                                            </span>
-                                            {bytesToString(networkRate.tx)}/s
+                                        <div className={'flex items-center justify-between rounded-lg px-3 py-2'} style={{ background: '#F5EFD5', border: '1px solid #E8E0C8' }}>
+                                            <div className={'flex items-center gap-1.5'}>
+                                                <span className={'material-icons-round text-sm'} style={{ color: '#742220' }}>arrow_upward</span>
+                                                <span className={'text-[10px] font-bold uppercase tracking-wide'} style={{ color: 'rgba(116,34,32,0.55)' }}>Out</span>
+                                            </div>
+                                            <span className={'text-sm font-bold tabular-nums'} style={{ color: '#742220' }}>{bytesToString(networkRate.tx)}/s</span>
                                         </div>
                                     </div>
                                 </div>
@@ -2450,37 +2708,32 @@ const ServerConsoleContainer = () => {
                                 'server-console-side flex min-h-0 w-full min-w-0 flex-col gap-6 overflow-hidden p-4 md:p-6 xl:w-[23%] xl:flex-none xl:pl-0'
                             }
                         >
-                            <div
-                                className={
-                                    'server-console-panel flex items-center p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
-                                }
-                            >
+                            <div className={'server-console-panel flex items-center gap-3 p-4'}>
                                 <div
-                                    className={
-                                        'mr-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] shadow-[0_0_12px_rgba(var(--primary-rgb), 0.25)]'
-                                    }
+                                    className={'relative flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl'}
+                                    style={{ border: '2px solid #2D4A3E', background: '#F5EFD5' }}
                                 >
-                                    <Avatar.User size={40} />
+                                    <Avatar.User size={44} />
                                 </div>
-                                <div className={'min-w-0'}>
-                                    <h3 className={'truncate font-bold text-[#f8f6ef]'}>{username}</h3>
-                                    <p className={'truncate text-xs text-[color:var(--text-subtle)]'}>{email}</p>
+                                <div className={'min-w-0 flex-1'}>
+                                    <h3 className={'truncate text-sm font-bold'} style={{ color: '#742220' }}>{username}</h3>
+                                    <p className={'truncate text-[10px]'} style={{ color: 'rgba(116,34,32,0.55)' }}>{email}</p>
                                 </div>
                             </div>
 
-                            <div
-                                className={'server-console-panel p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'}
-                            >
-                                <h3 className={'mb-4 text-lg font-bold uppercase tracking-wide text-[#f8f6ef]'}>
-                                    Server Control
-                                </h3>
-                                <div className={'mb-6 space-y-3 text-sm'}>
+                            <div className={'server-console-panel p-5'}>
+                                <div className={'mb-4 flex items-center gap-2'}>
+                                    <span className={'material-icons-round text-base'} style={{ color: '#2D4A3E' }}>dns</span>
+                                    <h3 className={'text-sm font-bold uppercase tracking-widest'} style={{ color: '#742220' }}>
+                                        Server Control
+                                    </h3>
+                                </div>
+                                <div className={'mb-6 space-y-2.5 text-sm'}>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-[color:var(--text-subtle)]'}>IP:</span>
+                                        <span className={'text-xs font-medium'} style={{ color: 'rgba(116,34,32,0.55)' }}>IP:</span>
                                         <span
-                                            className={
-                                                'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
-                                            }
+                                            className={'max-w-[70%] cursor-pointer break-all rounded-md px-2 py-0.5 text-right font-mono text-xs font-medium transition-colors'}
+                                            style={{ border: '1px solid #E8E0C8', background: '#F5EFD5', color: '#742220' }}
                                             onClick={() => {
                                                 navigator.clipboard.writeText(allocation).then(() => {
                                                     clearFlashes('console:copy');
@@ -2499,11 +2752,10 @@ const ServerConsoleContainer = () => {
                                     </div>
                                     {(subdomainsData?.items || []).map((subdomain) => (
                                         <div key={subdomain.id} className={'flex items-start justify-between gap-3'}>
-                                            <span className={'text-[color:var(--text-subtle)]'}>Subdomain:</span>
+                                            <span className={'text-xs font-medium'} style={{ color: 'rgba(116,34,32,0.55)' }}>Subdomain:</span>
                                             <span
-                                                className={
-                                                    'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-right font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
-                                                }
+                                                className={'max-w-[70%] cursor-pointer break-all rounded-md px-2 py-0.5 text-right font-mono text-xs font-medium transition-colors'}
+                                                style={{ border: '1px solid #E8E0C8', background: '#F5EFD5', color: '#742220' }}
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(subdomain.fullDomain).then(() => {
                                                         clearFlashes('console:copy');
@@ -2522,26 +2774,24 @@ const ServerConsoleContainer = () => {
                                         </div>
                                     ))}
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-[color:var(--text-subtle)]'}>Status:</span>
+                                        <span className={'text-xs font-medium'} style={{ color: 'rgba(116,34,32,0.55)' }}>Status:</span>
                                         <span className={statusBadgeClass}>{(status || 'offline').toUpperCase()}</span>
                                     </div>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-[color:var(--text-subtle)]'}>Node:</span>
+                                        <span className={'text-xs font-medium'} style={{ color: 'rgba(116,34,32,0.55)' }}>Node:</span>
                                         <code
-                                            className={
-                                                'max-w-[70%] break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)]'
-                                            }
+                                            className={'max-w-[70%] break-all rounded-md px-2 py-1 text-right font-mono text-xs'}
+                                            style={{ border: '1px solid #E8E0C8', background: '#F5EFD5', color: '#742220' }}
                                         >
                                             {node}
                                         </code>
                                     </div>
                                     <div className={'flex items-start justify-between gap-3'}>
-                                        <span className={'text-[color:var(--text-subtle)]'}>Server ID:</span>
+                                        <span className={'text-xs font-medium'} style={{ color: 'rgba(116,34,32,0.55)' }}>Server ID:</span>
                                         <code
                                             title="Click to copy full ID"
-                                            className={
-                                                'max-w-[70%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1 text-right font-mono text-xs text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
-                                            }
+                                            className={'max-w-[70%] cursor-pointer break-all rounded-md px-2 py-1 text-right font-mono text-xs transition-colors'}
+                                            style={{ border: '1px solid #E8E0C8', background: '#F5EFD5', color: '#742220' }}
                                             onClick={() => {
                                                 navigator.clipboard.writeText(uuid).then(() => {
                                                     clearFlashes('console:copy');
@@ -2561,17 +2811,16 @@ const ServerConsoleContainer = () => {
                                 <PowerButtons className={'space-y-3'} variant={'glass'} />
                             </div>
 
-                            <div
-                                className={
-                                    'server-console-panel flex min-h-0 flex-1 flex-col p-5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.05)]'
-                                }
-                            >
+                            <div className={'server-console-panel flex min-h-0 flex-1 flex-col p-5'}>
                                 <div className={'mb-4 flex flex-col gap-3'}>
                                     <div className={'flex items-start justify-between gap-3'}>
                                         <div>
-                                            <h3 className={'text-lg font-bold text-[#f8f6ef]'}>Players</h3>
-                                            <p className={'text-[11px] text-[color:var(--text-subtle)]'}>
-                                                {effectivePlayersData?.game.label || 'Loading player provider...'}
+                                            <div className={'flex items-center gap-2'}>
+                                                <span className={'material-icons-round text-base text-[color:var(--primary)]'}>group</span>
+                                                <h3 className={'text-sm font-bold uppercase tracking-widest text-[#742220]'}>Players</h3>
+                                            </div>
+                                            <p className={'mt-0.5 text-[10px]'} style={{ color: 'rgba(116,34,32,0.55)' }}>
+                                                {playerProviderLabel}
                                             </p>
                                         </div>
                                         <div className={'w-[172px] min-w-[172px]'}>
@@ -2588,18 +2837,16 @@ const ServerConsoleContainer = () => {
 
                                 <div className={'relative mb-4'}>
                                     <input
-                                        className={
-                                            'w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--card)] py-2 pl-3 pr-8 text-xs text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--text-subtle)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]'
-                                        }
+                                        className={'w-full rounded-lg py-2 pl-3 pr-8 text-xs outline-none transition-colors'}
+                                        style={{ border: '1.5px solid #E8E0C8', background: '#F5EFD5', color: '#742220' }}
                                         placeholder={'Filter by Name, UUID, or ID...'}
                                         type={'text'}
                                         value={playerSearch}
                                         onChange={(event) => setPlayerSearch(event.currentTarget.value)}
                                     />
                                     <span
-                                        className={
-                                            'material-icons-round pointer-events-none absolute right-2 top-2 text-sm text-[color:var(--text-subtle)]'
-                                        }
+                                        className={'material-icons-round pointer-events-none absolute right-2 top-2 text-sm'}
+                                        style={{ color: 'rgba(116,34,32,0.45)' }}
                                     >
                                         search
                                     </span>
@@ -2617,9 +2864,8 @@ const ServerConsoleContainer = () => {
 
                                     {!playersLoading && playersError && (
                                         <p
-                                            className={
-                                                'rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200'
-                                            }
+                                            className={'rounded-lg px-3 py-2 text-xs'}
+                                            style={{ border: '1px solid rgba(155,35,53,0.4)', background: 'rgba(155,35,53,0.08)', color: '#9B2335' }}
                                         >
                                             {playersError}
                                         </p>
@@ -2627,9 +2873,8 @@ const ServerConsoleContainer = () => {
 
                                     {!playersLoading && !playersError && (effectivePlayersData?.items || []).length === 0 && (
                                         <p
-                                            className={
-                                                'rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-xs text-[color:var(--text-subtle)]'
-                                            }
+                                            className={'rounded-lg px-3 py-2 text-xs'}
+                                            style={{ border: '1px solid #E8E0C8', background: '#F5EFD5', color: 'rgba(116,34,32,0.55)' }}
                                         >
                                             {buildPlayersEmptyMessage(
                                                 effectivePlayersData,
@@ -2647,8 +2892,11 @@ const ServerConsoleContainer = () => {
                                                 className={
                                                     isConsoleOnlyPlayer(player)
                                                         ? 'flex items-center justify-between rounded-lg border border-transparent p-2 opacity-95'
-                                                        : 'flex cursor-pointer items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--card)]/40'
+                                                        : 'flex cursor-pointer items-center justify-between rounded-lg border border-transparent p-2 transition-colors hover:bg-[#F5EFD5]'
                                                 }
+                                                style={isConsoleOnlyPlayer(player) ? {} : { borderColor: 'transparent' }}
+                                                onMouseEnter={(e) => { if (!isConsoleOnlyPlayer(player)) (e.currentTarget as HTMLElement).style.borderColor = '#E8E0C8'; }}
+                                                onMouseLeave={(e) => { if (!isConsoleOnlyPlayer(player)) (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; }}
                                                 role={isConsoleOnlyPlayer(player) ? undefined : 'button'}
                                                 tabIndex={isConsoleOnlyPlayer(player) ? -1 : 0}
                                                 onClick={() => {
@@ -2674,54 +2922,46 @@ const ServerConsoleContainer = () => {
                                             >
                                                 <div className={'flex min-w-0 items-center gap-3'}>
                                                     <div
-                                                        className={
-                                                            'flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--background)]'
-                                                        }
+                                                        className={'flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg'}
+                                                        style={{ border: '1.5px solid #E8E0C8', background: '#F5EFD5' }}
                                                     >
                                                         <PlayerAvatar player={player} size={36} />
                                                     </div>
                                                     <div className={'min-w-0'}>
                                                         <div className={'flex flex-wrap items-center gap-1'}>
-                                                            <p
-                                                                className={
-                                                                    'truncate text-sm font-bold text-[color:var(--foreground)]'
-                                                                }
-                                                            >
+                                                            <p className={'truncate text-sm font-bold'} style={{ color: '#742220' }}>
                                                                 {player.name}
                                                             </p>
                                                             {player.is_operator && (
                                                                 <span
-                                                                    className={
-                                                                        'rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-200'
-                                                                    }
+                                                                    className={'rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide'}
+                                                                    style={{ border: '1px solid #2D4A3E', background: 'rgba(45,74,62,0.12)', color: '#2D4A3E' }}
                                                                 >
                                                                     OP
                                                                 </span>
                                                             )}
                                                             {player.is_admin && (
                                                                 <span
-                                                                    className={
-                                                                        'rounded border border-purple-500/40 bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-purple-200'
-                                                                    }
+                                                                    className={'rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide'}
+                                                                    style={{ border: '1px solid rgba(116,34,32,0.4)', background: 'rgba(116,34,32,0.08)', color: '#742220' }}
                                                                 >
                                                                     Admin
                                                                 </span>
                                                             )}
                                                             {player.banned && (
                                                                 <span
-                                                                    className={
-                                                                        'rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-200'
-                                                                    }
+                                                                    className={'rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide'}
+                                                                    style={{ border: '1px solid rgba(155,35,53,0.4)', background: 'rgba(155,35,53,0.08)', color: '#9B2335' }}
                                                                 >
                                                                     Banned
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className={'text-[10px] text-[color:var(--text-subtle)]'}>
+                                                        <p className={'text-[10px]'} style={{ color: 'rgba(116,34,32,0.55)' }}>
                                                             {isConsoleOnlyPlayer(player)
                                                                 ? 'Live roster snapshot'
                                                                 : player.status === 'online'
-                                                                ? `Ping: ${player.ping}ms`
+                                                                ? `Ping: ${formatPlayerPing(player.ping)}`
                                                                 : 'Offline'}
                                                         </p>
                                                     </div>
@@ -2729,14 +2969,15 @@ const ServerConsoleContainer = () => {
                                                 <div className={'flex gap-1'}>
                                                     {!isConsoleOnlyPlayer(player) && (
                                                         <button
-                                                            className={
-                                                                'rounded p-1 text-[color:var(--text-subtle)] hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)]'
-                                                            }
+                                                            className={'rounded p-1 transition-colors'}
+                                                            style={{ color: 'rgba(116,34,32,0.45)' }}
                                                             type={'button'}
                                                             onClick={(event) => {
                                                                 event.stopPropagation();
                                                                 void openPlayerDetails(player.id);
                                                             }}
+                                                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#2D4A3E'; (e.currentTarget as HTMLElement).style.background = 'rgba(45,74,62,0.1)'; }}
+                                                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'rgba(116,34,32,0.45)'; (e.currentTarget as HTMLElement).style.background = ''; }}
                                                         >
                                                             <span className={'material-icons-round text-sm'}>settings</span>
                                                         </button>

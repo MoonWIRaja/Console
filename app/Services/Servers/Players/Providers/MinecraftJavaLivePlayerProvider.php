@@ -229,7 +229,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                 'summary' => [
                     ['label' => 'Player', 'value' => (string) ($profile['name'] ?? $playerId)],
                     ['label' => 'Status', 'value' => strtoupper((string) ($profile['status'] ?? 'offline'))],
-                    ['label' => 'Ping', 'value' => (string) ((int) ($profile['ping'] ?? 0)) . 'ms'],
+                    ['label' => 'Ping', 'value' => $this->pingLabel($profile['ping'] ?? null)],
                 ],
                 'player_id' => $playerId,
                 'is_dummy' => false,
@@ -299,7 +299,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                     'title' => 'Presence',
                     'entries' => [
                         ['label' => 'Status', 'value' => strtoupper((string) ($profile['status'] ?? 'offline'))],
-                        ['label' => 'Ping', 'value' => (string) ((int) ($profile['ping'] ?? 0)) . 'ms'],
+                        ['label' => 'Ping', 'value' => $this->pingLabel($profile['ping'] ?? null)],
                         ['label' => 'Operator', 'value' => (bool) ($profile['is_operator'] ?? false) ? 'Yes' : 'No'],
                         ['label' => 'Banned', 'value' => (bool) ($profile['banned'] ?? false) ? 'Yes' : 'No'],
                     ],
@@ -407,7 +407,9 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
                 $modeInput = (string) ($context['mode'] ?? '');
                 $resolvedMode = $this->gamemodeLabelFromInput($modeInput);
                 if ($resolvedMode !== '-') {
-                    Cache::put($this->gamemodeCacheKey($server, $profile), $resolvedMode, now()->addHours(6));
+                    $cacheKey = $this->gamemodeCacheKey($server, $profile);
+                    Cache::put($cacheKey, $resolvedMode, now()->addHours(6));
+                    Cache::put($this->gamemodeOverrideCacheKey($cacheKey), $resolvedMode, now()->addMinutes(30));
                 }
             }
 
@@ -1974,7 +1976,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
     {
         $officialUuid = $this->resolveOfficialUuidByName($name);
         if ($officialUuid !== '') {
-            return sprintf('https://mc-heads.net/avatar/%s/64', rawurlencode($officialUuid));
+            return sprintf('https://mc-heads.net/avatar/%s/64', rawurlencode(str_replace('-', '', $officialUuid)));
         }
 
         $trimmedName = trim($name);
@@ -1982,7 +1984,7 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             $normalizedUuid = $this->normalizeUuid($uuid);
 
             return $normalizedUuid !== ''
-                ? sprintf('https://mc-heads.net/avatar/%s/64', rawurlencode($normalizedUuid))
+                ? sprintf('https://mc-heads.net/avatar/%s/64', rawurlencode(str_replace('-', '', $normalizedUuid)))
                 : '';
         }
 
@@ -2951,6 +2953,17 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
     {
         $detected = $this->resolveGamemode($nbt);
         $cacheKey = $this->gamemodeCacheKey($server, $profile);
+        $override = Cache::get($this->gamemodeOverrideCacheKey($cacheKey));
+        if (is_string($override) && $override !== '') {
+            return $override;
+        }
+
+        $logged = $this->latestGamemodeFromLog($server, $profile);
+        if ($logged !== '-') {
+            Cache::put($cacheKey, $logged, now()->addHours(6));
+
+            return $logged;
+        }
 
         if ($detected !== '-') {
             Cache::put($cacheKey, $detected, now()->addHours(6));
@@ -2969,6 +2982,55 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
     /**
      * @param array<string, mixed> $profile
      */
+    private function latestGamemodeFromLog(Server $server, array $profile): string
+    {
+        $name = trim((string) ($profile['name'] ?? ''));
+        if ($name === '') {
+            return '-';
+        }
+
+        $cacheKey = sprintf('players:mcjava:gamemode-log:v1:%d:%s', $server->id, md5(mb_strtolower($name)));
+        $cached = Cache::get($cacheKey);
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
+        $content = $this->readFirstAvailableTextFile($server, ['/logs/latest.log', '/latest.log'], 1024 * 1024);
+        if ($content === '') {
+            Cache::put($cacheKey, '-', now()->addSeconds(8));
+
+            return '-';
+        }
+
+        $lines = array_reverse(preg_split('/\r\n|\r|\n/', $content) ?: []);
+        foreach ($lines as $line) {
+            $normalizedLine = $this->normalizeLogLine($line);
+            if ($normalizedLine === '') {
+                continue;
+            }
+
+            if (!preg_match('/Set\s+(.+?)\'s game mode to\s+(Survival|Creative|Adventure|Spectator)\s+Mode/iu', $normalizedLine, $matches)) {
+                continue;
+            }
+
+            if (mb_strtolower(trim((string) $matches[1])) !== mb_strtolower($name)) {
+                continue;
+            }
+
+            $mode = ucfirst(mb_strtolower((string) $matches[2]));
+            Cache::put($cacheKey, $mode, now()->addSeconds(12));
+
+            return $mode;
+        }
+
+        Cache::put($cacheKey, '-', now()->addSeconds(8));
+
+        return '-';
+    }
+
+    /**
+     * @param array<string, mixed> $profile
+     */
     private function gamemodeCacheKey(Server $server, array $profile): string
     {
         $uuid = $this->normalizeUuid((string) ($profile['uuid'] ?? ''));
@@ -2976,6 +3038,11 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
         $identity = $uuid !== '' ? $uuid : $name;
 
         return sprintf('players:mcjava:gamemode:v1:%d:%s', $server->id, md5($identity));
+    }
+
+    private function gamemodeOverrideCacheKey(string $cacheKey): string
+    {
+        return $cacheKey . ':override';
     }
 
     private function gamemodeLabelFromInput(string $value): string
@@ -2989,6 +3056,13 @@ class MinecraftJavaLivePlayerProvider implements PlayerProviderInterface
             '3', 'spectator' => 'Spectator',
             default => '-',
         };
+    }
+
+    private function pingLabel(mixed $value): string
+    {
+        $ping = (int) ($value ?? 0);
+
+        return $ping > 0 ? $ping . 'ms' : '-';
     }
 
     private function numericTag(mixed $value): ?float

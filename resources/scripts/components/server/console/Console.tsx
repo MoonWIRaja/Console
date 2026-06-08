@@ -63,6 +63,21 @@ const shouldSuppressSystemConsoleLine = (line: string): boolean => {
         return true;
     }
 
+    // Java: suppress "There are X of a max of Y players online:" without UUIDs (vanilla /list response)
+    if (/There are\s+\d+\s+of a max of\s+\d+\s+players online:/i.test(normalized)) {
+        return true;
+    }
+
+    // Java: suppress "Usage: /list" error response (server doesn't recognise "list uuids")
+    if (/^Usage:\s*\/list/i.test(normalized)) {
+        return true;
+    }
+
+    // Java: suppress the help line that follows "Usage: /list"
+    if (/^\*\s+(Shows|Displays)\s+(the\s+)?(online\s+)?player\s+list/i.test(normalized)) {
+        return true;
+    }
+
     // Bedrock: suppress "list" command echo
     if (/^list$/i.test(normalized)) {
         return true;
@@ -93,6 +108,13 @@ const MAX_TRANSCRIPT_LINES = 25000;
 const MAX_SHARE_CHARACTERS = 9_500_000;
 const sharedTranscriptByServer = new Map<string, TranscriptEntry[]>();
 
+// Persists last reported status per server across component remounts.
+const lastReportedStatusByServer = new Map<string, string>();
+// Timestamp of last status-print per server — suppresses rapid-fire duplicates
+// that can arrive when the socket effect re-runs and Wings replays SEND_LOGS.
+const lastStatusPrintedAtByServer = new Map<string, number>();
+const STATUS_DEDUP_MS = 4000;
+
 const clampTranscriptEntries = (entries: TranscriptEntry[]): TranscriptEntry[] =>
     entries.length > MAX_TRANSCRIPT_LINES ? entries.slice(entries.length - MAX_TRANSCRIPT_LINES) : entries;
 
@@ -110,7 +132,7 @@ const clearSharedTranscript = (serverId: string): void => {
 
 const theme = isDark
     ? {
-          background: '#0C0C0C',
+          background: 'transparent',
           cursor: 'transparent',
           cursorAccent: 'transparent',
           black: th`colors.black`.toString(),
@@ -132,7 +154,7 @@ const theme = isDark
           selection: '#FAF089',
       }
     : {
-          background: '#0C0C0C',
+          background: 'transparent',
           cursor: 'transparent',
           cursorAccent: 'transparent',
           black: '#111827',
@@ -239,9 +261,28 @@ export default ({
         }, 2400);
     }, []);
 
+    const colorizeByLogLevel = useCallback((line: string): string => {
+        // If the line already contains ANSI color codes, don't override.
+        if (/\x1B\[[0-9;]*m/.test(line)) {
+            return line;
+        }
+
+        // Detect common log level keywords at typical positions.
+        // Matches patterns like [ERROR], [WARN], [SEVERE], ERROR:, WARN:, etc.
+        if (/\b(ERROR|SEVERE|FATAL|EXCEPTION)\b/i.test(line)) {
+            return `\u001b[31m${line}\u001b[0m`; // Red
+        }
+        if (/\b(WARN|WARNING)\b/i.test(line)) {
+            return `\u001b[33m${line}\u001b[0m`; // Yellow
+        }
+
+        return line;
+    }, []);
+
     const buildTranscriptEntry = useCallback(
         (line: string, options?: { prelude?: boolean; tone?: 'normal' | 'error' }) => {
             const cleaned = brandDaemonLine(line).replace(/(?:\r\n|\r|\n)$/im, '');
+            const colorized = options?.prelude ? cleaned : colorizeByLogLevel(cleaned);
             const prelude = options?.prelude ? terminalPrelude : '';
             const plainPrelude = options?.prelude ? terminalPlainPrelude : '';
 
@@ -250,10 +291,10 @@ export default ({
                 rendered:
                     options?.tone === 'error'
                         ? `${terminalPrelude}\u001b[1m\u001b[41m${cleaned}\u001b[0m`
-                        : `${prelude}${cleaned}\u001b[0m`,
+                        : `${prelude}${colorized}\u001b[0m`,
             };
         },
-        [brandDaemonLine, terminalPrelude, terminalPlainPrelude]
+        [brandDaemonLine, terminalPrelude, terminalPlainPrelude, colorizeByLogLevel]
     );
 
     const persistTranscriptEntry = useCallback(
@@ -420,9 +461,27 @@ export default ({
         [pushTranscriptEntry, buildTranscriptEntry]
     );
 
-    const handlePowerChangeEvent = useCallback(
-        (state: string) => pushTranscriptEntry(buildTranscriptEntry(`Server marked as ${state}...`, { prelude: true })),
-        [pushTranscriptEntry, buildTranscriptEntry]
+    // Always points to the latest status + callbacks — updated every render, never stale.
+    const currentStatusRef = useRef<string | null>(null);
+    currentStatusRef.current = status;
+
+    const printStatusIfNewRef = useRef<(state: string | null) => void>(() => {});
+    printStatusIfNewRef.current = (state: string | null) => {
+        if (!serverUuid || !state) return;
+        const now = Date.now();
+        if (lastReportedStatusByServer.get(serverUuid) === state) return;
+        if (now - (lastStatusPrintedAtByServer.get(serverUuid) ?? 0) < STATUS_DEDUP_MS) return;
+        lastReportedStatusByServer.set(serverUuid, state);
+        lastStatusPrintedAtByServer.set(serverUuid, now);
+        pushTranscriptEntry(buildTranscriptEntry(`Server marked as ${state}...`, { prelude: true }));
+    };
+
+    // Stable STATUS socket listener for real-time changes (e.g. offline → starting → running).
+    // Empty deps — never changes reference, so it never causes the socket effect to re-run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const handlePowerChangeEventStable = useCallback(
+        (state: string) => printStatusIfNewRef.current(state),
+        []
     );
 
     const handleCommandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -572,7 +631,9 @@ export default ({
 
     useEffect(() => {
         const listeners: Record<string, (s: string) => void> = {
-            [SocketEvent.STATUS]: handlePowerChangeEvent,
+            // STATUS listener handles real-time changes (offline→starting→running etc.).
+            // SEND_LOGS replays are suppressed by the module-level Map inside printStatusIfNewRef.
+            [SocketEvent.STATUS]: handlePowerChangeEventStable,
             [SocketEvent.CONSOLE_OUTPUT]: handleConsoleOutput,
             [SocketEvent.INSTALL_OUTPUT]: handleConsoleOutput,
             [SocketEvent.TRANSFER_LOGS]: handleConsoleOutput,
@@ -593,6 +654,12 @@ export default ({
                 if (!isTransferring) {
                     terminal.clear();
                 }
+
+                // Print current status once on fresh terminal — terminal is clear at this
+                // point so this is the very first line.  Wings will replay STATUS events
+                // via SEND_LOGS but the module-level Map in printStatusIfNewRef suppresses
+                // those duplicates.  This is the ONLY place status is printed on connect.
+                printStatusIfNewRef.current(currentStatusRef.current);
             }
 
             Object.keys(listeners).forEach((key: string) => {
@@ -620,7 +687,7 @@ export default ({
         hydrateFromSharedTranscript,
         handleConsoleOutput,
         handleDaemonErrorOutput,
-        handlePowerChangeEvent,
+        handlePowerChangeEventStable,
         handleTransferStatus,
     ]);
 

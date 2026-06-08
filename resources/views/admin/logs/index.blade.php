@@ -232,9 +232,10 @@
 
                 <div class="tab-content">
                     @if($activeTab === 'new-account')
-                        <div class="box box-default" style="margin-bottom: 0;">
-                            <div class="box-header with-border">
+                        <div class="box box-default admin-box-tight">
+                            <div class="box-header with-border admin-billing-box-header">
                                 <h3 class="box-title">{{ $activeHeading }}</h3>
+                                @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
                                 <table class="table table-hover">
@@ -270,6 +271,9 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="box-footer clearfix">
+                                @include('admin.billing.partials.table-pagination', ['paginator' => $payload['rows']])
+                            </div>
                         </div>
                     @elseif($activeTab === 'payment')
                         @foreach([
@@ -279,8 +283,9 @@
                             'gateway_events' => 'Recent Gateway Events',
                         ] as $section => $heading)
                             <div class="box box-default">
-                                <div class="box-header with-border">
+                                <div class="box-header with-border admin-billing-box-header">
                                     <h3 class="box-title">{{ $heading }}</h3>
+                                    @include('admin.billing.partials.table-filter', $payload[$section]['filter'])
                                 </div>
                                 <div class="box-body table-responsive no-padding">
                                     <table class="table table-hover">
@@ -296,7 +301,7 @@
                                         @endif
                                         </thead>
                                         <tbody>
-                                        @forelse($payload[$section] as $row)
+                                        @forelse($payload[$section]['rows'] as $row)
                                             <tr>
                                                 @foreach($row as $value)
                                                     <td>{{ $value }}</td>
@@ -308,12 +313,16 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="box-footer clearfix">
+                                    @include('admin.billing.partials.table-pagination', ['paginator' => $payload[$section]['rows']])
+                                </div>
                             </div>
                         @endforeach
                     @elseif($activeTab === 'security')
-                        <div class="box box-default" style="margin-bottom: 0;">
-                            <div class="box-header with-border">
+                        <div class="box box-default admin-box-tight">
+                            <div class="box-header with-border admin-billing-box-header">
                                 <h3 class="box-title">{{ $activeHeading }}</h3>
+                                @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
                                 <table class="table table-hover">
@@ -346,11 +355,15 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="box-footer clearfix">
+                                @include('admin.billing.partials.table-pagination', ['paginator' => $payload['rows']])
+                            </div>
                         </div>
                     @elseif(in_array($activeTab, ['login', 'forgot-password', 'change-password', 'change-email'], true))
-                        <div class="box box-default" style="margin-bottom: 0;">
-                            <div class="box-header with-border">
+                        <div class="box box-default admin-box-tight">
+                            <div class="box-header with-border admin-billing-box-header">
                                 <h3 class="box-title">{{ $activeHeading }}</h3>
+                                @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
                                 <table class="table table-hover">
@@ -380,6 +393,9 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="box-footer clearfix">
+                                @include('admin.billing.partials.table-pagination', ['paginator' => $payload['rows']])
+                            </div>
                         </div>
                     @elseif($activeTab === 'ticket')
                         @foreach([
@@ -388,8 +404,9 @@
                             'activity' => 'Ticket Activity',
                         ] as $section => $heading)
                             <div class="box box-default">
-                                <div class="box-header with-border">
+                                <div class="box-header with-border admin-billing-box-header">
                                     <h3 class="box-title">{{ $heading }}</h3>
+                                    @include('admin.billing.partials.table-filter', $payload[$section]['filter'])
                                 </div>
                                 <div class="box-body table-responsive no-padding">
                                     <table class="table table-hover">
@@ -403,7 +420,7 @@
                                         @endif
                                         </thead>
                                         <tbody>
-                                        @forelse($payload[$section] as $row)
+                                        @forelse($payload[$section]['rows'] as $row)
                                             <tr>
                                                 @foreach($row as $value)
                                                     <td>{{ $value }}</td>
@@ -414,6 +431,9 @@
                                         @endforelse
                                         </tbody>
                                     </table>
+                                </div>
+                                <div class="box-footer clearfix">
+                                    @include('admin.billing.partials.table-pagination', ['paginator' => $payload[$section]['rows']])
                                 </div>
                             </div>
                         @endforeach

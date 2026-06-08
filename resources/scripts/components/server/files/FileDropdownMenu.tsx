@@ -2,7 +2,7 @@ import React, { memo, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faBoxOpen,
-    faCopy,
+    faClone,
     faEllipsisH,
     faFileArchive,
     faFileCode,
@@ -18,11 +18,13 @@ import { join } from 'pathe';
 import moveToRecycleBin from '@/api/server/files/recycle-bin/moveToRecycleBin';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import copyFile from '@/api/server/files/copyFile';
+import deleteFiles from '@/api/server/files/deleteFiles';
+import renameFiles from '@/api/server/files/renameFiles';
 import Can from '@/components/elements/Can';
 import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
 import useFlash from '@/plugins/useFlash';
 import tw from 'twin.macro';
-import { FileObject } from '@/api/server/files/loadDirectory';
+import loadDirectory, { FileObject } from '@/api/server/files/loadDirectory';
 import useFileManagerSwr from '@/plugins/useFileManagerSwr';
 import DropdownMenu from '@/components/elements/DropdownMenu';
 import styled from 'styled-components/macro';
@@ -35,12 +37,36 @@ import { Dialog } from '@/components/elements/dialog';
 
 type ModalType = 'rename' | 'move' | 'chmod';
 
+const duplicateNameFor = (name: string, existingNames: Set<string>) => {
+    const candidate = `${name} copy`;
+    if (!existingNames.has(candidate)) return candidate;
+
+    let index = 2;
+    while (existingNames.has(`${name} copy ${index}`)) {
+        index += 1;
+    }
+
+    return `${name} copy ${index}`;
+};
+
+const temporarySourceNameFor = (name: string, existingNames: Set<string>) => {
+    let index = 0;
+    let candidate = `.ptero-duplicate-source-${Date.now()}-${name}`;
+
+    while (existingNames.has(candidate)) {
+        index += 1;
+        candidate = `.ptero-duplicate-source-${Date.now()}-${index}-${name}`;
+    }
+
+    return candidate;
+};
+
 const StyledRow = styled.div<{ $danger?: boolean }>`
     ${tw`flex items-center rounded-md border border-transparent p-2 text-[color:var(--foreground)]`};
     ${(props) =>
         props.$danger
-            ? tw`hover:border-red-500 hover:bg-[#2b1111] hover:text-red-300`
-            : tw`hover:border-[color:var(--primary)] hover:bg-[color:var(--background)] hover:text-[color:var(--primary)]`};
+            ? tw`hover:border-red-500 hover:bg-red-500/10 hover:text-red-700`
+            : tw`hover:border-[#2D4A3E] hover:bg-[#EDE6D0] hover:text-[#2D4A3E]`};
 `;
 
 interface RowProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -61,9 +87,10 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
     const [showSpinner, setShowSpinner] = useState(false);
     const [modal, setModal] = useState<ModalType | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
+    const [duplicateFileName, setDuplicateFileName] = useState<string | null>(null);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
-    const { mutate } = useFileManagerSwr();
+    const { data: files, mutate } = useFileManagerSwr();
     const { clearAndAddHttpError, clearFlashes } = useFlash();
     const directory = ServerContext.useStoreState((state) => state.files.directory);
 
@@ -86,14 +113,68 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
         });
     };
 
-    const doCopy = () => {
+    const doDuplicate = async () => {
         setShowSpinner(true);
         clearFlashes('files');
 
-        copyFile(uuid, join(directory, file.name))
-            .then(() => mutate())
-            .catch((error) => clearAndAddHttpError({ key: 'files', error }))
-            .then(() => setShowSpinner(false));
+        const namesBeforeCopy = new Set((files || []).map((item) => item.name));
+
+        try {
+            if (file.isFile) {
+                await copyFile(uuid, join(directory, file.name));
+            } else {
+                const duplicateName = duplicateNameFor(file.name, namesBeforeCopy);
+                const temporarySourceName = temporarySourceNameFor(file.name, namesBeforeCopy);
+                const archive = await compressFiles(uuid, directory, [file.name]);
+                let sourceMoved = false;
+
+                try {
+                    await renameFiles(uuid, directory, [{ from: file.name, to: temporarySourceName }]);
+                    sourceMoved = true;
+
+                    await decompressFiles(uuid, directory, archive.name);
+                    await renameFiles(uuid, directory, [{ from: file.name, to: duplicateName }]);
+                    await renameFiles(uuid, directory, [{ from: temporarySourceName, to: file.name }]);
+                    sourceMoved = false;
+
+                    await deleteFiles(uuid, directory, [archive.name]).catch(() => undefined);
+
+                    const refreshedFiles = await loadDirectory(uuid, directory);
+                    await mutate(refreshedFiles, false);
+                    setDuplicateFileName(duplicateName);
+                    return;
+                } catch (error) {
+                    if (sourceMoved) {
+                        await renameFiles(uuid, directory, [{ from: temporarySourceName, to: file.name }]).catch(
+                            () => undefined
+                        );
+                    }
+
+                    await deleteFiles(uuid, directory, [archive.name]).catch(() => undefined);
+                    throw error;
+                }
+            }
+
+            const refreshedFiles = await loadDirectory(uuid, directory);
+            await mutate(refreshedFiles, false);
+
+            const duplicatedFile = refreshedFiles.find((item) => !namesBeforeCopy.has(item.name));
+
+            if (!duplicatedFile) {
+                clearAndAddHttpError({
+                    key: 'files',
+                    error: new Error('Duplicate created, but the copied item name could not be detected.'),
+                });
+                return;
+            }
+
+            setDuplicateFileName(duplicatedFile.name);
+        } catch (error) {
+            mutate();
+            clearAndAddHttpError({ key: 'files', error });
+        } finally {
+            setShowSpinner(false);
+        }
     };
 
     const doDownload = () => {
@@ -135,11 +216,11 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 open={showConfirmation}
                 onClose={() => setShowConfirmation(false)}
                 title={`Delete ${file.isFile ? 'File' : 'Directory'}`}
-                confirm={'Move'}
+                confirm={'Delete'}
                 onConfirmed={doDeletion}
             >
-                <span className={'font-semibold text-[color:var(--primary)]'}>{file.name}</span> will be moved to
-                recycle bin and can be recovered later.
+                <span className={'font-semibold text-[color:var(--primary)]'}>{file.name}</span> will be deleted and
+                moved to recycle bin. You can recover it later.
             </Dialog.Confirm>
             <DropdownMenu
                 ref={onClickRef}
@@ -167,6 +248,14 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                                 />
                             )
                         ) : null}
+                        {duplicateFileName && (
+                            <RenameFileModal
+                                visible
+                                appear
+                                files={[duplicateFileName]}
+                                onDismissed={() => setDuplicateFileName(null)}
+                            />
+                        )}
                         <SpinnerOverlay visible={showSpinner} fixed size={'large'} />
                     </div>
                 )}
@@ -176,11 +265,15 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                     <Row onClick={() => setModal('move')} icon={faLevelUpAlt} title={'Move'} />
                     <Row onClick={() => setModal('chmod')} icon={faFileCode} title={'Permissions'} />
                 </Can>
-                {file.isFile && (
-                    <Can action={'file.create'}>
-                        <Row onClick={doCopy} icon={faCopy} title={'Copy'} />
-                    </Can>
-                )}
+                <Can action={'file.create'}>
+                    {file.isFile ? (
+                        <Row onClick={doDuplicate} icon={faClone} title={'Duplicate'} />
+                    ) : (
+                        <Can action={['file.archive', 'file.update', 'file.delete']}>
+                            <Row onClick={doDuplicate} icon={faClone} title={'Duplicate'} />
+                        </Can>
+                    )}
+                </Can>
                 {file.isArchiveType() ? (
                     <Can action={'file.create'}>
                         <Row onClick={doUnarchive} icon={faBoxOpen} title={'Unarchive'} />

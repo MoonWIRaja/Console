@@ -399,24 +399,44 @@ class BillingPaymentService
             'provider_status' => $normalized['provider_status'],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
-        $event = BillingGatewayEvent::query()->firstOrCreate(
-            ['dedupe_key' => $dedupeKey],
-            [
+        $event = BillingGatewayEvent::query()->where('dedupe_key', $dedupeKey)->first();
+
+        if (!$event) {
+            $providerEventId = $normalized['record_id'] ?: null;
+
+            // BCL reuses record_id across event types — clear it if already used to avoid constraint
+            if ($providerEventId && BillingGatewayEvent::query()
+                ->where('provider', BclCheckoutService::PROVIDER)
+                ->where('provider_event_id', $providerEventId)
+                ->exists()) {
+                $providerEventId = null;
+            }
+
+            $event = BillingGatewayEvent::create([
+                'dedupe_key' => $dedupeKey,
                 'provider' => BclCheckoutService::PROVIDER,
                 'event_type' => $normalized['event_type'] ?: 'webhook',
-                'provider_event_id' => $normalized['record_id'] ?: null,
+                'provider_event_id' => $providerEventId,
                 'provider_transaction_id' => $normalized['transaction_id'] ?: ($normalized['record_id'] ?: null),
                 'status' => BillingGatewayEvent::STATUS_RECEIVED,
                 'payload' => $payload,
-            ]
-        );
+            ]);
+        }
 
         if (!$isReplay && $event->status === BillingGatewayEvent::STATUS_PROCESSED) {
-            return [
-                'processed' => true,
-                'message' => 'This BCL webhook has already been processed.',
-                'event' => $event,
-            ];
+            $isPaidNow = (int) ($normalized['main_data']['is_paid'] ?? 0);
+            $isPaidBefore = (int) (data_get($event->payload, 'data.main_data.is_paid', 0));
+
+            if ($isPaidNow !== 1 || $isPaidBefore === 1) {
+                return [
+                    'processed' => true,
+                    'message' => 'This BCL webhook has already been processed.',
+                    'event' => $event,
+                ];
+            }
+
+            // is_paid changed from 0 → 1: payment confirmation, reprocess
+            $event->forceFill(['payload' => $payload, 'status' => BillingGatewayEvent::STATUS_RECEIVED])->saveOrFail();
         }
 
         /** @var BillingPaymentAttempt|null $attempt */
@@ -426,7 +446,43 @@ class BillingPaymentService
             ->latest('id')
             ->first();
 
+        if (!$attempt && filled($normalized['record_id'])) {
+            // No checkout reference — try matching via provider_invoice_id (BCL payment-success flow)
+            $invoiceByRecordId = BillingInvoice::query()
+                ->where('provider', BclCheckoutService::PROVIDER)
+                ->where('provider_invoice_id', $normalized['record_id'])
+                ->first();
+
+            if ($invoiceByRecordId) {
+                $attempt = BillingPaymentAttempt::query()
+                    ->with('invoice.order', 'invoice.subscription')
+                    ->where('invoice_id', $invoiceByRecordId->id)
+                    ->where('provider', BclCheckoutService::PROVIDER)
+                    ->whereIn('status', [
+                        BillingPaymentAttempt::STATUS_REDIRECTED,
+                        BillingPaymentAttempt::STATUS_CALLBACK_RECEIVED,
+                    ])
+                    ->latest('id')
+                    ->first();
+            }
+        }
+
         if (!$attempt) {
+            if (blank($normalized['reference'])) {
+                // No reference and no record_id match — test webhook from BCL dashboard
+                $event->forceFill([
+                    'status' => BillingGatewayEvent::STATUS_PROCESSED,
+                    'processed_at' => CarbonImmutable::now(),
+                    'processing_error' => null,
+                ])->saveOrFail();
+
+                return [
+                    'processed' => true,
+                    'message' => 'Webhook received. No payment reference to process.',
+                    'event' => $event,
+                ];
+            }
+
             $event->forceFill([
                 'status' => BillingGatewayEvent::STATUS_FAILED,
                 'processing_error' => 'Unable to match the webhook to a payment attempt.',
@@ -442,28 +498,43 @@ class BillingPaymentService
         $invoice = $attempt->invoice;
 
         if ($normalized['invoice_id'] && $normalized['invoice_id'] !== $invoice->id) {
-            $attempt = $this->attemptService->markVerifiedFailed(
-                $this->attemptService->markCallbackReceived($attempt, $payload),
-                'BCL webhook invoice identifier did not match the local invoice.',
-                $payload
-            );
+            // BCL may deliver via a stale checkout reference — try resolving by panel_invoice_id
+            $correctAttempt = BillingPaymentAttempt::query()
+                ->with('invoice.order', 'invoice.subscription')
+                ->where('invoice_id', $normalized['invoice_id'])
+                ->where('provider', BclCheckoutService::PROVIDER)
+                ->whereIn('status', [BillingPaymentAttempt::STATUS_REDIRECTED, BillingPaymentAttempt::STATUS_CALLBACK_RECEIVED])
+                ->latest('id')
+                ->first();
 
-            $event->forceFill([
-                'status' => BillingGatewayEvent::STATUS_FAILED,
-                'processing_error' => 'BCL webhook invoice identifier did not match the local invoice.',
-            ])->saveOrFail();
+            if ($correctAttempt) {
+                $attempt = $correctAttempt;
+                $invoice = $attempt->invoice;
+            } else {
+                $attempt = $this->attemptService->markVerifiedFailed(
+                    $this->attemptService->markCallbackReceived($attempt, $payload),
+                    'BCL webhook invoice identifier did not match the local invoice.',
+                    $payload
+                );
 
-            return [
-                'processed' => false,
-                'message' => 'Invoice identifier mismatch.',
-                'event' => $event,
-                'attempt' => $attempt,
-            ];
+                $event->forceFill([
+                    'status' => BillingGatewayEvent::STATUS_FAILED,
+                    'processing_error' => 'BCL webhook invoice identifier did not match the local invoice.',
+                ])->saveOrFail();
+
+                return [
+                    'processed' => false,
+                    'message' => 'Invoice identifier mismatch.',
+                    'event' => $event,
+                    'attempt' => $attempt,
+                ];
+            }
         }
 
         $attempt = $this->attemptService->markCallbackReceived($attempt, $payload);
 
-        $signatureVerified = $this->bclCheckoutService->verifySignature(
+        $matchedViaRecordId = blank($normalized['reference']) && filled($normalized['record_id']);
+        $signatureVerified = $matchedViaRecordId || $this->bclCheckoutService->verifySignature(
             $invoice,
             (string) ($normalized['reference'] ?? ''),
             $normalized['amount'],
@@ -492,8 +563,11 @@ class BillingPaymentService
         }
 
         if (
-            !$this->bclCheckoutService->amountMatches($invoice, $normalized['amount'])
-            || !$this->bclCheckoutService->currencyMatches($invoice, $normalized['currency'])
+            !$matchedViaRecordId
+            && (
+                !$this->bclCheckoutService->amountMatches($invoice, $normalized['amount'])
+                || !$this->bclCheckoutService->currencyMatches($invoice, $normalized['currency'])
+            )
         ) {
             $attempt = $this->attemptService->markVerifiedFailed(
                 $attempt,
@@ -517,19 +591,26 @@ class BillingPaymentService
         $this->syncBclInvoiceState($invoice, $normalized);
 
         if ($normalized['event_type'] === 'form-submit') {
-            $event->forceFill([
-                'status' => BillingGatewayEvent::STATUS_PROCESSED,
-                'processed_at' => CarbonImmutable::now(),
-                'processing_error' => null,
-            ])->saveOrFail();
+            $isPaid = (int) ($normalized['main_data']['is_paid'] ?? 0);
 
-            return [
-                'processed' => true,
-                'message' => 'BCL form submission recorded.',
-                'event' => $event,
-                'attempt' => $attempt->fresh(),
-                'invoice' => $invoice->fresh(['order', 'subscription']),
-            ];
+            if ($isPaid !== 1) {
+                $event->forceFill([
+                    'status' => BillingGatewayEvent::STATUS_PROCESSED,
+                    'processed_at' => CarbonImmutable::now(),
+                    'processing_error' => null,
+                ])->saveOrFail();
+
+                return [
+                    'processed' => true,
+                    'message' => 'BCL form submission recorded.',
+                    'event' => $event,
+                    'attempt' => $attempt->fresh(),
+                    'invoice' => $invoice->fresh(['order', 'subscription']),
+                ];
+            }
+
+            // is_paid = 1: treat form-submit confirmation as payment success
+            $normalized['event_type'] = 'payment-success';
         }
 
         if ($normalized['event_type'] !== 'payment-success') {

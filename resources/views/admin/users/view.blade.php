@@ -91,7 +91,7 @@
                     <h3 class="box-title">Password</h3>
                 </div>
                 <div class="box-body">
-                    <div class="alert alert-success" style="display:none;margin-bottom:10px;" id="gen_pass"></div>
+                    <div class="alert alert-success admin-hidden admin-text-gap-bottom" id="gen_pass"></div>
                     <div class="form-group no-margin-bottom">
                         <label for="password" class="control-label">Password <span class="field-optional"></span></label>
                         <div>

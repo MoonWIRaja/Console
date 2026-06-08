@@ -47,8 +47,8 @@
             <div class="row">
                 <div class="form-group col-md-4">
                     <label class="control-label">Current Logo</label>
-                    <div style="padding: 12px; min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb; border-radius: 8px; background: rgba(0, 0, 0, 0.02);">
-                        <img src="{{ $panelLogo }}" alt="Panel Logo" style="max-width: 100%; max-height: 96px; object-fit: contain;">
+                    <div class="admin-brand-preview">
+                        <img src="{{ $panelLogo }}" alt="Panel Logo" class="admin-brand-preview-image">
                     </div>
                     <p class="text-muted"><small>This image is used for the favicon, sidebar logo, topbar branding, and other shared panel branding.</small></p>
                 </div>
@@ -63,11 +63,11 @@
             <div class="row">
                 <div class="form-group col-md-4">
                     <label class="control-label">Current Auth Brand Logo</label>
-                    <div style="padding: 12px; min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb; border-radius: 8px; background: rgba(0, 0, 0, 0.02);">
+                    <div class="admin-brand-preview">
                         @if($authBrandLogo)
-                            <img src="{{ $authBrandLogo }}" alt="Auth Brand Logo" style="max-width: 100%; max-height: 96px; object-fit: contain;">
+                            <img src="{{ $authBrandLogo }}" alt="Auth Brand Logo" class="admin-brand-preview-image">
                         @else
-                            <span style="font-size: 12px; color: #6b7280; text-align: center;">No auth brand logo uploaded. The auth card will fall back to the company name.</span>
+                            <span class="admin-brand-preview-empty">No auth brand logo uploaded. The auth card will fall back to the company name.</span>
                         @endif
                     </div>
                     <p class="text-muted"><small>This image is used only inside the auth card branding block on login-related screens.</small></p>

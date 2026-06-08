@@ -21,6 +21,8 @@ export type SubuserPermission =
     | 'subdomain.read'
     | 'subdomain.create'
     | 'subdomain.delete'
+    | 'discord.read'
+    | 'discord.manage'
     | 'startup.read'
     | 'startup.update'
     | 'database.create'

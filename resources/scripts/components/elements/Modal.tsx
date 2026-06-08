@@ -22,7 +22,8 @@ export interface ModalProps extends RequiredModalProps {
 
 export const ModalMask = styled.div`
     ${tw`fixed z-50 overflow-auto flex w-full inset-0`};
-    background: rgba(12, 12, 12, 0.82);
+    background: rgba(84, 63, 38, 0.36);
+    backdrop-filter: blur(10px);
 `;
 
 const ModalContainer = styled.div<{ alignTop?: boolean }>`
@@ -42,15 +43,25 @@ const ModalContainer = styled.div<{ alignTop?: boolean }>`
     margin-bottom: auto;
 
     & > .close-icon {
-        ${tw`absolute right-0 cursor-pointer p-2 text-[color:var(--primary)] opacity-70 transition-all duration-150 ease-linear hover:opacity-100`};
-        top: -2.5rem;
+        ${tw`absolute flex items-center justify-center cursor-pointer transition-all duration-150 ease-linear`};
+        top: 1rem;
+        right: 1rem;
+        z-index: 20;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.6rem;
+        border: 1px solid #2d4a3e;
+        background: #f5efd5;
+        color: #742220;
 
         &:hover {
-            ${tw`rotate-90 transform`}
+            background: #ede6d0;
+            color: #2d4a3e;
+            transform: rotate(90deg);
         }
 
         & > svg {
-            ${tw`w-6 h-6`};
+            ${tw`w-5 h-5`};
         }
     }
 `;
@@ -60,7 +71,7 @@ const Modal: React.FC<ModalProps> = ({
     appear,
     dismissable,
     showSpinnerOverlay,
-    top = true,
+    top = false,
     closeOnBackground = true,
     closeOnEscape = true,
     onDismissed,
@@ -103,7 +114,12 @@ const Modal: React.FC<ModalProps> = ({
             >
                 <ModalContainer alignTop={top}>
                     {isDismissable && (
-                        <div className={'close-icon'} onClick={() => setRender(false)}>
+                        <button
+                            type={'button'}
+                            className={'close-icon'}
+                            aria-label={'Close modal'}
+                            onClick={() => setRender(false)}
+                        >
                             <svg
                                 xmlns={'http://www.w3.org/2000/svg'}
                                 fill={'none'}
@@ -117,20 +133,30 @@ const Modal: React.FC<ModalProps> = ({
                                     d={'M6 18L18 6M6 6l12 12'}
                                 />
                             </svg>
-                        </div>
+                        </button>
                     )}
                     {showSpinnerOverlay && (
                         <Fade timeout={150} appear in>
                             <div
                                 css={tw`absolute flex h-full w-full items-center justify-center rounded-xl`}
-                                style={{ background: 'rgba(12, 12, 12, 0.7)', zIndex: 9999 }}
+                                style={{ background: 'rgba(84, 63, 38, 0.28)', zIndex: 9999 }}
                             >
                                 <Spinner />
                             </div>
                         </Fade>
                     )}
                     <div
-                        css={tw`max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 text-[#f8f6ef] shadow-none transition-all duration-150 sm:p-4 md:p-6`}
+                        css={tw`max-h-[calc(100vh-8rem)] overflow-y-auto rounded-[1.35rem] border-2 p-3 text-[#742220] shadow-none transition-all duration-150 sm:p-4 md:p-6`}
+                        style={{
+                            borderColor: '#2D4A3E',
+                            backgroundColor: '#FEF9E1',
+                            backgroundImage: [
+                                'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                                'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                                'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                            ].join(', '),
+                            boxShadow: '4px 4px 0px 0px #2D4A3E',
+                        }}
                     >
                         {children}
                     </div>

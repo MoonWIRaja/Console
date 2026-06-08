@@ -11,6 +11,16 @@
 @section('content')
     @include('admin.billing.partials.nav')
     <div class="box">
+        <div class="box-header with-border admin-billing-box-header">
+            <h3 class="box-title">Billing Refunds</h3>
+            @include('admin.billing.partials.table-filter', [
+                'name' => 'status',
+                'value' => $selectedRefundStatus,
+                'options' => $refundStatusOptions,
+                'pageName' => 'page',
+                'placeholder' => 'All refund statuses',
+            ])
+        </div>
         <div class="box-body table-responsive no-padding">
             <table class="table table-hover">
                 <thead>
@@ -39,6 +49,8 @@
                 </tbody>
             </table>
         </div>
-        <div class="box-footer clearfix">{{ $refunds->links() }}</div>
+        <div class="box-footer clearfix">
+            @include('admin.billing.partials.table-pagination', ['paginator' => $refunds])
+        </div>
     </div>
 @endsection

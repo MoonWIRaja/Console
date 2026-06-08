@@ -67,7 +67,7 @@ export default ({ schedule, task }: Props) => {
     const [title, icon] = getActionDetails(task.action);
 
     return (
-        <div css={tw`border-b border-[color:var(--border)] p-3 sm:flex sm:items-center sm:p-6`}>
+        <div css={tw`p-3 sm:flex sm:items-center sm:p-6`} style={{ borderBottom: '1px solid #EDE6D0' }}>
             <SpinnerOverlay visible={isLoading} fixed size={'large'} />
             <TaskDetailsModal
                 schedule={schedule}
@@ -86,7 +86,7 @@ export default ({ schedule, task }: Props) => {
             </ConfirmationModal>
             <FontAwesomeIcon icon={icon} css={tw`hidden text-lg text-[color:var(--primary)] md:block`} />
             <div css={tw`flex-none sm:flex-1 w-full sm:w-auto overflow-x-auto`}>
-                <p css={tw`text-sm uppercase text-[#f8f6ef] md:ml-6`}>{title}</p>
+                <p css={tw`text-sm uppercase text-[color:var(--foreground)] md:ml-6`}>{title}</p>
                 {task.payload && (
                     <div css={tw`md:ml-6 mt-2`}>
                         {task.action === 'backup' && (
@@ -105,7 +105,7 @@ export default ({ schedule, task }: Props) => {
             <div css={tw`mt-3 sm:mt-0 flex items-center w-full sm:w-auto`}>
                 {task.continueOnFailure && (
                     <div css={tw`mr-6`}>
-                        <div css={tw`flex items-center px-2 py-1 bg-yellow-500 text-yellow-800 text-sm rounded-full`}>
+                        <div css={tw`flex items-center rounded-full border border-yellow-500 bg-yellow-500/20 px-2 py-1 text-sm text-yellow-700`}>
                             <Icon icon={faArrowCircleDown} css={tw`w-3 h-3 mr-2`} />
                             Continues on Failure
                         </div>

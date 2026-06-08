@@ -45,11 +45,15 @@ class Permission extends Model
 
     public const ACTION_SPLIT_READ = 'split.read';
     public const ACTION_SPLIT_CREATE = 'split.create';
+    public const ACTION_SPLIT_UPDATE = 'split.update';
     public const ACTION_SPLIT_DELETE = 'split.delete';
 
     public const ACTION_SUBDOMAIN_READ = 'subdomain.read';
     public const ACTION_SUBDOMAIN_CREATE = 'subdomain.create';
     public const ACTION_SUBDOMAIN_DELETE = 'subdomain.delete';
+
+    public const ACTION_DISCORD_READ = 'discord.read';
+    public const ACTION_DISCORD_MANAGE = 'discord.manage';
 
     public const ACTION_ALLOCATION_READ = 'allocation.read';
     public const ACTION_ALLOCATION_CREATE = 'allocation.create';
@@ -163,6 +167,7 @@ class Permission extends Model
             'keys' => [
                 'read' => 'Allows a user to view the split family and remaining resources for this server.',
                 'create' => 'Allows a user to create a new split server from this server.',
+                'update' => 'Allows a user to edit the name and resources of split child servers.',
                 'delete' => 'Allows a user to delete split child servers from this split family.',
             ],
         ],
@@ -173,6 +178,14 @@ class Permission extends Model
                 'read' => 'Allows a user to view DNS subdomains assigned to this server.',
                 'create' => 'Allows a user to create DNS subdomains for this server using the configured templates.',
                 'delete' => 'Allows a user to delete DNS subdomains assigned to this server.',
+            ],
+        ],
+
+        'discord' => [
+            'description' => 'Permissions that control a user\'s ability to configure Discord integration and the game agent for this server.',
+            'keys' => [
+                'read' => 'Allows a user to view Discord integration status, detected game adapter, channels, and agent health.',
+                'manage' => 'Allows a user to enable Discord integration, update bot/channel settings, and install or reset the game agent.',
             ],
         ],
 

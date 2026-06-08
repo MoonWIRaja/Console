@@ -20,15 +20,15 @@ interface ToastItemProps {
 const getToastColors = (type: string) => {
     switch (type) {
         case 'error':
-            return { bg: '#1a1a1a', border: '#ef4444', accent: '#ef4444' };
+            return { border: '#dc2626', accent: '#dc2626' };
         case 'success':
-            return { bg: '#1a1a1a', border: '#22c55e', accent: '#22c55e' };
+            return { border: '#16a34a', accent: '#16a34a' };
         case 'warning':
-            return { bg: '#1a1a1a', border: '#eab308', accent: '#eab308' };
+            return { border: '#ca8a04', accent: '#ca8a04' };
         case 'info':
-            return { bg: '#1a1a1a', border: '#3b82f6', accent: '#3b82f6' };
+            return { border: '#2D4A3E', accent: '#2D4A3E' };
         default:
-            return { bg: '#1a1a1a', border: '#6b7280', accent: '#6b7280' };
+            return { border: '#2D4A3E', accent: '#742220' };
     }
 };
 
@@ -79,9 +79,15 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
     return (
         <div
             style={{
-                backgroundColor: colors.bg,
-                borderLeft: `3px solid ${colors.border}`,
-                color: '#ffffff',
+                backgroundColor: '#FEF9E1',
+                backgroundImage: [
+                    'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                    'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                    'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                ].join(', '),
+                border: `2px solid #2D4A3E`,
+                borderLeft: `4px solid ${colors.border}`,
+                color: '#742220',
                 padding: '12px 16px',
                 marginTop: '8px',
                 maxWidth: '340px',
@@ -94,11 +100,11 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
                 alignItems: 'flex-start',
                 gap: '10px',
                 pointerEvents: 'auto',
-                transform: visible && !exiting ? 'translateX(0)' : 'translateX(-120%)',
+                transform: visible && !exiting ? 'translateX(0)' : 'translateX(120%)',
                 opacity: visible && !exiting ? 1 : 0,
                 transition: 'transform 0.3s ease, opacity 0.3s ease',
-                boxShadow: '0 4px 12px rgba(12, 12, 12, 0.4)',
-                borderRadius: '0',
+                boxShadow: '4px 4px 0px 0px #2D4A3E',
+                borderRadius: '12px',
             }}
         >
             <span
@@ -128,14 +134,14 @@ const ToastItem = ({ id, type, title, message, onDismiss }: ToastItemProps) => {
                         {title}
                     </div>
                 )}
-                <div style={{ color: '#d1d5db', wordBreak: 'break-word' }}>{message}</div>
+                <div style={{ color: 'rgba(116, 34, 32, 0.75)', wordBreak: 'break-word' }}>{message}</div>
             </div>
             <button
                 onClick={handleClose}
                 style={{
                     background: 'none',
                     border: 'none',
-                    color: '#6b7280',
+                    color: 'rgba(116, 34, 32, 0.45)',
                     cursor: 'pointer',
                     fontSize: '14px',
                     lineHeight: '1',

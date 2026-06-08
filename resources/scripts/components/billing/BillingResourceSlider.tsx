@@ -119,8 +119,7 @@ const BillingResourceSlider = ({
                         'billing-slider-input relative z-10 h-2 w-full appearance-none rounded-full bg-transparent disabled:cursor-not-allowed disabled:opacity-60'
                     }
                     style={{
-                        accentColor: 'var(--primary)',
-                        background: `linear-gradient(90deg, var(--primary) 0%, var(--primary) ${percent}%, rgba(var(--primary-rgb), 0.14) ${percent}%, rgba(var(--primary-rgb), 0.14) 100%)`,
+                        ['--track-pct' as string]: `${percent}%`,
                     }}
                 />
 
@@ -128,7 +127,7 @@ const BillingResourceSlider = ({
                     <div className={'pointer-events-none absolute inset-0'}>
                         <span
                             className={
-                                'absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f8f6ef] bg-[color:var(--card)] shadow-[0_0_0_3px_rgba(var(--primary-rgb),0.14)]'
+                                'absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#C8BCA0] bg-[#FEF9E1] shadow-[0_0_0_3px_rgba(116,34,32,0.14)]'
                             }
                             style={{ left: `${baselinePercent}%` }}
                         />

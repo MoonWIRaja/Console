@@ -26,7 +26,7 @@ export default ({ subuser }: Props) => {
                 <img css={tw`w-full h-full`} src={`${subuser.image}?s=400`} />
             </div>
             <div css={tw`ml-4 flex-1 overflow-hidden`}>
-                <p css={tw`truncate text-sm text-[#f8f6ef]`}>{subuser.email}</p>
+                <p css={tw`truncate text-sm text-[color:var(--foreground)]`}>{subuser.email}</p>
             </div>
             <div css={tw`ml-4`}>
                 <p css={tw`font-medium text-center`}>

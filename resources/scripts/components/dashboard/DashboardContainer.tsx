@@ -190,12 +190,12 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
         <div className='dashboard-auth-shell flex-1 h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'>
             <style>{`
                 .dashboard-theme {
-                    --dashboard-card-bg: #2D2D2D;
-                    --dashboard-card-surface: rgba(255, 255, 255, 0.02);
-                    --dashboard-card-border: rgba(245, 231, 198, 0.12);
-                    --dashboard-card-border-soft: rgba(245, 231, 198, 0.08);
-                    --dashboard-card-text: #F5E7C6;
-                    --dashboard-card-muted: #A0A0A0;
+                    --dashboard-card-bg: #FEF9E1;
+                    --dashboard-card-surface: #F5EFD5;
+                    --dashboard-card-border: #E8E0C8;
+                    --dashboard-card-border-soft: #EDE6D0;
+                    --dashboard-card-text: #742220;
+                    --dashboard-card-muted: rgba(116, 34, 32, 0.50);
                     position: relative;
                     z-index: 2;
                     display: flex;
@@ -214,44 +214,24 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     height: 100%;
                     min-height: 0;
                     min-width: 0;
-                    background:
-                        radial-gradient(circle at 11% 0%, rgba(var(--primary-rgb), 0.08), transparent 34%),
-                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
+                    background: #D6D2C7;
                     font-family: var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
                 }
 
                 .dashboard-auth-shell::before {
                     content: '';
-                    position: absolute;
+                    position: fixed;
                     inset: 0;
                     pointer-events: none;
-                    background:
-                        repeating-linear-gradient(
-                            90deg,
-                            rgba(var(--primary-rgb), 0.018) 0,
-                            rgba(var(--primary-rgb), 0.018) 1px,
-                            transparent 1px,
-                            transparent 56px
-                        );
-                    opacity: 0.08;
+                    z-index: 9999;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
                 }
 
                 .dashboard-auth-shell::after {
-                    content: '';
-                    position: absolute;
-                    left: 50%;
-                    top: -22%;
-                    width: min(980px, 92vw);
-                    height: 100%;
-                    transform: translateX(-50%);
-                    pointer-events: none;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 0.05) 0%,
-                        rgba(var(--primary-rgb), 0.015) 42%,
-                        transparent 72%
-                    );
+                    display: none;
                 }
 
                 .dashboard-auth-wrap {
@@ -277,15 +257,9 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                 .dashboard-auth-hero-card,
                 .dashboard-auth-shortcut {
                     border-radius: 24px;
-                    border: 1px solid var(--dashboard-card-border);
-                    background:
-                        linear-gradient(160deg, rgba(245, 231, 198, 0.045), rgba(255, 255, 255, 0.014) 46%),
-                        var(--dashboard-card-bg);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        inset 0 -18px 28px rgba(0, 0, 0, 0.1),
-                        0 24px 44px -28px rgba(0, 0, 0, 0.42);
-                    backdrop-filter: blur(10px);
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .dashboard-auth-hero-card {
@@ -306,13 +280,13 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     line-height: 1.02;
                     letter-spacing: 0.02em;
                     font-weight: 900;
-                    color: var(--dashboard-card-text);
+                    color: #742220;
                 }
 
                 .dashboard-auth-subtitle {
                     margin-top: 6px;
                     font-size: 0.85rem;
-                    color: var(--dashboard-card-muted);
+                    color: rgba(116, 34, 32, 0.55);
                     letter-spacing: 0.03em;
                     font-weight: 500;
                 }
@@ -321,14 +295,9 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     align-self: start;
                     min-width: 238px;
                     border-radius: 16px;
-                    border: 1px solid var(--dashboard-card-border-soft);
-                    background:
-                        linear-gradient(160deg, rgba(245, 231, 198, 0.04), rgba(255, 255, 255, 0.014)),
-                        var(--dashboard-card-surface);
+                    border: 2px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 12px 14px;
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        0 18px 30px -24px rgba(0, 0, 0, 0.32);
                 }
 
                 .dashboard-auth-shortcuts {
@@ -339,26 +308,25 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
 
                 .dashboard-auth-shortcut {
                     display: flex;
+                    flex-direction: column;
                     align-items: center;
                     justify-content: center;
+                    gap: 6px;
                     min-height: 92px;
                     min-width: 112px;
                     padding: 0 18px;
                     appearance: none;
                     cursor: pointer;
-                    color: var(--dashboard-card-text);
+                    color: #742220;
                     text-decoration: none;
                     font: inherit;
-                    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+                    transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
                 }
 
                 .dashboard-auth-shortcut:hover {
-                    transform: translateY(-1px);
-                    border-color: rgba(245, 231, 198, 0.2);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                        inset 0 -18px 28px rgba(0, 0, 0, 0.12),
-                        0 20px 30px -22px rgba(0, 0, 0, 0.3);
+                    transform: translate(-3px, -3px);
+                    box-shadow: 7px 7px 0px 0px #2D4A3E;
+                    color: #2D4A3E;
                 }
 
                 .dashboard-auth-shortcut-icon {
@@ -399,59 +367,31 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
 
                 .dashboard-empty-panel {
                     border-radius: 22px;
-                    border: 1px solid var(--dashboard-card-border);
-                    background:
-                        radial-gradient(circle at 8% 0%, rgba(245, 231, 198, 0.08), transparent 24%),
-                        linear-gradient(170deg, rgba(245, 231, 198, 0.04), rgba(255, 255, 255, 0.01) 50%),
-                        var(--dashboard-card-bg);
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 2.8rem 1.2rem;
                     text-align: center;
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                        inset 0 -26px 32px rgba(0, 0, 0, 0.12),
-                        0 28px 40px -34px rgba(0, 0, 0, 0.42);
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .dashboard-server-row {
                     position: relative;
                     overflow: hidden;
                     border-radius: 22px;
-                    border: 1px solid var(--dashboard-card-border);
-                    background:
-                        radial-gradient(circle at 8% 0%, rgba(245, 231, 198, 0.08), transparent 22%),
-                        linear-gradient(160deg, rgba(245, 231, 198, 0.04), rgba(255, 255, 255, 0.012) 44%),
-                        var(--dashboard-card-bg);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                        inset 0 -26px 32px rgba(0, 0, 0, 0.12),
-                        0 28px 40px -34px rgba(0, 0, 0, 0.42),
-                        0 0 0 rgba(var(--primary-rgb), 0);
-                    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
+                    transition: transform 0.24s ease, box-shadow 0.24s ease;
                     padding: 20px 22px;
                 }
 
                 .dashboard-server-row::after {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    pointer-events: none;
-                    background:
-                        radial-gradient(
-                            460px 160px at 12% -10%,
-                            rgba(245, 231, 198, 0.1),
-                            transparent 68%
-                        );
-                    opacity: 0.42;
+                    display: none;
                 }
 
                 .dashboard-server-row:hover {
-                    transform: translateY(-1px);
-                    border-color: rgba(245, 231, 198, 0.2);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                        inset 0 -26px 32px rgba(0, 0, 0, 0.14),
-                        0 26px 38px -26px rgba(0, 0, 0, 0.52),
-                        0 0 18px rgba(245, 231, 198, 0.08);
+                    transform: translate(-2px, -2px);
+                    box-shadow: 6px 6px 0px 0px #2D4A3E;
                 }
 
                 .dashboard-server-grid {
@@ -478,23 +418,13 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     justify-content: center;
                     border-radius: 16px;
                     border: 1px solid var(--dashboard-card-border-soft);
-                    background:
-                        linear-gradient(160deg, rgba(245, 231, 198, 0.05), rgba(255, 255, 255, 0.02)),
-                        var(--dashboard-card-surface);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                        inset 0 -10px 16px rgba(0, 0, 0, 0.12),
-                        0 16px 24px -18px rgba(0, 0, 0, 0.24);
+                    background: #F5EFD5;
                     transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
                 }
 
                 .dashboard-server-row:hover .dashboard-server-iconbox {
-                    border-color: rgba(245, 231, 198, 0.22);
+                    border-color: #2D4A3E;
                     transform: translateY(-1px);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                        inset 0 -10px 16px rgba(0, 0, 0, 0.14),
-                        0 20px 28px -20px rgba(0, 0, 0, 0.32);
                 }
 
                 .dashboard-server-icon {
@@ -567,7 +497,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                 }
 
                 .dashboard-neon-glow-text {
-                    text-shadow: 0 0 8px rgba(var(--primary-rgb), 0.5);
+                    text-shadow: none;
                 }
 
                 .dashboard-server-metrics {
@@ -606,8 +536,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                     width: 100%;
                     overflow: hidden;
                     border-radius: 999px;
-                    background: rgba(245, 231, 198, 0.08);
-                    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.03);
+                    background: #EDE6D0;
                 }
 
                 .dashboard-progress-fill {
@@ -791,7 +720,7 @@ export default ({ searchQuery = '' }: DashboardContainerProps) => {
                                     </div>
                                 ) : (
                                     <div className='dashboard-empty-panel'>
-                                        <p className='text-xs text-[rgba(174,183,194,0.78)]'>
+                                        <p className='text-xs' style={{ color: 'rgba(116, 34, 32, 0.55)' }}>
                                             {searchValue
                                                 ? 'No servers on this page match your search.'
                                                 : showOnlyAdmin

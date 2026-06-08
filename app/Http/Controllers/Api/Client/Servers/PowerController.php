@@ -8,6 +8,7 @@ use Pterodactyl\Facades\Activity;
 use Pterodactyl\Repositories\Wings\DaemonPowerRepository;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\SendPowerRequest;
+use Pterodactyl\Services\Servers\Discord\DiscordPanelAgentSyncService;
 use Pterodactyl\Services\DownDetector\DownDetectorAutoRestartService;
 
 class PowerController extends ClientApiController
@@ -18,6 +19,7 @@ class PowerController extends ClientApiController
     public function __construct(
         private DaemonPowerRepository $repository,
         private DownDetectorAutoRestartService $autoRestart,
+        private DiscordPanelAgentSyncService $discordAgentSync,
     )
     {
         parent::__construct();
@@ -37,6 +39,8 @@ class PowerController extends ClientApiController
         Activity::event(strtolower("server:power.{$request->input('signal')}"))
             ->subject($server)
             ->log();
+
+        $this->discordAgentSync->announcePowerEvent($server, (string) $request->input('signal'));
 
         return $this->returnNoContent();
     }

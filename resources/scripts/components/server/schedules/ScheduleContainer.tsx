@@ -38,7 +38,7 @@ export default () => {
     }, []);
 
     return (
-        <ServerContentBlock title={'Schedules'} className={'content-container-full px-4 xl:px-6'}>
+        <ServerContentBlock title={'Schedules'} className={'content-container-full px-4 py-4 xl:px-6'}>
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
             {!schedules.length && loading ? (
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />

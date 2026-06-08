@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Ticket;
@@ -28,6 +29,9 @@ use Pterodactyl\Services\Security\SecurityEventFormatterService;
 
 class LogCenterController extends Controller
 {
+    private const LOG_PER_PAGE = 25;
+    private const SECTION_PER_PAGE = 10;
+
     private const TABS = [
         'new-account' => 'New Account Logs',
         'payment' => 'Payment Logs',
@@ -37,6 +41,79 @@ class LogCenterController extends Controller
         'change-password' => 'Change Password Logs',
         'change-email' => 'Change Email Logs',
         'ticket' => 'Ticket Logs',
+    ];
+
+    private const ACCOUNT_VERIFICATION_FILTERS = [
+        'verified' => 'Verified',
+        'unverified' => 'Unverified',
+    ];
+
+    private const INVOICE_STATUSES = [
+        BillingInvoice::STATUS_DRAFT,
+        BillingInvoice::STATUS_OPEN,
+        BillingInvoice::STATUS_PROCESSING,
+        BillingInvoice::STATUS_PAID,
+        BillingInvoice::STATUS_EXPIRED,
+        BillingInvoice::STATUS_VOID,
+        BillingInvoice::STATUS_FAILED,
+        BillingInvoice::STATUS_REFUNDED,
+        BillingInvoice::STATUS_PARTIALLY_REFUNDED,
+    ];
+
+    private const PAYMENT_ATTEMPT_STATUSES = [
+        BillingPaymentAttempt::STATUS_INITIATED,
+        BillingPaymentAttempt::STATUS_REDIRECTED,
+        BillingPaymentAttempt::STATUS_CALLBACK_RECEIVED,
+        BillingPaymentAttempt::STATUS_VERIFIED_PAID,
+        BillingPaymentAttempt::STATUS_VERIFIED_FAILED,
+        BillingPaymentAttempt::STATUS_CANCELLED,
+        BillingPaymentAttempt::STATUS_REFUND_PENDING,
+        BillingPaymentAttempt::STATUS_REFUNDED,
+        BillingPaymentAttempt::STATUS_REFUND_FAILED,
+    ];
+
+    private const ORDER_STATUSES = [
+        BillingOrder::STATUS_DRAFT,
+        BillingOrder::STATUS_AWAITING_PAYMENT,
+        BillingOrder::STATUS_PAID,
+        BillingOrder::STATUS_QUEUED_PROVISION,
+        BillingOrder::STATUS_PENDING,
+        BillingOrder::STATUS_PROVISIONING,
+        BillingOrder::STATUS_PROVISIONED,
+        BillingOrder::STATUS_PROVISION_FAILED,
+        BillingOrder::STATUS_CANCELLED,
+        BillingOrder::STATUS_REFUNDED,
+        BillingOrder::STATUS_REJECTED,
+        BillingOrder::STATUS_FAILED,
+    ];
+
+    private const GATEWAY_EVENT_STATUSES = [
+        BillingGatewayEvent::STATUS_RECEIVED,
+        BillingGatewayEvent::STATUS_PROCESSED,
+        BillingGatewayEvent::STATUS_FAILED,
+    ];
+
+    private const SECURITY_VERDICTS = [
+        'observed_only',
+        'challenged',
+        'rate_limited',
+        'blocked',
+        'contained',
+        'quarantined',
+    ];
+
+    private const TICKET_STATUSES = [
+        Ticket::STATUS_WAITING_FOR_USER,
+        Ticket::STATUS_WAITING_FOR_STAFF,
+        Ticket::STATUS_RESOLVED,
+        Ticket::STATUS_CLOSED,
+    ];
+
+    private const TICKET_MESSAGE_ORIGINS = [
+        TicketMessage::ORIGIN_CONSOLE,
+        TicketMessage::ORIGIN_DISCORD,
+        TicketMessage::ORIGIN_AUTOMATION,
+        TicketMessage::ORIGIN_CHECKOUT,
     ];
 
     public function __construct(
@@ -67,28 +144,28 @@ class LogCenterController extends Controller
                 'admin_logs:ticket:discord_channel_id' => config('admin_logs.ticket.discord_channel_id'),
             ],
             'payload' => match ($activeTab) {
-                'new-account' => ['rows' => $this->newAccountRows()],
-                'payment' => $this->paymentRows(),
-                'security' => ['rows' => $this->securityRows()],
-                'login' => ['rows' => $this->activityRows([
+                'new-account' => $this->newAccountRows($request),
+                'payment' => $this->paymentRows($request),
+                'security' => $this->securityRows($request),
+                'login' => $this->activityRows($request, [
                     'auth:success',
                     'auth:fail',
                     'auth:checkpoint',
                     'auth:sftp.fail',
-                ])],
-                'forgot-password' => ['rows' => $this->activityRows([
+                ], 'event', 'page'),
+                'forgot-password' => $this->activityRows($request, [
                     'auth:password-reset-pin.requested',
                     'auth:password-reset-pin.completed',
                     'auth_failed_password_reset',
-                ])],
-                'change-password' => ['rows' => $this->activityRows([
+                ], 'event', 'page'),
+                'change-password' => $this->activityRows($request, [
                     'user:account.password-changed',
                     'event:password-reset',
-                ])],
-                'change-email' => ['rows' => $this->activityRows([
+                ], 'event', 'page'),
+                'change-email' => $this->activityRows($request, [
                     'user:account.email-changed',
-                ])],
-                'ticket' => $this->ticketRows(),
+                ], 'event', 'page'),
+                'ticket' => $this->ticketRows($request),
                 default => ['rows' => []],
             },
         ]);
@@ -112,31 +189,38 @@ class LogCenterController extends Controller
         return redirect()->route('admin.logs', ['tab' => $request->input('tab', 'new-account')]);
     }
 
-    private function newAccountRows(): array
+    private function newAccountRows(Request $request): array
     {
-        $users = User::query()
+        $verification = $this->selectedOption($request, 'verification', array_keys(self::ACCOUNT_VERIFICATION_FILTERS));
+        $query = User::query()
             ->with('oauthAccounts')
-            ->latest('created_at')
-            ->limit(50)
-            ->get();
+            ->latest('created_at');
+
+        if ($verification === 'verified') {
+            $query->where('is_email_verified', true);
+        } elseif ($verification === 'unverified') {
+            $query->where('is_email_verified', false);
+        }
+
+        $users = $query->paginate(self::LOG_PER_PAGE, ['*'], 'page')->appends($request->except('page'));
+        $userCollection = $users->getCollection();
 
         $signupLogs = ActivityLog::query()
             ->with(['subjects.subject'])
             ->whereIn('event', ['auth:signup', 'auth:email-verified'])
-            ->whereIn('id', function ($query) use ($users) {
+            ->whereIn('id', function ($query) use ($userCollection) {
                 $query->selectRaw('MAX(activity_logs.id)')
                     ->from('activity_logs')
                     ->join('activity_log_subjects', 'activity_log_subjects.activity_log_id', '=', 'activity_logs.id')
                     ->where('activity_log_subjects.subject_type', User::class)
-                    ->whereIn('activity_log_subjects.subject_id', $users->pluck('id')->all())
+                    ->whereIn('activity_log_subjects.subject_id', $userCollection->pluck('id')->all())
                     ->whereIn('activity_logs.event', ['auth:signup', 'auth:email-verified'])
                     ->groupBy('activity_log_subjects.subject_id');
             })
             ->get()
             ->keyBy(fn (ActivityLog $log) => optional($log->subjects->first())->subject_id);
 
-        return $users
-            ->map(fn (User $user) => [
+        $users->getCollection()->transform(fn (User $user) => [
                 'created_at' => optional($user->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
                 'username' => $user->username,
                 'email' => $user->email,
@@ -146,109 +230,180 @@ class LogCenterController extends Controller
                 'last_seen_at' => optional($user->last_seen_at)?->format('Y-m-d H:i:s T') ?? 'Never',
                 'signup_ip' => $this->signupLogIp($signupLogs->get($user->id)),
                 'verification_status' => $this->signupVerificationStatus($signupLogs->get($user->id), $user),
-            ])
-            ->all();
-    }
+            ]);
 
-    private function paymentRows(): array
-    {
         return [
-            'invoices' => BillingInvoice::query()
-                ->with(['user', 'order', 'subscription'])
-                ->latest('created_at')
-                ->limit(20)
-                ->get()
-                ->map(fn (BillingInvoice $invoice) => [
-                    'created_at' => optional($invoice->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'invoice_number' => $invoice->invoice_number,
-                    'user' => $invoice->user?->email ?? 'Unknown user',
-                    'type' => $invoice->type,
-                    'status' => $invoice->status,
-                    'provider' => $invoice->provider ?: 'n/a',
-                    'amount' => sprintf('%s %.2f', strtoupper($invoice->currency), (float) $invoice->grand_total),
-                    'order_status' => $invoice->order?->status ?? 'n/a',
-                ])
-                ->all(),
-            'attempts' => BillingPaymentAttempt::query()
-                ->with(['invoice.user', 'payment'])
-                ->latest('created_at')
-                ->limit(20)
-                ->get()
-                ->map(fn (BillingPaymentAttempt $attempt) => [
-                    'created_at' => optional($attempt->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'invoice_number' => $attempt->invoice?->invoice_number ?? 'n/a',
-                    'user' => $attempt->invoice?->user?->email ?? 'Unknown user',
-                    'provider' => $attempt->provider ?: 'n/a',
-                    'status' => $attempt->status,
-                    'checkout_reference' => $attempt->checkout_reference ?: 'n/a',
-                    'failure_reason' => $attempt->failure_reason ?: 'None',
-                ])
-                ->all(),
-            'orders' => BillingOrder::query()
-                ->with(['user', 'server', 'approver'])
-                ->latest('updated_at')
-                ->limit(20)
-                ->get()
-                ->map(fn (BillingOrder $order) => [
-                    'updated_at' => optional($order->updated_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'user' => $order->user?->email ?? 'Unknown user',
-                    'server_name' => $order->server_name,
-                    'order_type' => $order->order_type,
-                    'status' => $order->status,
-                    'approver' => $order->approver?->email ?? 'n/a',
-                    'failure' => $order->provision_failure_message ?: 'None',
-                ])
-                ->all(),
-            'gateway_events' => BillingGatewayEvent::query()
-                ->latest('created_at')
-                ->limit(20)
-                ->get()
-                ->map(fn (BillingGatewayEvent $event) => [
-                    'created_at' => optional($event->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'provider' => $event->provider,
-                    'event_type' => $event->event_type,
-                    'status' => $event->status,
-                    'transaction_id' => $event->provider_transaction_id ?: 'n/a',
-                    'error' => $event->processing_error ?: 'None',
-                ])
-                ->all(),
+            'rows' => $users,
+            'filter' => [
+                'name' => 'verification',
+                'value' => $verification,
+                'options' => self::ACCOUNT_VERIFICATION_FILTERS,
+                'pageName' => 'page',
+                'placeholder' => 'All verification states',
+                'label' => 'Verified',
+            ],
         ];
     }
 
-    private function ticketRows(): array
+    private function paymentRows(Request $request): array
     {
         return [
-            'tickets' => Ticket::query()
-                ->with(['user', 'assignedAdmin'])
-                ->latest('updated_at')
-                ->limit(25)
-                ->get()
-                ->map(fn (Ticket $ticket) => [
-                    'updated_at' => optional($ticket->updated_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'ticket_number' => $ticket->ticket_number,
-                    'user' => $ticket->user?->email ?? 'Unknown user',
-                    'category' => $ticket->category,
-                    'status' => $ticket->status,
-                    'subject' => $ticket->subject,
-                    'assigned_admin' => $ticket->assignedAdmin?->email ?? 'Unassigned',
-                ])
-                ->all(),
-            'messages' => TicketMessage::query()
-                ->with('ticket.user')
-                ->latest('created_at')
-                ->limit(25)
-                ->get()
-                ->map(fn (TicketMessage $message) => [
-                    'created_at' => optional($message->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                    'ticket_number' => $message->ticket?->ticket_number ?? 'n/a',
-                    'ticket_user' => $message->ticket?->user?->email ?? 'Unknown user',
-                    'author' => $message->author_display_name ?: 'Unknown',
-                    'author_type' => $message->author_type,
-                    'origin' => $message->origin,
-                    'body' => Str::limit(trim($message->body), 140, '...'),
-                ])
-                ->all(),
-            'activity' => $this->activityRows([
+            'invoices' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyStatusFilter(
+                        BillingInvoice::query()
+                            ->with(['user', 'order', 'subscription'])
+                            ->latest('created_at'),
+                        $request,
+                        'invoices_status',
+                        self::INVOICE_STATUSES
+                    ),
+                    $request,
+                    'invoices_page',
+                    self::SECTION_PER_PAGE,
+                    fn (BillingInvoice $invoice) => [
+                        'created_at' => optional($invoice->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'invoice_number' => $invoice->invoice_number,
+                        'user' => $invoice->user?->email ?? 'Unknown user',
+                        'type' => $invoice->type,
+                        'status' => $invoice->status,
+                        'provider' => $invoice->provider ?: 'n/a',
+                        'amount' => sprintf('%s %.2f', strtoupper($invoice->currency), (float) $invoice->grand_total),
+                        'order_status' => $invoice->order?->status ?? 'n/a',
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'invoices_status', self::INVOICE_STATUSES, 'invoices_page', 'All invoice statuses'),
+            ],
+            'attempts' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyStatusFilter(
+                        BillingPaymentAttempt::query()
+                            ->with(['invoice.user', 'payment'])
+                            ->latest('created_at'),
+                        $request,
+                        'attempts_status',
+                        self::PAYMENT_ATTEMPT_STATUSES
+                    ),
+                    $request,
+                    'attempts_page',
+                    self::SECTION_PER_PAGE,
+                    fn (BillingPaymentAttempt $attempt) => [
+                        'created_at' => optional($attempt->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'invoice_number' => $attempt->invoice?->invoice_number ?? 'n/a',
+                        'user' => $attempt->invoice?->user?->email ?? 'Unknown user',
+                        'provider' => $attempt->provider ?: 'n/a',
+                        'status' => $attempt->status,
+                        'checkout_reference' => $attempt->checkout_reference ?: 'n/a',
+                        'failure_reason' => $attempt->failure_reason ?: 'None',
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'attempts_status', self::PAYMENT_ATTEMPT_STATUSES, 'attempts_page', 'All attempt statuses'),
+            ],
+            'orders' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyStatusFilter(
+                        BillingOrder::query()
+                            ->with(['user', 'server', 'approver'])
+                            ->latest('updated_at'),
+                        $request,
+                        'orders_status',
+                        self::ORDER_STATUSES
+                    ),
+                    $request,
+                    'orders_page',
+                    self::SECTION_PER_PAGE,
+                    fn (BillingOrder $order) => [
+                        'updated_at' => optional($order->updated_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'user' => $order->user?->email ?? 'Unknown user',
+                        'server_name' => $order->server_name,
+                        'order_type' => $order->order_type,
+                        'status' => $order->status,
+                        'approver' => $order->approver?->email ?? 'n/a',
+                        'failure' => $order->provision_failure_message ?: 'None',
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'orders_status', self::ORDER_STATUSES, 'orders_page', 'All order statuses'),
+            ],
+            'gateway_events' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyStatusFilter(
+                        BillingGatewayEvent::query()->latest('created_at'),
+                        $request,
+                        'gateway_events_status',
+                        self::GATEWAY_EVENT_STATUSES
+                    ),
+                    $request,
+                    'gateway_events_page',
+                    self::SECTION_PER_PAGE,
+                    fn (BillingGatewayEvent $event) => [
+                        'created_at' => optional($event->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'provider' => $event->provider,
+                        'event_type' => $event->event_type,
+                        'status' => $event->status,
+                        'transaction_id' => $event->provider_transaction_id ?: 'n/a',
+                        'error' => $event->processing_error ?: 'None',
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'gateway_events_status', self::GATEWAY_EVENT_STATUSES, 'gateway_events_page', 'All gateway statuses'),
+            ],
+        ];
+    }
+
+    private function ticketRows(Request $request): array
+    {
+        return [
+            'tickets' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyStatusFilter(
+                        Ticket::query()
+                            ->with(['user', 'assignedAdmin'])
+                            ->latest('updated_at'),
+                        $request,
+                        'tickets_status',
+                        self::TICKET_STATUSES
+                    ),
+                    $request,
+                    'tickets_page',
+                    self::SECTION_PER_PAGE,
+                    fn (Ticket $ticket) => [
+                        'updated_at' => optional($ticket->updated_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'ticket_number' => $ticket->ticket_number,
+                        'user' => $ticket->user?->email ?? 'Unknown user',
+                        'category' => $ticket->category,
+                        'status' => $ticket->status,
+                        'subject' => $ticket->subject,
+                        'assigned_admin' => $ticket->assignedAdmin?->email ?? 'Unassigned',
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'tickets_status', self::TICKET_STATUSES, 'tickets_page', 'All ticket statuses'),
+            ],
+            'messages' => [
+                'rows' => $this->paginateMapped(
+                    $this->applyFieldFilter(
+                        TicketMessage::query()
+                            ->with('ticket.user')
+                            ->latest('created_at'),
+                        $request,
+                        'messages_origin',
+                        'origin',
+                        self::TICKET_MESSAGE_ORIGINS
+                    ),
+                    $request,
+                    'messages_page',
+                    self::SECTION_PER_PAGE,
+                    fn (TicketMessage $message) => [
+                        'created_at' => optional($message->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown',
+                        'ticket_number' => $message->ticket?->ticket_number ?? 'n/a',
+                        'ticket_user' => $message->ticket?->user?->email ?? 'Unknown user',
+                        'author' => $message->author_display_name ?: 'Unknown',
+                        'author_type' => $message->author_type,
+                        'origin' => $message->origin,
+                        'body' => Str::limit(trim($message->body), 140, '...'),
+                    ]
+                ),
+                'filter' => $this->filterMeta($request, 'messages_origin', self::TICKET_MESSAGE_ORIGINS, 'messages_page', 'All message origins', 'Origin'),
+            ],
+            'activity' => $this->activityRows($request, [
                 'ticket:create',
                 'ticket:message.user',
                 'ticket:message.staff',
@@ -257,62 +412,128 @@ class LogCenterController extends Controller
                 'ticket:resolve',
                 'ticket:close',
                 'ticket:status.update',
-            ], 40),
+            ], 'ticket_activity_event', 'ticket_activity_page', self::SECTION_PER_PAGE),
         ];
     }
 
-    private function activityRows(array $events, int $limit = 50): array
+    private function activityRows(Request $request, array $events, string $filterName, string $pageName, int $perPage = self::LOG_PER_PAGE): array
     {
-        return ActivityLog::query()
+        $event = $this->selectedOption($request, $filterName, $events);
+        $query = ActivityLog::query()
             ->with(['actor', 'subjects.subject'])
-            ->whereIn('event', $events)
-            ->latest('timestamp')
-            ->limit($limit)
-            ->get()
-            ->map(fn (ActivityLog $log) => [
+            ->whereIn('event', $event ? [$event] : $events)
+            ->latest('timestamp');
+
+        return [
+            'rows' => $this->paginateMapped(
+                $query,
+                $request,
+                $pageName,
+                $perPage,
+                fn (ActivityLog $log) => [
                 'timestamp' => optional($log->timestamp)?->format('Y-m-d H:i:s T') ?? 'Unknown',
                 'event' => $log->event,
                 'actor' => $this->actorLabel($log),
                 'subject' => $this->subjectLabel($log),
                 'ip' => (string) ($log->properties['ip'] ?? $log->ip ?? 'Unknown'),
                 'context' => $this->activityContext($log),
-            ])
-            ->all();
+                ]
+            ),
+            'filter' => [
+                'name' => $filterName,
+                'value' => $event,
+                'options' => $this->statusOptions($events),
+                'pageName' => $pageName,
+                'placeholder' => 'All events',
+                'label' => 'Event',
+            ],
+        ];
     }
 
-    private function securityRows(int $limit = 50): array
+    private function securityRows(Request $request): array
     {
-        $eventRows = SecurityEvent::query()
+        $verdict = $this->selectedOption($request, 'verdict', self::SECURITY_VERDICTS);
+        $query = SecurityEvent::query()
             ->with(['rule', 'incident', 'actor', 'target', 'node'])
-            ->latest()
-            ->limit($limit)
-            ->get()
-            ->map(fn (SecurityEvent $event) => $this->securityFormatter->logRow($event));
+            ->latest();
 
-        $activityRows = ActivityLog::query()
-            ->with(['actor', 'subjects.subject'])
-            ->where('event', 'security:break-glass-used')
-            ->latest('timestamp')
-            ->limit(15)
-            ->get()
-            ->map(fn (ActivityLog $log) => [
-                'sort_at' => optional($log->timestamp)?->timestamp ?? 0,
-                'timestamp' => optional($log->timestamp)?->format('Y-m-d H:i:s T') ?? 'Unknown',
-                'event' => $log->event,
-                'attack' => 'Break-Glass Access Used',
-                'outcome' => 'Manual Bypass (Audit Only)',
-                'source' => (string) ($log->properties['ip'] ?? $log->ip ?? 'Unknown'),
-                'target' => $this->subjectLabel($log),
-                'details' => $this->activityContext($log),
-            ]);
+        if ($verdict !== null) {
+            $query->where('verdict', $verdict);
+        }
 
-        return $eventRows
-            ->concat($activityRows)
-            ->sortByDesc('sort_at')
-            ->take($limit)
-            ->map(fn (array $row) => Arr::except($row, ['sort_at']))
-            ->values()
-            ->all();
+        return [
+            'rows' => $this->paginateMapped(
+                $query,
+                $request,
+                'page',
+                self::LOG_PER_PAGE,
+                fn (SecurityEvent $event) => Arr::except($this->securityFormatter->logRow($event), ['sort_at'])
+            ),
+            'filter' => [
+                'name' => 'verdict',
+                'value' => $verdict,
+                'options' => $this->statusOptions(self::SECURITY_VERDICTS),
+                'pageName' => 'page',
+                'placeholder' => 'All verdicts',
+                'label' => 'Verdict',
+            ],
+        ];
+    }
+
+    private function applyStatusFilter($query, Request $request, string $name, array $statuses)
+    {
+        return $this->applyFieldFilter($query, $request, $name, 'status', $statuses);
+    }
+
+    private function applyFieldFilter($query, Request $request, string $name, string $field, array $allowed)
+    {
+        $value = $this->selectedOption($request, $name, $allowed);
+
+        if ($value !== null) {
+            $query->where($field, $value);
+        }
+
+        return $query;
+    }
+
+    private function paginateMapped($query, Request $request, string $pageName, int $perPage, callable $mapper): LengthAwarePaginator
+    {
+        $paginator = $query->paginate($perPage, ['*'], $pageName)->appends($request->except($pageName));
+        $paginator->getCollection()->transform($mapper);
+
+        return $paginator;
+    }
+
+    private function filterMeta(Request $request, string $name, array $statuses, string $pageName, string $placeholder, string $label = 'Status'): array
+    {
+        return [
+            'name' => $name,
+            'value' => $this->selectedOption($request, $name, $statuses),
+            'options' => $this->statusOptions($statuses),
+            'pageName' => $pageName,
+            'placeholder' => $placeholder,
+            'label' => $label,
+        ];
+    }
+
+    private function selectedOption(Request $request, string $name, array $allowed): ?string
+    {
+        $value = (string) $request->query($name, '');
+
+        if ($value === '') {
+            return null;
+        }
+
+        return in_array($value, $allowed, true) ? $value : null;
+    }
+
+    private function statusOptions(array $statuses): array
+    {
+        return array_reduce($statuses, function (array $options, string $status): array {
+            $options[$status] = ucwords(str_replace(['_', ':', '.', '-'], ' ', $status));
+
+            return $options;
+        }, []);
     }
 
     private function actorLabel(ActivityLog $log): string

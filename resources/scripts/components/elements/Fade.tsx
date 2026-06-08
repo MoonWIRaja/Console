@@ -8,6 +8,10 @@ interface Props extends Omit<CSSTransitionProps, 'timeout' | 'classNames'> {
 }
 
 const Container = styled.div<{ timeout: number }>`
+    &:empty {
+        display: none !important;
+    }
+
     .fade-enter,
     .fade-exit,
     .fade-appear {

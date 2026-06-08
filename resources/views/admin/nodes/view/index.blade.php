@@ -95,7 +95,7 @@
                     <div class="col-sm-12">
                         <div class="info-box bg-orange">
                             <span class="info-box-icon"><i class="ion ion-wrench"></i></span>
-                            <div class="info-box-content" style="padding: 23px 10px 0;">
+                            <div class="info-box-content admin-info-box-content-tall">
                                 <span class="info-box-text">This node is under</span>
                                 <span class="info-box-number">Maintenance</span>
                             </div>
@@ -105,7 +105,7 @@
                     <div class="col-sm-12">
                         <div class="info-box bg-{{ $stats['disk']['css'] }}">
                             <span class="info-box-icon"><i class="ion ion-ios-folder-outline"></i></span>
-                            <div class="info-box-content" style="padding: 15px 10px 0;">
+                            <div class="info-box-content admin-info-box-content-regular">
                                 <span class="info-box-text">Disk Space Allocated</span>
                                 <span class="info-box-number">{{ $stats['disk']['value'] }} / {{ $stats['disk']['max'] }} MiB</span>
                                 <div class="progress">
@@ -117,7 +117,7 @@
                     <div class="col-sm-12">
                         <div class="info-box bg-{{ $stats['memory']['css'] }}">
                             <span class="info-box-icon"><i class="ion ion-ios-barcode-outline"></i></span>
-                            <div class="info-box-content" style="padding: 15px 10px 0;">
+                            <div class="info-box-content admin-info-box-content-regular">
                                 <span class="info-box-text">Memory Allocated</span>
                                 <span class="info-box-number">{{ $stats['memory']['value'] }} / {{ $stats['memory']['max'] }} MiB</span>
                                 <div class="progress">
@@ -129,7 +129,7 @@
                     <div class="col-sm-12">
                         <div class="info-box bg-blue">
                             <span class="info-box-icon"><i class="ion ion-social-buffer-outline"></i></span>
-                            <div class="info-box-content" style="padding: 23px 10px 0;">
+                            <div class="info-box-content admin-info-box-content-tall">
                                 <span class="info-box-text">Total Servers</span>
                                 <span class="info-box-number">{{ $node->servers_count }}</span>
                             </div>

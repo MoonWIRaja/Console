@@ -10,6 +10,7 @@ import Can from '@/components/elements/Can';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import PageContentBlock from '@/components/elements/PageContentBlock';
 import { ServerError } from '@/components/elements/ScreenBlock';
+import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import tw from 'twin.macro';
 import modes from '@/modes';
 import useFlash from '@/plugins/useFlash';
@@ -20,7 +21,7 @@ import { dirname } from 'pathe';
 import CodemirrorEditor from '@/components/elements/CodemirrorEditor';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import Select from '@/components/ui/select';
-import { Braces, Code2 } from 'lucide-react';
+import { Braces, Code2, Search } from 'lucide-react';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 export default () => {
@@ -34,6 +35,7 @@ export default () => {
     const [mode, setMode] = useState('text/plain');
     const fetchFileContent = useRef<null | (() => Promise<string>)>(null);
     const suppressLeaveWarning = useRef(false);
+    const editorRef = useRef<import('codemirror').Editor | null>(null);
 
     const history = useHistory();
     const { hash } = useLocation();
@@ -142,7 +144,13 @@ export default () => {
     };
 
     if (error) {
-        return <ServerError message={error} onBack={() => history.goBack()} />;
+        return (
+            <ServerContentBlock title={'File Editor'} className={'content-container-full px-4 pb-5 pt-4 xl:px-6'}>
+                <div css={tw`flex min-h-[360px] items-center justify-center`}>
+                    <ServerError message={error} onBack={() => history.goBack()} />
+                </div>
+            </ServerContentBlock>
+        );
     }
 
     return (
@@ -151,36 +159,26 @@ export default () => {
                 .server-file-editor-shell {
                     position: relative;
                     overflow: hidden;
-                    border-radius: 1.4rem;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(165deg, rgba(245, 231, 198, 0.05), rgba(245, 231, 198, 0.015) 42%),
-                        var(--surface-elevated);
-                    box-shadow:
-                        inset 0 1px 0 rgba(245, 231, 198, 0.06),
-                        0 24px 38px -32px rgba(0, 0, 0, 0.88),
-                        0 0 44px rgba(var(--primary-rgb), 0.08);
-                }
-
-                .server-file-editor-shell::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    pointer-events: none;
-                    background:
-                        radial-gradient(360px 130px at 8% -10%, rgba(var(--primary-rgb), 0.14), transparent 66%),
-                        radial-gradient(320px 120px at 92% -12%, rgba(var(--primary-rgb), 0.07), transparent 68%);
-                    opacity: 0.5;
+                    border-radius: 22px;
+                    border: 2px solid #2D4A3E;
+                    background-color: #FEF9E1;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px);
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
+                    color: #742220;
                 }
             `}</style>
             <FlashMessageRender byKey={'files:view'} css={tw`mb-0`} />
             <ErrorBoundary>
                 <div
                     className='server-file-editor-shell'
-                    css={tw`flex h-full min-h-0 w-full flex-col overflow-hidden border-0 bg-[color:var(--card)]`}
+                    css={tw`flex h-full min-h-0 w-full flex-col overflow-hidden`}
                 >
                     <div
-                        css={tw`flex items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}
+                        css={tw`flex items-center justify-between px-4 py-3`}
+                        style={{ borderBottom: '2px solid #2D4A3E', background: '#F5EFD5', borderRadius: '20px 20px 0 0' }}
                     >
                         <div css={tw`min-w-0 pr-4`}>
                             <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
@@ -195,18 +193,28 @@ export default () => {
                                               backgroundColor: 'rgba(245, 158, 11, 0.10)',
                                               color: '#fcd34d',
                                           }
-                                        : tw`border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]`,
+                                        : tw`border-[#EDE6D0] bg-[#F5EFD5] text-[#742220]`,
                                 ]}
                             >
                                 {hasUnsavedChanges ? 'Unsaved Changes' : 'All Changes Saved'}
                             </div>
                             <div
-                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-[color:var(--foreground)]`}
+                                css={tw`rounded-md border border-[#EDE6D0] bg-[#F5EFD5] px-3 py-1 text-xs text-[#742220]`}
                             >
                                 {selectedMode?.name || 'Plain Text'}
                             </div>
+                            <button
+                                type='button'
+                                title='Find (Ctrl+F / Cmd+F)'
+                                onClick={() => editorRef.current?.execCommand('findPersistent')}
+                                css={tw`inline-flex items-center gap-1.5 rounded-md border border-[#EDE6D0] bg-[#F5EFD5] px-3 py-1 text-xs text-[#742220] transition-all hover:border-[#2D4A3E] hover:bg-[#EDE6D0]`}
+                            >
+                                <Search size={11} />
+                                Find
+                                <span css={tw`ml-1 opacity-50`}>Ctrl+F</span>
+                            </button>
                             <div
-                                css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-xs text-[color:var(--text-subtle)]`}
+                                css={tw`rounded-md border border-[#EDE6D0] bg-[#F5EFD5] px-3 py-1 text-xs`} style={{ color: 'rgba(116,34,32,0.55)' }}
                             >
                                 Ctrl/Cmd+S
                             </div>
@@ -214,24 +222,24 @@ export default () => {
                     </div>
 
                     {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                        <div css={tw`border-b border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}>
+                        <div css={tw`px-4 py-3`} style={{ borderBottom: '1px solid #EDE6D0', background: '#F5EFD5' }}>
                             <p css={tw`text-sm text-[color:var(--foreground)]`}>
                                 You&apos;re editing a{' '}
                                 <code
-                                    css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}
+                                    css={tw`rounded border border-[#2D4A3E] bg-[#F5EFD5] px-1 py-px font-mono`}
                                 >
                                     .pteroignore
                                 </code>{' '}
                                 file. Any files or directories listed in here will be excluded from backups. Wildcards
                                 are supported by using an asterisk (
                                 <code
-                                    css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}
+                                    css={tw`rounded border border-[#2D4A3E] bg-[#F5EFD5] px-1 py-px font-mono`}
                                 >
                                     *
                                 </code>
                                 ). You can negate a prior rule by prepending an exclamation point (
                                 <code
-                                    css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-1 py-px font-mono`}
+                                    css={tw`rounded border border-[#2D4A3E] bg-[#F5EFD5] px-1 py-px font-mono`}
                                 >
                                     !
                                 </code>
@@ -269,6 +277,7 @@ export default () => {
                                     fetchContent={(value) => {
                                         fetchFileContent.current = value;
                                     }}
+                                    onEditorCreated={(e) => { editorRef.current = e; }}
                                     onContentSaved={() => {
                                         if (action !== 'edit') {
                                             setModalVisible(true);
@@ -282,7 +291,8 @@ export default () => {
                     </div>
 
                     <div
-                        css={tw`flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}
+                        css={tw`flex flex-wrap items-center justify-between gap-3 px-4 py-3`}
+                        style={{ borderTop: '2px solid #2D4A3E', background: '#F5EFD5' }}
                     >
                         <div css={tw`flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center`}>
                             <div css={tw`w-full sm:w-[320px]`}>
@@ -305,7 +315,7 @@ export default () => {
                             </div>
                             <div css={tw`flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-subtle)]`}>
                                 <span
-                                    css={tw`rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 font-mono`}
+                                    css={tw`rounded-md border border-[#EDE6D0] bg-[#F5EFD5] px-3 py-2 font-mono`}
                                 >
                                     {filePath}
                                 </span>
@@ -316,7 +326,7 @@ export default () => {
                                 type={'button'}
                                 onClick={revertChanges}
                                 disabled={!hasUnsavedChanges || loading}
-                                css={tw`inline-flex h-11 min-w-[10rem] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 text-sm font-semibold uppercase tracking-wide text-[color:var(--foreground)] transition-all hover:border-[#f59e0b] hover:text-[#fcd34d] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[color:var(--border)] disabled:hover:text-[color:var(--foreground)]`}
+                                css={tw`inline-flex h-11 min-w-[10rem] items-center justify-center rounded-full border border-[#2D4A3E] bg-[#F5EFD5] px-5 text-sm font-semibold uppercase tracking-wide text-[#742220] transition-all hover:border-[#f59e0b] hover:text-[#9a5a00] disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                                 Revert Changes
                             </button>

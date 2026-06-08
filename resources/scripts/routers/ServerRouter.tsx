@@ -18,6 +18,7 @@ import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
 import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 import ConsoleSidebar from '@/components/server/console/ConsoleSidebar';
+import { applyThemeVariables, SERVER_THEME_VARIABLES, serverThemeStyle } from '@/components/server/serverTheme';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
@@ -130,6 +131,11 @@ export default () => {
         };
     }, []);
 
+    useEffect(() => {
+        const modalPortal = document.getElementById('modal-portal');
+        return applyThemeVariables(modalPortal, SERVER_THEME_VARIABLES);
+    }, []);
+
     const consoleRoute = `/server/${match.params.id}`;
     const isConsoleRoute = location.pathname === consoleRoute || location.pathname === `${consoleRoute}/`;
     const isInstallConflict =
@@ -154,6 +160,63 @@ export default () => {
                     centerTitle={serverName}
                 />
                 <style>{`
+                    /* Reusable dashboard-matched card classes for server route pages */
+                    .sc-card {
+                        border-radius: 22px;
+                        border: 2px solid #2D4A3E;
+                        background-color: #FEF9E1;
+                        background-image:
+                            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px);
+                        box-shadow: 4px 4px 0px 0px #2D4A3E;
+                        color: #742220;
+                    }
+                    .sc-card-inner {
+                        border-radius: 14px;
+                        border: 1px solid #EDE6D0;
+                        background-color: #F5EFD5;
+                        background-image:
+                            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px);
+                        color: #742220;
+                    }
+                    .sc-card-header {
+                        border-bottom: 2px solid #2D4A3E;
+                        background: #F5EFD5;
+                        border-radius: 20px 20px 0 0;
+                        padding: 0.85rem 1rem;
+                    }
+                    .sc-card-hover {
+                        transition: transform 0.2s ease, box-shadow 0.2s ease;
+                        cursor: pointer;
+                    }
+                    .sc-card-hover:hover {
+                        transform: translate(-2px, -2px);
+                        box-shadow: 6px 6px 0px 0px #2D4A3E;
+                    }
+                    .sc-tab-active {
+                        background: #2D4A3E;
+                        color: #FEF9E1;
+                    }
+                    .sc-tab-inactive {
+                        color: rgba(116,34,32,0.6);
+                    }
+                    .sc-tab-inactive:hover {
+                        color: #742220;
+                        background: #EDE6D0;
+                    }
+                    .sc-muted {
+                        color: rgba(116,34,32,0.55);
+                    }
+                    .sc-text {
+                        color: #742220;
+                    }
+                    .sc-accent {
+                        color: #2D4A3E;
+                    }
+
                     .server-theme-shell {
                         position: relative;
                         display: flex;
@@ -172,15 +235,11 @@ export default () => {
                         position: absolute;
                         inset: 0;
                         pointer-events: none;
-                        background:
-                            repeating-linear-gradient(
-                                90deg,
-                                rgba(var(--primary-rgb), 0.02) 0,
-                                rgba(var(--primary-rgb), 0.02) 1px,
-                                transparent 1px,
-                                transparent 40px
-                            );
-                        opacity: 0.12;
+                        z-index: 0;
+                        background-image:
+                            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px),
+                            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.045) 4.5px, rgba(116, 34, 32, 0.045) 5px);
                     }
 
                     .server-theme-shell::after {
@@ -271,6 +330,15 @@ export default () => {
                         flex-direction: column;
                     }
 
+                    .server-route-fill [class*='Fade__Container']:empty {
+                        display: none !important;
+                        flex: 0 0 auto !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                        min-height: 0 !important;
+                        overflow: hidden !important;
+                    }
+
                     .server-main-content .content-container-full {
                         display: flex;
                         flex: 1;
@@ -291,7 +359,8 @@ export default () => {
                         min-height: 0;
                         flex: 1;
                         flex-direction: column;
-                        overflow: hidden;
+                        overflow-y: auto;
+                        overflow-x: hidden;
                     }
 
                     .server-main-content ::-webkit-scrollbar {
@@ -388,6 +457,7 @@ export default () => {
                             fontFamily:
                                 "var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
                             backgroundColor: 'transparent',
+                            ...serverThemeStyle,
                         }}
                     >
                         {!uuid || !id ? (

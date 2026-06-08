@@ -79,7 +79,7 @@ const NetworkContainer = () => {
         <ServerContentBlock
             showFlashKey={'server:network'}
             title={'Network'}
-            className={'content-container-full px-4 xl:px-6'}
+            className={'content-container-full px-4 py-4 xl:px-6'}
         >
             <FlashMessageRender byKey={'server:network'} />
 
@@ -87,27 +87,23 @@ const NetworkContainer = () => {
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={7} className='min-h-[320px]' />
             ) : (
                 <div className={'grid gap-6 xl:grid-cols-2'}>
-                    <section
-                        className={'rounded-[1.2rem] border border-[color:var(--border)] bg-[color:var(--card)] p-4'}
-                    >
+                    <section className={'sc-card p-5'}>
                         <div className={'mb-4 flex flex-wrap items-start justify-between gap-4'}>
                             <div>
-                                <p className={'text-xs uppercase tracking-[0.28em] text-[color:var(--text-subtle)]'}>
+                                <p className={'text-xs uppercase tracking-[0.28em] sc-muted'}>
                                     Ports
                                 </p>
-                                <h2 className={'mt-2 text-xl font-semibold text-[#f8f6ef]'}>Allocations</h2>
-                                <p className={'mt-2 max-w-2xl text-sm text-[color:var(--text-subtle)]'}>
+                                <h2 className={'mt-2 text-xl font-semibold sc-text'}>
+                                    Allocations
+                                </h2>
+                                <p className={'mt-2 max-w-2xl text-sm sc-muted'}>
                                     Manage the primary connection details and any extra ports attached to this server.
                                 </p>
                             </div>
                         </div>
 
                         {!canViewAllocations ? (
-                            <div
-                                className={
-                                    'rounded-[1rem] border border-dashed border-[color:var(--border)] bg-[color:var(--background)] px-4 py-6 text-sm text-[color:var(--text-subtle)]'
-                                }
-                            >
+                            <div className={'sc-card-inner px-4 py-6 text-sm sc-muted'}>
                                 You do not have permission to view or manage allocations for this server.
                             </div>
                         ) : (
@@ -143,16 +139,16 @@ const NetworkContainer = () => {
                         )}
                     </section>
 
-                    <section
-                        className={'rounded-[1.2rem] border border-[color:var(--border)] bg-[color:var(--card)] p-4'}
-                    >
+                    <section className={'sc-card p-5'}>
                         <div className={'mb-4 flex flex-wrap items-start justify-between gap-4'}>
                             <div>
-                                <p className={'text-xs uppercase tracking-[0.28em] text-[color:var(--text-subtle)]'}>
+                                <p className={'text-xs uppercase tracking-[0.28em] sc-muted'}>
                                     DNS
                                 </p>
-                                <h2 className={'mt-2 text-xl font-semibold text-[#f8f6ef]'}>Subdomains</h2>
-                                <p className={'mt-2 max-w-2xl text-sm text-[color:var(--text-subtle)]'}>
+                                <h2 className={'mt-2 text-xl font-semibold sc-text'}>
+                                    Subdomains
+                                </h2>
+                                <p className={'mt-2 max-w-2xl text-sm sc-muted'}>
                                     Create branded connection hosts for this server using the subdomain templates
                                     matched to its nest.
                                 </p>
@@ -160,19 +156,11 @@ const NetworkContainer = () => {
                         </div>
 
                         {!canViewSubdomains ? (
-                            <div
-                                className={
-                                    'rounded-[1rem] border border-dashed border-[color:var(--border)] bg-[color:var(--background)] px-4 py-6 text-sm text-[color:var(--text-subtle)]'
-                                }
-                            >
+                            <div className={'sc-card-inner px-4 py-6 text-sm sc-muted'}>
                                 You do not have permission to view or manage subdomains for this server.
                             </div>
                         ) : subdomainError ? (
-                            <div
-                                className={
-                                    'rounded-[1rem] border border-dashed border-[color:var(--border)] bg-[color:var(--background)] px-4 py-6 text-sm text-[color:var(--text-subtle)]'
-                                }
-                            >
+                            <div className={'sc-card-inner px-4 py-6 text-sm sc-muted'}>
                                 The subdomain section could not be loaded right now. Check the flash message for the DNS
                                 error details.
                             </div>
@@ -187,11 +175,7 @@ const NetworkContainer = () => {
                                         />
                                     ))
                                 ) : (
-                                    <div
-                                        className={
-                                            'rounded-[1rem] border border-dashed border-[color:var(--border)] bg-[color:var(--background)] px-4 py-6 text-sm text-[color:var(--text-subtle)]'
-                                        }
-                                    >
+                                    <div className={'sc-card-inner px-4 py-6 text-sm sc-muted'}>
                                         {subdomainData && subdomainData.templates.length > 0
                                             ? 'No subdomains have been created for this server yet.'
                                             : 'No subdomain template matches this server nest yet. Configure a domain and template in the admin panel first.'}

@@ -48,6 +48,7 @@ export default ({
     const [footer, setFooter] = useState<React.ReactNode>();
     const [iconPosition, setIconPosition] = useState<IconPosition>('title');
     const [down, setDown] = useState(false);
+    const hasBody = React.Children.count(children) > 0 || (iconPosition === 'container' && !!icon);
 
     const onContainerClick = (down: boolean, e: React.MouseEvent<HTMLDivElement>): void => {
         if (e.target instanceof HTMLElement && container.current?.isSameNode(e.target)) {
@@ -75,9 +76,9 @@ export default ({
                         open={open}
                         onClose={onDialogClose}
                     >
-                        <div className={'fixed inset-0 z-40 bg-[color:var(--card)]/70'} />
+                        <div className={'fixed inset-0 z-[90] bg-[rgba(84,63,38,0.34)] backdrop-blur-md'} />
                         <div
-                            className={['fixed inset-0 overflow-y-auto z-50', scrollWrapperClassName || '']
+                            className={['fixed inset-0 z-[100] overflow-y-auto', scrollWrapperClassName || '']
                                 .join(' ')
                                 .trim()}
                         >
@@ -95,48 +96,65 @@ export default ({
                                     variants={variants}
                                     className={[styles.panel, panelClassName || ''].join(' ').trim()}
                                 >
-                                    <div className={'flex p-6 pb-0 overflow-y-auto'}>
-                                        {iconPosition === 'container' && icon}
-                                        <div
-                                            className={[
-                                                'flex-1 min-w-0',
-                                                contentClassName || 'max-h-[70vh] overflow-y-auto',
-                                            ]
-                                                .join(' ')
-                                                .trim()}
-                                        >
-                                            <div className={'flex items-center'}>
-                                                {iconPosition !== 'container' && icon}
-                                                <div>
-                                                    {title && (
-                                                        <HDialog.Title className={styles.title}>{title}</HDialog.Title>
-                                                    )}
-                                                    {description && (
-                                                        <HDialog.Description>{description}</HDialog.Description>
-                                                    )}
+                                    <div
+                                        className={[
+                                            'bg-transparent px-5 pt-5 md:px-6 md:pt-6',
+                                            hasBody ? 'pb-3' : 'pb-5',
+                                        ]
+                                            .join(' ')
+                                            .trim()}
+                                    >
+                                        <div className={'flex items-start justify-between gap-4'}>
+                                            <div className={'min-w-0 flex-1'}>
+                                                <div className={'flex items-center'}>
+                                                    {iconPosition !== 'container' && icon}
+                                                    <div className={'min-w-0'}>
+                                                        {title && (
+                                                            <HDialog.Title className={styles.title}>
+                                                                {title}
+                                                            </HDialog.Title>
+                                                        )}
+                                                        {description && (
+                                                            <HDialog.Description
+                                                                className={'text-sm text-[color:var(--text-subtle)]'}
+                                                            >
+                                                                {description}
+                                                            </HDialog.Description>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {children}
-                                            <div className={'invisible h-6'} />
+                                            {!hideCloseIcon && (
+                                                <Button.Text
+                                                    size={Button.Sizes.Small}
+                                                    shape={Button.Shapes.IconSquare}
+                                                    type={'button'}
+                                                    onClick={onClose}
+                                                    className={
+                                                        'group !rounded-[10px] !border !border-[#2D4A3E] !bg-[#F5EFD5] !text-[#742220] hover:!border-[#2D4A3E] hover:!bg-[rgba(45,74,62,0.12)] hover:!text-[#2D4A3E] focus:!ring-[#2D4A3E] focus:!ring-offset-[#FEF9E1]'
+                                                    }
+                                                >
+                                                    <XIcon className={styles.close_icon} />
+                                                </Button.Text>
+                                            )}
                                         </div>
                                     </div>
-                                    {footer}
-                                    {/* Keep this below the other buttons so that it isn't the default focus if they're present. */}
-                                    {!hideCloseIcon && (
-                                        <div className={'absolute right-0 top-0 m-4'}>
-                                            <Button.Text
-                                                size={Button.Sizes.Small}
-                                                shape={Button.Shapes.IconSquare}
-                                                type={'button'}
-                                                onClick={onClose}
-                                                className={
-                                                    'group !rounded-md !border !border-[color:var(--border)] !bg-[color:var(--card)] !text-gray-100 hover:!border-[#a3ff12] hover:!text-[color:var(--primary)] focus:!ring-[#a3ff12] focus:!ring-offset-[#0C0C0C]'
-                                                }
+                                    {hasBody && (
+                                        <div className={'flex overflow-y-auto px-5 pb-4 pt-1 md:px-6'}>
+                                            {iconPosition === 'container' && icon}
+                                            <div
+                                                className={[
+                                                    'flex-1 min-w-0',
+                                                    contentClassName || 'max-h-[calc(100vh-14rem)] overflow-y-auto',
+                                                ]
+                                                    .join(' ')
+                                                    .trim()}
                                             >
-                                                <XIcon className={styles.close_icon} />
-                                            </Button.Text>
+                                                {children}
+                                            </div>
                                         </div>
                                     )}
+                                    {footer}
                                 </HDialog.Panel>
                             </div>
                         </div>

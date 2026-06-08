@@ -64,19 +64,19 @@
                     @if(!empty($order->order_notes))
                         <hr>
                         <strong>Client Notes</strong>
-                        <p class="text-muted" style="margin-top: 8px;">{{ $order->order_notes }}</p>
+                        <p class="text-muted admin-text-gap-top-sm">{{ $order->order_notes }}</p>
                     @endif
 
                     @if(!empty($order->admin_notes))
                         <hr>
                         <strong>Admin Notes</strong>
-                        <p class="text-muted" style="margin-top: 8px; white-space: pre-wrap;">{{ $order->admin_notes }}</p>
+                        <p class="text-muted admin-text-gap-top-sm admin-pre-wrap">{{ $order->admin_notes }}</p>
                     @endif
 
                     @if($order->provision_failure_code || $order->provision_failure_message)
                         <hr>
                         <strong>Provision Failure</strong>
-                        <p class="text-danger" style="margin-top: 8px; white-space: pre-wrap;">
+                        <p class="text-danger admin-text-gap-top-sm admin-pre-wrap">
                             {{ $order->provision_failure_code ?: 'PROVISION_FAILED' }}
                             @if($order->provision_failure_message)
                                 : {{ $order->provision_failure_message }}
@@ -97,7 +97,7 @@
                         {!! csrf_field() !!}
                         <div class="box-body">
                             <p class="text-muted">Use this after manual payment has been received. The invoice will be marked paid, a payment receipt will be generated, and the order lifecycle will continue immediately.</p>
-                            <div class="form-group" style="margin-top: 15px;">
+                            <div class="form-group admin-gap-top-form">
                                 <label class="control-label">Admin Notes</label>
                                 <textarea name="admin_notes" class="form-control" rows="4" placeholder="Optional internal note about the payment confirmation."></textarea>
                             </div>
@@ -188,7 +188,7 @@
                         <div class="box-body">
                             <p><a href="{{ $order->invoice->invoice_pdf_url }}" target="_blank" rel="noreferrer">Open Invoice PDF</a></p>
                             @if($order->invoice->payments->isNotEmpty())
-                                <p style="margin-top: 8px;">
+                                <p class="admin-text-gap-top-sm">
                                     <a href="{{ route('billing.documents.payments.receipt', $order->invoice->payments->sortByDesc('id')->first()->id) }}" target="_blank" rel="noreferrer">
                                         Open Latest Receipt PDF
                                     </a>

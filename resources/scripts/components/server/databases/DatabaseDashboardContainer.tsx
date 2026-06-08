@@ -47,7 +47,7 @@ const tabLabels: { id: Tab; label: string }[] = [
     { id: 'settings', label: 'Settings' },
 ];
 
-const statCard = tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4`;
+const statCard = 'sc-card-inner p-4';
 
 const ConnectionField = ({ label, value, copyValue }: { label: string; value: string; copyValue?: string }) => (
     <div>
@@ -89,7 +89,7 @@ const formatDate = (value?: string | null) => {
 
 const renderValue = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
-        return <span css={tw`text-neutral-500`}>NULL</span>;
+        return <span css={tw`text-[color:var(--text-subtle)]`}>NULL</span>;
     }
 
     if (typeof value === 'boolean') {
@@ -113,30 +113,31 @@ const DataTable = ({
     emptyMessage: string;
 }) => {
     if (!columns.length) {
-        return <p css={tw`text-sm text-neutral-400`}>{emptyMessage}</p>;
+        return <p css={tw`text-sm text-[color:var(--text-subtle)]`}>{emptyMessage}</p>;
     }
 
     return (
-        <div css={tw`overflow-x-auto rounded-xl border border-[color:var(--border)]`}>
-            <table css={tw`min-w-full divide-y divide-[color:var(--border)] text-left text-sm`}>
-                <thead css={tw`bg-[color:var(--background)]`}>
+        <div css={tw`overflow-x-auto rounded-xl`} style={{ border: '2px solid #2D4A3E' }}>
+            <table css={tw`min-w-full divide-y text-left text-sm`} style={{ borderColor: '#EDE6D0' }}>
+                <thead style={{ background: '#F5EFD5' }}>
                     <tr>
                         {columns.map((column) => (
                             <th
                                 key={column}
-                                css={tw`whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-400`}
+                                css={tw`whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em]`}
+                                style={{ color: 'rgba(116,34,32,0.55)' }}
                             >
                                 {column}
                             </th>
                         ))}
                     </tr>
                 </thead>
-                <tbody css={tw`divide-y divide-[color:var(--border)] bg-[color:var(--card)]`}>
+                <tbody css={tw`divide-y`} style={{ background: '#FEF9E1', borderColor: '#EDE6D0' }}>
                     {rows.length > 0 ? (
                         rows.map((row, index) => (
                             <tr key={`${index}-${columns.join('-')}`}>
                                 {columns.map((column) => (
-                                    <td key={`${index}-${column}`} css={tw`max-w-[24rem] px-4 py-3 align-top text-[#f8f6ef]`}>
+                                    <td key={`${index}-${column}`} css={tw`max-w-[24rem] px-4 py-3 align-top text-[color:var(--foreground)]`}>
                                         <div css={tw`whitespace-pre-wrap break-words text-sm leading-6`}>
                                             {renderValue(row[column])}
                                         </div>
@@ -146,7 +147,7 @@ const DataTable = ({
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={columns.length} css={tw`px-4 py-6 text-center text-sm text-neutral-400`}>
+                            <td colSpan={columns.length} css={tw`px-4 py-6 text-center text-sm text-[color:var(--text-subtle)]`}>
                                 {emptyMessage}
                             </td>
                         </tr>
@@ -354,7 +355,7 @@ const DatabaseDashboardContainer = () => {
 
     if (loading) {
         return (
-            <ServerContentBlock title={'Database Dashboard'} className={'content-container-full px-4 xl:px-6'}>
+            <ServerContentBlock title={'Database Dashboard'} className={'content-container-full px-4 py-4 xl:px-6'}>
                 <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={9} className='min-h-[420px]' />
             </ServerContentBlock>
         );
@@ -509,8 +510,8 @@ const DatabaseDashboardContainer = () => {
                         }}
                     >
                         <FlashMessageRender byKey={'database:delete'} css={tw`mb-6`} />
-                        <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Confirm database deletion</h2>
-                        <p css={tw`text-sm text-neutral-300`}>
+                        <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Confirm database deletion</h2>
+                        <p css={tw`text-sm text-[color:var(--foreground)]`}>
                             Deleting this database is permanent. This will remove <strong>{database.name}</strong> and
                             all associated data.
                         </p>
@@ -540,7 +541,7 @@ const DatabaseDashboardContainer = () => {
                 )}
             </Formik>
 
-            <ServerContentBlock title={`Database | ${database.name}`} className={'content-container-full px-4 xl:px-6'}>
+            <ServerContentBlock title={`Database | ${database.name}`} className={'content-container-full px-4 py-4 xl:px-6'}>
                 <div css={tw`flex h-full min-h-0 flex-col overflow-hidden`}>
                     <div css={tw`flex-shrink-0`}>
                         <FlashMessageRender byKey={'databases:dashboard'} css={tw`mb-4`} />
@@ -555,16 +556,16 @@ const DatabaseDashboardContainer = () => {
                             </div>
                         )}
 
-                        <div css={tw`mb-6 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5`}>
+                        <div className={'mb-6 sc-card p-5'}>
                             <div css={tw`flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between`}>
                                 <div css={tw`min-w-0`}>
                                     <p css={tw`text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--primary)]`}>
                                         SQL Dashboard
                                     </p>
-                                    <h1 css={tw`mt-2 truncate text-3xl font-black tracking-tight text-[#f8f6ef]`}>
+                                    <h1 css={tw`mt-2 truncate text-3xl font-black tracking-tight text-[color:var(--foreground)]`}>
                                         {database.name}
                                     </h1>
-                                    <p css={tw`mt-2 text-sm text-neutral-400`}>
+                                    <p css={tw`mt-2 text-sm text-[color:var(--text-subtle)]`}>
                                         Browse tables, run SQL, export or import dumps, and inspect database health from one
                                         workspace.
                                     </p>
@@ -582,19 +583,15 @@ const DatabaseDashboardContainer = () => {
                         </div>
 
                         <div
-                            css={tw`mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2`}
+                            className={'mb-6 sc-card flex flex-wrap items-center gap-2 p-2'}
                         >
                             {tabLabels.map((tab) => (
                                 <button
                                     key={tab.id}
                                     type={'button'}
                                     onClick={() => setActiveTab(tab.id)}
-                                    css={[
-                                        tw`rounded-lg px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition`,
-                                        activeTab === tab.id
-                                            ? tw`bg-[color:var(--primary)] text-[color:var(--primary-foreground)]`
-                                            : tw`text-neutral-400 hover:text-[#f8f6ef]`,
-                                    ]}
+                                    css={tw`rounded-lg px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition`}
+                                    className={activeTab === tab.id ? 'sc-tab-active' : 'sc-tab-inactive'}
                                 >
                                     {tab.label}
                                 </button>
@@ -606,37 +603,37 @@ const DatabaseDashboardContainer = () => {
                         {activeTab === 'overview' && (
                     <div css={tw`space-y-6`}>
                         <div css={tw`grid gap-4 md:grid-cols-2 xl:grid-cols-4`}>
-                            <div css={statCard}>
-                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                            <div className={statCard}>
+                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                     Endpoint
                                 </p>
-                                <p css={tw`mt-2 break-all text-base font-semibold text-[#f8f6ef]`}>
+                                <p css={tw`mt-2 break-all text-base font-semibold text-[color:var(--foreground)]`}>
                                     {database.connectionString}
                                 </p>
                             </div>
-                            <div css={statCard}>
-                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                            <div className={statCard}>
+                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                     Tables
                                 </p>
-                                <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                     {health ? health.tableCount : tables.length}
                                 </p>
                             </div>
-                            <div css={statCard}>
-                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                            <div className={statCard}>
+                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                     Estimated Size
                                 </p>
-                                <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                     {health ? formatBytes(health.sizeBytes) : tables.length ? formatBytes(
                                         tables.reduce((total, table) => total + table.sizeBytes, 0)
                                     ) : 'Loading...'}
                                 </p>
                             </div>
-                            <div css={statCard}>
-                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                            <div className={statCard}>
+                                <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                     DB Latency
                                 </p>
-                                <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                     {health ? (health.reachable ? `${health.latencyMs} ms` : 'Unavailable') : 'Loading...'}
                                 </p>
                             </div>
@@ -705,10 +702,10 @@ const DatabaseDashboardContainer = () => {
                                                 key={item.title}
                                                 type={'button'}
                                                 onClick={() => setActiveTab(item.tab)}
-                                                css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-4 text-left transition hover:border-[color:var(--primary)]`}
+                                                className={'sc-card-inner sc-card-hover px-4 py-4 text-left'}
                                             >
-                                                <p css={tw`text-sm font-semibold text-[#f8f6ef]`}>{item.title}</p>
-                                                <p css={tw`mt-2 text-sm leading-6 text-neutral-400`}>{item.text}</p>
+                                                <p css={tw`text-sm font-semibold text-[color:var(--foreground)]`}>{item.title}</p>
+                                                <p css={tw`mt-2 text-sm leading-6 text-[color:var(--text-subtle)]`}>{item.text}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -726,13 +723,13 @@ const DatabaseDashboardContainer = () => {
                                                         setTablePage(1);
                                                         setActiveTab('tables');
                                                     }}
-                                                    css={tw`flex w-full items-center justify-between rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-left transition hover:border-[color:var(--primary)]`}
+                                                    className={'sc-card-inner sc-card-hover flex w-full items-center justify-between px-4 py-3 text-left'}
                                                 >
                                                     <div css={tw`min-w-0`}>
-                                                        <p css={tw`truncate text-sm font-semibold text-[#f8f6ef]`}>
+                                                        <p css={tw`truncate text-sm font-semibold text-[color:var(--foreground)]`}>
                                                             {table.name}
                                                         </p>
-                                                        <p css={tw`mt-1 text-xs text-neutral-500`}>
+                                                        <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>
                                                             {table.rows.toLocaleString()} rows
                                                         </p>
                                                     </div>
@@ -743,7 +740,7 @@ const DatabaseDashboardContainer = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <p css={tw`text-sm text-neutral-400`}>
+                                        <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                             Load the table workspace to inspect table inventory.
                                         </p>
                                     )}
@@ -769,7 +766,7 @@ const DatabaseDashboardContainer = () => {
                             </div>
 
                             {workspaceUnavailable ? (
-                                <p css={tw`text-sm leading-6 text-neutral-400`}>
+                                <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
                                     Table metadata is unavailable while the panel cannot connect to this database host.
                                     Refresh health after the host is unblocked.
                                 </p>
@@ -785,22 +782,22 @@ const DatabaseDashboardContainer = () => {
                                                 setSelectedTable(table.name);
                                                 setTablePage(1);
                                             }}
-                                            css={[
-                                                tw`w-full rounded-xl border px-4 py-3 text-left transition`,
+                                            css={tw`w-full rounded-xl border px-4 py-3 text-left transition`}
+                                            style={
                                                 selectedTable === table.name
-                                                    ? tw`border-[color:var(--primary)] bg-[color:var(--background)]`
-                                                    : tw`border-[color:var(--border)] bg-[color:var(--background)] hover:border-[color:var(--primary)]`,
-                                            ]}
+                                                    ? { borderColor: '#2D4A3E', background: '#F5EFD5' }
+                                                    : { borderColor: '#EDE6D0', background: '#FEF9E1' }
+                                            }
                                         >
                                             <div css={tw`flex items-center justify-between gap-3`}>
-                                                <p css={tw`truncate text-sm font-semibold text-[#f8f6ef]`}>
+                                                <p css={tw`truncate text-sm font-semibold text-[color:var(--foreground)]`}>
                                                     {table.name}
                                                 </p>
                                                 <span css={tw`text-xs font-semibold text-[color:var(--primary)]`}>
                                                     {formatBytes(table.sizeBytes)}
                                                 </span>
                                             </div>
-                                            <div css={tw`mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500`}>
+                                            <div css={tw`mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--text-subtle)]`}>
                                                 <span>{table.engine || 'Unknown engine'}</span>
                                                 <span>{table.rows.toLocaleString()} rows</span>
                                                 <span>{table.collation || 'No collation'}</span>
@@ -809,7 +806,7 @@ const DatabaseDashboardContainer = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <p css={tw`text-sm text-neutral-400`}>No tables exist in this database yet.</p>
+                                <p css={tw`text-sm text-[color:var(--text-subtle)]`}>No tables exist in this database yet.</p>
                             )}
                         </TitledGreyBox>
 
@@ -817,27 +814,27 @@ const DatabaseDashboardContainer = () => {
                             <TitledGreyBox title={selectedTable ? `Table Preview: ${selectedTable}` : 'Table Preview'}>
                                 {selectedTableMeta && (
                                     <div css={tw`mb-4 grid gap-3 md:grid-cols-3`}>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Engine
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {selectedTableMeta.engine || 'Unknown'}
                                             </p>
                                         </div>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Estimated Rows
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {selectedTableMeta.rows.toLocaleString()}
                                             </p>
                                         </div>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Size
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {formatBytes(selectedTableMeta.sizeBytes)}
                                             </p>
                                         </div>
@@ -845,14 +842,14 @@ const DatabaseDashboardContainer = () => {
                                 )}
 
                                 {workspaceUnavailable ? (
-                                    <p css={tw`text-sm leading-6 text-neutral-400`}>
+                                    <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
                                         Row previews are unavailable until the panel can reconnect to the database host.
                                     </p>
                                 ) : selectedTable ? (
                                     <>
                                         <div css={tw`mb-4 flex flex-wrap items-center justify-between gap-3`}>
-                                            <p css={tw`text-sm text-neutral-400`}>
-                                                Inspect live rows from <strong css={tw`text-[#f8f6ef]`}>{selectedTable}</strong>.
+                                            <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
+                                                Inspect live rows from <strong css={tw`text-[color:var(--foreground)]`}>{selectedTable}</strong>.
                                             </p>
                                             <div css={tw`flex flex-wrap gap-2`}>
                                                 <Button
@@ -882,10 +879,10 @@ const DatabaseDashboardContainer = () => {
                                                     {tableRows.columns.map((column) => (
                                                         <span
                                                             key={column.name}
-                                                            css={tw`rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-1 text-[11px] font-semibold text-neutral-300`}
+                                                            className={'sc-card-inner rounded-full px-3 py-1 text-[11px] font-semibold sc-text'}
                                                         >
                                                             {column.name}
-                                                            <span css={tw`ml-2 text-neutral-500`}>{column.type}</span>
+                                                            <span css={tw`ml-2 text-[color:var(--text-subtle)]`}>{column.type}</span>
                                                         </span>
                                                     ))}
                                                 </div>
@@ -909,13 +906,13 @@ const DatabaseDashboardContainer = () => {
                                                 className='min-h-[280px]'
                                             />
                                         ) : (
-                                            <p css={tw`text-sm text-neutral-400`}>
+                                            <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                                 Select a table to preview its rows.
                                             </p>
                                         )}
                                     </>
                                 ) : (
-                                    <p css={tw`text-sm text-neutral-400`}>
+                                    <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                         Choose a table from the left to inspect its columns and row data.
                                     </p>
                                 )}
@@ -928,11 +925,11 @@ const DatabaseDashboardContainer = () => {
                     <div css={tw`space-y-6`}>
                         <TitledGreyBox title={'SQL Query Console'}>
                             <div css={tw`mb-4 flex flex-wrap items-center justify-between gap-3`}>
-                                <p css={tw`text-sm leading-6 text-neutral-400`}>
-                                    Read-only statements such as <strong css={tw`text-[#f8f6ef]`}>SELECT</strong>,
-                                    <strong css={tw`text-[#f8f6ef]`}> SHOW</strong>,
-                                    <strong css={tw`text-[#f8f6ef]`}> DESCRIBE</strong>, and
-                                    <strong css={tw`text-[#f8f6ef]`}> EXPLAIN</strong> are always allowed. Write
+                                <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
+                                    Read-only statements such as <strong css={tw`text-[color:var(--foreground)]`}>SELECT</strong>,
+                                    <strong css={tw`text-[color:var(--foreground)]`}> SHOW</strong>,
+                                    <strong css={tw`text-[color:var(--foreground)]`}> DESCRIBE</strong>, and
+                                    <strong css={tw`text-[color:var(--foreground)]`}> EXPLAIN</strong> are always allowed. Write
                                     statements require database update permission.
                                 </p>
                                 <div css={tw`flex flex-wrap gap-2`}>
@@ -957,13 +954,13 @@ const DatabaseDashboardContainer = () => {
 
                             {!canUpdateDatabase && (
                                 <div
-                                    css={tw`mb-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-neutral-400`}
+                                    className={'mb-4 sc-card-inner px-4 py-3 text-sm sc-muted'}
                                 >
                                     This account is currently in read-only SQL mode for write statements.
                                 </div>
                             )}
 
-                            <div css={tw`min-h-[24rem] overflow-hidden rounded-xl border border-[color:var(--border)]`}>
+                            <div css={tw`min-h-[24rem] overflow-hidden rounded-xl`} style={{ border: '2px solid #2D4A3E' }}>
                                 <CodemirrorEditor
                                     mode={queryMode}
                                     filename={'query.sql'}
@@ -984,7 +981,10 @@ const DatabaseDashboardContainer = () => {
                                             key={entry}
                                             type={'button'}
                                             onClick={() => setQuerySeed(entry)}
-                                            css={tw`max-w-[16rem] truncate rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-1.5 text-xs text-neutral-300 transition hover:border-[color:var(--primary)]`}
+                                            className={'max-w-[16rem] truncate rounded-full px-3 py-1.5 text-xs sc-text transition'}
+                                            style={{ border: '1px solid #EDE6D0', background: '#FEF9E1' }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2D4A3E')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#EDE6D0')}
                                             title={entry}
                                         >
                                             {entry}
@@ -1006,35 +1006,35 @@ const DatabaseDashboardContainer = () => {
                             {queryResult ? (
                                 <>
                                     <div css={tw`mb-4 grid gap-4 md:grid-cols-4`}>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Query Type
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {queryResult.type.toUpperCase()}
                                             </p>
                                         </div>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Mode
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {queryResult.mode === 'read' ? 'Read' : 'Write'}
                                             </p>
                                         </div>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Execution
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {queryResult.executionTimeMs} ms
                                             </p>
                                         </div>
-                                        <div css={statCard}>
-                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500`}>
+                                        <div className={statCard}>
+                                            <p css={tw`text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--text-subtle)]`}>
                                                 Affected
                                             </p>
-                                            <p css={tw`mt-2 text-sm font-semibold text-[#f8f6ef]`}>
+                                            <p css={tw`mt-2 text-sm font-semibold text-[color:var(--foreground)]`}>
                                                 {queryResult.mode === 'write'
                                                     ? (queryResult.affectedRows ?? 0).toLocaleString()
                                                     : queryResult.rowCount.toLocaleString()}
@@ -1042,7 +1042,7 @@ const DatabaseDashboardContainer = () => {
                                         </div>
                                     </div>
 
-                                    <p css={tw`mb-4 text-sm text-neutral-400`}>
+                                    <p css={tw`mb-4 text-sm text-[color:var(--text-subtle)]`}>
                                         {queryResult.message}
                                         {queryResult.truncated && ' Only the first 250 rows are shown.'}
                                     </p>
@@ -1058,7 +1058,7 @@ const DatabaseDashboardContainer = () => {
                                     />
                                 </>
                             ) : (
-                                <p css={tw`text-sm text-neutral-400`}>
+                                <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                     Run a SQL statement to see its result set, affected row count, and execution time.
                                 </p>
                             )}
@@ -1069,7 +1069,7 @@ const DatabaseDashboardContainer = () => {
                         {activeTab === 'import-export' && (
                     <div css={tw`grid gap-6 xl:grid-cols-[0.95fr_minmax(0,1.05fr)]`}>
                         <TitledGreyBox title={'Export Database'}>
-                            <p css={tw`text-sm leading-6 text-neutral-400`}>
+                            <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
                                 Download a full SQL dump or generate a schema-only export for migration and backup
                                 workflows.
                             </p>
@@ -1088,9 +1088,9 @@ const DatabaseDashboardContainer = () => {
                                 </Button>
                             </div>
 
-                            <div css={tw`mt-6 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4`}>
-                                <p css={tw`text-sm font-semibold text-[#f8f6ef]`}>Export Notes</p>
-                                <ul css={tw`mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-400`}>
+                            <div className={'mt-6 sc-card-inner p-4'}>
+                                <p className={'text-sm font-semibold sc-text'}>Export Notes</p>
+                                <ul className={'mt-3 list-disc space-y-2 pl-5 text-sm sc-muted'}>
                                     <li>Exports are generated directly from the database user assigned to this server.</li>
                                     <li>Large databases may take longer depending on remote DB latency.</li>
                                     <li>Schema-only exports are useful for fresh migrations or quick reviews.</li>
@@ -1100,7 +1100,7 @@ const DatabaseDashboardContainer = () => {
 
                         <Can action={'database.update'}>
                             <TitledGreyBox title={'Import SQL'}>
-                                <p css={tw`text-sm leading-6 text-neutral-400`}>
+                                <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
                                     Upload a `.sql` file or paste SQL directly. Multi-statement imports are supported
                                     here.
                                 </p>
@@ -1113,7 +1113,8 @@ const DatabaseDashboardContainer = () => {
                                             type={'file'}
                                             accept={'.sql,.txt,text/plain,application/sql'}
                                             onChange={(event) => setImportFile(event.currentTarget.files?.[0] || null)}
-                                            css={tw`block w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-3 text-sm text-neutral-300`}
+                                            className={'block w-full rounded-xl px-3 py-3 text-sm sc-text'}
+                                            style={{ border: '1px solid #2D4A3E', background: '#FEF9E1' }}
                                         />
                                     </div>
                                     <div>
@@ -1123,7 +1124,8 @@ const DatabaseDashboardContainer = () => {
                                             onChange={(event) => setImportSql(event.currentTarget.value)}
                                             rows={12}
                                             placeholder={'CREATE TABLE example (...);'}
-                                            css={tw`block w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3 text-sm text-[#f8f6ef] outline-none transition focus:border-[color:var(--primary)]`}
+                                            className={'block w-full rounded-xl px-4 py-3 text-sm sc-text outline-none transition'}
+                                            style={{ border: '1px solid #2D4A3E', background: '#FEF9E1' }}
                                         />
                                     </div>
                                 </div>
@@ -1135,9 +1137,9 @@ const DatabaseDashboardContainer = () => {
                                 </div>
 
                                 {lastImportMessage && (
-                                    <div css={tw`mt-6 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4`}>
-                                        <p css={tw`text-sm font-semibold text-[#f8f6ef]`}>Last Import Output</p>
-                                        <pre css={tw`mt-3 whitespace-pre-wrap break-words text-xs leading-6 text-neutral-400`}>
+                                    <div className={'mt-6 sc-card-inner p-4'}>
+                                        <p className={'text-sm font-semibold sc-text'}>Last Import Output</p>
+                                        <pre className={'mt-3 whitespace-pre-wrap break-words text-xs leading-6 sc-muted'}>
                                             {lastImportMessage}
                                         </pre>
                                     </div>
@@ -1160,35 +1162,35 @@ const DatabaseDashboardContainer = () => {
                         ) : health ? (
                             <>
                                 <div css={tw`grid gap-4 md:grid-cols-2 xl:grid-cols-4`}>
-                                    <div css={statCard}>
-                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                                    <div className={statCard}>
+                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                             Reachability
                                         </p>
-                                        <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                        <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                             {health.reachable ? 'Online' : 'Unavailable'}
                                         </p>
                                     </div>
-                                    <div css={statCard}>
-                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                                    <div className={statCard}>
+                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                             Latency
                                         </p>
-                                        <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                        <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                             {health.reachable ? `${health.latencyMs} ms` : 'Unavailable'}
                                         </p>
                                     </div>
-                                    <div css={statCard}>
-                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                                    <div className={statCard}>
+                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                             Estimated Rows
                                         </p>
-                                        <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                        <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                             {health.estimatedRows.toLocaleString()}
                                         </p>
                                     </div>
-                                    <div css={statCard}>
-                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500`}>
+                                    <div className={statCard}>
+                                        <p css={tw`text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--text-subtle)]`}>
                                             Total Size
                                         </p>
-                                        <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>
+                                        <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>
                                             {formatBytes(health.sizeBytes)}
                                         </p>
                                     </div>
@@ -1222,24 +1224,24 @@ const DatabaseDashboardContainer = () => {
                                                     .map((table) => (
                                                         <div
                                                             key={table.name}
-                                                            css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-4`}
+                                                            className={'sc-card-inner p-4'}
                                                         >
                                                             <div css={tw`flex items-center justify-between gap-3`}>
-                                                                <p css={tw`truncate text-sm font-semibold text-[#f8f6ef]`}>
+                                                                <p css={tw`truncate text-sm font-semibold text-[color:var(--foreground)]`}>
                                                                     {table.name}
                                                                 </p>
                                                                 <span css={tw`text-xs font-semibold text-[color:var(--primary)]`}>
                                                                     {formatBytes(table.sizeBytes)}
                                                                 </span>
                                                             </div>
-                                                            <p css={tw`mt-2 text-xs text-neutral-500`}>
+                                                            <p css={tw`mt-2 text-xs text-[color:var(--text-subtle)]`}>
                                                                 Updated {formatDate(table.updatedAt)}
                                                             </p>
                                                         </div>
                                                     ))}
                                             </div>
                                         ) : (
-                                            <p css={tw`text-sm text-neutral-400`}>
+                                            <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                                 Load table metadata to see the largest tables in this database.
                                             </p>
                                         )}
@@ -1247,7 +1249,7 @@ const DatabaseDashboardContainer = () => {
                                 </div>
                             </>
                         ) : (
-                            <p css={tw`text-sm text-neutral-400`}>
+                            <p css={tw`text-sm text-[color:var(--text-subtle)]`}>
                                 No health data has been loaded for this database yet.
                             </p>
                         )}
@@ -1300,7 +1302,7 @@ const DatabaseDashboardContainer = () => {
 
                         <Can action={'database.delete'}>
                             <TitledGreyBox title={'Danger Zone'}>
-                                <p css={tw`text-sm leading-6 text-neutral-300`}>
+                                <p css={tw`text-sm leading-6 text-[color:var(--foreground)]`}>
                                     Delete this database only if you are sure it is no longer needed. This action
                                     removes the database permanently and cannot be reversed.
                                 </p>

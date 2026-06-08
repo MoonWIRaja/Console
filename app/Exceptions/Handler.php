@@ -7,10 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
-use Illuminate\Container\Container;
-use Illuminate\Database\Connection;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Session\TokenMismatchException;
@@ -125,21 +122,6 @@ class Handler extends ExceptionHandler
      */
     public function render($request, \Throwable $e): Response
     {
-        $connections = $this->container->make(Connection::class);
-
-        // If we are currently wrapped up inside a transaction, we will roll all the way
-        // back to the beginning. This needs to happen, otherwise session data does not
-        // get properly persisted.
-        //
-        // This is kind of a hack, and ideally things like this should be handled as
-        // much as possible at the code level, but there are a lot of spots that do a
-        // ton of actions and were written before this bug discovery was made.
-        //
-        // @see https://github.com/pterodactyl/panel/pull/1468
-        if ($connections->transactionLevel()) {
-            $connections->rollBack(0);
-        }
-
         if ($request->is('billing/gateways/fiuu/return')) {
             Log::error('Laravel rendered an exception on the Fiuu return route.', [
                 'method' => $request->method(),

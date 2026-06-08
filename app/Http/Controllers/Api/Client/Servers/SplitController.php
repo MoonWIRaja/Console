@@ -10,6 +10,7 @@ use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Services\Servers\SplitServerService;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Split\GetSplitOverviewRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Split\StoreSplitServerRequest;
+use Pterodactyl\Http\Requests\Api\Client\Servers\Split\UpdateSplitServerRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Split\DeleteSplitServerRequest;
 
 class SplitController extends ClientApiController
@@ -47,6 +48,18 @@ class SplitController extends ClientApiController
                 'name' => $child->name,
             ],
         ], 201);
+    }
+
+    public function update(UpdateSplitServerRequest $request, Server $server, int $split_id): JsonResponse
+    {
+        $split = Server::query()->find($split_id);
+        if (!$split) {
+            throw new NotFoundHttpException('The requested resource could not be found on the server.');
+        }
+
+        $this->splitServerService->update($server, $split, $request->validated());
+
+        return new JsonResponse([], 204);
     }
 
     public function delete(DeleteSplitServerRequest $request, Server $server, int $split_id): JsonResponse

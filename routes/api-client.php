@@ -206,6 +206,14 @@ Route::group([
         Route::post('/{player}/actions', [Client\Servers\PlayerController::class, 'action']);
     });
 
+    Route::group(['prefix' => '/discord'], function () {
+        Route::get('/', [Client\Servers\DiscordIntegrationController::class, 'index']);
+        Route::put('/', [Client\Servers\DiscordIntegrationController::class, 'update']);
+        Route::post('/agent/install', [Client\Servers\DiscordIntegrationController::class, 'install']);
+        Route::post('/agent/sync', [Client\Servers\DiscordIntegrationController::class, 'sync']);
+        Route::post('/agent/reset', [Client\Servers\DiscordIntegrationController::class, 'reset']);
+    });
+
     Route::group(['prefix' => '/settings'], function () {
         Route::post('/rename', [Client\Servers\SettingsController::class, 'rename']);
         Route::post('/reinstall', [Client\Servers\SettingsController::class, 'reinstall']);
@@ -215,6 +223,7 @@ Route::group([
     Route::group(['prefix' => '/split'], function () {
         Route::get('/', [Client\Servers\SplitController::class, 'index']);
         Route::post('/', [Client\Servers\SplitController::class, 'store']);
+        Route::patch('/{split_id}', [Client\Servers\SplitController::class, 'update']);
         Route::delete('/{split_id}', [Client\Servers\SplitController::class, 'delete']);
     });
 });

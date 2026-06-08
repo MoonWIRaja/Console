@@ -36,7 +36,7 @@
                                     <option value="true" @if($googleEnabled) selected @endif>Enabled</option>
                                     <option value="false" @if(!$googleEnabled) selected @endif>Disabled</option>
                                 </select>
-                                <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                <p class="text-muted small admin-help-tight">
                                     Allow users to sign in with Google after linking or during onboarding.
                                     <br>
                                     Current configuration: <strong>{{ $googleConfigured ? 'Ready' : 'Missing credentials' }}</strong>
@@ -49,10 +49,10 @@
                             <div class="form-group col-md-4">
                                 <label class="control-label">Client Secret</label>
                                 <input type="text" class="form-control" name="services:google:client_secret" value="{{ old('services:google:client_secret') }}" autocomplete="new-password">
-                                <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">Leave blank to keep the current secret. Enter <code>!e</code> to clear it.</p>
+                                <p class="text-muted small admin-help-tight">Leave blank to keep the current secret. Enter <code>!e</code> to clear it.</p>
                             </div>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
+                        <div class="form-group admin-form-group-tight">
                             <label class="control-label">Callback URL</label>
                             <input type="text" readonly class="form-control" value="{{ route('auth.oauth.callback', ['provider' => 'google']) }}">
                         </div>
@@ -71,7 +71,7 @@
                                     <option value="true" @if($discordEnabled) selected @endif>Enabled</option>
                                     <option value="false" @if(!$discordEnabled) selected @endif>Disabled</option>
                                 </select>
-                                <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                <p class="text-muted small admin-help-tight">
                                     Allow users to sign in with Discord and link Discord to panel features.
                                     <br>
                                     Current configuration: <strong>{{ $discordConfigured ? 'Ready' : 'Missing credentials' }}</strong>
@@ -84,10 +84,10 @@
                             <div class="form-group col-md-4">
                                 <label class="control-label">Client Secret</label>
                                 <input type="text" class="form-control" name="services:discord:client_secret" value="{{ old('services:discord:client_secret') }}" autocomplete="new-password">
-                                <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">Leave blank to keep the current secret. Enter <code>!e</code> to clear it.</p>
+                                <p class="text-muted small admin-help-tight">Leave blank to keep the current secret. Enter <code>!e</code> to clear it.</p>
                             </div>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
+                        <div class="form-group admin-form-group-tight">
                             <label class="control-label">Callback URL</label>
                             <input type="text" readonly class="form-control" value="{{ route('auth.oauth.callback', ['provider' => 'discord']) }}">
                         </div>
@@ -107,7 +107,7 @@
                 <div class="box-body">
                     <p><strong>Google OAuth</strong> is only for Google account login and onboarding.</p>
                     <p><strong>Discord OAuth</strong> is only for Discord account linking and login.</p>
-                    <p class="text-muted" style="margin-bottom: 0;">Discord bot, guild, community auto-join, and other bot-driven features are now managed from <a href="{{ route('admin.discord') }}">Discord Settings</a>.</p>
+                    <p class="text-muted admin-text-last">Discord bot, guild, community auto-join, and other bot-driven features are now managed from <a href="{{ route('admin.discord') }}">Discord Settings</a>.</p>
                 </div>
             </div>
         </div>

@@ -18,7 +18,7 @@
     <div class="row">
         <div class="col-xs-12">
             <div class="callout callout-info">
-                <p style="margin: 0;">
+                <p class="admin-no-margin">
                     This dashboard is now invoice-driven in manual billing mode. New orders, renewals, and upgrades stay pending until billing admin verifies payment and records settlement.
                     Use <a href="{{ route('admin.billing.reconciliation') }}">Reconciliation</a> to audit unpaid exposure, refund queue, provisioning risk, and any legacy gateway artefacts that still need cleanup.
                 </p>
@@ -153,8 +153,15 @@
     <div class="row">
         <div class="col-xs-12">
             <div class="box">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Recent Billing Orders</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'orders_status',
+                        'value' => $selectedOrderStatus,
+                        'options' => $orderStatusOptions,
+                        'pageName' => 'orders_page',
+                        'placeholder' => 'All order statuses',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -196,6 +203,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $recentOrders])
+                </div>
             </div>
         </div>
     </div>
@@ -203,8 +213,15 @@
     <div class="row">
         <div class="col-md-6">
             <div class="box">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Recent Invoices</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'invoices_status',
+                        'value' => $selectedInvoiceStatus,
+                        'options' => $invoiceStatusOptions,
+                        'pageName' => 'invoices_page',
+                        'placeholder' => 'All invoice statuses',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -230,12 +247,22 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $recentInvoices])
+                </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="box">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Recent Payments</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'payments_status',
+                        'value' => $selectedPaymentStatus,
+                        'options' => $paymentStatusOptions,
+                        'pageName' => 'payments_page',
+                        'placeholder' => 'All payment statuses',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -260,6 +287,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $recentPayments])
                 </div>
             </div>
         </div>

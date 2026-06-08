@@ -6,6 +6,7 @@ import Input from '@/components/elements/Input';
 import Modal from '@/components/elements/Modal';
 import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import {
+    BillingCheckout,
     BillingGame,
     BillingGameVariable,
     BillingInvoice,
@@ -15,6 +16,7 @@ import {
     BillingProfile,
     BillingSubscriptionActionResponse,
     createBillingOrder,
+    retryBillingInvoicePayment,
     toggleBillingSubscriptionAutoRenew,
     useBillingCatalog,
     useBillingInvoices,
@@ -145,9 +147,41 @@ const PLAN_WIZARD_STEP_CONTENT: Record<
     summary: {
         eyebrow: 'Step 8',
         title: 'Review Summary',
-        copy: 'Confirm the full plan, billing address, and pricing summary before manual invoice checkout is created.',
+        copy: 'Confirm the full plan, billing address, and pricing summary before the invoice is created and checkout continues through the active billing gateway.',
         continueLabel: 'Checkout',
     },
+};
+
+const beginHostedCheckout = (checkout: BillingCheckout | null | undefined): boolean => {
+    if (!checkout?.url || typeof window === 'undefined' || typeof document === 'undefined') {
+        return false;
+    }
+
+    const method = (checkout.method || 'GET').toUpperCase();
+    const payload = Object.entries(checkout.payload || {});
+
+    if (method === 'GET' && payload.length === 0) {
+        window.location.assign(checkout.url);
+        return true;
+    }
+
+    const form = document.createElement('form');
+    form.method = method === 'POST' ? 'POST' : 'GET';
+    form.action = checkout.url;
+    form.style.display = 'none';
+
+    payload.forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value || '';
+        form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+
+    return true;
 };
 
 const isBillingSection = (value: string | null): value is BillingSection =>
@@ -279,12 +313,12 @@ const buildFollowUpAction = (
 
     if (response.ticket?.url) {
         return {
-            label: response.ticketAutoCreated ? 'Open Payment Ticket' : 'View Payment Ticket',
+            label: response.ticketAutoCreated ? 'Open Support Ticket' : 'View Support Ticket',
             href: response.ticket.url,
             description:
                 'Your support ticket for this invoice is ready. Open it to share payment proof, continue the conversation, and track manual approval updates.',
             warning: response.ticketWarning ?? null,
-            eyebrow: response.ticketAutoCreated ? 'Ticket Auto Opened' : 'Payment Ticket Ready',
+            eyebrow: response.ticketAutoCreated ? 'Ticket Auto Opened' : 'Support Ticket Ready',
         };
     }
 
@@ -528,6 +562,7 @@ export default () => {
     const [submitting, setSubmitting] = useState(false);
     const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<number | null>(null);
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
+    const [retryingInvoiceId, setRetryingInvoiceId] = useState<number | null>(null);
     const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<number | null>(null);
     const [subscriptionsPage, setSubscriptionsPage] = useState(1);
     const [invoicesPage, setInvoicesPage] = useState(1);
@@ -784,7 +819,7 @@ export default () => {
     const getGamesForNest = (nestId: number): BillingGame[] =>
         (selectedNode?.games || []).filter((game) => game.nestId === nestId);
 
-    const onBillingFieldChange = <K extends keyof typeof billingForm>(key: K, value: (typeof billingForm)[K]) =>
+    const onBillingFieldChange = <K extends keyof typeof billingForm>(key: K, value: typeof billingForm[K]) =>
         setBillingForm((current) => ({ ...current, [key]: value }));
 
     const writeCurrentCheckoutDraft = () => {
@@ -812,6 +847,17 @@ export default () => {
     const clearPendingCheckoutResume = () => {
         pendingCheckoutResumeAction.current = null;
         writeBillingPendingAction(null);
+    };
+
+    const continueHostedCheckout = (checkout: BillingCheckout | null | undefined): boolean => {
+        if (!beginHostedCheckout(checkout)) {
+            return false;
+        }
+
+        clearPendingCheckoutResume();
+        writeBillingCheckoutDraft(null);
+
+        return true;
     };
 
     const requestCheckoutGate = async (action: () => Promise<void>, options?: BillingCheckoutGateOptions) => {
@@ -979,9 +1025,18 @@ export default () => {
                 diskGb,
                 variables,
             });
-            const returnTo = response.invoice?.id
-                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets?view=chat';
+
+            if (!response.autoSettled && !response.manualPaymentRequired && response.checkout?.url) {
+                if (continueHostedCheckout(response.checkout)) {
+                    void mutateCatalog();
+                    void mutateOrders();
+                    void mutateInvoices();
+                    void mutateBillingProfile();
+                    return;
+                }
+            }
+
+            const returnTo = '/tickets?view=tickets';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
 
@@ -1042,9 +1097,16 @@ export default () => {
 
         try {
             const response = await renewBillingSubscription(subscriptionId);
-            const returnTo = response.invoice?.id
-                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets?view=chat';
+
+            if (!response.autoSettled && !response.manualPaymentRequired && response.checkout?.url) {
+                if (continueHostedCheckout(response.checkout)) {
+                    void mutateSubscriptions();
+                    void mutateInvoices();
+                    return;
+                }
+            }
+
+            const returnTo = '/tickets?view=tickets';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
             addFlash({
@@ -1109,9 +1171,17 @@ export default () => {
                     2
                 )
             );
-            const returnTo = response.invoice?.id
-                ? `/tickets?view=tickets&compose=payment&invoiceId=${response.invoice.id}`
-                : '/tickets?view=chat';
+
+            if (!response.autoSettled && !response.manualPaymentRequired && response.checkout?.url) {
+                if (continueHostedCheckout(response.checkout)) {
+                    void mutateSubscriptions();
+                    void mutateCatalog();
+                    void mutateInvoices();
+                    return;
+                }
+            }
+
+            const returnTo = '/tickets?view=tickets';
             const action = buildFollowUpAction(response, returnTo);
             setFollowUpAction(action);
 
@@ -1165,6 +1235,22 @@ export default () => {
             clearAndAddHttpError(error as Error);
         } finally {
             setUpgradingSubscriptionId(null);
+        }
+    };
+
+    const performRetryInvoicePayment = async (invoiceId: number) => {
+        clearFlashes();
+        setRetryingInvoiceId(invoiceId);
+
+        try {
+            const checkout = await retryBillingInvoicePayment(invoiceId);
+            if (checkout?.url) {
+                beginHostedCheckout(checkout);
+            }
+        } catch (error) {
+            clearAndAddHttpError(error as Error);
+        } finally {
+            setRetryingInvoiceId(null);
         }
     };
 
@@ -1534,18 +1620,18 @@ export default () => {
         const progressWidth = `${(((currentPlanStepIndex + 1) / PLAN_WIZARD_STEP_ORDER.length) * 100).toFixed(2)}%`;
 
         return (
-            <div className={'grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px_minmax(0,1fr)]'}>
+            <div className={'billing-wizard-nav-grid grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px_minmax(0,1fr)]'}>
                 <button
                     type={'button'}
                     disabled={!previousStepContent}
                     onClick={goToPreviousPlanStep}
                     className={
-                        'flex min-w-0 items-center gap-3 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-4 text-left transition-all duration-200 hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[rgba(255,255,255,0.08)] disabled:hover:bg-[rgba(255,255,255,0.02)]'
+                        'billing-wizard-prev-btn flex min-w-0 items-center gap-3 rounded-[12px] border-2 border-[#2D4A3E] bg-[#FEF9E1] px-4 py-4 text-left transition-all duration-150 shadow-[4px_4px_0px_0px_#2D4A3E] hover:shadow-[6px_6px_0px_0px_#2D4A3E] hover:-translate-x-0.5 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:shadow-[4px_4px_0px_0px_#2D4A3E] disabled:hover:translate-x-0 disabled:hover:translate-y-0'
                     }
                 >
                     <span
                         className={
-                            'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[color:var(--primary)]'
+                            'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#2D4A3E] bg-[#F5EFD5] text-[#742220]'
                         }
                     >
                         <svg
@@ -1571,7 +1657,7 @@ export default () => {
                         >
                             Previous
                         </p>
-                        <p className={'mt-2 truncate text-sm font-black text-[#f8f6ef]'}>
+                        <p className={'mt-2 truncate text-sm font-black text-[#742220]'}>
                             {previousStepContent?.title || 'Start Here'}
                         </p>
                         <p
@@ -1586,18 +1672,18 @@ export default () => {
 
                 <div
                     className={
-                        'rounded-[20px] border border-[rgba(var(--primary-rgb),0.26)] bg-[linear-gradient(160deg,rgba(var(--primary-rgb),0.18),rgba(var(--primary-rgb),0.05))] px-4 py-4 text-center shadow-[0_0_24px_rgba(var(--primary-rgb),0.12)]'
+                        'billing-wizard-current-card rounded-[12px] border-2 border-[#742220] bg-[#FEF9E1] px-4 py-4 text-center shadow-[4px_4px_0px_0px_#742220]'
                     }
                 >
                     <p className={'text-[10px] font-bold uppercase tracking-[0.3em] text-[color:var(--primary)]'}>
                         {currentPlanStepContent.eyebrow} of {PLAN_WIZARD_STEP_ORDER.length}
                     </p>
-                    <p className={'mt-2 text-base font-black tracking-tight text-[#f8f6ef]'}>
+                    <p className={'mt-2 text-base font-black tracking-tight text-[#742220]'}>
                         {currentPlanStepContent.title}
                     </p>
-                    <div className={'mt-4 h-2 overflow-hidden rounded-full bg-[rgba(var(--primary-rgb),0.14)]'}>
+                    <div className={'mt-4 h-2 overflow-hidden rounded-full bg-[#EDE6D0]'}>
                         <div
-                            className={'h-full rounded-full bg-[color:var(--primary)] transition-all duration-300'}
+                            className={'h-full rounded-full bg-[#742220] transition-all duration-300'}
                             style={{ width: progressWidth }}
                         />
                     </div>
@@ -1608,7 +1694,7 @@ export default () => {
                         type={'button'}
                         onClick={() => void goToNextPlanStep()}
                         className={
-                            'flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-4 text-left transition-all duration-200 hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)]'
+                            'billing-wizard-next-btn flex min-w-0 items-center justify-between gap-3 rounded-[12px] border-2 border-[#2D4A3E] bg-[#FEF9E1] px-4 py-4 text-left transition-all duration-150 shadow-[4px_4px_0px_0px_#2D4A3E] hover:shadow-[6px_6px_0px_0px_#2D4A3E] hover:-translate-x-0.5 hover:-translate-y-0.5'
                         }
                     >
                         <div className={'min-w-0'}>
@@ -1619,7 +1705,7 @@ export default () => {
                             >
                                 Next
                             </p>
-                            <p className={'mt-2 truncate text-sm font-black text-[#f8f6ef]'}>{nextStepContent.title}</p>
+                            <p className={'mt-2 truncate text-sm font-black text-[#742220]'}>{nextStepContent.title}</p>
                             <p
                                 className={
                                     'mt-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
@@ -1630,7 +1716,7 @@ export default () => {
                         </div>
                         <span
                             className={
-                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(var(--primary-rgb),0.28)] bg-[rgba(var(--primary-rgb),0.12)] text-[color:var(--primary)]'
+                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#2D4A3E] bg-[#F5EFD5] text-[#742220]'
                             }
                         >
                             <svg
@@ -1652,21 +1738,29 @@ export default () => {
                 ) : (
                     <div
                         className={
-                            'flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-left'
+                            'billing-wizard-next-btn flex min-w-0 items-center justify-between gap-3 rounded-[12px] border-2 border-[#2D4A3E] bg-[#FEF9E1] px-4 py-4 text-left shadow-[4px_4px_0px_0px_#2D4A3E]'
                         }
                     >
                         <div className={'min-w-0'}>
-                            <p className={'text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-200/70'}>
+                            <p
+                                className={
+                                    'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
                                 Final Step
                             </p>
-                            <p className={'mt-2 truncate text-sm font-black text-emerald-100'}>Ready To Checkout</p>
-                            <p className={'mt-1 text-[11px] uppercase tracking-[0.18em] text-emerald-200/70'}>
+                            <p className={'mt-2 truncate text-sm font-black text-[#742220]'}>Ready To Checkout</p>
+                            <p
+                                className={
+                                    'mt-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
                                 Create Invoice
                             </p>
                         </div>
                         <span
                             className={
-                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-400/15 text-emerald-100'
+                                'inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#2D4A3E] bg-[#F5EFD5] text-[#742220]'
                             }
                         >
                             <svg
@@ -1867,7 +1961,7 @@ export default () => {
                     <>
                         <div className={'mb-4 flex flex-wrap items-center justify-between gap-3'}>
                             <div>
-                                <h2 className={'text-xl font-black tracking-tight text-[#f8f6ef]'}>Plan Resources</h2>
+                                <h2 className={'text-xl font-black tracking-tight text-[#742220]'}>Plan Resources</h2>
                                 <p className={'mt-1 text-xs text-[color:var(--muted-foreground)]'}>
                                     RAM and storage are tied to live billing stock on the selected node.
                                 </p>
@@ -1927,7 +2021,7 @@ export default () => {
                         {soldOutReason ? (
                             <div
                                 className={
-                                    'mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                                    'mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-800'
                                 }
                             >
                                 {soldOutReason}
@@ -1973,18 +2067,34 @@ export default () => {
                     <>
                         {currentBillingComplete ? (
                             <div
-                                className={
-                                    'mb-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100'
-                                }
+                                style={{
+                                    marginBottom: '1.25rem',
+                                    borderRadius: '16px',
+                                    border: '2px solid #2D4A3E',
+                                    background: 'rgba(45, 74, 62, 0.10)',
+                                    padding: '10px 16px',
+                                    fontSize: '13px',
+                                    color: '#2D4A3E',
+                                    fontWeight: 600,
+                                    boxShadow: '2px 2px 0px 0px #2D4A3E',
+                                }}
                             >
                                 Billing details are complete. You can still edit anything below before moving to the
                                 summary step.
                             </div>
                         ) : (
                             <div
-                                className={
-                                    'mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-                                }
+                                style={{
+                                    marginBottom: '1.25rem',
+                                    borderRadius: '16px',
+                                    border: '2px solid rgba(116, 34, 32, 0.40)',
+                                    background: 'rgba(116, 34, 32, 0.07)',
+                                    padding: '10px 16px',
+                                    fontSize: '13px',
+                                    color: '#742220',
+                                    fontWeight: 600,
+                                    boxShadow: '2px 2px 0px 0px rgba(116, 34, 32, 0.30)',
+                                }}
                             >
                                 Missing right now: {currentBillingMissingLabels}.
                             </div>
@@ -1997,7 +2107,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Legal Name
+                                    Legal Name <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'name'}
@@ -2011,7 +2121,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Invoice Email
+                                    Invoice Email <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'email'}
@@ -2026,7 +2136,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Phone
+                                    Phone <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'tel'}
@@ -2057,7 +2167,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Address Line 1
+                                    Address Line 1 <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'address-line1'}
@@ -2089,7 +2199,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    City
+                                    City <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'address-level2'}
@@ -2103,7 +2213,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    State
+                                    State <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'address-level1'}
@@ -2117,7 +2227,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Postcode
+                                    Postcode <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     autoComplete={'postal-code'}
@@ -2132,7 +2242,7 @@ export default () => {
                                         'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
                                     }
                                 >
-                                    Country Code
+                                    Country Code <span style={{ color: '#742220' }}>*</span>
                                 </label>
                                 <Input
                                     maxLength={2}
@@ -2143,24 +2253,9 @@ export default () => {
                                     }
                                 />
                             </div>
-                            <div>
-                                <label
-                                    className={
-                                        'mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
-                                    }
-                                >
-                                    Tax ID
-                                </label>
-                                <Input
-                                    value={billingForm.taxId ?? ''}
-                                    onChange={(event) =>
-                                        onBillingFieldChange('taxId', event.currentTarget.value || null)
-                                    }
-                                />
-                            </div>
                             <label
                                 className={
-                                    'md:col-span-2 flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-gray-200'
+                                    'md:col-span-2 flex items-center gap-3 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-3 text-sm text-[rgba(116,34,32,0.70)]'
                                 }
                             >
                                 <input
@@ -2305,7 +2400,7 @@ export default () => {
                         </div>
                         <div
                             className={
-                                'mt-6 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-[color:var(--muted-foreground)]'
+                                'mt-6 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-3 text-sm text-[color:var(--muted-foreground)]'
                             }
                         >
                             Checkout creates a manual invoice immediately. Provisioning starts only after billing staff
@@ -2348,7 +2443,7 @@ export default () => {
                         >
                             Live Preview
                         </p>
-                        <h2 className={'mt-1 text-lg font-black tracking-tight text-[#f8f6ef] xl:text-[1.05rem]'}>
+                        <h2 className={'mt-1 text-lg font-black tracking-tight text-[#742220] xl:text-[1.05rem]'}>
                             {serverName.trim() || selectedGame?.displayName || 'Plan Preview'}
                         </h2>
                         <p className={'mt-1 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
@@ -2358,7 +2453,7 @@ export default () => {
                     </div>
                     <div
                         className={
-                            'rounded-2xl border border-[rgba(var(--primary-rgb),0.42)] bg-[rgba(var(--primary-rgb),0.14)] px-3 py-2 text-right'
+                            'rounded-xl border-2 border-[#742220] bg-[#FEF9E1] px-3 py-2 text-right shadow-[2px_2px_0px_0px_#742220]'
                         }
                     >
                         <p
@@ -2384,7 +2479,7 @@ export default () => {
                             vCore
                         </p>
                         <div className={'mt-1.5 flex items-center justify-between gap-3'}>
-                            <strong className={'text-sm text-[#f8f6ef]'}>{cpuCores} vCore</strong>
+                            <strong className={'text-sm text-[#742220]'}>{cpuCores} vCore</strong>
                         </div>
                         <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
                             {formatMoney(cpuTotal)}
@@ -2399,7 +2494,7 @@ export default () => {
                             RAM
                         </p>
                         <div className={'mt-1.5 flex items-center justify-between gap-3'}>
-                            <strong className={'text-sm text-[#f8f6ef]'}>{memoryGb} GB</strong>
+                            <strong className={'text-sm text-[#742220]'}>{memoryGb} GB</strong>
                         </div>
                         <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
                             {formatMoney(memoryTotal)}
@@ -2414,7 +2509,7 @@ export default () => {
                             Storage
                         </p>
                         <div className={'mt-1.5 flex items-center justify-between gap-3'}>
-                            <strong className={'text-sm text-[#f8f6ef]'}>{diskGb} GB</strong>
+                            <strong className={'text-sm text-[#742220]'}>{diskGb} GB</strong>
                         </div>
                         <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
                             {formatMoney(diskTotal)} {'•'} {diskUnits} x 10 GB block
@@ -2432,49 +2527,49 @@ export default () => {
                         <div className={'mt-2.5 grid gap-2 text-[12px]'}>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Allocations</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.allocationLimit ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Databases</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.databaseLimit ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Backups</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.backupLimit ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Split Limit</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.splitLimit ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Swap</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode ? `${selectedNode.defaults.swapMb} MB` : '0 MB'}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>IO Weight</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.ioWeight ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>OOM Killer</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.oomDisabled ? 'Disabled' : 'Enabled'}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Start On Completion</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.defaults.startOnCompletion ? 'Yes' : 'No'}
                                 </span>
                             </div>
@@ -2503,13 +2598,13 @@ export default () => {
                         <div className={'mt-2.5 grid gap-2 text-[12px]'}>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Max vCore / Order</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.limits.maxCpu ?? 0}
                                 </span>
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>RAM Remaining</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.showRemainingCapacity
                                         ? `${selectedNode.availability.memoryRemainingGb} GB`
                                         : 'Hidden'}
@@ -2517,7 +2612,7 @@ export default () => {
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Storage Remaining</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.showRemainingCapacity
                                         ? `${selectedNode.availability.diskRemainingGb} GB`
                                         : 'Hidden'}
@@ -2525,7 +2620,7 @@ export default () => {
                             </div>
                             <div className={'flex items-center justify-between gap-3'}>
                                 <span className={'text-[color:var(--muted-foreground)]'}>Free Allocations</span>
-                                <span className={'font-semibold text-[#f8f6ef]'}>
+                                <span className={'font-semibold text-[#742220]'}>
                                     {selectedNode?.availability.freeAllocations ?? 0}
                                 </span>
                             </div>
@@ -2542,7 +2637,7 @@ export default () => {
                 {soldOutReason ? (
                     <div
                         className={
-                            'mt-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-100'
+                            'mt-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-800'
                         }
                     >
                         {soldOutReason}
@@ -2596,13 +2691,13 @@ export default () => {
                 <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)] lg:grid-cols-2'}>
                     <div className={'flex items-center justify-between gap-3'}>
                         <span>Due At</span>
-                        <span className={'font-semibold text-[#f8f6ef]'}>
+                        <span className={'font-semibold text-[#742220]'}>
                             {invoice.dueAt ? invoice.dueAt.toLocaleString() : 'Unknown'}
                         </span>
                     </div>
                     <div className={'flex items-center justify-between gap-3'}>
                         <span>Paid At</span>
-                        <span className={'font-semibold text-[#f8f6ef]'}>
+                        <span className={'font-semibold text-[#742220]'}>
                             {invoice.paidAt ? invoice.paidAt.toLocaleString() : 'Not paid yet'}
                         </span>
                     </div>
@@ -2614,14 +2709,14 @@ export default () => {
                     </div>
                     <div className={'flex items-center justify-between gap-3'}>
                         <span>Provider</span>
-                        <span className={'font-semibold text-[#f8f6ef]'}>
+                        <span className={'font-semibold text-[#742220]'}>
                             {invoice.provider ? invoice.provider.toUpperCase() : 'Manual'}
                         </span>
                     </div>
                     {receiptMode && latestPayment && (
                         <div className={'flex items-center justify-between gap-3'}>
                             <span>Payment Method</span>
-                            <span className={'font-semibold text-[#f8f6ef]'}>
+                            <span className={'font-semibold text-[#742220]'}>
                                 {latestPayment.paymentMethodBrand && latestPayment.paymentMethodLast4
                                     ? `${latestPayment.paymentMethodBrand.toUpperCase()} •••• ${
                                           latestPayment.paymentMethodLast4
@@ -2633,7 +2728,7 @@ export default () => {
                     {invoice.providerStatus && (
                         <div className={'flex items-center justify-between gap-3'}>
                             <span>Gateway Status</span>
-                            <span className={'font-semibold text-[#f8f6ef]'}>
+                            <span className={'font-semibold text-[#742220]'}>
                                 {getOrderStatusLabel(invoice.providerStatus)}
                             </span>
                         </div>
@@ -2648,10 +2743,10 @@ export default () => {
                     )}
                 </div>
 
-                {!receiptMode && !latestPayment && !invoice.paidAt && (
+                {!receiptMode && !latestPayment && !invoice.paidAt && invoice.provider === 'manual' && (
                     <div
                         className={
-                            'mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100'
+                            'mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-800'
                         }
                     >
                         Waiting for billing admin to confirm manual payment before this invoice can be marked paid.
@@ -2660,9 +2755,13 @@ export default () => {
 
                 <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                     {!receiptMode && canRetryPayment && (
-                        <span className={'text-xs leading-6 text-amber-200'}>
-                            Online retry is unavailable while manual billing mode is active.
-                        </span>
+                        <button
+                            className={'billing-primary-btn'}
+                            disabled={retryingInvoiceId === invoice.id}
+                            onClick={() => void performRetryInvoicePayment(invoice.id)}
+                        >
+                            {retryingInvoiceId === invoice.id ? 'Redirecting...' : 'Pay Now'}
+                        </button>
                     )}
                     {invoice.hostedInvoiceUrl && !receiptMode && (
                         <a href={invoice.hostedInvoiceUrl} className={'billing-secondary-btn'}>
@@ -2732,25 +2831,25 @@ export default () => {
             <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)] lg:grid-cols-2'}>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Resources</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {order.cpuCores} vCore / {order.memoryGb} GB / {order.diskGb} GB
                     </span>
                 </div>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Placed</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {order.createdAt ? order.createdAt.toLocaleString() : 'Unknown'}
                     </span>
                 </div>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Payment Verified</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {order.paymentVerifiedAt ? order.paymentVerifiedAt.toLocaleString() : 'Pending'}
                     </span>
                 </div>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Provisioned</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {order.provisionedAt ? order.provisionedAt.toLocaleString() : 'Not provisioned yet'}
                     </span>
                 </div>
@@ -2792,7 +2891,7 @@ export default () => {
         <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
             <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                 <div>
-                    <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>{title}</h2>
+                    <h2 className={'text-2xl font-black tracking-tight text-[#742220]'}>{title}</h2>
                     <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>{copy}</p>
                 </div>
                 {items.length > 0 ? (
@@ -2825,11 +2924,7 @@ export default () => {
 
     if (currentSection === 'plan' && !catalog && catalogLoading) {
         return (
-            <div
-                className={
-                    'min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(var(--primary-rgb),0.08),transparent_40%),linear-gradient(180deg,rgba(var(--background-rgb),1),rgba(var(--background-rgb),0.985))] px-6 py-8 text-[color:var(--foreground)] md:px-10'
-                }
-            >
+            <div className={'min-h-screen bg-[#D6D2C7] px-6 py-8 text-[#742220] md:px-10'}>
                 <Spinner centered size={Spinner.Size.LARGE} />
             </div>
         );
@@ -2851,44 +2946,28 @@ export default () => {
                     -webkit-overflow-scrolling: touch;
                     display: flex;
                     flex-direction: column;
-                    background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
-                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
+                    background: #D6D2C7;
                     font-family: var(--font-sans, 'Inter', sans-serif);
+                    --surface-elevated: #FEF9E1;
+                    --surface-border: #C8BCA0;
+                    --surface-subtle: #F5EFD5;
+                    --surface-subtle-strong: #EDE6D0;
                 }
 
                 .billing-shell::before {
                     content: '';
-                    position: absolute;
+                    position: fixed;
                     inset: 0;
                     pointer-events: none;
-                    background:
-                        repeating-linear-gradient(
-                            90deg,
-                            rgba(var(--primary-rgb), 0.02) 0,
-                            rgba(var(--primary-rgb), 0.02) 1px,
-                            transparent 1px,
-                            transparent 40px
-                        );
-                    opacity: 0.1;
+                    z-index: 9999;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
                 }
 
                 .billing-shell::after {
-                    content: '';
-                    position: absolute;
-                    left: 50%;
-                    top: -18%;
-                    width: min(1120px, 96vw);
-                    height: 110%;
-                    transform: translateX(-50%);
-                    pointer-events: none;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 0.05) 0%,
-                        rgba(var(--primary-rgb), 0.015) 42%,
-                        transparent 72%
-                    );
+                    display: none;
                 }
 
                 .billing-wrap {
@@ -2979,25 +3058,23 @@ export default () => {
 
                 .billing-choice-card {
                     width: 100%;
-                    border-radius: 20px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.03), rgba(var(--primary-rgb), 0.012) 54%),
-                        var(--surface-elevated);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 1.15rem;
                     text-align: left;
-                    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
                 }
 
                 .billing-choice-card:hover:not(:disabled) {
-                    transform: translateY(-1px);
-                    border-color: rgba(var(--primary-rgb), 0.26);
-                    box-shadow: 0 0 26px rgba(var(--primary-rgb), 0.08);
+                    transform: translate(-2px, -2px);
+                    box-shadow: 6px 6px 0px 0px #2D4A3E;
                 }
 
                 .billing-choice-card-selected {
-                    border-color: rgba(var(--primary-rgb), 0.4);
-                    box-shadow: 0 0 30px rgba(var(--primary-rgb), 0.12);
+                    border-color: #742220;
+                    box-shadow: 4px 4px 0px 0px #742220;
                 }
 
                 .billing-choice-card-disabled {
@@ -3008,14 +3085,14 @@ export default () => {
                 .billing-choice-title {
                     font-size: 1rem;
                     font-weight: 900;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-choice-copy {
                     margin-top: 0.45rem;
                     font-size: 0.86rem;
                     line-height: 1.7;
-                    color: rgba(174, 183, 194, 0.82);
+                    color: rgba(116, 34, 32, 0.55);
                 }
 
                 .billing-choice-meta-grid {
@@ -3026,9 +3103,9 @@ export default () => {
                 }
 
                 .billing-choice-meta-grid > div {
-                    border-radius: 14px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 0.75rem;
                 }
 
@@ -3038,14 +3115,14 @@ export default () => {
                     font-weight: 800;
                     letter-spacing: 0.16em;
                     text-transform: uppercase;
-                    color: rgba(174, 183, 194, 0.7);
+                    color: rgba(116, 34, 32, 0.50);
                 }
 
                 .billing-choice-meta-grid strong {
                     display: block;
                     margin-top: 0.35rem;
                     font-size: 0.92rem;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-plan-footer {
@@ -3062,26 +3139,26 @@ export default () => {
                     gap: 0.9rem;
                     margin-top: 0;
                     padding-top: 1.25rem;
-                    border-top: 1px solid var(--surface-border);
+                    border-top: 1px solid #C8BCA0;
                 }
 
                 .billing-step-row {
                     display: flex;
                     align-items: flex-start;
                     gap: 0.85rem;
-                    border-radius: 18px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 0.85rem 0.9rem;
                 }
 
                 .billing-step-row-active {
-                    border-color: rgba(var(--primary-rgb), 0.34);
-                    background: rgba(var(--primary-rgb), 0.08);
+                    border-color: #742220;
+                    background: rgba(116, 34, 32, 0.06);
                 }
 
                 .billing-step-row-complete {
-                    box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.08);
+                    box-shadow: inset 0 0 0 1px rgba(116, 34, 32, 0.08);
                 }
 
                 .billing-step-index {
@@ -3092,17 +3169,17 @@ export default () => {
                     align-items: center;
                     justify-content: center;
                     border-radius: 999px;
-                    border: 1px solid rgba(var(--primary-rgb), 0.28);
-                    background: rgba(var(--primary-rgb), 0.12);
+                    border: 2px solid #2D4A3E;
+                    background: #F5EFD5;
                     font-size: 0.75rem;
                     font-weight: 900;
-                    color: var(--primary);
+                    color: #742220;
                 }
 
                 .billing-step-label {
                     font-size: 0.9rem;
                     font-weight: 800;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-step-copy {
@@ -3110,7 +3187,7 @@ export default () => {
                     font-size: 0.72rem;
                     letter-spacing: 0.08em;
                     text-transform: uppercase;
-                    color: rgba(174, 183, 194, 0.72);
+                    color: rgba(116, 34, 32, 0.50);
                 }
 
                 .billing-summary-grid {
@@ -3123,26 +3200,22 @@ export default () => {
                     align-items: center;
                     justify-content: space-between;
                     gap: 1rem;
-                    border-radius: 14px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 0.85rem 0.95rem;
-                    color: rgba(174, 183, 194, 0.82);
+                    color: rgba(116, 34, 32, 0.55);
                 }
 
                 .billing-summary-row strong {
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-panel {
-                    border-radius: 22px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.012) 50%),
-                        var(--surface-elevated);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        0 24px 38px -32px rgba(0, 0, 0, 0.86);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .billing-status {
@@ -3151,33 +3224,33 @@ export default () => {
                 }
 
                 .billing-status-active {
-                    border-color: rgba(16, 185, 129, 0.35);
+                    border-color: rgba(16, 185, 129, 0.45);
                     background: rgba(16, 185, 129, 0.15);
-                    color: rgb(167 243 208);
+                    color: #166534;
                 }
 
                 .billing-status-provisioning {
-                    border-color: rgba(56, 189, 248, 0.35);
-                    background: rgba(56, 189, 248, 0.13);
-                    color: rgb(186 230 253);
+                    border-color: rgba(56, 189, 248, 0.45);
+                    background: rgba(56, 189, 248, 0.14);
+                    color: #0369a1;
                 }
 
                 .billing-status-suspended {
-                    border-color: rgba(245, 158, 11, 0.35);
-                    background: rgba(245, 158, 11, 0.13);
-                    color: rgb(254 215 170);
+                    border-color: rgba(245, 158, 11, 0.45);
+                    background: rgba(245, 158, 11, 0.14);
+                    color: #92400e;
                 }
 
                 .billing-status-rejected {
-                    border-color: rgba(239, 68, 68, 0.35);
+                    border-color: rgba(239, 68, 68, 0.45);
                     background: rgba(239, 68, 68, 0.14);
-                    color: rgb(252 165 165);
+                    color: #991b1b;
                 }
 
                 .billing-status-deleted {
-                    border-color: rgba(115, 115, 115, 0.35);
+                    border-color: rgba(115, 115, 115, 0.45);
                     background: rgba(115, 115, 115, 0.14);
-                    color: rgb(212 212 212);
+                    color: #525252;
                 }
 
                 .billing-primary-btn,
@@ -3198,40 +3271,43 @@ export default () => {
                 }
 
                 .billing-primary-btn {
-                    border-color: rgba(var(--primary-rgb), 0.4);
-                    background: linear-gradient(100deg, rgba(var(--primary-rgb), 0.95), rgba(var(--primary-rgb), 0.74));
-                    color: rgb(10 13 16);
-                    box-shadow: 0 0 26px rgba(var(--primary-rgb), 0.24);
+                    border-color: #5a1a18;
+                    border-width: 2px;
+                    background: #742220;
+                    color: #FEF9E1;
+                    box-shadow: 3px 3px 0px 0px #5a1a18;
                 }
 
                 .billing-primary-btn:hover:not(:disabled) {
-                    transform: translateY(-1px);
-                    filter: brightness(1.05);
-                    box-shadow: 0 0 32px rgba(var(--primary-rgb), 0.32);
+                    transform: translate(-1px, -1px);
+                    filter: none;
+                    box-shadow: 5px 5px 0px 0px #5a1a18;
                 }
 
                 .billing-secondary-btn {
-                    border-color: var(--surface-border);
-                    background: var(--surface-subtle-strong);
-                    color: rgba(248, 246, 239, 0.92);
+                    border-color: #2D4A3E;
+                    border-width: 2px;
+                    background: #F5EFD5;
+                    color: #2D4A3E;
                 }
 
                 .billing-secondary-btn:hover:not(:disabled) {
-                    border-color: rgba(var(--primary-rgb), 0.34);
-                    background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.24), rgba(var(--primary-rgb), 0.08));
-                    color: #eff7dc;
+                    border-color: #2D4A3E;
+                    background: #E5F0EB;
+                    color: #1F3A30;
                 }
 
                 .billing-ghost-btn {
-                    border-color: var(--surface-border);
+                    border-color: #C8BCA0;
+                    border-width: 2px;
                     background: transparent;
-                    color: rgba(174, 183, 194, 0.9);
+                    color: rgba(116, 34, 32, 0.60);
                 }
 
                 .billing-ghost-btn:hover:not(:disabled) {
-                    border-color: rgba(var(--primary-rgb), 0.34);
-                    color: rgba(248, 246, 239, 0.95);
-                    background: rgba(var(--primary-rgb), 0.08);
+                    border-color: #2D4A3E;
+                    color: #742220;
+                    background: rgba(45, 74, 62, 0.08);
                 }
 
                 .billing-primary-btn:disabled,
@@ -3242,11 +3318,11 @@ export default () => {
                 }
 
                 .billing-slider-card {
-                    border-radius: 18px;
-                    border: 1px solid var(--surface-border);
-                    background: linear-gradient(165deg, rgba(var(--primary-rgb), 0.025), rgba(var(--primary-rgb), 0.01) 50%),
-                        var(--surface-elevated);
+                    border-radius: 8px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 16px;
+                    box-shadow: 3px 3px 0px 0px #2D4A3E;
                 }
 
                 .billing-slider-value {
@@ -3256,12 +3332,12 @@ export default () => {
                     align-items: center;
                     justify-content: center;
                     border-radius: 999px;
-                    border: 1px solid rgba(var(--primary-rgb), 0.44);
-                    background: rgba(var(--primary-rgb), 0.16);
+                    border: 2px solid #2D4A3E;
+                    background: #F5EFD5;
                     padding: 0 10px;
                     font-size: 0.9rem;
                     font-weight: 900;
-                    color: var(--primary);
+                    color: #742220;
                     text-align: center;
                     appearance: textfield;
                     outline: none;
@@ -3274,51 +3350,101 @@ export default () => {
                     -webkit-appearance: none;
                 }
 
+                .billing-slider-input::-webkit-slider-runnable-track {
+                    height: 8px;
+                    border-radius: 999px;
+                    background: linear-gradient(
+                        90deg,
+                        #742220 0%,
+                        #742220 var(--track-pct, 0%),
+                        #C8BCA0 var(--track-pct, 0%),
+                        #C8BCA0 100%
+                    );
+                }
+
+                .billing-slider-input::-moz-range-track {
+                    height: 8px;
+                    border-radius: 999px;
+                    background: linear-gradient(
+                        90deg,
+                        #742220 0%,
+                        #742220 var(--track-pct, 0%),
+                        #C8BCA0 var(--track-pct, 0%),
+                        #C8BCA0 100%
+                    );
+                }
+
+                .billing-slider-input::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    width: 20px;
+                    height: 20px;
+                    margin-top: -6px;
+                    border-radius: 999px;
+                    background: #742220;
+                    border: 2px solid #5a1a18;
+                    box-shadow: 2px 2px 0px 0px #5a1a18;
+                    cursor: pointer;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+
+                .billing-slider-input::-webkit-slider-thumb:hover {
+                    transform: scale(1.15);
+                    box-shadow: 3px 3px 0px 0px #5a1a18;
+                }
+
+                .billing-slider-input::-moz-range-thumb {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 999px;
+                    background: #742220;
+                    border: 2px solid #5a1a18;
+                    box-shadow: 2px 2px 0px 0px #5a1a18;
+                    cursor: pointer;
+                }
+
                 .billing-subscription-card {
-                    border-radius: 20px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.03), rgba(var(--primary-rgb), 0.012) 54%),
-                        var(--surface-elevated);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 1.25rem;
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                        0 20px 34px -28px rgba(0, 0, 0, 0.85);
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .billing-subscription-title {
                     font-size: 1.45rem;
                     font-weight: 900;
                     letter-spacing: 0.01em;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-upgrade-panel {
                     margin-top: 1.25rem;
-                    border-radius: 18px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 1.25rem;
                 }
 
                 .billing-upgrade-summary {
                     margin-top: 1.25rem;
-                    border-radius: 14px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 1rem;
                 }
 
                 .billing-variable-card {
-                    border-radius: 14px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-elevated);
+                    border-radius: 8px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     overflow: hidden;
+                    box-shadow: 3px 3px 0px 0px #2D4A3E;
                 }
 
                 .billing-variable-head {
-                    border-bottom: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-bottom: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 0.65rem 0.8rem;
                 }
 
@@ -3330,13 +3456,13 @@ export default () => {
                     letter-spacing: 0.08em;
                     text-transform: uppercase;
                     font-weight: 800;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-variable-badge {
                     border-radius: 999px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle-strong);
+                    border: 1px solid #C8BCA0;
+                    background: #EDE6D0;
                     padding: 0.14rem 0.52rem;
                     font-size: 0.6rem;
                     font-weight: 800;
@@ -3345,45 +3471,44 @@ export default () => {
 
                 .billing-variable-body {
                     padding: 0.85rem;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-chip {
                     border-radius: 999px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle-strong);
+                    border: 1px solid #C8BCA0;
+                    background: #EDE6D0;
                     padding: 0.5rem 0.9rem;
                     font-size: 11px;
                     font-weight: 800;
                     letter-spacing: 0.18em;
                     text-transform: uppercase;
-                    color: rgba(174, 183, 194, 0.82);
+                    color: rgba(116, 34, 32, 0.60);
                 }
 
                 .billing-soft-card {
-                    border-radius: 14px;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle);
+                    border-radius: 8px;
+                    border: 1px solid #C8BCA0;
+                    background: #F5EFD5;
                     padding: 0.95rem;
                 }
 
                 .billing-empty-card {
                     border-radius: 16px;
-                    border: 1px dashed rgba(var(--primary-rgb), 0.22);
+                    border: 1px dashed rgba(116, 34, 32, 0.22);
                     background: var(--surface-subtle);
                     padding: 1.5rem 1rem;
                     text-align: center;
                     font-size: 0.88rem;
-                    color: rgba(174, 183, 194, 0.82);
+                    color: rgba(116, 34, 32, 0.55);
                 }
 
                 .billing-order-card {
-                    border-radius: 18px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.028), rgba(var(--primary-rgb), 0.01) 54%),
-                        var(--surface-elevated);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 1.1rem;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .billing-pagination-top {
@@ -3401,12 +3526,12 @@ export default () => {
 
                 .billing-pagination-copy {
                     font-size: 0.875rem;
-                    color: rgb(163 163 163);
+                    color: rgba(116, 34, 32, 0.50);
                 }
 
                 .billing-pagination-value {
                     font-weight: 700;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-pagination-actions {
@@ -3421,19 +3546,19 @@ export default () => {
                     height: 2.2rem;
                     align-items: center;
                     justify-content: center;
-                    border-radius: 0.85rem;
-                    border: 1px solid var(--surface-border);
-                    background: var(--surface-subtle-strong);
-                    color: rgba(248, 246, 239, 0.86);
+                    border-radius: 8px;
+                    border: 2px solid #C8BCA0;
+                    background: #EDE6D0;
+                    color: rgba(116, 34, 32, 0.70);
                     font-size: 0.82rem;
                     font-weight: 800;
-                    transition: all 0.2s ease;
+                    transition: all 0.15s ease;
                 }
 
                 .billing-page-btn:hover:not(:disabled) {
-                    border-color: rgba(var(--primary-rgb), 0.34);
-                    background: rgba(var(--primary-rgb), 0.12);
-                    color: #f8f6ef;
+                    border-color: #2D4A3E;
+                    background: #F5EFD5;
+                    color: #742220;
                 }
 
                 .billing-page-btn:disabled {
@@ -3442,22 +3567,18 @@ export default () => {
                 }
 
                 .billing-page-btn-active {
-                    border-color: rgba(var(--primary-rgb), 0.44);
-                    background: linear-gradient(100deg, rgba(var(--primary-rgb), 0.95), rgba(var(--primary-rgb), 0.74));
-                    color: rgb(10 13 16);
-                    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.24);
+                    border-color: #5a1a18;
+                    background: #742220;
+                    color: #FEF9E1;
+                    box-shadow: 2px 2px 0px 0px #5a1a18;
                 }
 
                 .billing-gate-modal {
-                    border-radius: 24px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(170deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.014) 55%),
-                        var(--surface-elevated);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
                     padding: 1.25rem;
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        0 26px 48px -28px rgba(0, 0, 0, 0.9);
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .billing-gate-eyebrow {
@@ -3473,25 +3594,25 @@ export default () => {
                     font-size: clamp(1.4rem, 3vw, 1.9rem);
                     line-height: 1.05;
                     font-weight: 900;
-                    color: #f8f6ef;
+                    color: #742220;
                 }
 
                 .billing-gate-copy {
                     margin-top: 10px;
                     font-size: 0.9rem;
                     line-height: 1.75;
-                    color: rgba(174, 183, 194, 0.86);
+                    color: rgba(116, 34, 32, 0.55);
                 }
 
                 .billing-gate-note {
                     margin-top: 16px;
                     border-radius: 16px;
-                    border: 1px solid rgba(var(--primary-rgb), 0.2);
-                    background: rgba(var(--primary-rgb), 0.08);
+                    border: 1px solid rgba(116, 34, 32, 0.2);
+                    background: rgba(116, 34, 32, 0.06);
                     padding: 12px 14px;
                     font-size: 12px;
                     line-height: 1.7;
-                    color: rgba(230, 252, 180, 0.9);
+                    color: rgba(116, 34, 32, 0.70);
                 }
 
                 .billing-gate-grid {
@@ -3507,14 +3628,66 @@ export default () => {
                     gap: 12px;
                     margin-top: 22px;
                     padding-top: 18px;
-                    border-top: 1px solid var(--surface-border);
+                    border-top: 1px solid #C8BCA0;
                 }
 
                 .billing-gate-help {
                     max-width: 28rem;
                     font-size: 12px;
                     line-height: 1.7;
-                    color: rgba(174, 183, 194, 0.76);
+                    color: rgba(116, 34, 32, 0.50);
+                }
+
+                .billing-shell select.billing-field,
+                .billing-shell input.billing-field {
+                    border: 2px solid #C8BCA0 !important;
+                    background: #FEF9E1 !important;
+                    color: #742220 !important;
+                    border-radius: 12px !important;
+                    box-shadow: 2px 2px 0px 0px #C8BCA0 !important;
+                    padding: 0.6rem 0.85rem !important;
+                    font-size: 0.875rem !important;
+                    outline: none !important;
+                    width: 100% !important;
+                    appearance: none !important;
+                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23742220' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
+                    background-repeat: no-repeat !important;
+                    background-position: right 0.85rem center !important;
+                    background-size: 10px !important;
+                    padding-right: 2.5rem !important;
+                }
+
+                .billing-shell select.billing-field:focus,
+                .billing-shell input.billing-field:focus {
+                    border-color: #742220 !important;
+                    box-shadow: 2px 2px 0px 0px #742220 !important;
+                }
+
+                .billing-shell select.billing-field option {
+                    background: #FEF9E1;
+                    color: #742220;
+                }
+
+                .billing-shell input:not([type='checkbox']):not([type='radio']) {
+                    border: 2px solid #C8BCA0 !important;
+                    background: #FEF9E1 !important;
+                    color: #742220 !important;
+                    border-radius: 12px !important;
+                    box-shadow: 2px 2px 0px 0px #C8BCA0 !important;
+                }
+
+                .billing-shell input:not([type='checkbox']):not([type='radio']):hover:not(:disabled) {
+                    border-color: #B0A488 !important;
+                }
+
+                .billing-shell input:not([type='checkbox']):not([type='radio']):focus {
+                    border-color: #742220 !important;
+                    box-shadow: 2px 2px 0px 0px #742220 !important;
+                    outline: none !important;
+                }
+
+                .billing-shell input:not([type='checkbox']):not([type='radio'])::placeholder {
+                    color: rgba(116, 34, 32, 0.35) !important;
                 }
 
                 @media (min-width: 1280px) {
@@ -3563,6 +3736,133 @@ export default () => {
                     }
                 }
 
+                @media (max-width: 1279px) {
+                    .billing-shell {
+                        height: auto;
+                        overflow: visible;
+                        min-height: unset;
+                    }
+
+                    .billing-ghost-btn {
+                        margin-left: auto;
+                        margin-right: auto;
+                    }
+
+                    .billing-shell-plan,
+                    .billing-shell-list,
+                    .billing-wrap-plan,
+                    .billing-wrap-list {
+                        overflow: visible;
+                        height: auto;
+                        min-height: unset;
+                        flex: unset;
+                    }
+
+                    .billing-plan-layout {
+                        grid-template-columns: minmax(0, 1fr);
+                        height: auto;
+                        min-height: unset;
+                    }
+
+                    .billing-plan-main {
+                        overflow: visible;
+                        height: auto;
+                        min-height: unset;
+                    }
+
+                    .billing-plan-main-body {
+                        overflow: visible;
+                        flex: unset;
+                        min-height: unset;
+                    }
+
+                    .billing-plan-aside {
+                        overflow: visible;
+                        height: auto;
+                        min-height: unset;
+                        align-self: unset;
+                    }
+
+                    .billing-plan-aside > aside,
+                    .billing-plan-aside .billing-panel {
+                        height: auto;
+                    }
+
+                    .billing-section-shell {
+                        overflow: visible;
+                        min-height: unset;
+                    }
+
+                    .billing-section-scroll {
+                        overflow: visible;
+                        flex: unset;
+                        min-height: unset;
+                    }
+
+                    .billing-wizard-nav-grid {
+                        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+                        gap: 6px !important;
+                    }
+
+                    /* Compact prev/next buttons */
+                    .billing-wizard-prev-btn,
+                    .billing-wizard-next-btn {
+                        padding: 8px 10px !important;
+                        gap: 6px !important;
+                        border-radius: 8px !important;
+                        box-shadow: 2px 2px 0px 0px #2D4A3E !important;
+                    }
+
+                    /* Icon circles - smaller */
+                    .billing-wizard-prev-btn > span,
+                    .billing-wizard-next-btn > span {
+                        width: 26px !important;
+                        height: 26px !important;
+                        min-width: 26px !important;
+                    }
+
+                    /* Hide eyebrow labels (Previous / Next) */
+                    .billing-wizard-prev-btn div > p:first-child,
+                    .billing-wizard-next-btn div > p:first-child {
+                        display: none !important;
+                    }
+
+                    /* Hide step eyebrow (Step 2, etc) */
+                    .billing-wizard-prev-btn div > p:last-child,
+                    .billing-wizard-next-btn div > p:last-child {
+                        display: none !important;
+                    }
+
+                    /* Title - smaller, no top margin */
+                    .billing-wizard-prev-btn div > p,
+                    .billing-wizard-next-btn div > p {
+                        font-size: 10px !important;
+                        margin-top: 0 !important;
+                    }
+
+                    /* Center card compact */
+                    .billing-wizard-current-card {
+                        padding: 8px 10px !important;
+                        border-radius: 8px !important;
+                        box-shadow: 2px 2px 0px 0px #742220 !important;
+                    }
+
+                    .billing-wizard-current-card > p:first-child {
+                        font-size: 7px !important;
+                        letter-spacing: 0.2em !important;
+                    }
+
+                    .billing-wizard-current-card > p:nth-child(2) {
+                        font-size: 10px !important;
+                        margin-top: 4px !important;
+                    }
+
+                    .billing-wizard-current-card > div {
+                        margin-top: 6px !important;
+                        height: 3px !important;
+                    }
+                }
+
                 @media (max-width: 640px) {
                     .billing-choice-meta-grid {
                         grid-template-columns: minmax(0, 1fr);
@@ -3603,7 +3903,7 @@ export default () => {
                                 >
                                     {followUpAction.eyebrow}
                                 </p>
-                                <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#742220]'}>
                                     Continue In Your Support Ticket
                                 </h2>
                                 <p className={'mt-3 max-w-3xl text-sm leading-7 text-[color:var(--muted-foreground)]'}>
@@ -3630,7 +3930,7 @@ export default () => {
                 {currentSection === 'plan' &&
                     (!catalog || catalog.length < 1 ? (
                         <section className={'billing-panel p-8'}>
-                            <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>No Billing Nodes</h2>
+                            <h2 className={'text-2xl font-black tracking-tight text-[#742220]'}>No Billing Nodes</h2>
                             <p className={'mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
                                 Billing has not been enabled on any node yet. Ask an administrator to finish the node
                                 setup first.
@@ -3649,7 +3949,7 @@ export default () => {
                                         >
                                             {currentPlanStepContent.eyebrow}
                                         </p>
-                                        <h2 className={'mt-3 text-3xl font-black tracking-tight text-[#f8f6ef]'}>
+                                        <h2 className={'mt-3 text-3xl font-black tracking-tight text-[#742220]'}>
                                             {currentPlanStepContent.title}
                                         </h2>
                                         <p
@@ -3672,7 +3972,7 @@ export default () => {
                     <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
                         <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                             <div>
-                                <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                <h2 className={'text-2xl font-black tracking-tight text-[#742220]'}>
                                     Active Subscriptions
                                 </h2>
                                 <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
@@ -3754,7 +4054,7 @@ export default () => {
                     <section className={'billing-panel billing-section-shell p-6 md:p-8'}>
                         <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
                             <div>
-                                <h2 className={'text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                <h2 className={'text-2xl font-black tracking-tight text-[#742220]'}>
                                     My Billing Orders
                                 </h2>
                                 <p className={'mt-2 text-sm text-[color:var(--muted-foreground)]'}>
@@ -3817,7 +4117,7 @@ export default () => {
                         {!isBillingProfileComplete(billingForm) && (
                             <div
                                 className={
-                                    'mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                                    'mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800'
                                 }
                             >
                                 Missing right now: {getMissingBillingProfileLabels(billingForm)}.

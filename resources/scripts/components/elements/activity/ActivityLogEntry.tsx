@@ -49,9 +49,17 @@ export default ({ activity, children }: Props) => {
     const properties = wrapProperties(activity.properties);
 
     return (
-        <div className={'group grid grid-cols-10 border-b border-[color:var(--border)] py-4 last:rounded-b-xl last:border-0'}>
+        <div
+            className={
+                'group grid grid-cols-10 border-b border-[color:var(--border)] py-4 transition-colors duration-150 hover:bg-[rgba(var(--primary-rgb),0.05)] last:rounded-b-xl last:border-0'
+            }
+        >
             <div className={'hidden sm:flex sm:col-span-1 items-center justify-center select-none'}>
-                <div className={'flex h-10 w-10 items-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--background)]'}>
+                <div
+                    className={
+                        'flex h-10 w-10 items-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--surface-elevated)]'
+                    }
+                >
                     {actorImage ? (
                         <img
                             src={actorImage}
@@ -65,14 +73,16 @@ export default ({ activity, children }: Props) => {
             </div>
             <div className={'col-span-10 sm:col-span-9 flex'}>
                 <div className={'flex-1 px-4 sm:px-0'}>
-                    <div className={'flex items-center text-[#f8f6ef]'}>
+                    <div className={'flex items-center text-[color:var(--foreground)]'}>
                         <Tooltip placement={'top'} content={actor?.email || 'System User'}>
                             <span>{actor?.username || 'System'}</span>
                         </Tooltip>
-                        <span className={'text-neutral-500'}>&nbsp;&mdash;&nbsp;</span>
+                        <span className={'text-[color:var(--text-subtle)]'}>&nbsp;&mdash;&nbsp;</span>
                         <Link
                             to={`#${pathTo({ event: activity.event })}`}
-                            className={'transition-colors duration-75 hover:text-[color:var(--primary)] active:text-[color:var(--primary)]'}
+                            className={
+                                'text-[color:var(--foreground)] transition-colors duration-75 hover:text-[color:var(--primary)] active:text-[color:var(--primary)]'
+                            }
                         >
                             {activity.event}
                         </Link>
@@ -93,11 +103,11 @@ export default ({ activity, children }: Props) => {
                     <p className={style.description}>
                         <Translate ns={'activity'} values={properties} i18nKey={activity.event.replace(':', '.')} />
                     </p>
-                    <div className={'mt-1 flex items-center text-sm'}>
+                    <div className={'mt-1 flex items-center text-sm text-[color:var(--text-subtle)]'}>
                         {activity.ip && (
                             <span>
                                 {activity.ip}
-                                <span className={'text-neutral-500'}>&nbsp;|&nbsp;</span>
+                                <span className={'text-[color:var(--text-subtle)]'}>&nbsp;|&nbsp;</span>
                             </span>
                         )}
                         <Tooltip placement={'right'} content={format(activity.timestamp, 'MMM do, yyyy H:mm:ss')}>

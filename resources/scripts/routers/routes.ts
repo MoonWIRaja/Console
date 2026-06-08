@@ -5,6 +5,7 @@ import ScheduleContainer from '@/components/server/schedules/ScheduleContainer';
 import UsersContainer from '@/components/server/users/UsersContainer';
 import BackupContainer from '@/components/server/backups/BackupContainer';
 import NetworkContainer from '@/components/server/network/NetworkContainer';
+import DiscordIntegrationContainer from '@/components/server/discord/DiscordIntegrationContainer';
 import SplitContainer from '@/components/server/split/SplitContainer';
 import StartupContainer from '@/components/server/startup/StartupContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
@@ -124,6 +125,12 @@ export default {
             permission: ['allocation.*', 'subdomain.read'],
             name: 'Network',
             component: NetworkContainer,
+        },
+        {
+            path: '/discord',
+            permission: 'discord.read',
+            name: 'Discord',
+            component: DiscordIntegrationContainer,
         },
         {
             path: '/split',

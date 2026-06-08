@@ -300,9 +300,9 @@
         @if(!empty($provisionedAgents))
             <div class="alert alert-success">
                 <strong>{{ count($provisionedAgents) > 1 ? 'Agent bootstrap secrets' : 'Agent bootstrap secret' }}</strong>
-                <div class="small" style="margin-top: 8px;">Store these secrets securely. They are only shown immediately after provisioning or rotation.</div>
+                <div class="small admin-text-gap-top-sm">Store these secrets securely. They are only shown immediately after provisioning or rotation.</div>
                 @foreach($provisionedAgents as $provisioned)
-                    <div class="small" style="margin-top: 12px;">
+                    <div class="small admin-text-gap-top-md">
                         {{ $provisioned['name'] ?? 'Security Agent' }}
                         @if(!empty($provisioned['node_name']))
                             for {{ $provisioned['node_name'] }}
@@ -313,7 +313,7 @@
             </div>
         @endif
 
-        <div class="row" style="margin-bottom: 18px;">
+        <div class="row admin-row-gap-lg">
             <div class="col-md-3 col-sm-6">
                 <div class="box metric-card">
                     <span class="eyebrow">Open Incidents</span>
@@ -358,8 +358,9 @@
                     <div class="row">
                         <div class="col-md-7">
                             <div class="box box-primary">
-                                <div class="box-header with-border">
+                                <div class="box-header with-border admin-billing-box-header">
                                     <h3 class="box-title">Latest Incidents</h3>
+                                    @include('admin.billing.partials.table-filter', $overviewIncidentFilter)
                                 </div>
                                 <div class="box-body table-responsive no-padding">
                                     <table class="table table-hover">
@@ -373,7 +374,7 @@
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        @forelse($incidents->take(10) as $incident)
+                                        @forelse($overviewIncidents as $incident)
                                             <tr>
                                                 <td>
                                                     <strong>{{ $incident->title }}</strong>
@@ -399,6 +400,9 @@
                                         @endforelse
                                         </tbody>
                                     </table>
+                                </div>
+                                <div class="box-footer clearfix">
+                                    @include('admin.billing.partials.table-pagination', ['paginator' => $overviewIncidents])
                                 </div>
                             </div>
                         </div>
@@ -436,93 +440,9 @@
                                         </tr>
                                         </tbody>
                                     </table>
-                                    <p class="text-muted" style="margin-bottom: 0;">
+                                    <p class="text-muted admin-text-last">
                                         Control plane ini menyimpan rule, incident, verdict, action queue, dan quarantine state. Node agent beroperasi dengan model pull API bertandatangan.
                                     </p>
-                                </div>
-                            </div>
-
-                            <div class="box box-primary">
-                                <div class="box-header with-border">
-                                    <h3 class="box-title">Security Self-Test</h3>
-                                </div>
-                                <div class="box-body">
-                                    <p class="text-muted">
-                                        Jalankan self-test aktif untuk semak kawalan utama seperti captcha, runtime deny, agent replay protection, webhook signature, dan bridge signature.
-                                    </p>
-                                    <form method="POST" action="{{ route('admin.security.self-test') }}" style="margin-bottom: 16px;">
-                                        @csrf
-                                        <button type="submit" class="btn btn-primary">Run Security Self-Test</button>
-                                        <a href="{{ route('admin.logs', ['tab' => 'security']) }}" class="btn btn-default">Open Security Logs</a>
-                                        <a href="{{ route('admin.security', ['tab' => 'live-events']) }}" class="btn btn-default">Open Live Events</a>
-                                    </form>
-
-                                    @if($latestSelfTest)
-                                        @php($selfTestEvent = $latestSelfTest['event'])
-                                        @php($selfTestSummary = $latestSelfTest['summary'] ?? [])
-                                        <table class="table table-condensed" style="margin-bottom: 14px;">
-                                            <tbody>
-                                            <tr>
-                                                <th>Last Run</th>
-                                                <td>{{ optional($selfTestEvent->created_at)?->format('Y-m-d H:i:s T') ?? 'Unknown' }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>Verdict</th>
-                                                <td><span class="security-badge verdict-{{ $selfTestEvent->verdict }}">{{ $selfTestEvent->verdict }}</span></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Checks</th>
-                                                <td>
-                                                    {{ (int) ($selfTestSummary['passed'] ?? 0) }} pass /
-                                                    {{ (int) ($selfTestSummary['failed'] ?? 0) }} fail /
-                                                    {{ (int) ($selfTestSummary['total'] ?? count($latestSelfTest['checks'] ?? [])) }} total
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th>Triggered By</th>
-                                                <td>
-                                                    @if($selfTestEvent->actor instanceof \Pterodactyl\Models\User)
-                                                        {{ $selfTestEvent->actor->username }} ({{ $selfTestEvent->actor->email }})
-                                                    @else
-                                                        System / Unknown
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            </tbody>
-                                        </table>
-
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                <tr>
-                                                    <th>Check</th>
-                                                    <th>Status</th>
-                                                    <th>Detail</th>
-                                                </tr>
-                                                </thead>
-                                                <tbody>
-                                                @foreach(($latestSelfTest['checks'] ?? []) as $check)
-                                                    <tr>
-                                                        <td>{{ str_replace('_', ' ', (string) ($check['name'] ?? 'unknown_check')) }}</td>
-                                                        <td>
-                                                            <span class="security-badge status-{{ strtolower((string) ($check['status'] ?? 'unknown')) }}">
-                                                                {{ strtoupper((string) ($check['status'] ?? 'UNKNOWN')) }}
-                                                            </span>
-                                                        </td>
-                                                        <td class="small text-muted">{{ $check['detail'] ?? 'Check passed without extra detail.' }}</td>
-                                                    </tr>
-                                                @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <p class="text-muted" style="margin-bottom: 0;">
-                                            Setiap run akan tulis satu rekod ke <strong>System Logs &gt; Security</strong> dan satu event ke tab <strong>Live Events</strong>.
-                                        </p>
-                                    @else
-                                        <p class="text-muted" style="margin-bottom: 0;">
-                                            Tiada self-test pernah dijalankan lagi. Tekan butang di atas, kemudian semak keputusan di sini, di <strong>Live Events</strong>, atau di <strong>System Logs &gt; Security</strong>.
-                                        </p>
-                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -568,8 +488,9 @@
                     </div>
                 @elseif($selectedTab === 'incidents')
                     <div class="box box-primary">
-                        <div class="box-header with-border">
+                        <div class="box-header with-border admin-billing-box-header">
                             <h3 class="box-title">Incidents</h3>
+                            @include('admin.billing.partials.table-filter', $incidentFilter)
                         </div>
                         <div class="box-body table-responsive no-padding">
                             <table class="table table-hover">
@@ -595,7 +516,7 @@
                                         </td>
                                         <td>
                                             <span class="security-badge verdict-{{ $incident->verdict }}">{{ $incident->verdict }}</span>
-                                            <div class="small text-muted" style="margin-top: 6px;">{{ $incident->blocked ? 'Mitigated or blocked.' : 'Observed or waiting for action.' }}</div>
+                                            <div class="small text-muted admin-text-gap-top-xs">{{ $incident->blocked ? 'Mitigated or blocked.' : 'Observed or waiting for action.' }}</div>
                                         </td>
                                         <td>{{ $incident->event_count }}</td>
                                         <td>{{ optional($incident->last_seen_at)?->format('Y-m-d H:i:s T') ?? 'Never' }}</td>
@@ -605,14 +526,18 @@
                                         <td colspan="5" class="text-center text-muted">No incidents yet.</td>
                                     </tr>
                                 @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+                    <div class="box-footer clearfix">
+                        @include('admin.billing.partials.table-pagination', ['paginator' => $incidents])
+                    </div>
+                </div>
                 @elseif($selectedTab === 'live-events')
                     <div class="box box-primary">
-                        <div class="box-header with-border">
+                        <div class="box-header with-border admin-billing-box-header">
                             <h3 class="box-title">Live Events</h3>
+                            @include('admin.billing.partials.table-filter', $eventFilter)
                         </div>
                         <div class="box-body table-responsive no-padding">
                             <table class="table table-hover">
@@ -644,10 +569,13 @@
                                         <td colspan="6" class="text-center text-muted">No security events captured yet.</td>
                                     </tr>
                                 @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+                    <div class="box-footer clearfix">
+                        @include('admin.billing.partials.table-pagination', ['paginator' => $events])
+                    </div>
+                </div>
                 @elseif($selectedTab === 'agents')
                     <div class="row">
                         <div class="col-md-4">
@@ -656,14 +584,14 @@
                                     <h3 class="box-title">Auto Detect Nodes</h3>
                                 </div>
                                 <div class="box-body">
-                                    <div style="font-size: 28px; font-weight: 800; color: var(--admin-foreground);">
+                                    <div class="admin-stat-display">
                                         {{ number_format($missingNodes->count()) }}
                                     </div>
-                                    <p class="text-muted" style="margin-top: 8px;">
+                                    <p class="text-muted admin-text-gap-top-sm">
                                         Node tanpa agent akan dikesan automatik di sini. Sekali klik, sistem akan jana agent, pautkan ke node, dan guna capability default.
                                     </p>
                                     @if($missingNodes->isNotEmpty())
-                                        <div style="margin-top: 14px;">
+                                        <div class="admin-gap-top-lg">
                                             @foreach($missingNodes as $node)
                                                 <span class="agent-node-chip">
                                                     {{ $node->name }}
@@ -672,7 +600,7 @@
                                             @endforeach
                                         </div>
                                     @else
-                                        <p class="text-muted" style="margin-bottom: 0;">Semua node sudah ada linked security agent.</p>
+                                        <p class="text-muted admin-text-last">Semua node sudah ada linked security agent.</p>
                                     @endif
                                 </div>
                                 <div class="box-footer">
@@ -754,7 +682,7 @@
                                                     <div>{{ optional($agent->last_heartbeat_at)?->format('Y-m-d H:i:s T') ?? 'Never' }}</div>
                                                     <div class="small text-muted">{{ $agent->last_ip ?: 'no IP yet' }}</div>
                                                 </td>
-                                                <td style="width: 150px;">
+                                                <td class="admin-action-col">
                                                     <form method="POST" action="{{ route('admin.security.agents.rotate-secret', $agent->id) }}">
                                                         @csrf
                                                         <button type="submit" class="btn btn-default btn-sm">Rotate Secret</button>
@@ -808,8 +736,9 @@
                     </div>
                 @elseif($selectedTab === 'quarantine')
                     <div class="box box-primary">
-                        <div class="box-header with-border">
+                        <div class="box-header with-border admin-billing-box-header">
                             <h3 class="box-title">Quarantine Artifacts</h3>
+                            @include('admin.billing.partials.table-filter', $artifactFilter)
                         </div>
                         <div class="box-body table-responsive no-padding">
                             <table class="table table-hover">
@@ -839,10 +768,13 @@
                                         <td colspan="5" class="text-center text-muted">No quarantine artifacts found.</td>
                                     </tr>
                                 @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+                    <div class="box-footer clearfix">
+                        @include('admin.billing.partials.table-pagination', ['paginator' => $artifacts])
+                    </div>
+                </div>
                 @elseif($selectedTab === 'settings')
                     <form method="POST" action="{{ route('admin.security.update') }}">
                         @csrf

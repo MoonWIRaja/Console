@@ -30,7 +30,7 @@ type Tab = 'API' | 'SSH';
 type ModalContent = 'EMAIL' | 'PASSWORD' | '2FA' | 'BILLING' | null;
 
 const cardClass =
-    'min-w-0 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.06),0_20px_35px_rgba(12, 12, 12, 0.45)]';
+    'sc-card min-w-0 p-6';
 
 export default () => {
     const history = useHistory();
@@ -174,10 +174,44 @@ export default () => {
     return (
         <div
             className={
-                'account-theme account-auth-shell flex-1 h-full min-h-0 px-4 pb-8 pt-6 text-white md:px-8 md:pt-8'
+                'account-theme account-auth-shell flex-1 h-full min-h-0 px-4 pb-8 pt-6 text-[#742220] md:px-8 md:pt-8'
             }
         >
             <style>{`
+                .account-theme {
+                    --account-ink: #742220;
+                    --account-border: #2D4A3E;
+                    --account-card: #FEF9E1;
+                    --account-card-soft: #F5EFD5;
+                    --account-card-muted: #EDE6D0;
+                    --account-muted: rgba(116, 34, 32, 0.58);
+                    --account-paper-texture:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px);
+                    --neon-green: var(--primary);
+                }
+
+                .account-theme .sc-card {
+                    border-radius: 22px;
+                    border: 2px solid var(--account-border);
+                    background-color: var(--account-card);
+                    background-image: var(--account-paper-texture);
+                    box-shadow: 4px 4px 0px 0px var(--account-border);
+                    color: var(--account-ink);
+                }
+
+                .account-theme .sc-card-inner {
+                    border-radius: 18px;
+                    border: 1px solid var(--account-card-muted);
+                    background-color: var(--account-card-soft);
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px);
+                    color: var(--account-ink);
+                }
+
                 .account-auth-shell {
                     position: relative;
                     display: flex;
@@ -189,44 +223,24 @@ export default () => {
                     min-height: 0;
                     min-width: 0;
                     -webkit-overflow-scrolling: touch;
-                    background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
-                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
+                    background: #D6D2C7;
                     font-family: var(--font-sans, 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
                 }
 
                 .account-auth-shell::before {
                     content: '';
-                    position: absolute;
+                    position: fixed;
                     inset: 0;
                     pointer-events: none;
-                    background:
-                        repeating-linear-gradient(
-                            90deg,
-                            rgba(var(--primary-rgb), 0.02) 0,
-                            rgba(var(--primary-rgb), 0.02) 1px,
-                            transparent 1px,
-                            transparent 40px
-                        );
-                    opacity: 0.1;
+                    z-index: 9999;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
                 }
 
                 .account-auth-shell::after {
-                    content: '';
-                    position: absolute;
-                    left: 50%;
-                    top: -18%;
-                    width: min(1120px, 96vw);
-                    height: 110%;
-                    transform: translateX(-50%);
-                    pointer-events: none;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 0.05) 0%,
-                        rgba(var(--primary-rgb), 0.015) 42%,
-                        transparent 72%
-                    );
+                    display: none;
                 }
 
                 .account-theme > * {
@@ -250,50 +264,107 @@ export default () => {
                     z-index: 8;
                 }
 
-                .account-theme {
-                    --neon-green: var(--primary);
+                .account-theme .text-white,
+                .account-theme .text-gray-100,
+                .account-theme .text-neutral-100,
+                .account-theme .text-slate-300,
+                .account-theme .text-neutral-300 {
+                    color: var(--account-ink) !important;
+                }
+
+                .account-theme .text-gray-400,
+                .account-theme .text-gray-500,
+                .account-theme .text-neutral-400,
+                .account-theme .text-neutral-500,
+                .account-theme .text-slate-400,
+                .account-theme .text-slate-500 {
+                    color: var(--account-muted) !important;
+                }
+
+                .account-theme .bg-\\[color\\:var\\(--card\\)\\],
+                .account-theme .bg-\\[color\\:var\\(--background\\)\\] {
+                    background-color: var(--account-card-soft) !important;
+                }
+
+                .account-theme .border-\\[color\\:var\\(--border\\)\\] {
+                    border-color: var(--account-card-muted) !important;
+                }
+
+                .account-theme input,
+                .account-theme textarea,
+                .account-theme select {
+                    background-color: var(--account-card) !important;
+                    border-color: var(--account-border) !important;
+                    color: var(--account-ink) !important;
+                }
+
+                .account-theme input::placeholder,
+                .account-theme textarea::placeholder {
+                    color: rgba(116, 34, 32, 0.42) !important;
+                }
+
+                .account-theme label,
+                .account-theme .input-help,
+                .account-theme p {
+                    color: var(--account-ink);
+                }
+
+                .account-theme .input-help,
+                .account-theme small {
+                    color: var(--account-muted) !important;
+                }
+
+                .account-theme code {
+                    border: 1px solid var(--account-border) !important;
+                    background-color: var(--account-card) !important;
+                    color: var(--account-border) !important;
                 }
 
                 .account-theme .activity-feed-shell .bg-gray-700 {
-                    background-color: transparent !important;
+                    background-color: var(--account-card-soft) !important;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.025) 4.5px, rgba(116, 34, 32, 0.025) 5px);
+                    border-radius: 18px;
                 }
 
                 .account-theme .activity-feed-shell .bg-gray-600 {
-                    background-color: var(--surface-elevated) !important;
+                    background-color: var(--account-card-soft) !important;
                 }
 
                 .account-theme .activity-feed-shell .grid {
                     min-height: 104px;
-                    border-color: rgba(var(--primary-rgb), 0.18) !important;
+                    border-color: var(--account-card-muted) !important;
                 }
 
                 .account-theme .activity-feed-shell .group:hover {
-                    background-color: rgba(var(--primary-rgb), 0.05) !important;
+                    background-color: rgba(45, 74, 62, 0.08) !important;
                 }
 
                 .account-theme .activity-feed-shell .text-gray-50 {
-                    color: #f8f6ef !important;
+                    color: var(--account-ink) !important;
                     font-weight: 700;
                 }
 
                 .account-theme .activity-feed-shell .text-gray-400 {
-                    color: #9ca3af !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .activity-feed-shell .elements-activity-style-module__description {
-                    color: #cbd5e1 !important;
+                    color: var(--account-ink) !important;
                 }
 
                 .account-theme .activity-feed-shell .elements-activity-style-module__description strong {
-                    color: #f8f6ef !important;
+                    color: var(--account-ink) !important;
                 }
 
                 .account-theme .activity-feed-shell .elements-activity-style-module__icons {
-                    color: #94a3b8 !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .activity-feed-shell a {
-                    color: #d1d5db !important;
+                    color: var(--account-border) !important;
                 }
 
                 .account-theme .activity-feed-shell a:hover {
@@ -301,7 +372,7 @@ export default () => {
                 }
 
                 .account-theme .activity-feed-shell .self-center button {
-                    color: #9ca3af !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .activity-feed-shell .self-center button:hover {
@@ -318,19 +389,19 @@ export default () => {
 
                 .account-theme .activity-pagination-top p {
                     margin: 0 !important;
-                    color: #9ca3af !important;
+                    color: var(--account-muted) !important;
                     font-size: 11px !important;
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
                 }
 
                 .account-theme .activity-pagination-top span {
-                    color: #f8f6ef !important;
+                    color: var(--account-ink) !important;
                     font-weight: 700 !important;
                 }
 
                 .account-theme .activity-pagination-top button {
-                    color: #9ca3af !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .activity-pagination-top button:hover {
@@ -347,45 +418,45 @@ export default () => {
                 }
 
                 .account-theme .account-tabs-shell section {
-                    background-color: var(--surface-elevated) !important;
-                    border: 1px solid var(--surface-border) !important;
-                    border-radius: 0.75rem !important;
+                    background-color: var(--account-card-soft) !important;
+                    border: 1px solid var(--account-card-muted) !important;
+                    border-radius: 18px !important;
                     padding: 1.5rem !important;
                 }
 
                 .account-theme .account-tabs-shell .text-[color:var(--primary-foreground)] {
-                    color: #f8f6ef !important;
+                    color: #FEF9E1 !important;
                 }
 
                 .account-theme .account-tabs-shell .text-neutral-500 {
-                    color: #9ca3af !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .account-tabs-shell .text-neutral-700 {
-                    color: #cbd5e1 !important;
+                    color: var(--account-ink) !important;
                 }
 
                 .account-theme .account-tabs-shell .border-[#0C0C0C],
                 .account-theme .account-tabs-shell .border-neutral-200 {
-                    border-color: rgba(var(--primary-rgb), 0.25) !important;
+                    border-color: var(--account-card-muted) !important;
                 }
 
                 .account-theme .account-tabs-shell h2 {
-                    color: #f8f6ef !important;
+                    color: var(--account-ink) !important;
                 }
 
                 .account-theme .account-tabs-shell input,
                 .account-theme .account-tabs-shell textarea,
                 .account-theme .account-tabs-shell select {
-                    background-color: var(--surface-elevated) !important;
-                    border-color: var(--surface-border) !important;
-                    color: #f8f6ef !important;
+                    background-color: var(--account-card) !important;
+                    border-color: var(--account-border) !important;
+                    color: var(--account-ink) !important;
                     border-radius: 8px !important;
                 }
 
                 .account-theme .account-tabs-shell input::placeholder,
                 .account-theme .account-tabs-shell textarea::placeholder {
-                    color: rgba(248, 246, 239, 0.45) !important;
+                    color: rgba(116, 34, 32, 0.42) !important;
                 }
 
                 .account-theme .account-tabs-shell input:focus,
@@ -396,13 +467,13 @@ export default () => {
                 }
 
                 .account-theme .account-tabs-shell label {
-                    color: #d1d5db !important;
+                    color: var(--account-ink) !important;
                 }
 
                 .account-theme .account-tabs-shell code {
-                    background-color: var(--card) !important;
-                    color: var(--primary) !important;
-                    border: 1px solid rgba(var(--primary-rgb), 0.32) !important;
+                    background-color: var(--account-card) !important;
+                    color: var(--account-border) !important;
+                    border: 1px solid var(--account-border) !important;
                     border-radius: 6px !important;
                 }
 
@@ -423,7 +494,7 @@ export default () => {
 
                 .account-theme .account-tabs-shell button .text-neutral-400,
                 .account-theme .account-tabs-shell button svg {
-                    color: #94a3b8 !important;
+                    color: var(--account-muted) !important;
                 }
 
                 .account-theme .account-tabs-shell button:hover svg {
@@ -477,7 +548,7 @@ export default () => {
             >
                 <section
                     className={
-                        'min-w-0 overflow-visible rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-[0_0_0_1px_rgba(var(--primary-rgb), 0.05)]'
+                        'sc-card min-w-0 overflow-visible p-4'
                     }
                 >
                     <div className={'flex h-full min-w-0 flex-wrap items-center gap-4'}>
@@ -487,7 +558,7 @@ export default () => {
                                 onClick={() => setAvatarMenuOpen((value) => !value)}
                                 disabled={avatarUploading}
                                 className={
-                                    'h-16 w-16 overflow-hidden rounded-lg border border-[color:var(--primary)] bg-[color:var(--card)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60'
+                                    'h-16 w-16 overflow-hidden rounded-[16px] border-2 border-[#2D4A3E] bg-[#F5EFD5] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60'
                                 }
                             >
                                 <Avatar.User size={64} variant={'beam'} />
@@ -496,13 +567,13 @@ export default () => {
                             {avatarMenuOpen && (
                                 <div
                                     className={
-                                        'account-avatar-menu-popover absolute left-0 top-[calc(100%+0.5rem)] w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-[0_18px_32px_rgba(0,0,0,0.4)]'
+                                        'account-avatar-menu-popover sc-card absolute left-0 top-[calc(100%+0.5rem)] w-44 p-2'
                                     }
                                 >
                                     <button
                                         type={'button'}
                                         className={
-                                            'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[color:var(--foreground)] transition-colors hover:bg-[color:var(--accent)]'
+                                            'w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-[#742220] transition-colors hover:bg-[rgba(45,74,62,0.1)]'
                                         }
                                         onClick={() => avatarInputRef.current?.click()}
                                         disabled={avatarUploading}
@@ -512,7 +583,7 @@ export default () => {
                                     <button
                                         type={'button'}
                                         className={
-                                            'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50'
+                                            'mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-red-700 transition-colors hover:bg-red-500/10 disabled:opacity-50'
                                         }
                                         onClick={onAvatarRemove}
                                         disabled={avatarUploading || !user.image}
@@ -535,7 +606,7 @@ export default () => {
                         </div>
                         <div className={'min-w-0 flex-1'}>
                             <div className={'flex flex-wrap items-center gap-2'}>
-                                <h1 className={'truncate text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                <h1 className={'truncate text-2xl font-black tracking-tight text-[#742220]'}>
                                     {user.username}
                                 </h1>
                                 {user.rootAdmin && (
@@ -548,7 +619,7 @@ export default () => {
                                     </span>
                                 )}
                             </div>
-                            <p className={'mt-1 text-xs text-gray-400'}>{user.email}</p>
+                            <p className={'mt-1 text-xs text-[rgba(116,34,32,0.58)]'}>{user.email}</p>
                         </div>
                     </div>
                 </section>
@@ -561,17 +632,17 @@ export default () => {
             <div className={'account-profile-content-grid grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]'}>
                 <div className={'flex min-w-0 flex-col gap-6'}>
                     <section className={cardClass}>
-                        <h2 className={'mb-5 text-lg font-bold tracking-tight text-[#f8f6ef]'}>Account Information</h2>
+                        <h2 className={'mb-5 text-lg font-bold tracking-tight text-[#742220]'}>Account Information</h2>
 
                         <div className={'grid min-w-0 items-start gap-4 lg:grid-cols-2'}>
                             <div
                                 className={
-                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                    'sc-card-inner flex min-w-0 flex-col p-4'
                                 }
                             >
                                 <div className={'min-w-0'}>
-                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>Email</p>
-                                    <p className={'break-all text-sm text-gray-100'}>{user.email}</p>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-[rgba(116,34,32,0.58)]'}>Email</p>
+                                    <p className={'break-all text-sm text-[#742220]'}>{user.email}</p>
                                 </div>
                                 <InteractiveHoverButton
                                     onClick={() => setModal('EMAIL')}
@@ -585,14 +656,14 @@ export default () => {
 
                             <div
                                 className={
-                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                    'sc-card-inner flex min-w-0 flex-col p-4'
                                 }
                             >
                                 <div className={'min-w-0'}>
-                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-[rgba(116,34,32,0.58)]'}>
                                         Password
                                     </p>
-                                    <p className={'text-sm text-gray-100'}>********</p>
+                                    <p className={'text-sm text-[#742220]'}>********</p>
                                 </div>
                                 <InteractiveHoverButton
                                     onClick={() => setModal('PASSWORD')}
@@ -606,12 +677,12 @@ export default () => {
 
                             <div
                                 className={
-                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                    'sc-card-inner flex min-w-0 flex-col p-4'
                                 }
                             >
                                 <div className={'flex min-w-0 flex-wrap items-start justify-between gap-3'}>
                                     <div className={'min-w-0 flex-1'}>
-                                        <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                        <p className={'mb-1 text-[10px] uppercase tracking-widest text-[rgba(116,34,32,0.58)]'}>
                                             Billing Details
                                         </p>
                                         <p
@@ -620,7 +691,7 @@ export default () => {
                                                     ? billingReady
                                                         ? 'text-[color:var(--primary)]'
                                                         : 'text-amber-300'
-                                                    : 'text-gray-300'
+                                                    : 'text-[rgba(116,34,32,0.62)]'
                                             }`}
                                         >
                                             {billingProfile
@@ -659,11 +730,11 @@ export default () => {
 
                             <div
                                 className={
-                                    'flex min-w-0 flex-col rounded-xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.015)] p-4'
+                                    'sc-card-inner flex min-w-0 flex-col p-4'
                                 }
                             >
                                 <div className={'min-w-0'}>
-                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-gray-500'}>
+                                    <p className={'mb-1 text-[10px] uppercase tracking-widest text-[rgba(116,34,32,0.58)]'}>
                                         Two-Step Verification
                                     </p>
                                     <p
@@ -689,7 +760,7 @@ export default () => {
 
                     <section className={`${cardClass} overflow-hidden`}>
                         <div className={'mb-5 flex flex-wrap items-center justify-between gap-4'}>
-                            <h2 className={'text-lg font-bold tracking-tight text-[#f8f6ef]'}>Recent Activity</h2>
+                            <h2 className={'text-lg font-bold tracking-tight text-[#742220]'}>Recent Activity</h2>
                             {activityData && (
                                 <div className={'activity-pagination-top'}>
                                     <PaginationFooter
@@ -722,7 +793,7 @@ export default () => {
                                                 </ActivityLogEntry>
                                             ))
                                         ) : (
-                                            <p className={'py-8 text-center text-xs text-gray-500'}>
+                                            <p className={'py-8 text-center text-xs text-[rgba(116,34,32,0.58)]'}>
                                                 No activity found for this account.
                                             </p>
                                         )}
@@ -735,16 +806,16 @@ export default () => {
 
                 <section
                     className={
-                        'min-w-0 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--card)]'
+                        'sc-card min-w-0 overflow-hidden'
                     }
                 >
-                    <div className={'grid grid-cols-2 border-b border-[color:var(--border)]'}>
+                    <div className={'grid grid-cols-2 border-b-2 border-[#2D4A3E] bg-[#F5EFD5]'}>
                         <button
                             onClick={() => setActiveTab('API')}
                             className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
                                 activeTab === 'API'
-                                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[0_0_14px_rgba(var(--primary-rgb), 0.35)]'
-                                    : 'text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]'
+                                    ? 'bg-[#2D4A3E] text-[#FEF9E1]'
+                                    : 'text-[rgba(116,34,32,0.62)] hover:bg-[#EDE6D0] hover:text-[#742220]'
                             }`}
                             type={'button'}
                         >
@@ -754,8 +825,8 @@ export default () => {
                             onClick={() => setActiveTab('SSH')}
                             className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition ${
                                 activeTab === 'SSH'
-                                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[0_0_14px_rgba(var(--primary-rgb), 0.35)]'
-                                    : 'text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]'
+                                    ? 'bg-[#2D4A3E] text-[#FEF9E1]'
+                                    : 'text-[rgba(116,34,32,0.62)] hover:bg-[#EDE6D0] hover:text-[#742220]'
                             }`}
                             type={'button'}
                         >

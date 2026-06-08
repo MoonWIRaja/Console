@@ -1,4 +1,4 @@
-<div class="nav-tabs-custom" style="margin-bottom: 20px;">
+<div class="nav-tabs-custom admin-gap-bottom-xl">
     <ul class="nav nav-tabs">
         <li class="{{ request()->routeIs('admin.billing') ? 'active' : '' }}"><a href="{{ route('admin.billing') }}">Overview</a></li>
         <li class="{{ request()->routeIs('admin.billing.gateway*') ? 'active' : '' }}"><a href="{{ route('admin.billing.gateway') }}">Settings</a></li>

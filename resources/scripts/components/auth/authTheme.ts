@@ -10,7 +10,7 @@ export const authFieldLabelClass =
     'burhan-auth-label block text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]';
 
 export const authErrorClass =
-    'burhan-auth-error mt-1 text-[0.63rem] font-extrabold uppercase tracking-[0.12em] text-red-400';
+    'burhan-auth-error mt-1 text-[0.63rem] font-extrabold uppercase tracking-[0.12em] text-red-600';
 
 export const authPrimaryButtonClass =
     'burhan-auth-submit mt-1 flex min-h-[5rem] w-full items-center justify-center gap-2 rounded-[1.6rem] border text-[0.92rem] font-black uppercase tracking-[0.18em] transition-all';
@@ -34,10 +34,25 @@ export const burhanAuthTopbarStyles = `
         z-index: 4;
         height: var(--auth-topbar-height);
         overflow: hidden;
-        border-bottom: 1px solid rgba(245, 231, 198, 0.12);
-        background: #2D2D2D;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
-        backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: #742220;
+    }
+
+    .burhan-auth-topbar::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px),
+            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(255,255,255,0.035) 4.5px, rgba(255,255,255,0.035) 5px);
+    }
+
+    .burhan-auth-topbar > * {
+        position: relative;
+        z-index: 1;
     }
 
     .burhan-auth-topbar-inner {
@@ -79,10 +94,12 @@ export const burhanAuthTopbarStyles = `
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: #F5E7C6;
+        color: #FEF9E1;
         font-size: 1.1rem;
-        font-weight: 700;
+        font-weight: 800;
         line-height: 1.05;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
 
     .burhan-auth-topbar-button {
@@ -92,18 +109,16 @@ export const burhanAuthTopbarStyles = `
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        border: 1px solid rgba(245, 231, 198, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 999px;
-        background: rgba(245, 231, 198, 0.06);
-        color: rgba(245, 231, 198, 0.76);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(254, 249, 225, 0.65);
+        transition: color 0.2s ease, background-color 0.2s ease;
     }
 
     .burhan-auth-topbar-button:hover {
-        color: #F5E7C6;
-        background: rgba(245, 231, 198, 0.12);
-        transform: rotate(10deg);
+        color: #FEF9E1;
+        background: rgba(255, 255, 255, 0.12);
     }
 
     @media (max-width: 640px) {
@@ -132,19 +147,19 @@ export const burhanAuthTopbarStyles = `
 export const burhanAuthThemeStyles = `
     .burhan-auth-stage {
         --auth-topbar-height: 5.25rem;
-        --auth-mode-surface-rgb: 245, 231, 198;
-        --auth-panel-bg: #2D2D2D;
-        --auth-panel-surface: rgba(255, 255, 255, 0.02);
-        --auth-panel-border: rgba(245, 231, 198, 0.12);
-        --auth-panel-border-soft: rgba(245, 231, 198, 0.08);
-        --auth-panel-text: #F5E7C6;
-        --auth-panel-muted: #A0A0A0;
+        --auth-mode-surface-rgb: 214, 210, 199;
+        --auth-panel-bg: #FEF9E1;
+        --auth-panel-surface: rgba(116, 34, 32, 0.04);
+        --auth-panel-border: #C8BCA0;
+        --auth-panel-border-soft: rgba(200, 188, 160, 0.60);
+        --auth-panel-text: #742220;
+        --auth-panel-muted: rgba(116, 34, 32, 0.55);
         isolation: isolate;
         background: rgb(var(--auth-mode-surface-rgb)) !important;
     }
 
     .dark .burhan-auth-stage {
-        --auth-mode-surface-rgb: 34, 34, 34;
+        --auth-mode-surface-rgb: 214, 210, 199;
     }
 
     @media (max-width: 640px) {
@@ -158,13 +173,21 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-stage::after {
-        display: none;
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
     }
 
     .burhan-auth-stage-game {
         position: relative;
-        --auth-mode-surface-rgb: 13, 13, 13;
-        background: #0d0d0d !important;
+        --auth-mode-surface-rgb: 214, 210, 199;
+        background: #D6D2C7 !important;
     }
 
     .burhan-auth-backdrop {
@@ -179,7 +202,7 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-backdrop-game {
-        border-right: 1px solid rgba(var(--primary-rgb), 0.08);
+        border-right: 2px solid #C8BCA0;
     }
 
     .burhan-auth-backdrop-full {
@@ -194,21 +217,17 @@ export const burhanAuthThemeStyles = `
     .burhan-auth-backdrop-fallback {
         position: absolute;
         inset: 0;
-        background:
-            radial-gradient(circle at 18% 20%, rgba(var(--primary-rgb), 0.16), transparent 26%),
-            radial-gradient(circle at 78% 18%, rgba(245, 231, 198, 0.11), transparent 24%),
-            linear-gradient(180deg, rgba(12, 18, 10, 0.94), rgba(7, 10, 8, 0.98));
+        background: #D6D2C7;
     }
 
     .burhan-auth-backdrop-fallback::before {
         content: '';
         position: absolute;
         inset: 0;
-        background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-        background-size: 38px 38px, 38px 38px;
-        opacity: 0.08;
+        background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+            repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+            repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
         pointer-events: none;
     }
 
@@ -219,7 +238,7 @@ export const burhanAuthThemeStyles = `
         width: 100%;
         height: 100%;
         border: 0;
-        background: #0d0d0d;
+        background: #D6D2C7;
         opacity: 0;
         transition: opacity 220ms ease;
     }
@@ -232,8 +251,8 @@ export const burhanAuthThemeStyles = `
         position: relative;
         z-index: 1;
         padding-top: calc(var(--auth-topbar-height) + 1.25rem) !important;
-        background: rgb(var(--auth-mode-surface-rgb)) !important;
-        box-shadow: inset 1px 0 0 rgba(var(--primary-rgb), 0.1);
+        background: #D6D2C7 !important;
+        box-shadow: inset 1px 0 0 #C8BCA0;
         overscroll-behavior: contain;
         scrollbar-gutter: stable both-edges;
         -webkit-overflow-scrolling: touch;
@@ -260,52 +279,44 @@ export const burhanAuthThemeStyles = `
     .burhan-auth-glow {
         --backdrop: var(--auth-panel-bg) !important;
         --backup-border: var(--auth-panel-border) !important;
-        --glow-rgb: 245, 231, 198 !important;
-        --radius: 32;
-        --border: 1;
+        --radius: 24;
+        --border: 2;
         --size: 160;
-        --bg-spot-opacity: 0.07;
-        --border-spot-opacity: 0.16;
-        --border-light-opacity: 0.04;
-        --outer: 0.18;
-        border-radius: 2rem;
+        --bg-spot-opacity: 0;
+        --border-spot-opacity: 0;
+        --border-light-opacity: 0;
+        --outer: 0;
+        border-radius: 1.75rem;
         background-color: var(--auth-panel-bg) !important;
-        border-color: var(--auth-panel-border) !important;
-        box-shadow:
-            0 24px 56px rgba(0, 0, 0, 0.2),
-            0 0 0 1px var(--auth-panel-border-soft) inset;
+        background-image: none !important;
+        border: 2px solid #2D4A3E !important;
+        box-shadow: 4px 4px 0px 0px #2D4A3E !important;
         touch-action: pan-y !important;
+    }
+
+    .burhan-auth-glow[data-glow]::before,
+    .burhan-auth-glow[data-glow]::after {
+        opacity: 0 !important;
+        display: none !important;
+    }
+
+    .burhan-auth-glow [data-glow] {
+        display: none !important;
     }
 
     .burhan-auth-card {
         position: relative;
         overflow: hidden;
-        border-radius: 30px;
+        border-radius: 1.75rem;
         padding: 22px;
-        border: 1px solid var(--auth-panel-border);
-        background: var(--auth-panel-bg);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            0 16px 36px rgba(0, 0, 0, 0.14);
+        border: 2px solid #2D4A3E;
+        background: #FEF9E1;
+        box-shadow: 4px 4px 0px 0px #2D4A3E;
     }
 
-    .burhan-auth-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background:
-            radial-gradient(circle at 14% 20%, rgba(245, 231, 198, 0.04), transparent 20%),
-            radial-gradient(circle at 86% 12%, rgba(245, 231, 198, 0.025), transparent 18%);
-        pointer-events: none;
-    }
-
+    .burhan-auth-card::before,
     .burhan-auth-card::after {
-        content: '';
-        position: absolute;
-        inset: 10px;
-        border-radius: 24px;
-        border: 1px solid var(--auth-panel-border-soft);
-        pointer-events: none;
+        display: none;
     }
 
     .burhan-auth-card > * {
@@ -315,19 +326,17 @@ export const burhanAuthThemeStyles = `
 
     .burhan-auth-brand-panel {
         margin-bottom: 0.95rem;
-        border-radius: 1.75rem;
-        border: 1px solid var(--auth-panel-border);
-        background:
-            linear-gradient(180deg, rgba(245, 231, 198, 0.045), transparent 40%),
-            var(--auth-panel-surface);
+        border-radius: 1.25rem;
+        border: 2px solid #C8BCA0;
+        background: #F5EFD5;
         padding: 1.5rem 1.25rem;
         text-align: center;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        box-shadow: 3px 3px 0px 0px #C8BCA0;
     }
 
     .burhan-auth-title {
         margin: 0;
-        color: var(--auth-panel-text);
+        color: #742220;
         font-size: clamp(2.7rem, 5vw, 4rem);
         font-weight: 800;
         line-height: 0.9;
@@ -351,37 +360,35 @@ export const burhanAuthThemeStyles = `
         margin-bottom: 1.1rem;
         padding: 0.45rem;
         border-radius: 1.35rem;
-        border: 1px solid var(--auth-panel-border);
-        background: var(--auth-panel-surface);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        border: 2px solid #C8BCA0;
+        background: #F5EFD5;
+        box-shadow: 2px 2px 0px 0px #C8BCA0;
     }
 
     .burhan-auth-tab {
-        border: 1px solid transparent;
+        border: 2px solid transparent;
         border-radius: 1rem;
         padding: 0.9rem 1rem;
         background: transparent;
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
         font-size: 0.82rem;
         font-weight: 800;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
     }
 
     .burhan-auth-tab.is-active {
-        color: var(--auth-panel-text);
-        border-color: var(--auth-panel-border);
-        background: rgba(245, 231, 198, 0.08);
-        box-shadow:
-            inset 0 -2px 0 #F5E7C6,
-            inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        color: #FEF9E1;
+        border-color: #5a1a18;
+        background: #742220;
+        box-shadow: 2px 2px 0px 0px #5a1a18;
     }
 
     .burhan-auth-tab:not(.is-active):hover {
-        color: var(--auth-panel-text);
-        border-color: var(--auth-panel-border-soft);
-        background: rgba(245, 231, 198, 0.05);
+        color: #742220;
+        border-color: #C8BCA0;
+        background: rgba(116, 34, 32, 0.06);
     }
 
     .burhan-auth-form {
@@ -398,12 +405,12 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-label {
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
     }
 
     .burhan-auth-meta-link,
     .burhan-auth-field-token {
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
         font-size: 0.72rem;
         font-weight: 800;
         letter-spacing: 0.18em;
@@ -411,11 +418,12 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-meta-link {
+        color: #2D4A3E;
         transition: color 0.2s ease;
     }
 
     .burhan-auth-meta-link:hover {
-        color: var(--auth-panel-text);
+        color: #1a2e26;
     }
 
     .burhan-auth-input-wrap {
@@ -424,22 +432,15 @@ export const burhanAuthThemeStyles = `
 
     .burhan-auth-input {
         min-height: 4.35rem;
-        border-color: var(--auth-panel-border);
-        background:
-            linear-gradient(180deg, rgba(245, 231, 198, 0.03), transparent 34%),
-            var(--auth-panel-surface);
-        color: var(--auth-panel-text) !important;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            inset 0 -8px 16px rgba(0, 0, 0, 0.08);
+        border: 2px solid #C8BCA0 !important;
+        background: #FEF9E1 !important;
+        color: #742220 !important;
+        box-shadow: 2px 2px 0px 0px #C8BCA0;
     }
 
     .burhan-auth-input:focus {
-        border-color: rgba(245, 231, 198, 0.46);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            0 0 0 1px rgba(245, 231, 198, 0.16),
-            0 0 18px rgba(245, 231, 198, 0.08);
+        border-color: #742220 !important;
+        box-shadow: 2px 2px 0px 0px #742220;
     }
 
     .burhan-auth-input:disabled {
@@ -448,7 +449,7 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-input::placeholder {
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.40) !important;
     }
 
     .burhan-auth-input.is-centered {
@@ -473,23 +474,19 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-field-token.is-button:hover {
-        color: var(--auth-panel-text);
+        color: #742220;
     }
 
     .burhan-auth-submit {
-        border-color: var(--auth-panel-border);
-        background: #F5E7C6;
-        color: #222222;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.25),
-            0 14px 24px rgba(245, 231, 198, 0.12);
+        border: 2px solid #5a1a18;
+        background: #742220;
+        color: #FEF9E1;
+        box-shadow: 3px 3px 0px 0px #5a1a18;
     }
 
     .burhan-auth-submit:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.25),
-            0 18px 28px rgba(245, 231, 198, 0.14);
+        transform: translate(-1px, -1px);
+        box-shadow: 5px 5px 0px 0px #5a1a18;
     }
 
     .burhan-auth-submit:disabled {
@@ -498,33 +495,27 @@ export const burhanAuthThemeStyles = `
     }
 
     .burhan-auth-secondary {
-        border-color: var(--auth-panel-border);
-        background: var(--auth-panel-surface);
-        color: var(--auth-panel-text);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            inset 0 -8px 14px rgba(0, 0, 0, 0.08);
+        border: 2px solid #2D4A3E;
+        background: #F5EFD5;
+        color: #2D4A3E;
+        box-shadow: 2px 2px 0px 0px #2D4A3E;
     }
 
     .burhan-auth-secondary:hover {
-        border-color: rgba(245, 231, 198, 0.24);
-        color: var(--auth-panel-text);
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0px 0px #2D4A3E;
     }
 
     .burhan-auth-overlay {
-        background: rgba(var(--background-rgb), 0.78);
+        background: rgba(214, 210, 199, 0.85);
         backdrop-filter: blur(10px);
     }
 
     .burhan-auth-overlay-card {
         border-radius: 1.5rem;
-        border: 1px solid var(--auth-panel-border);
-        background:
-            linear-gradient(180deg, rgba(245, 231, 198, 0.03), transparent 24%),
-            var(--auth-panel-bg);
-        box-shadow:
-            0 24px 46px rgba(0, 0, 0, 0.14),
-            inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        border: 2px solid #2D4A3E;
+        background: #FEF9E1;
+        box-shadow: 4px 4px 0px 0px #2D4A3E;
     }
 
     .burhan-auth-divider {
@@ -539,7 +530,7 @@ export const burhanAuthThemeStyles = `
         left: 0;
         right: 0;
         top: 50%;
-        border-top: 1px solid var(--auth-panel-border);
+        border-top: 2px solid #C8BCA0;
     }
 
     .burhan-auth-divider span {
@@ -547,8 +538,8 @@ export const burhanAuthThemeStyles = `
         z-index: 1;
         display: inline-block;
         padding: 0 0.85rem;
-        background: var(--auth-panel-bg);
-        color: var(--auth-panel-muted);
+        background: #FEF9E1;
+        color: rgba(116, 34, 32, 0.55);
         font-size: 0.66rem;
         font-weight: 800;
         letter-spacing: 0.22em;
@@ -566,20 +557,17 @@ export const burhanAuthThemeStyles = `
         justify-content: space-between;
         gap: 0.85rem;
         padding: 1rem 1rem 1rem 1.05rem;
-        border: 1px solid var(--auth-panel-border);
+        border: 2px solid #C8BCA0;
         border-radius: 1.45rem;
-        background:
-            linear-gradient(180deg, rgba(245, 231, 198, 0.03), transparent 42%),
-            var(--auth-panel-surface);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            inset 0 -8px 16px rgba(0, 0, 0, 0.08);
-        transition: transform 0.2s ease, border-color 0.2s ease;
+        background: #F5EFD5;
+        box-shadow: 2px 2px 0px 0px #C8BCA0;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .burhan-auth-provider:hover {
-        border-color: rgba(245, 231, 198, 0.24);
-        transform: translateY(-1px);
+        border-color: #2D4A3E;
+        box-shadow: 3px 3px 0px 0px #2D4A3E;
+        transform: translate(-1px, -1px);
     }
 
     .burhan-auth-provider-main {
@@ -595,14 +583,14 @@ export const burhanAuthThemeStyles = `
         width: 2.75rem;
         place-items: center;
         border-radius: 1rem;
-        border: 1px solid var(--auth-panel-border);
-        background: rgba(245, 231, 198, 0.05);
-        color: var(--auth-panel-text);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        border: 2px solid #C8BCA0;
+        background: #FEF9E1;
+        color: #742220;
+        box-shadow: 2px 2px 0px 0px #C8BCA0;
     }
 
     .burhan-auth-provider-icon.is-discord {
-        color: var(--auth-panel-text);
+        color: #742220;
     }
 
     .burhan-auth-provider-label {
@@ -610,49 +598,49 @@ export const burhanAuthThemeStyles = `
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: var(--auth-panel-text);
+        color: #742220;
         font-size: 0.98rem;
         font-weight: 700;
     }
 
     .burhan-auth-provider-arrow {
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
         font-size: 0.95rem;
     }
 
     .burhan-auth-provider:hover .burhan-auth-provider-arrow {
-        color: var(--auth-panel-text);
+        color: #742220;
     }
 
     .burhan-auth-pin-copy {
         margin-bottom: 0.2rem;
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
         line-height: 1.75;
     }
 
     .burhan-auth-turnstile-title {
-        color: var(--auth-panel-text);
+        color: #742220;
     }
 
     .burhan-auth-turnstile-copy {
-        color: var(--auth-panel-muted);
+        color: rgba(116, 34, 32, 0.55);
     }
 
     .burhan-auth-turnstile-error {
-        color: #F5E7C6;
+        color: #991b1b;
     }
 
     .burhan-auth-stage input:-webkit-autofill,
     .burhan-auth-stage input:-webkit-autofill:hover,
     .burhan-auth-stage input:-webkit-autofill:focus {
-        -webkit-text-fill-color: var(--auth-panel-text);
-        -webkit-box-shadow: 0 0 0 1000px var(--auth-panel-bg) inset;
+        -webkit-text-fill-color: #742220;
+        -webkit-box-shadow: 0 0 0 1000px #FEF9E1 inset;
         transition: background-color 9999s ease-in-out 0s;
     }
 
     @media (max-width: 1024px) {
         .burhan-auth-stage {
-            background: rgb(var(--auth-mode-surface-rgb)) !important;
+            background: #D6D2C7 !important;
         }
     }
 

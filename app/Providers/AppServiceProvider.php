@@ -27,6 +27,52 @@ class AppServiceProvider extends ServiceProvider
 
         View::share('appVersion', $this->versionData()['version'] ?? 'undefined');
         View::share('appIsGit', $this->versionData()['is_git'] ?? false);
+        View::composer('layouts.admin', function ($view) {
+            $adminSidebarSections = [
+                [
+                    'key' => 'basic',
+                    'title' => 'Basic Administration',
+                    'items' => [
+                        ['route' => route('admin.index'), 'match' => 'admin.index', 'exact' => true, 'icon' => 'dashboard', 'label' => 'Overview'],
+                        ['route' => route('admin.settings'), 'match' => 'admin.settings', 'icon' => 'settings', 'label' => 'Settings'],
+                        ['route' => route('admin.oauth'), 'match' => 'admin.oauth', 'icon' => 'account_tree', 'label' => 'OAuth'],
+                        ['route' => route('admin.discord'), 'match' => 'admin.discord', 'icon' => 'forum', 'label' => 'Discord'],
+                        ['route' => route('admin.always-motd'), 'match' => 'admin.always-motd', 'icon' => 'stream', 'label' => 'Minecraft MOTD'],
+                        ['route' => route('admin.down-detector'), 'match' => 'admin.down-detector', 'icon' => 'radar', 'label' => 'Down Detector'],
+                        ['route' => route('admin.security'), 'match' => 'admin.security', 'icon' => 'shield', 'label' => 'Security'],
+                        ['route' => route('admin.logs'), 'match' => 'admin.logs', 'icon' => 'receipt_long', 'label' => 'System Logs'],
+                        ['route' => route('admin.api.index'), 'match' => 'admin.api', 'icon' => 'api', 'label' => 'Application API'],
+                    ],
+                ],
+                [
+                    'key' => 'management',
+                    'title' => 'Management',
+                    'items' => [
+                        ['route' => route('admin.databases'), 'match' => 'admin.databases', 'icon' => 'dns', 'label' => 'Databases'],
+                        ['route' => route('admin.subdomains.index'), 'match' => 'admin.subdomains', 'icon' => 'alternate_email', 'label' => 'Subdomains'],
+                        ['route' => route('admin.locations'), 'match' => 'admin.locations', 'icon' => 'public', 'label' => 'Locations'],
+                        ['route' => route('admin.nodes'), 'match' => 'admin.nodes', 'icon' => 'hub', 'label' => 'Nodes'],
+                        ['route' => route('admin.servers'), 'match' => 'admin.servers', 'icon' => 'storage', 'label' => 'Servers'],
+                        ['route' => route('admin.users'), 'match' => 'admin.users', 'icon' => 'group', 'label' => 'Users'],
+                    ],
+                ],
+                [
+                    'key' => 'service-management',
+                    'title' => 'Service Management',
+                    'items' => [
+                        ['route' => route('admin.mounts'), 'match' => 'admin.mounts', 'icon' => 'inventory_2', 'label' => 'Mounts'],
+                        ['route' => route('admin.nests'), 'match' => 'admin.nests', 'icon' => 'grid_view', 'label' => 'Nests'],
+                    ],
+                ],
+            ];
+
+            if (auth()->check() && auth()->user()->root_admin) {
+                $adminSidebarSections[1]['items'][] = ['route' => route('admin.billing'), 'match' => 'admin.billing', 'icon' => 'payments', 'label' => 'Billing'];
+                $adminSidebarSections[1]['items'][] = ['route' => route('admin.tickets'), 'match' => 'admin.tickets', 'icon' => 'support_agent', 'label' => 'Support'];
+            }
+
+            $view->with('adminSidebarSections', $adminSidebarSections);
+        });
 
         Paginator::useBootstrap();
 

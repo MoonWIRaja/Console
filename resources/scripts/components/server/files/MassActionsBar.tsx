@@ -59,14 +59,14 @@ const MassActionsBar = () => {
         setLoading(true);
         setShowConfirm(false);
         clearFlashes('files');
-        setLoadingMessage('Moving files to recycle bin...');
+        setLoadingMessage('Deleting files...');
 
         try {
             const fileBatches = splitIntoBatches(selectedFiles, RECYCLE_BIN_BATCH_SIZE);
 
             for (let index = 0; index < fileBatches.length; index++) {
                 const batch = fileBatches[index];
-                setLoadingMessage(`Moving files to recycle bin... (${index + 1}/${fileBatches.length})`);
+                setLoadingMessage(`Deleting files... (${index + 1}/${fileBatches.length})`);
                 await moveToRecycleBin(uuid, directory, batch);
             }
 
@@ -89,16 +89,16 @@ const MassActionsBar = () => {
                 <Dialog.Confirm
                     title={'Delete Files'}
                     open={showConfirm}
-                    confirm={'Move'}
+                    confirm={'Delete'}
                     onClose={() => setShowConfirm(false)}
                     onConfirmed={onClickConfirmDeletion}
                 >
                     <p className={'mb-2'}>
-                        Move&nbsp;
+                        Delete&nbsp;
                         <span className={'font-semibold text-[color:var(--primary)]'}>
                             {selectedFiles.length} files
                         </span>{' '}
-                        to recycle bin? You can recover them later.
+                        and move them to recycle bin? You can recover them later.
                     </p>
                     <ul className={'space-y-1 text-sm text-[color:var(--foreground)]'}>
                         {selectedFiles.slice(0, 15).map((file) => (
@@ -120,7 +120,17 @@ const MassActionsBar = () => {
                     <div className={'pointer-events-none fixed bottom-0 mb-6 flex justify-center w-full z-50'}>
                         <Fade timeout={75} in={selectedFiles.length > 0} unmountOnExit>
                             <div
-                                css={tw`pointer-events-auto flex items-center space-x-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-xl`}
+                                css={tw`pointer-events-auto flex items-center space-x-3 rounded-xl p-3`}
+                                style={{
+                                    border: '2px solid #2D4A3E',
+                                    backgroundColor: '#FEF9E1',
+                                    backgroundImage: [
+                                        'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                                        'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                                        'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                                    ].join(', '),
+                                    boxShadow: '4px 4px 0px 0px #2D4A3E',
+                                }}
                             >
                                 <InteractiveHoverButton text={'Move'} onClick={() => setShowMove(true)} />
                                 <InteractiveHoverButton text={'Archive'} onClick={onClickCompress} />

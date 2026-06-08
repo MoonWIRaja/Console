@@ -32,7 +32,7 @@
 
                         <div class="form-group">
                             <label for="pUserId">Server Owner</label>
-                            <select id="pUserId" name="owner_id" class="form-control" style="padding-left:0;"></select>
+                            <select id="pUserId" name="owner_id" class="form-control admin-pad-left-none"></select>
                             <p class="small text-muted no-margin">Email address of the Server Owner.</p>
                         </div>
                     </div>
@@ -59,7 +59,7 @@
     <div class="row">
         <div class="col-xs-12">
             <div class="box">
-                <div class="overlay" id="allocationLoader" style="display:none;"><i class="fa fa-refresh fa-spin"></i></div>
+                <div class="overlay admin-overlay-hidden" id="allocationLoader"><i class="fa fa-refresh fa-spin"></i></div>
                 <div class="box-header with-border">
                     <h3 class="box-title">Allocation Management</h3>
                 </div>
@@ -103,7 +103,7 @@
     <div class="row">
         <div class="col-xs-12">
             <div class="box">
-                <div class="overlay" id="allocationLoader" style="display:none;"><i class="fa fa-refresh fa-spin"></i></div>
+                <div class="overlay admin-overlay-hidden" id="allocationLoader"><i class="fa fa-refresh fa-spin"></i></div>
                 <div class="box-header with-border">
                     <h3 class="box-title">Application Feature Limits</h3>
                 </div>
@@ -280,7 +280,7 @@
                     <div class="form-group col-xs-12">
                         <label for="pDefaultContainer">Docker Image</label>
                         <select id="pDefaultContainer" name="image" class="form-control"></select>
-                        <input id="pDefaultContainerCustom" name="custom_image" value="{{ old('custom_image') }}" class="form-control" placeholder="Or enter a custom image..." style="margin-top:1rem"/>
+                        <input id="pDefaultContainerCustom" name="custom_image" value="{{ old('custom_image') }}" class="form-control admin-margin-top-rem" placeholder="Or enter a custom image..."/>
                         <p class="small text-muted no-margin">This is the default Docker image that will be used to run this server. Select an image from the dropdown above, or enter a custom image in the text field above.</p>
                     </div>
                 </div>
@@ -303,7 +303,7 @@
                     </div>
                 </div>
 
-                <div class="box-header with-border" style="margin-top:-10px;">
+                <div class="box-header with-border admin-margin-top-neg-sm">
                     <h3 class="box-title">Service Variables</h3>
                 </div>
 

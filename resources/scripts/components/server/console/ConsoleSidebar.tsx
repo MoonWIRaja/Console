@@ -41,7 +41,7 @@ export default ({ syncMode = 'full', contributeToSharedTranscript = true }: Prop
                             aria-label={'Open console'}
                             title={'Open console'}
                             className={
-                                'inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-subtle)] shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
+                                'inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border-2 border-r-0 border-[#2D4A3E] bg-[#FEF9E1] text-[#742220] transition-colors hover:text-[#2D4A3E]'
                             }
                             onClick={() => setOpen(true)}
                         >
@@ -68,7 +68,7 @@ export default ({ syncMode = 'full', contributeToSharedTranscript = true }: Prop
                             aria-label={'Open console'}
                             title={'Open console'}
                             className={
-                                'pointer-events-auto inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border border-r-0 border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-subtle)] shadow-[-8px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-colors hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]'
+                                'pointer-events-auto inline-flex h-[84px] w-[28px] items-center justify-center rounded-l-xl rounded-r-none border-2 border-r-0 border-[#2D4A3E] bg-[#FEF9E1] text-[#742220] transition-colors hover:text-[#2D4A3E]'
                             }
                             onClick={() => setOpen(true)}
                         >

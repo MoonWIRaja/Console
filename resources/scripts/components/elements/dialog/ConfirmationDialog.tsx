@@ -14,13 +14,17 @@ export default ({ confirm = 'Okay', children, onConfirmed, ...props }: Confirmat
             {typeof children !== 'string' && children}
             <Dialog.Footer>
                 <Button.Text
-                    className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}
+                    className={
+                        '!border-[color:var(--surface-border)] !bg-[color:var(--surface-elevated)] !text-[color:var(--foreground)] hover:!border-[color:var(--primary)] hover:!bg-[color:var(--surface-subtle)] hover:!text-[color:var(--primary)]'
+                    }
                     onClick={props.onClose}
                 >
                     Cancel
                 </Button.Text>
                 <Button.Danger
-                    className={'!border-red-500 !bg-red-900 hover:!bg-red-800'}
+                    className={
+                        '!border-[#742220] !bg-[#742220] !text-[#FEF9E1] hover:!border-[#5f1c1a] hover:!bg-[#5f1c1a]'
+                    }
                     onClick={onConfirmed}
                 >
                     {confirm}

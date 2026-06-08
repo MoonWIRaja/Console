@@ -11,7 +11,8 @@ export default ({ dark, className, children }: CodeProps) => (
     <code
         className={classNames('font-mono text-sm px-2 py-1 inline-block rounded', className, {
             'bg-neutral-700': !dark,
-            'bg-[color:var(--card)] text-gray-100': dark,
+            'border border-[color:var(--surface-border)] bg-[color:var(--surface-subtle)] text-[color:var(--foreground)]':
+                dark,
         })}
     >
         {children}

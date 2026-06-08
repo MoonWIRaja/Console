@@ -25,6 +25,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 import ToggleSwitch from '@/components/ui/toggle-switch';
 import updateStartupAutoRestart from '@/api/server/updateStartupAutoRestart';
+import PageLoadingSkeleton from '@/components/elements/PageLoadingSkeleton';
 
 const normalizeCommand = (value: string): string =>
     value
@@ -499,16 +500,20 @@ const StartupContainer = () => {
     }, [startupDraft, canEditStartup, data?.rawStartupCommand, data?.variables]);
 
     return !data ? (
-        !error || (error && isValidating) ? (
-            <Spinner centered size={Spinner.Size.LARGE} />
-        ) : (
-            <ServerError title={'Oops!'} message={httpErrorToHuman(error)} onRetry={() => mutate()} />
-        )
+        <ServerContentBlock title={'Startup Settings'} className={'content-container-full px-4 py-4 xl:px-6'}>
+            {!error || (error && isValidating) ? (
+                <PageLoadingSkeleton showChrome={false} showSpinner={false} rows={8} className='min-h-[360px]' />
+            ) : (
+                <div css={tw`flex min-h-[360px] items-center justify-center`}>
+                    <ServerError title={'Oops!'} message={httpErrorToHuman(error)} onRetry={() => mutate()} />
+                </div>
+            )}
+        </ServerContentBlock>
     ) : (
         <ServerContentBlock
             title={'Startup Settings'}
             showFlashKey={'startup:image'}
-            className={'content-container-full px-4 xl:px-6'}
+            className={'content-container-full px-4 py-4 xl:px-6'}
         >
             <div
                 css={tw`flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pr-1 pb-4`}
@@ -558,7 +563,7 @@ const StartupContainer = () => {
                                     rows={4}
                                     readOnly={!canEditStartup}
                                     css={tw`font-mono`}
-                                    style={{ backgroundColor: 'var(--card)' }}
+                                    style={{ backgroundColor: '#FEF9E1' }}
                                 />
                                 {canEditStartup && commandSaving && (
                                     <div
@@ -568,13 +573,11 @@ const StartupContainer = () => {
                                         <span>Auto-saving...</span>
                                     </div>
                                 )}
-                                <div
-                                    css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3`}
-                                >
-                                    <p css={tw`mb-2 text-xs uppercase tracking-wide text-[color:var(--foreground)]`}>
+                                <div className={'sc-card-inner p-3'}>
+                                    <p className={'mb-2 text-xs uppercase tracking-wide sc-text'}>
                                         Preview
                                     </p>
-                                    <p css={tw`font-mono text-sm break-words text-[#f8f6ef]`}>
+                                    <p className={'font-mono text-sm break-words sc-text'}>
                                         {commandPreview.preview}
                                     </p>
                                     {commandPreview.placeholders.length > 0 && (
@@ -583,7 +586,7 @@ const StartupContainer = () => {
                                         </p>
                                     )}
                                 </div>
-                                <div css={tw`border-t border-[color:var(--border)] pt-5`}>
+                                <div css={tw`pt-5`} style={{ borderTop: '2px solid #2D4A3E' }}>
                                     <div css={tw`mb-3 flex items-center justify-between gap-3`}>
                                         <div css={tw`min-w-0`}>
                                             <p
@@ -602,7 +605,7 @@ const StartupContainer = () => {
                                     <div css={tw`space-y-4`}>
                                         <div css={tw`flex items-center justify-between gap-4`}>
                                             <div css={tw`min-w-0`}>
-                                                <p css={tw`text-sm font-semibold text-[#f8f6ef]`}>
+                                                <p css={tw`text-sm font-semibold text-[color:var(--foreground)]`}>
                                                     Auto Restart When Crashed
                                                 </p>
                                                 <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>
@@ -618,9 +621,7 @@ const StartupContainer = () => {
                                                 label={autoRestartOnCrash ? 'On' : 'Off'}
                                             />
                                         </div>
-                                        <div
-                                            css={tw`rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-3 text-xs text-[color:var(--text-subtle)]`}
-                                        >
+                                        <div className={'sc-card-inner p-3 text-xs sc-muted'}>
                                             Crash recovery policy: wait {data.autoRestartDefaults.delaySeconds} seconds
                                             before restart, allow up to {data.autoRestartDefaults.maxAttempts} tries
                                             every {data.autoRestartDefaults.windowMinutes} minutes.
@@ -705,6 +706,7 @@ const StartupContainer = () => {
                                         value={String(selectedNestId || currentNestId)}
                                         defaultValue={String(selectedNestId || currentNestId)}
                                         title={'Choose Game Type'}
+                                        openDirection={'down'}
                                         data={availableNests.map((nest) => ({
                                             id: String(nest.id),
                                             label: nest.name,
@@ -732,6 +734,7 @@ const StartupContainer = () => {
                                         value={String(selectedEggId)}
                                         defaultValue={String(selectedEggId)}
                                         title={'Choose Server Type'}
+                                        openDirection={'down'}
                                         data={availableEggs.map((egg) => ({
                                             id: String(egg.id),
                                             label: egg.name,
@@ -756,6 +759,7 @@ const StartupContainer = () => {
                                         value={selectedDockerImage}
                                         defaultValue={selectedDockerImage}
                                         title={'Choose Docker Image'}
+                                        openDirection={'down'}
                                         data={dockerOptionsForSelectedEgg.map((image) => ({
                                             id: image.value,
                                             label: image.label || image.value,
@@ -779,7 +783,7 @@ const StartupContainer = () => {
                         </p>
                     </TitledGreyBox>
                 </div>
-                <h3 css={tw`mt-8 mb-2 text-2xl`}>Variables</h3>
+                <h3 css={tw`mt-8 mb-2 text-2xl text-[color:var(--foreground)]`}>Variables</h3>
                 <div css={tw`grid gap-8 md:grid-cols-2`}>
                     {data.variables.map((variable) => (
                         <VariableBox key={variable.envVariable} variable={variable} />

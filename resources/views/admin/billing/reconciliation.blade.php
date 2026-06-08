@@ -97,8 +97,15 @@
     <div class="row">
         <div class="col-md-6">
             <div class="box box-primary">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Open / Processing Invoices</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'recon_invoices_status',
+                        'value' => $selectedOpenInvoiceStatus,
+                        'options' => $openInvoiceStatusOptions,
+                        'pageName' => 'recon_invoices_page',
+                        'placeholder' => 'Open + processing',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -126,12 +133,22 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $open_invoices])
+                </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="box box-danger">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Failed Payments</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'recon_payments_status',
+                        'value' => $selectedFailedPaymentStatus,
+                        'options' => $failedPaymentStatusOptions,
+                        'pageName' => 'recon_payments_page',
+                        'placeholder' => 'Failed statuses',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -159,6 +176,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $failed_payments])
+                </div>
             </div>
         </div>
     </div>
@@ -166,8 +186,15 @@
     <div class="row">
         <div class="col-md-6">
             <div class="box box-warning">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Pending Refund Queue</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'recon_refunds_status',
+                        'value' => $selectedRefundStatus,
+                        'options' => $refundStatusOptions,
+                        'pageName' => 'recon_refunds_page',
+                        'placeholder' => 'Requested refunds',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -193,12 +220,22 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $pending_refunds])
+                </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="box box-danger">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Failed Webhook Events</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'recon_webhooks_status',
+                        'value' => $selectedWebhookStatus,
+                        'options' => $webhookStatusOptions,
+                        'pageName' => 'recon_webhooks_page',
+                        'placeholder' => 'Failed webhooks',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -226,6 +263,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $failed_webhook_events])
+                </div>
             </div>
         </div>
     </div>
@@ -233,8 +273,15 @@
     <div class="row">
         <div class="col-xs-12">
             <div class="box box-danger">
-                <div class="box-header with-border">
+                <div class="box-header with-border admin-billing-box-header">
                     <h3 class="box-title">Provision Failure Queue</h3>
+                    @include('admin.billing.partials.table-filter', [
+                        'name' => 'recon_provision_status',
+                        'value' => $selectedProvisionStatus,
+                        'options' => $provisionStatusOptions,
+                        'pageName' => 'recon_provision_page',
+                        'placeholder' => 'Provision failures',
+                    ])
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover">
@@ -263,6 +310,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="box-footer clearfix">
+                    @include('admin.billing.partials.table-pagination', ['paginator' => $provision_failures])
                 </div>
             </div>
         </div>

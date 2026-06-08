@@ -11,12 +11,12 @@ const InteractiveHoverButton = React.forwardRef<HTMLButtonElement, InteractiveHo
     ({ text = 'Button', className = '', variant = 'neutral', iconName, disabled, ...props }, ref) => {
         const frameClass =
             variant === 'success'
-                ? 'border-[#22c55e] bg-[color:var(--card)] text-[#d1fae5] hover:border-[#4ade80] focus-visible:ring-[#22c55e]/65'
+                ? 'border-[#22c55e] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[#4ade80] focus-visible:ring-[#22c55e]/65'
                 : variant === 'warning'
-                    ? 'border-[#f59e0b] bg-[color:var(--card)] text-[#fef3c7] hover:border-[#fbbf24] focus-visible:ring-[#f59e0b]/65'
+                    ? 'border-[#f59e0b] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[#fbbf24] focus-visible:ring-[#f59e0b]/65'
                     : variant === 'danger'
-                        ? 'border-[#ef4444] bg-[color:var(--card)] text-[#fee2e2] hover:border-[#f87171] focus-visible:ring-[#ef4444]/65'
-                        : 'border-[color:var(--border)] bg-[color:var(--card)] text-[#f8f6ef] hover:border-[color:var(--primary)] focus-visible:ring-[#a3ff12]/65';
+                        ? 'border-[#ef4444] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[#f87171] focus-visible:ring-[#ef4444]/65'
+                        : 'border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:border-[color:var(--primary)] focus-visible:ring-[#a3ff12]/65';
 
         const fillClass =
             variant === 'success'

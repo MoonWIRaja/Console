@@ -2,8 +2,8 @@
     @apply mb-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-3;
 
     & button {
-        @apply w-full border border-[color:var(--border)] bg-[color:var(--card)] text-[#f8f6ef] first:col-span-2 sm:first:col-span-1;
-        @apply hover:border-[color:var(--primary)] hover:text-[color:var(--primary)] focus:ring-[color:var(--primary)];
+        @apply w-full border border-[#2D4A3E] bg-[#F5EFD5] text-[#742220] first:col-span-2 sm:first:col-span-1;
+        @apply hover:border-[#2D4A3E] hover:text-[#2D4A3E] focus:ring-[#2D4A3E];
     }
 
     @screen xl {
@@ -16,10 +16,10 @@
 }
 
 .search_shell {
-    @apply col-span-2 flex h-11 w-full items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-4 text-[color:var(--muted-foreground)];
+    @apply col-span-2 flex h-11 w-full items-center gap-2 rounded-full border border-[#2D4A3E] bg-[#F5EFD5] px-4 text-[#742220];
 
     & > span {
-        @apply text-base text-[color:var(--primary)];
+        @apply text-base text-[#2D4A3E];
     }
 
     @screen xl {
@@ -28,10 +28,10 @@
 }
 
 .search_input {
-    @apply h-full w-full bg-transparent text-sm text-[color:var(--foreground)] outline-none;
+    @apply h-full w-full bg-transparent text-sm text-[#742220] outline-none;
 
     &::placeholder {
-        @apply text-[color:var(--muted-foreground)];
+        color: rgba(116, 34, 32, 0.55);
     }
 }
 
@@ -51,11 +51,22 @@
 }
 
 .file_row {
-    @apply mb-2 flex cursor-pointer items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] text-base no-underline;
-    @apply transition-colors duration-150 hover:border-[color:var(--primary)] hover:bg-[color:var(--background)] hover:text-[color:var(--foreground)];
+    @apply mb-2 flex cursor-pointer items-center rounded-xl border-2 border-[#2D4A3E] text-base no-underline;
+    @apply transition-all duration-150;
+    background-color: #FEF9E1;
+    background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px),
+        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px);
+    box-shadow: 4px 4px 0px 0px #2D4A3E;
+
+    &:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0px 0px #2D4A3E;
+    }
 
     & > .details {
-        @apply flex flex-1 items-center overflow-hidden truncate px-6 py-4 text-[color:var(--foreground)] no-underline;
+        @apply flex flex-1 items-center overflow-hidden truncate px-6 py-4 text-[#742220] no-underline;
         @apply transition-colors duration-150;
 
         &:not(a) {

@@ -5,6 +5,7 @@ namespace Pterodactyl\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\User;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,6 +21,10 @@ class UpdateLastSeen
 
         $user = $request->user();
         if (!$user instanceof User || $request->bearerToken() || $user->currentAccessToken()) {
+            return $response;
+        }
+
+        if (!Schema::hasColumn($user->getTable(), 'last_seen_at')) {
             return $response;
         }
 

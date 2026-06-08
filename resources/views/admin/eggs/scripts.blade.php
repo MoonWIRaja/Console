@@ -16,7 +16,8 @@
 @endsection
 
 @section('content')
-<div class="row">
+<div class="admin-install-script-page">
+<div class="row admin-install-script-tabs-row">
     <div class="col-xs-12">
         <div class="nav-tabs-custom nav-tabs-floating">
             <ul class="nav nav-tabs">
@@ -27,10 +28,10 @@
         </div>
     </div>
 </div>
-<form action="{{ route('admin.nests.egg.scripts', $egg->id) }}" method="POST">
+<form action="{{ route('admin.nests.egg.scripts', $egg->id) }}" method="POST" class="admin-install-script-shell">
     <div class="row">
         <div class="col-xs-12">
-            <div class="box">
+            <div class="box admin-install-script-box">
                 <div class="box-header with-border">
                     <h3 class="box-title">Install Script</h3>
                 </div>
@@ -41,10 +42,10 @@
                         </div>
                     </div>
                 @endif
-                <div class="box-body no-padding">
-                    <div id="editor_install"style="height:300px">{{ $egg->script_install }}</div>
+                <div class="box-body no-padding admin-install-script-editor-body">
+                    <div id="editor_install" class="admin-editor-md admin-install-script-editor">{{ $egg->script_install }}</div>
                 </div>
-                <div class="box-body">
+                <div class="box-body admin-install-script-controls">
                     <div class="row">
                         <div class="form-group col-sm-4">
                             <label class="control-label">Copy Script From</label>
@@ -91,6 +92,7 @@
         </div>
     </div>
 </form>
+</div>
 @endsection
 
 @section('footer-scripts')
@@ -98,6 +100,8 @@
     {!! Theme::js('vendor/ace/ace.js') !!}
     {!! Theme::js('vendor/ace/ext-modelist.js') !!}
     <script>
+    document.body.classList.add('admin-install-script-route');
+
     $(document).ready(function () {
         $('#pCopyScriptFrom').select2();
 
@@ -108,6 +112,25 @@
         InstallEditor.getSession().setMode('ace/mode/sh');
         InstallEditor.getSession().setUseWrapMode(true);
         InstallEditor.setShowPrintMargin(false);
+
+        const fitInstallEditor = () => {
+            const editorElement = document.getElementById('editor_install');
+            if (!editorElement) {
+                return;
+            }
+
+            const editorTop = editorElement.getBoundingClientRect().top;
+            const availableHeight = Math.floor(window.innerHeight - editorTop);
+            const nextHeight = Math.max(420, Math.floor(availableHeight * 0.9));
+
+            editorElement.style.setProperty('height', `${nextHeight}px`, 'important');
+            InstallEditor.resize();
+        };
+
+        fitInstallEditor();
+        setTimeout(fitInstallEditor, 50);
+        setTimeout(fitInstallEditor, 250);
+        $(window).on('resize', fitInstallEditor);
 
         $('form').on('submit', function (e) {
             $('textarea[name="script_install"]').val(InstallEditor.getValue());

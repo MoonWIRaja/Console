@@ -246,12 +246,12 @@
     <div class="row down-detector-admin">
         <div class="col-md-8">
             <div class="callout callout-info">
-                <h4 style="margin-top: 0;">How it works now</h4>
-                <p style="margin-bottom: 8px;">
+                <h4 class="admin-callout-title">How it works now</h4>
+                <p class="admin-text-gap-sm">
                     Node monitoring sends admin alerts to a dedicated Discord channel and can also post periodic health summaries on a schedule you control.
                     Server monitoring uses a separate alert channel, while linked Discord users can check their own server health through a private launcher embed.
                 </p>
-                <p style="margin-bottom: 0;">
+                <p class="admin-text-last">
                     Server status replies are ephemeral and the bridge now deletes them automatically after about one minute.
                 </p>
             </div>
@@ -347,7 +347,7 @@
                                             value="{{ old('node.discord.alert_channel_id', data_get($config, 'node.discord.alert_channel_id')) }}"
                                             placeholder="123456789012345678"
                                         >
-                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                        <p class="text-muted small admin-help-tight">
                                             Transition alerts and scheduled node health summaries are sent to this channel as public embeds.
                                         </p>
                                     </div>
@@ -375,14 +375,14 @@
                                             min="60"
                                             max="10080"
                                         >
-                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                        <p class="text-muted small admin-help-tight">
                                             Example: <code>1440</code> sends one node summary every day.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 0;">
+                            <div class="form-group admin-form-group-tight">
                                 <button type="submit" class="btn btn-primary">Save Node Setup</button>
                             </div>
                         </form>
@@ -431,7 +431,7 @@
                             </div>
                         </div>
 
-                        <div class="box box-default" style="margin-bottom: 0;">
+                        <div class="box box-default admin-box-tight">
                             <div class="box-header with-border">
                                 <h3 class="box-title">Recent Node Incidents</h3>
                             </div>
@@ -492,7 +492,7 @@
                                             value="{{ old('server.discord.alert_channel_id', data_get($config, 'server.discord.alert_channel_id')) }}"
                                             placeholder="123456789012345678"
                                         >
-                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                        <p class="text-muted small admin-help-tight">
                                             Unexpected server outage alerts are sent to this channel.
                                         </p>
                                     </div>
@@ -510,7 +510,7 @@
                                             value="{{ old('server.discord.launcher_channel_id', data_get($config, 'server.discord.launcher_channel_id')) }}"
                                             placeholder="channel id for the user-facing launcher embed"
                                         >
-                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                        <p class="text-muted small admin-help-tight">
                                             The bot posts a public launcher embed here. Users click it and get their private server health reply.
                                         </p>
                                     </div>
@@ -536,7 +536,7 @@
                                             <option value="1" @if(data_get($config, 'server.auto_restart_default_enabled')) selected @endif>Enabled</option>
                                             <option value="0" @if(!data_get($config, 'server.auto_restart_default_enabled')) selected @endif>Disabled</option>
                                         </select>
-                                        <p class="text-muted small" style="margin-top: 6px; margin-bottom: 0;">
+                                        <p class="text-muted small admin-help-tight">
                                             New servers inherit this default. Existing servers keep their current value.
                                         </p>
                                     </div>
@@ -582,7 +582,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 0;">
+                            <div class="form-group admin-form-group-tight">
                                 <button type="submit" class="btn btn-primary">Save Server Setup</button>
                             </div>
                         </form>
@@ -636,7 +636,7 @@
                             </div>
                         </div>
 
-                        <div class="box box-default" style="margin-bottom: 0;">
+                        <div class="box box-default admin-box-tight">
                             <div class="box-header with-border">
                                 <h3 class="box-title">Recent Server Incidents</h3>
                             </div>
@@ -689,7 +689,7 @@
                     <p><strong>Last node periodic summary:</strong> {{ $meta['node_last_periodic_report_at_human'] }}</p>
                     <hr>
                     <p><strong>Nodes</strong></p>
-                    <ul class="list-unstyled" style="margin-bottom: 12px;">
+                    <ul class="list-unstyled admin-list-gap-sm">
                         <li>Total: {{ $summary['nodes']['total'] }}</li>
                         <li>Up: {{ $summary['nodes']['up'] }}</li>
                         <li>Down: {{ $summary['nodes']['down'] }}</li>
@@ -697,7 +697,7 @@
                     </ul>
 
                     <p><strong>Servers</strong></p>
-                    <ul class="list-unstyled" style="margin-bottom: 0;">
+                    <ul class="list-unstyled admin-text-last">
                         <li>Total: {{ $summary['servers']['total'] }}</li>
                         <li>Up: {{ $summary['servers']['up'] }}</li>
                         <li>Down: {{ $summary['servers']['down'] }}</li>
@@ -712,7 +712,7 @@
                     <h3 class="box-title">Notes</h3>
                 </div>
                 <div class="box-body">
-                    <ul class="text-muted" style="padding-left: 18px; margin-bottom: 0;">
+                    <ul class="text-muted admin-list-tight">
                         <li>Node summaries use the same scheduler loop, but they only send when the configured periodic interval is due.</li>
                         <li>Server alerts still ignore install, suspend, transfer, starting, and maintenance states.</li>
                         <li>The server launcher reuses the existing Discord bridge. No second bot process is introduced.</li>

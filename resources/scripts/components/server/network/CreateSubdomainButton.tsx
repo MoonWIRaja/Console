@@ -114,7 +114,7 @@ const CreateSubdomainButton = ({ templates, onCreated }: Props) => {
                     }
                 }}
             >
-                <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Create subdomain</h2>
+                <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Create subdomain</h2>
 
                 <div css={tw`space-y-5`}>
                     <div>
@@ -146,9 +146,11 @@ const CreateSubdomainButton = ({ templates, onCreated }: Props) => {
                     </div>
 
                     {preview !== '' && (
-                        <div css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4`}>
+                        <div
+                            css={tw`rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-subtle)] p-4`}
+                        >
                             <p css={tw`text-xs uppercase tracking-[0.25em] text-[color:var(--text-subtle)]`}>Preview</p>
-                            <p css={tw`mt-2 text-base font-semibold text-[#f8f6ef]`}>{preview}</p>
+                            <p css={tw`mt-2 text-base font-semibold text-[color:var(--foreground)]`}>{preview}</p>
                         </div>
                     )}
                 </div>

@@ -11,6 +11,16 @@
 @section('content')
     @include('admin.billing.partials.nav')
     <div class="box">
+        <div class="box-header with-border admin-billing-box-header">
+            <h3 class="box-title">Billing Webhook Events</h3>
+            @include('admin.billing.partials.table-filter', [
+                'name' => 'status',
+                'value' => $selectedWebhookStatus,
+                'options' => $webhookStatusOptions,
+                'pageName' => 'page',
+                'placeholder' => 'All webhook statuses',
+            ])
+        </div>
         <div class="box-body table-responsive no-padding">
             <table class="table table-hover">
                 <thead>
@@ -42,6 +52,8 @@
                 </tbody>
             </table>
         </div>
-        <div class="box-footer clearfix">{{ $events->links() }}</div>
+        <div class="box-footer clearfix">
+            @include('admin.billing.partials.table-pagination', ['paginator' => $events])
+        </div>
     </div>
 @endsection

@@ -40,6 +40,7 @@ type TicketComposeDraft = {
 };
 
 const TICKET_CATEGORY_ORDER: TicketComposeCategory[] = ['payment', 'refund', 'support'];
+const TICKET_VISIBLE_CATEGORY_ORDER: TicketComposeCategory[] = ['refund', 'support'];
 const TICKET_WIZARD_STEP_ORDER: TicketWizardStep[] = ['category', 'details', 'message', 'review'];
 const TICKET_WIZARD_STEP_CONTENT: Record<
     TicketWizardStep,
@@ -110,6 +111,12 @@ const composeCategoryMeta = (category: TicketComposeCategory) => {
 const isComposeCategory = (value: string | null): value is TicketComposeCategory =>
     !!value && TICKET_CATEGORY_ORDER.includes(value as TicketComposeCategory);
 
+const isVisibleComposeCategory = (value: string | null): value is TicketComposeCategory =>
+    !!value && TICKET_VISIBLE_CATEGORY_ORDER.includes(value as TicketComposeCategory);
+
+const normalizeComposeCategory = (value: string | null | undefined): TicketComposeCategory =>
+    value && isVisibleComposeCategory(value) ? value : 'support';
+
 const isSupportView = (value: string | null): value is TicketSupportView => value === 'tickets' || value === 'chat';
 
 const isWizardStep = (value: string | null): value is TicketWizardStep =>
@@ -166,9 +173,9 @@ const formatFileSize = (size: number): string => {
 };
 
 const statusColor = (status: string): string => {
-    if (status === 'resolved' || status === 'closed') return 'var(--muted-foreground)';
-    if (status === 'waiting_for_staff') return '#f0b90b';
-    return 'var(--primary)';
+    if (status === 'resolved' || status === 'closed') return 'rgba(116, 34, 32, 0.45)';
+    if (status === 'waiting_for_staff') return '#742220';
+    return '#742220';
 };
 
 const messageTone = (authorType: string) => {
@@ -184,17 +191,16 @@ const messageTone = (authorType: string) => {
     if (authorType === 'system') {
         return {
             variant: 'received' as const,
-            avatarClass: 'border-amber-400/24 bg-amber-500/16 text-amber-100',
-            bubbleClass: 'border-amber-400/22 bg-amber-500/10 text-amber-50',
+            avatarClass: 'border-amber-400/24 bg-amber-500/16 text-amber-800',
+            bubbleClass: 'border-amber-400/22 bg-amber-500/10 text-amber-800',
             eyebrow: 'System',
         };
     }
 
     return {
         variant: 'sent' as const,
-        avatarClass: 'border-[rgba(var(--primary-rgb),0.24)] bg-[rgba(var(--primary-rgb),0.16)] text-[#efffc8]',
-        bubbleClass:
-            'border-[rgba(var(--primary-rgb),0.28)] bg-[linear-gradient(135deg,rgba(var(--primary-rgb),0.28),rgba(var(--primary-rgb),0.08))] text-[#f8f6ef]',
+        avatarClass: 'border-[#2D4A3E] bg-[#F5EFD5] text-[#742220]',
+        bubbleClass: 'border-[#742220] bg-[rgba(116,34,32,0.10)] text-[#742220]',
         eyebrow: 'You',
     };
 };
@@ -227,7 +233,7 @@ const readComposeDraft = (): TicketComposeDraft | null => {
         }
 
         return {
-            category: parsed.category,
+            category: normalizeComposeCategory(parsed.category),
             selectedEligibleId: parsed.selectedEligibleId || '',
             subject: parsed.subject || '',
             body: parsed.body || '',
@@ -337,10 +343,8 @@ const BillingTicketsContainer = () => {
     }, [requestedView, search, selectedTicketId]);
 
     const composeFromSearch = search.get('compose');
-    const defaultComposeCategory: TicketComposeCategory = isComposeCategory(composeFromSearch)
-        ? composeFromSearch
-        : 'support';
-    const defaultWizardStep: TicketWizardStep = isComposeCategory(composeFromSearch) ? 'details' : 'category';
+    const defaultComposeCategory: TicketComposeCategory = normalizeComposeCategory(composeFromSearch);
+    const defaultWizardStep: TicketWizardStep = isVisibleComposeCategory(composeFromSearch) ? 'details' : 'category';
 
     const { addFlash } = useFlash();
     const { clearAndAddHttpError, clearFlashes } = useFlashKey('tickets');
@@ -441,10 +445,10 @@ const BillingTicketsContainer = () => {
         } = {}
     ) => {
         clearFlashes();
-        const nextCategory = category ?? 'support';
+        const nextCategory = normalizeComposeCategory(category ?? 'support');
 
         setComposeCategory(nextCategory);
-        setWizardStep(category ? 'details' : 'category');
+        setWizardStep(category && nextCategory === category ? 'details' : 'category');
         setSelectedEligibleId('');
         setSupportSubject('');
         setComposeBody('');
@@ -452,7 +456,7 @@ const BillingTicketsContainer = () => {
         writeComposeDraft(null);
         history.replace(
             buildTicketViewHref(ticketBasePath, 'tickets', {
-                category: category ?? null,
+                category: nextCategory,
                 invoiceId: options.invoiceId ?? null,
                 paymentId: options.paymentId ?? null,
             })
@@ -461,13 +465,6 @@ const BillingTicketsContainer = () => {
 
     const selectComposeCategory = (category: TicketComposeCategory) => {
         setComposeCategory(category);
-        setWizardStep('details');
-        setSelectedEligibleId('');
-        setSupportSubject('');
-        setComposeBody('');
-        setComposeFiles([]);
-        writeComposeDraft(null);
-        history.replace(buildTicketViewHref(ticketBasePath, 'tickets', { category }));
     };
 
     const handleLinkDiscord = () => {
@@ -518,7 +515,7 @@ const BillingTicketsContainer = () => {
             return;
         }
 
-        if (isComposeCategory(composeFromSearch)) {
+        if (isVisibleComposeCategory(composeFromSearch)) {
             setComposeCategory(composeFromSearch);
             setWizardStep((current) => (current === 'review' || current === 'message' ? current : 'details'));
             return;
@@ -757,7 +754,22 @@ const BillingTicketsContainer = () => {
 
     const handleWizardContinue = async () => {
         if (wizardStep === 'category') {
+            if (!composeCategory) {
+                addFlash({
+                    key: 'tickets',
+                    type: 'error',
+                    title: 'Selection Required',
+                    message: 'Choose a ticket category before continuing.',
+                });
+                return;
+            }
+            setSelectedEligibleId('');
+            setSupportSubject('');
+            setComposeBody('');
+            setComposeFiles([]);
+            writeComposeDraft(null);
             setWizardStep('details');
+            history.replace(buildTicketViewHref(ticketBasePath, 'tickets', { category: composeCategory }));
             return;
         }
 
@@ -804,43 +816,27 @@ const BillingTicketsContainer = () => {
                     overflow-y: auto;
                     overflow-x: hidden;
                     -webkit-overflow-scrolling: touch;
-                    background:
-                        radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.08), transparent 40%),
-                        linear-gradient(180deg, rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 0.985));
+                    background: #D6D2C7;
+                    --surface-elevated: #FEF9E1;
+                    --surface-border: #C8BCA0;
+                    --surface-subtle: #F5EFD5;
+                    --surface-subtle-strong: #EDE6D0;
                 }
 
                 .billing-shell::before {
                     content: '';
-                    position: absolute;
+                    position: fixed;
                     inset: 0;
                     pointer-events: none;
-                    background:
-                        repeating-linear-gradient(
-                            90deg,
-                            rgba(var(--primary-rgb), 0.02) 0,
-                            rgba(var(--primary-rgb), 0.02) 1px,
-                            transparent 1px,
-                            transparent 40px
-                        );
-                    opacity: 0.1;
+                    z-index: 9999;
+                    background-image:
+                        repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px),
+                        repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.05) 4.5px, rgba(116, 34, 32, 0.05) 5px);
                 }
 
                 .billing-shell::after {
-                    content: '';
-                    position: absolute;
-                    left: 50%;
-                    top: -18%;
-                    width: min(1120px, 96vw);
-                    height: 110%;
-                    transform: translateX(-50%);
-                    pointer-events: none;
-                    border-radius: 999px;
-                    background: radial-gradient(
-                        ellipse at center,
-                        rgba(var(--primary-rgb), 0.05) 0%,
-                        rgba(var(--primary-rgb), 0.015) 42%,
-                        transparent 72%
-                    );
+                    display: none;
                 }
 
                 .billing-wrap {
@@ -855,15 +851,10 @@ const BillingTicketsContainer = () => {
                 }
 
                 .billing-panel {
-                    border-radius: 24px;
-                    border: 1px solid var(--surface-border);
-                    background:
-                        linear-gradient(160deg, rgba(var(--primary-rgb), 0.035), rgba(var(--primary-rgb), 0.012) 46%),
-                        var(--surface-elevated);
-                    box-shadow:
-                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        0 30px 46px -32px rgba(0, 0, 0, 0.82);
-                    backdrop-filter: blur(8px);
+                    border-radius: 12px;
+                    border: 2px solid #2D4A3E;
+                    background: #FEF9E1;
+                    box-shadow: 4px 4px 0px 0px #2D4A3E;
                 }
 
                 .ticket-layout {
@@ -963,20 +954,16 @@ const BillingTicketsContainer = () => {
                             {supportBlockedByDiscord ? (
                                 <div className={'flex flex-col gap-6 md:flex-row md:items-center md:justify-between'}>
                                     <div className={'max-w-3xl'}>
-                                        <div className={'inline-flex items-center gap-3 text-[color:var(--primary)]'}>
+                                        <div className={'inline-flex items-center gap-3 text-[#742220]'}>
                                             <Link2 size={18} />
                                             <span className={'text-xs font-black uppercase tracking-[0.22em]'}>
                                                 Discord Required
                                             </span>
                                         </div>
-                                        <h2 className={'mt-4 text-3xl font-black tracking-tight text-[#f8f6ef]'}>
+                                        <h2 className={'mt-4 text-3xl font-black tracking-tight text-[#742220]'}>
                                             Link Discord First
                                         </h2>
-                                        <p
-                                            className={
-                                                'mt-4 max-w-2xl text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                            }
-                                        >
+                                        <p className={'mt-4 max-w-2xl text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                             Tickets are tied to your Discord identity before they move into chat. Link
                                             the account now and the support center will reopen in the correct state
                                             without leaving empty space on this page.
@@ -995,20 +982,16 @@ const BillingTicketsContainer = () => {
                             ) : (
                                 <div className={'flex flex-col gap-6 md:flex-row md:items-center md:justify-between'}>
                                     <div className={'max-w-3xl'}>
-                                        <div className={'inline-flex items-center gap-3 text-[color:var(--primary)]'}>
+                                        <div className={'inline-flex items-center gap-3 text-[#742220]'}>
                                             <LifeBuoy size={18} />
                                             <span className={'text-xs font-black uppercase tracking-[0.22em]'}>
                                                 Discord Community
                                             </span>
                                         </div>
-                                        <h2 className={'mt-4 text-3xl font-black tracking-tight text-[#f8f6ef]'}>
+                                        <h2 className={'mt-4 text-3xl font-black tracking-tight text-[#742220]'}>
                                             Join Discord Server
                                         </h2>
-                                        <p
-                                            className={
-                                                'mt-4 max-w-2xl text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                            }
-                                        >
+                                        <p className={'mt-4 max-w-2xl text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                             Your Discord account is linked, but it has not joined the configured Discord
                                             server yet. Join now so private ticket threads can be created and synced
                                             correctly before you continue this support flow.
@@ -1050,22 +1033,22 @@ const BillingTicketsContainer = () => {
                     <div className={'ticket-layout ticket-layout-wizard'}>
                         <section className={'billing-panel ticket-main-shell p-6 md:p-8'}>
                             <div className={'ticket-main-scroll'}>
-                                <div className={'flex flex-col gap-5 border-b border-[color:var(--border)] pb-6'}>
+                                <div className={'flex flex-col gap-5 border-b border-[#C8BCA0] pb-6'}>
                                     <div className={'flex flex-wrap items-start justify-between gap-4'}>
                                         <div>
                                             <p
                                                 className={
-                                                    'text-xs font-black uppercase tracking-[0.22em] text-[color:var(--primary)]'
+                                                    'text-xs font-black uppercase tracking-[0.22em] text-[#742220]'
                                                 }
                                             >
                                                 {currentWizardStepContent.eyebrow} of {TICKET_WIZARD_STEP_ORDER.length}
                                             </p>
-                                            <h2 className={'mt-3 text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                            <h2 className={'mt-3 text-2xl font-black tracking-tight text-[#742220]'}>
                                                 {currentWizardStepContent.title}
                                             </h2>
                                             <p
                                                 className={
-                                                    'mt-3 max-w-3xl text-sm leading-7 text-[color:var(--muted-foreground)]'
+                                                    'mt-3 max-w-3xl text-sm leading-7 text-[rgba(116,34,32,0.55)]'
                                                 }
                                             >
                                                 {currentWizardStepContent.copy}
@@ -1077,10 +1060,10 @@ const BillingTicketsContainer = () => {
                                                     key={step}
                                                     className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] transition ${
                                                         step === wizardStep
-                                                            ? 'border-[color:var(--primary)] bg-[rgba(var(--primary-rgb),0.16)] text-[#efffc8]'
+                                                            ? 'border-[#742220] bg-[rgba(116,34,32,0.12)] text-[#742220]'
                                                             : index < currentWizardStepIndex
-                                                            ? 'border-white/12 bg-white/6 text-[#f8f6ef]'
-                                                            : 'border-white/10 bg-transparent text-[color:var(--muted-foreground)]'
+                                                            ? 'border-[#C8BCA0] bg-[#EDE6D0] text-[#742220]'
+                                                            : 'border-[#C8BCA0] bg-transparent text-[rgba(116,34,32,0.45)]'
                                                     }`}
                                                     onClick={() => {
                                                         if (index <= currentWizardStepIndex) {
@@ -1094,11 +1077,9 @@ const BillingTicketsContainer = () => {
                                             ))}
                                         </div>
                                     </div>
-                                    <div className={'h-2 overflow-hidden rounded-full bg-white/8'}>
+                                    <div className={'h-2 overflow-hidden rounded-full bg-[#EDE6D0]'}>
                                         <div
-                                            className={
-                                                'h-full rounded-full bg-[linear-gradient(90deg,rgba(var(--primary-rgb),0.92),rgba(var(--primary-rgb),0.36))]'
-                                            }
+                                            className={'h-full rounded-full bg-[#742220]'}
                                             style={{ width: wizardProgressWidth }}
                                         />
                                     </div>
@@ -1106,8 +1087,8 @@ const BillingTicketsContainer = () => {
 
                                 <div className={'mt-6'}>
                                     {wizardStep === 'category' ? (
-                                        <div className={'grid gap-4 lg:grid-cols-3'}>
-                                            {TICKET_CATEGORY_ORDER.map((category) => {
+                                        <div className={'grid gap-4 lg:grid-cols-2'}>
+                                            {TICKET_VISIBLE_CATEGORY_ORDER.map((category) => {
                                                 const meta = composeCategoryMeta(category);
                                                 const Icon = meta.Icon;
 
@@ -1116,8 +1097,8 @@ const BillingTicketsContainer = () => {
                                                         key={category}
                                                         className={`rounded-[24px] border p-5 text-left transition ${
                                                             composeCategory === category
-                                                                ? 'border-[color:var(--primary)] bg-[rgba(var(--primary-rgb),0.1)]'
-                                                                : 'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[rgba(var(--primary-rgb),0.38)]'
+                                                                ? 'border-[#742220] bg-[rgba(116,34,32,0.08)] shadow-[4px_4px_0px_0px_#742220]'
+                                                                : 'border-[#2D4A3E] bg-[#FEF9E1] shadow-[4px_4px_0px_0px_#2D4A3E] hover:shadow-[6px_6px_0px_0px_#2D4A3E] hover:-translate-x-0.5 hover:-translate-y-0.5'
                                                         }`}
                                                         onClick={() => selectComposeCategory(category)}
                                                         type={'button'}
@@ -1125,31 +1106,31 @@ const BillingTicketsContainer = () => {
                                                         <div
                                                             className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] border ${
                                                                 meta.iconClass === 'is-payment'
-                                                                    ? 'border-emerald-400/24 bg-emerald-500/12 text-emerald-100'
+                                                                    ? 'border-[#2D4A3E] bg-[rgba(45,74,62,0.12)] text-[#2D4A3E]'
                                                                     : meta.iconClass === 'is-refund'
-                                                                    ? 'border-amber-400/24 bg-amber-500/12 text-amber-100'
-                                                                    : 'border-[rgba(var(--primary-rgb),0.24)] bg-[rgba(var(--primary-rgb),0.12)] text-[#efffc8]'
+                                                                    ? 'border-[#C8BCA0] bg-[#EDE6D0] text-[#742220]'
+                                                                    : 'border-[#C8BCA0] bg-[#F5EFD5] text-[#742220]'
                                                             }`}
                                                         >
                                                             <Icon size={18} />
                                                         </div>
                                                         <div
                                                             className={
-                                                                'mt-5 text-xs font-black uppercase tracking-[0.22em] text-[color:var(--primary)]'
+                                                                'mt-5 text-xs font-black uppercase tracking-[0.22em] text-[#742220]'
                                                             }
                                                         >
                                                             {meta.eyebrow}
                                                         </div>
                                                         <h3
                                                             className={
-                                                                'mt-3 text-lg font-black tracking-tight text-[#f8f6ef]'
+                                                                'mt-3 text-lg font-black tracking-tight text-[#742220]'
                                                             }
                                                         >
                                                             {meta.title}
                                                         </h3>
                                                         <p
                                                             className={
-                                                                'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'
+                                                                'mt-3 text-sm leading-7 text-[rgba(116,34,32,0.55)]'
                                                             }
                                                         >
                                                             {meta.copy}
@@ -1166,19 +1147,15 @@ const BillingTicketsContainer = () => {
                                                 <div>
                                                     <div
                                                         className={
-                                                            'text-xs font-black uppercase tracking-[0.22em] text-[color:var(--primary)]'
+                                                            'text-xs font-black uppercase tracking-[0.22em] text-[#742220]'
                                                         }
                                                     >
                                                         {composeMeta.eyebrow}
                                                     </div>
-                                                    <h3 className={'mt-2 text-xl font-black text-[#f8f6ef]'}>
+                                                    <h3 className={'mt-2 text-xl font-black text-[#742220]'}>
                                                         {composeMeta.title}
                                                     </h3>
-                                                    <p
-                                                        className={
-                                                            'mt-2 text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                                        }
-                                                    >
+                                                    <p className={'mt-2 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                                         {composeMeta.actionCopy}
                                                     </p>
                                                 </div>
@@ -1194,8 +1171,8 @@ const BillingTicketsContainer = () => {
                                                                 key={`${composeCategory}-${getEligibleIdentity(item)}`}
                                                                 className={`rounded-[24px] border p-5 text-left transition ${
                                                                     active
-                                                                        ? 'border-[color:var(--primary)] bg-[rgba(var(--primary-rgb),0.1)]'
-                                                                        : 'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[rgba(var(--primary-rgb),0.32)]'
+                                                                        ? 'border-[#742220] bg-[rgba(116,34,32,0.08)] shadow-[4px_4px_0px_0px_#742220]'
+                                                                        : 'border-[#2D4A3E] bg-[#FEF9E1] shadow-[4px_4px_0px_0px_#2D4A3E] hover:shadow-[6px_6px_0px_0px_#2D4A3E] hover:-translate-x-0.5 hover:-translate-y-0.5'
                                                                 }`}
                                                                 onClick={() =>
                                                                     setSelectedEligibleId(getEligibleIdentity(item))
@@ -1210,7 +1187,7 @@ const BillingTicketsContainer = () => {
                                                                     <div>
                                                                         <div
                                                                             className={
-                                                                                'text-sm font-black text-[#f8f6ef]'
+                                                                                'text-sm font-black text-[#742220]'
                                                                             }
                                                                         >
                                                                             {composeCategory === 'support'
@@ -1219,7 +1196,7 @@ const BillingTicketsContainer = () => {
                                                                         </div>
                                                                         <div
                                                                             className={
-                                                                                'mt-2 text-sm leading-7 text-[color:var(--muted-foreground)]'
+                                                                                'mt-2 text-sm leading-7 text-[rgba(116,34,32,0.55)]'
                                                                             }
                                                                         >
                                                                             {describeEligible(item, composeCategory)}
@@ -1228,7 +1205,7 @@ const BillingTicketsContainer = () => {
                                                                         composeCategory !== 'support' ? (
                                                                             <div
                                                                                 className={
-                                                                                    'mt-2 text-xs uppercase tracking-[0.14em] text-[color:var(--muted-foreground)]'
+                                                                                    'mt-2 text-xs uppercase tracking-[0.14em] text-[rgba(116,34,32,0.55)]'
                                                                                 }
                                                                             >
                                                                                 Server {item.serverName}
@@ -1240,7 +1217,7 @@ const BillingTicketsContainer = () => {
                                                                     >
                                                                         <span
                                                                             className={
-                                                                                'rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[color:var(--muted-foreground)]'
+                                                                                'rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[rgba(116,34,32,0.55)]'
                                                                             }
                                                                         >
                                                                             {item.status.replace(/_/g, ' ')}
@@ -1248,7 +1225,7 @@ const BillingTicketsContainer = () => {
                                                                         {item.existingTicketId ? (
                                                                             <span
                                                                                 className={
-                                                                                    'rounded-full border border-amber-400/22 bg-amber-500/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-amber-100'
+                                                                                    'rounded-full border border-amber-400/22 bg-amber-500/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-amber-800'
                                                                                 }
                                                                             >
                                                                                 Existing Ticket
@@ -1263,7 +1240,7 @@ const BillingTicketsContainer = () => {
                                             ) : (
                                                 <div
                                                     className={
-                                                        'rounded-[24px] border border-dashed border-[color:var(--border)] p-6 text-sm leading-7 text-[color:var(--muted-foreground)]'
+                                                        'rounded-[24px] border border-dashed border-[#C8BCA0] p-6 text-sm leading-7 text-[rgba(116,34,32,0.55)]'
                                                     }
                                                 >
                                                     {composeMeta.emptyCopy}
@@ -1274,52 +1251,40 @@ const BillingTicketsContainer = () => {
 
                                     {wizardStep === 'message' ? (
                                         <div className={'grid gap-5'}>
-                                            <div
-                                                className={
-                                                    'rounded-[24px] border border-[color:var(--border)] bg-[color:var(--card)] p-5'
-                                                }
-                                            >
+                                            <div className={'rounded-[24px] border border-[#2D4A3E] bg-[#FEF9E1] p-5'}>
                                                 <label
                                                     className={
-                                                        'block text-xs font-black uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                                        'block text-xs font-black uppercase tracking-[0.22em] text-[rgba(116,34,32,0.55)]'
                                                     }
                                                 >
                                                     Subject
                                                 </label>
                                                 <input
                                                     className={
-                                                        'mt-3 w-full rounded-[18px] border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
+                                                        'mt-3 w-full rounded-[18px] border border-[#C8BCA0] bg-[#D6D2C7] px-4 py-3 text-sm text-[#742220]'
                                                     }
                                                     onChange={(event) => setSupportSubject(event.currentTarget.value)}
                                                     placeholder={defaultSubjectFor(composeCategory, selectedEligible)}
                                                     value={supportSubject}
                                                 />
-                                                <p
-                                                    className={
-                                                        'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                                    }
-                                                >
+                                                <p className={'mt-3 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                                     {composeCategory === 'support'
                                                         ? 'Support subjects can stay general or be tied to the selected server.'
                                                         : 'Billing tickets can include a clearer subject if you want staff to recognise the issue faster.'}
                                                 </p>
                                             </div>
 
-                                            <div
-                                                className={
-                                                    'rounded-[24px] border border-[color:var(--border)] bg-[color:var(--card)] p-5'
-                                                }
-                                            >
+                                            <div className={'rounded-[24px] border border-[#2D4A3E] bg-[#FEF9E1] p-5'}>
                                                 <label
                                                     className={
-                                                        'block text-xs font-black uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                                        'block text-xs font-black uppercase tracking-[0.22em] text-[rgba(116,34,32,0.55)]'
                                                     }
                                                 >
                                                     {composeCategory === 'support' ? 'Message' : 'Message Or Note'}
                                                 </label>
                                                 <textarea
                                                     className={
-                                                        'mt-3 min-h-[220px] w-full rounded-[18px] border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm leading-7 text-[#f8f6ef]'
+                                                        'mt-3 min-h-[220px] w-full rounded-[18px] border border-[#C8BCA0] bg-[#D6D2C7] px-4 py-3 text-sm leading-7 text-[#742220]'
                                                     }
                                                     onChange={(event) => setComposeBody(event.currentTarget.value)}
                                                     placeholder={
@@ -1329,42 +1294,32 @@ const BillingTicketsContainer = () => {
                                                     }
                                                     value={composeBody}
                                                 />
-                                                <p
-                                                    className={
-                                                        'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                                    }
-                                                >
+                                                <p className={'mt-3 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                                     {composeCategory === 'support'
                                                         ? 'Support tickets require a message or at least one attachment.'
                                                         : 'Billing tickets can be opened with the default linked note, but you can add extra detail here.'}
                                                 </p>
                                             </div>
 
-                                            <div
-                                                className={
-                                                    'rounded-[24px] border border-[color:var(--border)] bg-[color:var(--card)] p-5'
-                                                }
-                                            >
+                                            <div className={'rounded-[24px] border border-[#2D4A3E] bg-[#FEF9E1] p-5'}>
                                                 <div className={'flex items-center justify-between gap-3'}>
                                                     <label
                                                         className={
-                                                            'text-xs font-black uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]'
+                                                            'text-xs font-black uppercase tracking-[0.22em] text-[rgba(116,34,32,0.55)]'
                                                         }
                                                     >
                                                         Attachments
                                                     </label>
                                                     <span
                                                         className={
-                                                            'text-[10px] font-black uppercase tracking-[0.16em] text-[color:var(--muted-foreground)]'
+                                                            'text-[10px] font-black uppercase tracking-[0.16em] text-[rgba(116,34,32,0.55)]'
                                                         }
                                                     >
                                                         Optional
                                                     </span>
                                                 </div>
                                                 <input
-                                                    className={
-                                                        'mt-4 block w-full text-sm text-[color:var(--muted-foreground)]'
-                                                    }
+                                                    className={'mt-4 block w-full text-sm text-[rgba(116,34,32,0.55)]'}
                                                     multiple
                                                     onChange={(event) =>
                                                         setComposeFiles(Array.from(event.currentTarget.files || []))
@@ -1377,25 +1332,19 @@ const BillingTicketsContainer = () => {
                                                             <span
                                                                 key={`${file.name}-${file.size}`}
                                                                 className={
-                                                                    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-xs text-[#f8f6ef]'
+                                                                    'inline-flex items-center gap-2 rounded-full border border-[#C8BCA0] bg-[#EDE6D0] px-3 py-1.5 text-xs text-[#742220]'
                                                                 }
                                                             >
                                                                 <Paperclip size={12} />
                                                                 <span>{file.name}</span>
-                                                                <span
-                                                                    className={'text-[color:var(--muted-foreground)]'}
-                                                                >
+                                                                <span className={'text-[rgba(116,34,32,0.55)]'}>
                                                                     {formatFileSize(file.size)}
                                                                 </span>
                                                             </span>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p
-                                                        className={
-                                                            'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'
-                                                        }
-                                                    >
+                                                    <p className={'mt-3 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                                         Screenshots, receipts, invoices, and console captures help staff
                                                         review faster.
                                                     </p>
@@ -1406,14 +1355,10 @@ const BillingTicketsContainer = () => {
 
                                     {wizardStep === 'review' ? (
                                         <div className={'grid gap-5'}>
-                                            <div
-                                                className={
-                                                    'rounded-[24px] border border-[color:var(--border)] bg-[color:var(--card)] p-5'
-                                                }
-                                            >
+                                            <div className={'rounded-[24px] border border-[#2D4A3E] bg-[#FEF9E1] p-5'}>
                                                 <div
                                                     className={
-                                                        'text-xs font-black uppercase tracking-[0.22em] text-[color:var(--primary)]'
+                                                        'text-xs font-black uppercase tracking-[0.22em] text-[#742220]'
                                                     }
                                                 >
                                                     Ticket Summary
@@ -1422,24 +1367,24 @@ const BillingTicketsContainer = () => {
                                                     <div>
                                                         <div
                                                             className={
-                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                                             }
                                                         >
                                                             Queue
                                                         </div>
-                                                        <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                                        <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                                             {composeMeta.title}
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <div
                                                             className={
-                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                                             }
                                                         >
                                                             Linked Item
                                                         </div>
-                                                        <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                                        <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                                             {selectedEligible
                                                                 ? composeCategory === 'support'
                                                                     ? selectedEligible.serverLabel ||
@@ -1451,12 +1396,12 @@ const BillingTicketsContainer = () => {
                                                     <div>
                                                         <div
                                                             className={
-                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                                             }
                                                         >
                                                             Subject
                                                         </div>
-                                                        <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                                        <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                                             {supportSubject.trim() ||
                                                                 defaultSubjectFor(composeCategory, selectedEligible)}
                                                         </div>
@@ -1464,12 +1409,12 @@ const BillingTicketsContainer = () => {
                                                     <div>
                                                         <div
                                                             className={
-                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                                                'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                                             }
                                                         >
                                                             Attachments
                                                         </div>
-                                                        <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                                        <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                                             {composeFiles.length} file
                                                             {composeFiles.length === 1 ? '' : 's'}
                                                         </div>
@@ -1477,21 +1422,17 @@ const BillingTicketsContainer = () => {
                                                 </div>
                                             </div>
 
-                                            <div
-                                                className={
-                                                    'rounded-[24px] border border-[color:var(--border)] bg-[color:var(--card)] p-5'
-                                                }
-                                            >
+                                            <div className={'rounded-[24px] border border-[#2D4A3E] bg-[#FEF9E1] p-5'}>
                                                 <div
                                                     className={
-                                                        'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                                        'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                                     }
                                                 >
                                                     Message Preview
                                                 </div>
                                                 <div
                                                     className={
-                                                        'mt-4 whitespace-pre-wrap text-sm leading-7 text-[#f8f6ef]'
+                                                        'mt-4 whitespace-pre-wrap text-sm leading-7 text-[#742220]'
                                                     }
                                                 >
                                                     {composeBody.trim() ||
@@ -1503,7 +1444,7 @@ const BillingTicketsContainer = () => {
                                             {selectedEligible?.existingTicketId ? (
                                                 <div
                                                     className={
-                                                        'rounded-[24px] border border-amber-400/24 bg-amber-500/10 p-5 text-sm leading-7 text-amber-100'
+                                                        'rounded-[24px] border border-amber-400/24 bg-amber-500/10 p-5 text-sm leading-7 text-amber-800'
                                                     }
                                                 >
                                                     An existing ticket already covers this billing item. Submitting now
@@ -1518,14 +1459,14 @@ const BillingTicketsContainer = () => {
 
                             <div
                                 className={
-                                    'mt-6 flex flex-col gap-3 border-t border-[color:var(--border)] pt-6 sm:flex-row sm:items-center sm:justify-between'
+                                    'mt-6 flex flex-col gap-3 border-t border-[#C8BCA0] pt-6 sm:flex-row sm:items-center sm:justify-between'
                                 }
                             >
                                 <div className={'flex flex-wrap gap-3'}>
                                     {previousWizardStep ? (
                                         <button
                                             className={
-                                                'inline-flex min-h-[2.75rem] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 py-3 text-sm font-bold text-[#f8f6ef] transition hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)]'
+                                                'inline-flex min-h-[2.75rem] items-center justify-center rounded-full border border-[#2D4A3E] bg-[#FEF9E1] px-5 py-3 text-sm font-bold text-[#742220] transition hover:border-[#742220] hover:bg-[rgba(116,34,32,0.08)]'
                                             }
                                             onClick={() => setWizardStep(previousWizardStep)}
                                             type={'button'}
@@ -1535,7 +1476,7 @@ const BillingTicketsContainer = () => {
                                     ) : (
                                         <button
                                             className={
-                                                'inline-flex min-h-[2.75rem] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-5 py-3 text-sm font-bold text-[#f8f6ef] transition hover:border-[rgba(var(--primary-rgb),0.32)] hover:bg-[rgba(var(--primary-rgb),0.08)]'
+                                                'inline-flex min-h-[2.75rem] items-center justify-center rounded-full border border-[#2D4A3E] bg-[#FEF9E1] px-5 py-3 text-sm font-bold text-[#742220] transition hover:border-[#742220] hover:bg-[rgba(116,34,32,0.08)]'
                                             }
                                             onClick={() => goToChatView(selectedTicketId)}
                                             type={'button'}
@@ -1575,57 +1516,45 @@ const BillingTicketsContainer = () => {
                             <div
                                 className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] border ${
                                     composeMeta.iconClass === 'is-payment'
-                                        ? 'border-emerald-400/24 bg-emerald-500/12 text-emerald-100'
+                                        ? 'border-[#2D4A3E] bg-[rgba(45,74,62,0.12)] text-[#2D4A3E]'
                                         : composeMeta.iconClass === 'is-refund'
-                                        ? 'border-amber-400/24 bg-amber-500/12 text-amber-100'
-                                        : 'border-[rgba(var(--primary-rgb),0.24)] bg-[rgba(var(--primary-rgb),0.12)] text-[#efffc8]'
+                                        ? 'border-[#C8BCA0] bg-[#EDE6D0] text-[#742220]'
+                                        : 'border-[#C8BCA0] bg-[#F5EFD5] text-[#742220]'
                                 }`}
                             >
                                 <ComposeIcon size={18} />
                             </div>
-                            <div
-                                className={
-                                    'mt-5 text-xs font-black uppercase tracking-[0.22em] text-[color:var(--primary)]'
-                                }
-                            >
+                            <div className={'mt-5 text-xs font-black uppercase tracking-[0.22em] text-[#742220]'}>
                                 Workflow Summary
                             </div>
-                            <h2 className={'mt-3 text-xl font-black tracking-tight text-[#f8f6ef]'}>
+                            <h2 className={'mt-3 text-xl font-black tracking-tight text-[#742220]'}>
                                 {composeMeta.title}
                             </h2>
-                            <p className={'mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
+                            <p className={'mt-3 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                 Complete the guided ticket flow here, then the panel will move the conversation into the
                                 chat workspace automatically.
                             </p>
 
                             <div className={'ticket-summary-scroll mt-6'}>
-                                <div
-                                    className={
-                                        'rounded-[20px] border border-[color:var(--border)] bg-[color:var(--card)] p-4'
-                                    }
-                                >
+                                <div className={'rounded-[20px] border border-[#2D4A3E] bg-[#FEF9E1] p-4'}>
                                     <div
                                         className={
-                                            'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                            'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                         }
                                     >
                                         Selected Queue
                                     </div>
-                                    <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>{composeMeta.title}</div>
+                                    <div className={'mt-2 text-sm font-bold text-[#742220]'}>{composeMeta.title}</div>
                                 </div>
-                                <div
-                                    className={
-                                        'rounded-[20px] border border-[color:var(--border)] bg-[color:var(--card)] p-4'
-                                    }
-                                >
+                                <div className={'rounded-[20px] border border-[#2D4A3E] bg-[#FEF9E1] p-4'}>
                                     <div
                                         className={
-                                            'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
+                                            'text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)]'
                                         }
                                     >
                                         Linked Item
                                     </div>
-                                    <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                    <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                         {selectedEligible
                                             ? composeCategory === 'support'
                                                 ? selectedEligible.serverLabel || selectedEligible.subject
@@ -1633,27 +1562,10 @@ const BillingTicketsContainer = () => {
                                             : 'Choose an item in Step 2'}
                                     </div>
                                     {selectedEligible ? (
-                                        <div className={'mt-2 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
+                                        <div className={'mt-2 text-sm leading-7 text-[rgba(116,34,32,0.55)]'}>
                                             {describeEligible(selectedEligible, composeCategory)}
                                         </div>
                                     ) : null}
-                                </div>
-                                <div
-                                    className={
-                                        'rounded-[20px] border border-[color:var(--border)] bg-[color:var(--card)] p-4'
-                                    }
-                                >
-                                    <div
-                                        className={
-                                            'text-[11px] font-black uppercase tracking-[0.18em] text-[color:var(--muted-foreground)]'
-                                        }
-                                    >
-                                        Destination
-                                    </div>
-                                    <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>/tickets?view=chat</div>
-                                    <div className={'mt-2 text-sm leading-7 text-[color:var(--muted-foreground)]'}>
-                                        After submit, the panel opens the new or existing thread inside the chat view.
-                                    </div>
                                 </div>
                             </div>
                         </aside>
@@ -1662,14 +1574,14 @@ const BillingTicketsContainer = () => {
                     <div className={'ticket-layout ticket-layout-chat'}>
                         <aside className={'billing-panel ticket-inbox-shell p-4'}>
                             <div className={'mb-4 flex items-center justify-between'}>
-                                <h2 className={'text-lg font-black text-[#f8f6ef]'}>My Support Tickets</h2>
+                                <h2 className={'text-lg font-black text-[#742220]'}>My Support Tickets</h2>
                                 {ticketsLoading && !tickets ? <Spinner size={Spinner.Size.SMALL} /> : null}
                             </div>
 
                             <div className={'mb-4 grid gap-3 md:grid-cols-2'}>
                                 <select
                                     className={
-                                        'w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
+                                        'w-full rounded-2xl border border-[#C8BCA0] bg-[#D6D2C7] px-4 py-3 text-sm text-[#742220]'
                                     }
                                     onChange={(event) =>
                                         setStatusFilter(event.currentTarget.value as typeof statusFilter)
@@ -1683,7 +1595,7 @@ const BillingTicketsContainer = () => {
                                 </select>
                                 <select
                                     className={
-                                        'w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-sm text-[#f8f6ef]'
+                                        'w-full rounded-2xl border border-[#C8BCA0] bg-[#D6D2C7] px-4 py-3 text-sm text-[#742220]'
                                     }
                                     onChange={(event) =>
                                         setCategoryFilter(event.currentTarget.value as typeof categoryFilter)
@@ -1691,7 +1603,6 @@ const BillingTicketsContainer = () => {
                                     value={categoryFilter}
                                 >
                                     <option value={'all'}>All Categories</option>
-                                    <option value={'payment'}>Payment</option>
                                     <option value={'refund'}>Refund</option>
                                     <option value={'support'}>Support</option>
                                 </select>
@@ -1704,34 +1615,30 @@ const BillingTicketsContainer = () => {
                                         to={buildTicketViewHref(ticketBasePath, 'chat', { ticketId: item.id })}
                                         className={`block rounded-2xl border p-4 transition-colors ${
                                             item.id === selectedTicketId
-                                                ? 'border-[color:var(--primary)] bg-[color:var(--accent)]'
-                                                : 'border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:var(--primary)]/50'
+                                                ? 'border-[#742220] bg-[rgba(116,34,32,0.08)]'
+                                                : 'border-[#2D4A3E] bg-[#FEF9E1] hover:shadow-[6px_6px_0px_0px_#2D4A3E] hover:-translate-x-0.5 hover:-translate-y-0.5'
                                         }`}
                                     >
                                         <div className={'flex items-start justify-between gap-3'}>
                                             <div>
                                                 <div
                                                     className={
-                                                        'text-xs font-black uppercase tracking-[0.2em] text-[color:var(--primary)]'
+                                                        'text-xs font-black uppercase tracking-[0.2em] text-[#742220]'
                                                     }
                                                 >
                                                     {item.ticketNumber}
                                                 </div>
-                                                <div className={'mt-2 text-sm font-bold text-[#f8f6ef]'}>
+                                                <div className={'mt-2 text-sm font-bold text-[#742220]'}>
                                                     {item.subject}
                                                 </div>
                                             </div>
                                             {item.unread ? (
-                                                <span
-                                                    className={
-                                                        'inline-flex h-2.5 w-2.5 rounded-full bg-[color:var(--primary)]'
-                                                    }
-                                                />
+                                                <span className={'inline-flex h-2.5 w-2.5 rounded-full bg-[#742220]'} />
                                             ) : null}
                                         </div>
                                         <div
                                             className={
-                                                'mt-3 flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted-foreground)]'
+                                                'mt-3 flex flex-wrap items-center gap-2 text-xs text-[rgba(116,34,32,0.55)]'
                                             }
                                         >
                                             <span style={{ color: statusColor(item.status) }}>{item.status}</span>
@@ -1750,7 +1657,7 @@ const BillingTicketsContainer = () => {
                                 {!ticketsLoading && tickets && filteredTickets.length === 0 ? (
                                     <div
                                         className={
-                                            'rounded-2xl border border-dashed border-[color:var(--border)] p-6 text-sm text-[color:var(--muted-foreground)]'
+                                            'rounded-2xl border border-dashed border-[#C8BCA0] p-6 text-sm text-[rgba(116,34,32,0.55)]'
                                         }
                                     >
                                         No support tickets match the current filters.
@@ -1766,23 +1673,23 @@ const BillingTicketsContainer = () => {
                                 <div className={'ticket-chat-stage'}>
                                     <div
                                         className={
-                                            'flex flex-col gap-4 border-b border-[color:var(--border)] pb-5 md:flex-row md:items-start md:justify-between'
+                                            'flex flex-col gap-4 border-b border-[#C8BCA0] pb-5 md:flex-row md:items-start md:justify-between'
                                         }
                                     >
                                         <div>
                                             <div
                                                 className={
-                                                    'text-xs font-black uppercase tracking-[0.25em] text-[color:var(--primary)]'
+                                                    'text-xs font-black uppercase tracking-[0.25em] text-[#742220]'
                                                 }
                                             >
                                                 {selectedTicket.ticketNumber}
                                             </div>
-                                            <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#f8f6ef]'}>
+                                            <h2 className={'mt-2 text-2xl font-black tracking-tight text-[#742220]'}>
                                                 {selectedTicket.subject}
                                             </h2>
                                             <div
                                                 className={
-                                                    'mt-3 flex flex-wrap gap-3 text-sm text-[color:var(--muted-foreground)]'
+                                                    'mt-3 flex flex-wrap gap-3 text-sm text-[rgba(116,34,32,0.55)]'
                                                 }
                                             >
                                                 <span>
@@ -1802,7 +1709,7 @@ const BillingTicketsContainer = () => {
                                                 ) : null}
                                             </div>
                                             {selectedTicket.discordLastError ? (
-                                                <p className={'mt-3 text-sm text-amber-200'}>
+                                                <p className={'mt-3 text-sm text-amber-800'}>
                                                     Discord sync issue: {selectedTicket.discordLastError}
                                                 </p>
                                             ) : null}
@@ -1843,14 +1750,10 @@ const BillingTicketsContainer = () => {
 
                                     <div
                                         className={
-                                            'ticket-conversation-shell mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] shadow-[0_34px_80px_-48px_rgba(0,0,0,0.9)]'
+                                            'ticket-conversation-shell mt-6 overflow-hidden rounded-[28px] border-2 border-[#2D4A3E] bg-[#FEF9E1] shadow-[4px_4px_0px_0px_#2D4A3E]'
                                         }
                                     >
-                                        <div
-                                            className={
-                                                'ticket-conversation-feed min-h-[24rem] bg-[radial-gradient(circle_at_top,rgba(var(--primary-rgb),0.08),transparent_34%),linear-gradient(180deg,rgba(4,8,14,0.96),rgba(2,4,8,0.96))]'
-                                            }
-                                        >
+                                        <div className={'ticket-conversation-feed min-h-[24rem] bg-[#FEF9E1]'}>
                                             <ChatMessageList smooth>
                                                 {selectedTicket.messages.length > 0 ? (
                                                     selectedTicket.messages.map((message) => {
@@ -1879,7 +1782,7 @@ const BillingTicketsContainer = () => {
                                                                     }`}
                                                                 >
                                                                     <div
-                                                                        className={`flex flex-wrap items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--muted-foreground)] ${
+                                                                        className={`flex flex-wrap items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(116,34,32,0.55)] ${
                                                                             tone.variant === 'sent'
                                                                                 ? 'justify-end text-right'
                                                                                 : 'justify-start'
@@ -1923,7 +1826,7 @@ const BillingTicketsContainer = () => {
                                                                                         <a
                                                                                             key={attachment.id}
                                                                                             className={
-                                                                                                'inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-semibold text-[#f8f6ef] transition hover:border-[rgba(var(--primary-rgb),0.28)] hover:bg-[rgba(var(--primary-rgb),0.12)]'
+                                                                                                'inline-flex items-center gap-2 rounded-full border border-[#C8BCA0] bg-[#EDE6D0] px-3 py-1.5 text-xs font-semibold text-[#742220] transition hover:border-[#742220] hover:bg-[rgba(116,34,32,0.12)]'
                                                                                             }
                                                                                             href={
                                                                                                 attachment.downloadUrl
@@ -1937,7 +1840,7 @@ const BillingTicketsContainer = () => {
                                                                                             </span>
                                                                                             <span
                                                                                                 className={
-                                                                                                    'text-[color:var(--muted-foreground)]'
+                                                                                                    'text-[rgba(116,34,32,0.55)]'
                                                                                                 }
                                                                                             >
                                                                                                 {formatFileSize(
@@ -1957,7 +1860,7 @@ const BillingTicketsContainer = () => {
                                                 ) : (
                                                     <div
                                                         className={
-                                                            'flex h-full items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-[rgba(255,255,255,0.02)] px-6 text-center text-sm text-[color:var(--muted-foreground)]'
+                                                            'flex h-full items-center justify-center rounded-[24px] border border-dashed border-[#C8BCA0] bg-[#F5EFD5] px-6 text-center text-sm text-[rgba(116,34,32,0.55)]'
                                                         }
                                                     >
                                                         No replies yet. Start the conversation from the reply box below.
@@ -1966,17 +1869,13 @@ const BillingTicketsContainer = () => {
                                             </ChatMessageList>
                                         </div>
 
-                                        <div
-                                            className={
-                                                'border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-4 sm:p-5'
-                                            }
-                                        >
+                                        <div className={'border-t border-[#C8BCA0] bg-[#F5EFD5] p-4 sm:p-5'}>
                                             {selectedTicket.status === 'resolved' ||
                                             selectedTicket.status === 'closed' ? (
                                                 <div className={'mb-4 flex justify-end'}>
                                                     <span
                                                         className={
-                                                            'rounded-full border border-amber-400/24 bg-amber-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100'
+                                                            'rounded-full border border-amber-400/24 bg-amber-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-800'
                                                         }
                                                     >
                                                         Reopen to reply
@@ -2039,7 +1938,7 @@ const BillingTicketsContainer = () => {
                                         'flex flex-1 min-h-0 flex-col items-center justify-center gap-4 text-center'
                                     }
                                 >
-                                    <div className={'text-sm text-[color:var(--muted-foreground)]'}>
+                                    <div className={'text-sm text-[rgba(116,34,32,0.55)]'}>
                                         Select a ticket from the left to view the conversation, or open a new one from
                                         the ticket flow.
                                     </div>

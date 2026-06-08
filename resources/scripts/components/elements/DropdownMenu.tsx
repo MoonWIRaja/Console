@@ -3,6 +3,7 @@ import styled from 'styled-components/macro';
 import tw from 'twin.macro';
 import Fade from '@/components/elements/Fade';
 import { createPortal } from 'react-dom';
+import { readThemeVariables, serverThemeStyle } from '@/components/server/serverTheme';
 
 interface Props {
     children: React.ReactNode;
@@ -10,14 +11,14 @@ interface Props {
 }
 
 export const DropdownButtonRow = styled.button<{ danger?: boolean }>`
-    ${tw`flex w-full items-center rounded-md border border-transparent p-2 text-gray-300`};
+    ${tw`flex w-full items-center rounded-md border border-transparent p-2 text-[color:var(--foreground)]`};
     transition: 150ms all ease;
 
     &:hover {
         ${(props) =>
             props.danger
-                ? tw`border-red-500 bg-[#2b1111] text-red-300`
-                : tw`border-[#2d3c1f] bg-[color:var(--background)] text-[color:var(--primary)]`};
+                ? tw`border-red-500 bg-red-500/10 text-red-700`
+                : tw`border-[color:var(--surface-border)] bg-[color:var(--surface-subtle)] text-[color:var(--primary)]`};
     }
 `;
 
@@ -25,6 +26,7 @@ interface State {
     posX: number;
     posY: number;
     visible: boolean;
+    themeStyle: React.CSSProperties;
 }
 
 class DropdownMenu extends React.PureComponent<Props, State> {
@@ -35,6 +37,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
         posX: 0,
         posY: 0,
         visible: false,
+        themeStyle: serverThemeStyle,
     };
 
     componentWillUnmount() {
@@ -85,7 +88,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
 
     onClickHandler = (e: React.MouseEvent<any, MouseEvent>) => {
         e.preventDefault();
-        this.triggerMenu(e.clientX, e.clientY, 'toggle');
+        this.triggerMenu(e.clientX, e.clientY, 'toggle', e.currentTarget as HTMLElement);
     };
 
     contextMenuListener = (e: MouseEvent) => {
@@ -117,7 +120,12 @@ class DropdownMenu extends React.PureComponent<Props, State> {
         }
     };
 
-    triggerMenu = (posX: number, posY: number, mode: 'toggle' | 'open' = 'toggle') =>
+    triggerMenu = (
+        posX: number,
+        posY: number,
+        mode: 'toggle' | 'open' = 'toggle',
+        source?: HTMLElement | null
+    ) =>
         this.setState((s) => {
             const visible = mode === 'open' ? true : !s.visible;
 
@@ -129,6 +137,7 @@ class DropdownMenu extends React.PureComponent<Props, State> {
                 posX,
                 posY,
                 visible,
+                themeStyle: visible ? (readThemeVariables(source || null) as React.CSSProperties) : s.themeStyle,
             };
         });
 
@@ -141,8 +150,21 @@ class DropdownMenu extends React.PureComponent<Props, State> {
                         e.stopPropagation();
                         this.setState({ visible: false });
                     }}
-                    style={{ width: '12rem' }}
-                    css={tw`fixed z-50 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-2 text-gray-300 shadow-xl`}
+                    style={{
+                        ...this.state.themeStyle,
+                        width: '12rem',
+                    }}
+                    css={tw`fixed z-50 rounded-xl p-2 text-[#742220]`}
+                    style={{
+                        border: '2px solid #2D4A3E',
+                        backgroundColor: '#FEF9E1',
+                        backgroundImage: [
+                            'repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                            'repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                            'repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116, 34, 32, 0.04) 4.5px, rgba(116, 34, 32, 0.04) 5px)',
+                        ].join(', '),
+                        boxShadow: '4px 4px 0px 0px #2D4A3E',
+                    }}
                 >
                     {this.props.children}
                 </div>

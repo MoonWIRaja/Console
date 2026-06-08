@@ -66,9 +66,9 @@ const SubdomainRow = ({ subdomain, onDeleted }: Props) => {
                 showSpinnerOverlay={submitting}
                 onDismissed={() => setVisible(false)}
             >
-                <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>Delete subdomain</h2>
+                <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>Delete subdomain</h2>
                 <p css={tw`text-sm leading-6 text-[color:var(--text-subtle)]`}>
-                    This will remove <strong css={tw`text-[#f8f6ef]`}>{subdomain.fullDomain}</strong> from DNS and from
+                    This will remove <strong css={tw`text-[color:var(--foreground)]`}>{subdomain.fullDomain}</strong> from DNS and from
                     this server.
                 </p>
 
@@ -103,8 +103,9 @@ const SubdomainRow = ({ subdomain, onDeleted }: Props) => {
                         <CopyOnClick text={subdomain.fullDomain}>
                             <span
                                 className={
-                                    'max-w-[100%] cursor-pointer break-all rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-0.5 text-left font-mono text-xs font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5'
+                                    'max-w-[100%] cursor-pointer break-all rounded-md px-2 py-0.5 text-left font-mono text-xs font-medium sc-text transition-colors'
                                 }
+                                style={{ border: '1px solid #2D4A3E', background: '#F5EFD5' }}
                                 title="Click to copy"
                             >
                                 {subdomain.fullDomain}
@@ -119,11 +120,9 @@ const SubdomainRow = ({ subdomain, onDeleted }: Props) => {
                 </div>
 
                 <div className={'mt-4 w-full md:mt-0 md:flex-1'}>
-                    <div
-                        css={tw`rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3`}
-                    >
-                        <p css={tw`text-sm font-medium text-[#f8f6ef]`}>{subdomain.record.name}</p>
-                        <p css={tw`mt-1 text-xs text-[color:var(--text-subtle)]`}>
+                    <div className={'sc-card-inner px-4 py-3'}>
+                        <p className={'text-sm font-medium sc-text'}>{subdomain.record.name}</p>
+                        <p className={'mt-1 text-xs sc-muted'}>
                             Routes to {subdomain.resolvedTarget ?? 'the server primary allocation'}
                         </p>
                     </div>

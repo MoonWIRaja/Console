@@ -16,8 +16,8 @@ const ConfirmationModal: React.FC<Props> = ({ title, children, buttonText, onCon
 
     return (
         <>
-            <h2 css={tw`mb-6 text-2xl text-[#f8f6ef]`}>{title}</h2>
-            <div css={tw`text-neutral-300`}>{children}</div>
+            <h2 css={tw`mb-6 text-2xl text-[color:var(--foreground)]`}>{title}</h2>
+            <div css={tw`text-[color:var(--text-subtle)]`}>{children}</div>
             <div css={tw`mt-8 flex flex-wrap items-center justify-end`}>
                 <Button isSecondary onClick={() => dismiss()} css={tw`w-full sm:w-auto`}>
                     Cancel

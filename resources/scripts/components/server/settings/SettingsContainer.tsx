@@ -23,7 +23,7 @@ export default () => {
     const sftp = ServerContext.useStoreState((state) => state.server.data!.sftpDetails, isEqual);
 
     return (
-        <ServerContentBlock title={'Settings'} className={'content-container-full px-4 xl:px-6'}>
+        <ServerContentBlock title={'Settings'} className={'content-container-full px-4 py-4 xl:px-6'}>
             <FlashMessageRender byKey={'settings'} css={tw`mb-4`} />
             <div css={tw`xl:flex`}>
                 <div css={tw`w-full xl:flex-1 xl:mr-10`}>
@@ -43,7 +43,7 @@ export default () => {
                             </div>
                             <div css={tw`mt-6 flex flex-col gap-3 sm:flex-row sm:items-center`}>
                                 <div css={tw`w-full sm:flex-1`}>
-                                    <div css={tw`border-l-4 border-[#a3ff12] bg-[color:var(--background)] p-3`}>
+                                    <div css={tw`p-3`} style={{ borderLeft: '4px solid #2D4A3E', background: '#F5EFD5' }}>
                                         <p css={tw`text-xs text-[color:var(--text-subtle)]`}>
                                             Your SFTP password is the same as the password you use to access this panel.
                                         </p>
@@ -61,7 +61,7 @@ export default () => {
                         <div css={tw`flex items-center justify-between text-sm`}>
                             <p>Node</p>
                             <code
-                                css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}
+                                css={tw`rounded px-2 py-1 font-mono`} style={{ border: '1px solid #2D4A3E', background: '#F5EFD5', color: '#2D4A3E' }}
                             >
                                 {node}
                             </code>
@@ -70,7 +70,7 @@ export default () => {
                             <div css={tw`flex items-center justify-between mt-2 text-sm`}>
                                 <p>Server ID</p>
                                 <code
-                                    css={tw`rounded border border-[color:var(--border)] bg-[color:var(--background)] px-2 py-1 font-mono text-[color:var(--primary)]`}
+                                    css={tw`rounded px-2 py-1 font-mono`} style={{ border: '1px solid #2D4A3E', background: '#F5EFD5', color: '#2D4A3E' }}
                                 >
                                     {uuid}
                                 </code>

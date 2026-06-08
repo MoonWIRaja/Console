@@ -135,7 +135,7 @@ export default ({
                     >
                         Monthly Total
                     </p>
-                    <p className={'mt-2 text-2xl font-black text-[color:var(--primary)]'}>
+                    <p className={'mt-2 text-2xl font-black text-[#742220]'}>
                         {formatMoney(subscription.recurringTotal)}
                     </p>
                 </div>
@@ -144,20 +144,20 @@ export default ({
             <div className={'mt-5 grid gap-3 text-sm text-[color:var(--muted-foreground)] lg:grid-cols-2'}>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Resources</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {subscription.cpuCores} vCore / {subscription.memoryGb} GB / {subscription.diskGb} GB
                     </span>
                 </div>
                 <div className={'flex items-center justify-between gap-3'}>
                     <span>Renews At</span>
-                    <span className={'font-semibold text-[#f8f6ef]'}>
+                    <span className={'font-semibold text-[#742220]'}>
                         {subscription.renewsAt ? subscription.renewsAt.toLocaleString() : 'Unknown'}
                     </span>
                 </div>
                 {subscription.deletionScheduledAt && (
                     <div className={'flex items-center justify-between gap-3 lg:col-span-2'}>
                         <span>Delete Scheduled</span>
-                        <span className={'font-semibold text-red-300'}>
+                        <span className={'font-semibold text-[#991b1b]'}>
                             {subscription.deletionScheduledAt.toLocaleString()}
                         </span>
                     </div>
@@ -166,9 +166,17 @@ export default ({
 
             {subscription.status === 'suspended' && (
                 <div
-                    className={
-                        'mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100'
-                    }
+                    style={{
+                        marginTop: '1rem',
+                        borderRadius: '12px',
+                        border: '2px solid rgba(146, 64, 14, 0.40)',
+                        background: 'rgba(146, 64, 14, 0.08)',
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        lineHeight: '1.6',
+                        color: '#92400e',
+                        boxShadow: '2px 2px 0px 0px rgba(146, 64, 14, 0.25)',
+                    }}
                 >
                     This server is suspended because the renewal deadline passed. Renew it before the delete time if you
                     want to keep the data.
@@ -177,16 +185,24 @@ export default ({
 
             {subscription.status === 'deleted' && (
                 <div
-                    className={
-                        'mt-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100'
-                    }
+                    style={{
+                        marginTop: '1rem',
+                        borderRadius: '12px',
+                        border: '2px solid rgba(153, 27, 27, 0.40)',
+                        background: 'rgba(153, 27, 27, 0.08)',
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        lineHeight: '1.6',
+                        color: '#991b1b',
+                        boxShadow: '2px 2px 0px 0px rgba(153, 27, 27, 0.25)',
+                    }}
                 >
                     This billing server has already been deleted because it was not renewed in time.
                 </div>
             )}
 
             <div
-                className={'mt-5 rounded-2xl border border-[color:var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-4'}
+                className={'mt-5 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-4'}
             >
                 <div className={'flex flex-wrap items-start justify-between gap-3'}>
                     <div>
@@ -197,7 +213,7 @@ export default ({
                         >
                             Auto Renew
                         </p>
-                        <p className={'mt-2 text-sm text-[#f8f6ef]'}>{autoRenewDescription}</p>
+                        <p className={'mt-2 text-sm text-[#742220]'}>{autoRenewDescription}</p>
                         <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
                             {autoRenewHelper}
                         </p>
@@ -228,7 +244,7 @@ export default ({
                     </button>
 
                     {!subscription.autoRenew && subscription.autoRenewUnavailableReason && (
-                        <p className={'text-xs leading-6 text-amber-200'}>{subscription.autoRenewUnavailableReason}</p>
+                        <p className={'text-xs leading-6 text-[#92400e]'}>{subscription.autoRenewUnavailableReason}</p>
                     )}
                 </div>
             </div>
@@ -263,12 +279,12 @@ export default ({
                 <p className={'mt-3 text-xs leading-6 text-[color:var(--muted-foreground)]'}>{renewWindowMessage}</p>
             )}
 
-            {billingProfileHelper && <p className={'mt-3 text-xs leading-6 text-amber-200'}>{billingProfileHelper}</p>}
+            {billingProfileHelper && <p className={'mt-3 text-xs leading-6 text-[#92400e]'}>{billingProfileHelper}</p>}
 
             {upgradeOpen && subscription.canUpgrade && (
                 <div className={'billing-upgrade-panel'}>
                     <div className={'mb-4'}>
-                        <h4 className={'text-lg font-black tracking-tight text-[#f8f6ef]'}>Upgrade Plan</h4>
+                        <h4 className={'text-lg font-black tracking-tight text-[#742220]'}>Upgrade Plan</h4>
                         <p className={'mt-2 text-xs leading-6 text-[color:var(--muted-foreground)]'}>
                             Only upgrades are allowed. The white marker shows the current plan, while the draggable
                             slider sets the upgrade target. The upgrade invoice will be created first for manual review.
@@ -319,19 +335,19 @@ export default ({
                         <div className={'grid gap-4 lg:grid-cols-3'}>
                             <div className={'text-sm text-[color:var(--muted-foreground)]'}>
                                 Current monthly total
-                                <div className={'mt-1 text-xl font-black text-[#f8f6ef]'}>
+                                <div className={'mt-1 text-xl font-black text-[#742220]'}>
                                     {formatMoney(subscription.recurringTotal)}
                                 </div>
                             </div>
                             <div className={'text-sm text-[color:var(--muted-foreground)]'}>
                                 Upgrade charge now
-                                <div className={'mt-1 text-xl font-black text-[color:var(--primary)]'}>
+                                <div className={'mt-1 text-xl font-black text-[#742220]'}>
                                     {formatMoney(additionalUpgradeTotal)}
                                 </div>
                             </div>
                             <div className={'text-sm text-[color:var(--muted-foreground)]'}>
                                 New monthly total
-                                <div className={'mt-1 text-xl font-black text-[#f8f6ef]'}>{formatMoney(nextTotal)}</div>
+                                <div className={'mt-1 text-xl font-black text-[#742220]'}>{formatMoney(nextTotal)}</div>
                             </div>
                         </div>
                         <div className={'mt-4 flex flex-wrap items-center justify-between gap-4'}>
