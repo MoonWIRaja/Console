@@ -3,11 +3,13 @@
 namespace Pterodactyl\Providers;
 
 use Pterodactyl\Models\User;
+use Pterodactyl\Models\Node;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Subuser;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\EggVariable;
 use Pterodactyl\Models\BillingInvoice;
+use Pterodactyl\Models\BillingNodeConfig;
 use Pterodactyl\Models\BillingPayment;
 use Pterodactyl\Models\BillingGatewayEvent;
 use Pterodactyl\Models\BillingPaymentAttempt;
@@ -16,8 +18,10 @@ use Pterodactyl\Events\Auth\FailedPasswordReset;
 use Pterodactyl\Events\Server\InstallationCompleted;
 use Pterodactyl\Observers\UserObserver;
 use Pterodactyl\Observers\BillingLogObserver;
+use Pterodactyl\Observers\NodeObserver;
 use Pterodactyl\Observers\ServerObserver;
 use Pterodactyl\Observers\SubuserObserver;
+use Pterodactyl\Observers\BillingNodeConfigObserver;
 use Pterodactyl\Listeners\TwoFactorListener;
 use Pterodactyl\Listeners\RevocationListener;
 use Pterodactyl\Listeners\AdminLogActivityRelayListener;
@@ -57,9 +61,11 @@ class EventServiceProvider extends ServiceProvider
         parent::boot();
 
         User::observe(UserObserver::class);
+        Node::observe(NodeObserver::class);
         Server::observe(ServerObserver::class);
         Subuser::observe(SubuserObserver::class);
         EggVariable::observe(EggVariableObserver::class);
+        BillingNodeConfig::observe(BillingNodeConfigObserver::class);
         BillingInvoice::observe(BillingLogObserver::class);
         BillingPayment::observe(BillingLogObserver::class);
         BillingPaymentAttempt::observe(BillingLogObserver::class);
