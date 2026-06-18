@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import getServers from '@/api/getServers';
-import { getServerPlayers } from '@/api/server/players';
+import http from '@/api/http';
 
 const NAMES = [
     '1krakensS','4rdenth','aaailyi','aaaqiff','AaronHakim','AbuDuh','abusyahril',
@@ -110,103 +109,111 @@ interface BackgroundPlayer {
     isOnline: boolean;
 }
 
-// Fetch players from all Minecraft servers on the panel that support the players API.
-// Deduplicates by UUID; online status takes priority if a player appears in multiple servers.
-// Polls every 45 s so online/offline state stays fresh.
+// Pulls the roster from one cached, server-side endpoint: unique de-duplicated premium
+// players (online-mode=true only), each flagged with whether they are currently online.
+// Polled every minute so the online glow stays live.
 interface UseBackgroundPlayersResult {
     players: BackgroundPlayer[];
-    loaded: boolean;
+    online: Set<string>;
 }
+
+// Hardcoded names are kept only as a last-resort fallback so the spiral is never
+// completely empty if the roster endpoint is briefly unreachable.
+const FALLBACK_PLAYERS: BackgroundPlayer[] = NAMES.map((name) => ({ uuid: name, name, isOnline: false }));
 
 function useBackgroundPlayers(): UseBackgroundPlayersResult {
     const [players, setPlayers] = useState<BackgroundPlayer[]>([]);
-    const [loaded, setLoaded] = useState(false);
+    const [online, setOnline] = useState<Set<string>>(() => new Set());
+    // Signature of the current roster membership; the grid is only rebuilt when this
+    // changes, so frequent online-status polls never churn the (large) spiral.
+    const membershipRef = useRef<string>('');
 
     useEffect(() => {
         let cancelled = false;
 
-        async function fetchAll() {
+        async function fetchRoster() {
             try {
-                // Collect all server UUIDs (paginate up to 5 pages)
-                const serverUuids: string[] = [];
-                for (let page = 1; page <= 5; page++) {
-                    const result = await getServers({ page });
-                    serverUuids.push(...result.items.map((s) => s.uuid));
-                    if (result.pagination.currentPage >= result.pagination.totalPages) break;
+                const { data } = await http.get('/api/client/minecraft-roster');
+                const list: Array<{ name: string; uuid: string; online?: boolean }> = data?.data ?? [];
+                if (cancelled) return;
+
+                const valid = list.filter((p) => p && p.name);
+                const source: BackgroundPlayer[] =
+                    valid.length > 0
+                        ? valid.map((p) => ({ uuid: p.uuid || p.name, name: p.name, isOnline: false }))
+                        : FALLBACK_PLAYERS;
+
+                const signature = source.map((p) => p.name).join('\n');
+                if (signature !== membershipRef.current) {
+                    membershipRef.current = signature;
+                    setPlayers(source);
                 }
 
-                // Query each server for players; ignore servers that fail or return dummy data
-                const playerMap = new Map<string, BackgroundPlayer>();
-                await Promise.allSettled(
-                    serverUuids.map(async (uuid) => {
-                        try {
-                            const res = await getServerPlayers(uuid, { scope: 'all' });
-                            // is_dummy === true means the server has no real player-tracking integration
-                            if (res.is_dummy) return;
-                            for (const p of res.items) {
-                                if (!p.uuid || !p.name) continue;
-                                const isOnline = p.status === 'online';
-                                const existing = playerMap.get(p.uuid);
-                                // Keep entry if new, or upgrade to online if already stored as offline
-                                if (!existing || isOnline) {
-                                    playerMap.set(p.uuid, { uuid: p.uuid, name: p.name, isOnline });
-                                }
-                            }
-                        } catch {
-                            // Server does not support the players API — skip silently
-                        }
-                    })
-                );
-
-                if (cancelled) return;
-                setPlayers(Array.from(playerMap.values()));
+                setOnline(new Set(valid.filter((p) => p.online).map((p) => p.name.toLowerCase())));
             } catch {
-                // Network error or panel offline — keep current state
-            } finally {
-                if (!cancelled) setLoaded(true);
+                if (!cancelled && membershipRef.current === '') {
+                    membershipRef.current = FALLBACK_PLAYERS.map((p) => p.name).join('\n');
+                    setPlayers(FALLBACK_PLAYERS);
+                }
             }
         }
 
-        fetchAll();
-        const id = setInterval(fetchAll, 45_000);
+        fetchRoster();
+        const id = setInterval(fetchRoster, 60_000); // poll every minute for online updates
         return () => {
             cancelled = true;
             clearInterval(id);
         };
     }, []);
 
-    return { players, loaded };
+    return { players, online };
 }
 
 // Golden angle in radians — drives the phyllotaxis spiral
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-const ACTIVE_BLINKS = 90;
-
 const KEYFRAMES = `
-@keyframes cb-breathe {
-    0%   { filter: grayscale(100%) contrast(1.2) brightness(0.95); transform: scale(1); }
-    35%  { filter: grayscale(0%) contrast(1) brightness(1.15);     transform: scale(1.1); }
-    50%  { filter: grayscale(0%) contrast(1) brightness(1.15);     transform: scale(1.1); }
-    65%  { filter: grayscale(0%) contrast(1) brightness(1.15);     transform: scale(1.1); }
-    100% { filter: grayscale(100%) contrast(1.2) brightness(0.95); transform: scale(1); }
+/* Online players slowly breathe from dark (like offline) to full colour and back. */
+@keyframes cb-online-breathe {
+    0%, 100% { filter: grayscale(100%) contrast(0.95) brightness(0.05); }
+    50%      { filter: grayscale(0%) contrast(1.06) brightness(1.18); }
 }
-@keyframes cb-pulse-online {
-    0%   { filter: grayscale(0%) contrast(1) brightness(1.1); transform: scale(1); }
-    50%  { filter: grayscale(0%) contrast(1) brightness(1.4); transform: scale(1.12); }
-    100% { filter: grayscale(0%) contrast(1) brightness(1.1); transform: scale(1); }
-}
+/* Crisp drop-shadow so console log text stays legible over the player wallpaper. */
+.xterm-rows span { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.8); }
 `;
+
+// Offline players sit static in the dark; online players slowly breathe to full colour.
+const OFFLINE_FILTER = 'grayscale(100%) contrast(0.95) brightness(0.05)';
+const ONLINE_FILTER = 'grayscale(0%) contrast(1.06) brightness(1.18)';
+
+// Online = slow colour breathe (dark → full colour → dark); offline = static & dark.
+function applyCellState(img: HTMLImageElement, isOnline: boolean): void {
+    if (isOnline) {
+        const dur = 4 + Math.random() * 3; // 4–7s slow cycle
+        img.style.filter = ONLINE_FILTER;
+        img.style.animation = `cb-online-breathe ${dur.toFixed(2)}s ease-in-out infinite`;
+        img.style.animationDelay = `-${(Math.random() * dur).toFixed(2)}s`; // random phase so they are out of sync
+    } else {
+        img.style.animation = '';
+        img.style.animationDelay = '';
+        img.style.filter = OFFLINE_FILTER;
+    }
+}
 
 interface Cell {
     el: HTMLDivElement;
+    img: HTMLImageElement;
+    name: string;
     isOnline: boolean;
 }
 
 export default function ConsoleBackground() {
-    const { players, loaded } = useBackgroundPlayers();
+    const { players, online } = useBackgroundPlayers();
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
+    const cellsRef = useRef<Cell[]>([]);
+    const onlineRef = useRef(online);
+    onlineRef.current = online;
 
     useEffect(() => {
         const container = containerRef.current;
@@ -219,31 +226,30 @@ export default function ConsoleBackground() {
 
         // Build cells from live player data, or fall back to hardcoded names
         const cells: Cell[] = [];
+        const onlineNow = onlineRef.current;
 
-        const buildCell = (src: string, alt: string, isOnline: boolean) => {
+        const buildCell = (name: string, isOnline: boolean) => {
             const cell = document.createElement('div');
             cell.style.cssText = 'position:absolute;transform:translate(-50%,-50%)';
             const img = document.createElement('img');
-            img.src = `https://mc-heads.net/body/${src}/80`;
-            img.alt = alt;
+            img.src = `https://mc-heads.net/body/${name}/80`;
+            img.alt = name;
             img.loading = 'lazy';
-            const defaultFilter = isOnline
-                ? 'grayscale(0%) contrast(1) brightness(1.1)'
-                : 'grayscale(100%) contrast(1.2) brightness(0.95)';
-            img.style.cssText = `display:block;image-rendering:pixelated;filter:${defaultFilter};height:5.5vh;width:auto;`;
+            img.style.cssText = 'display:block;image-rendering:pixelated;height:5.5vh;width:auto;';
+            applyCellState(img, isOnline);
             img.onerror = () => { img.style.display = 'none'; };
             cell.appendChild(img);
             grid.appendChild(cell);
-            cells.push({ el: cell, isOnline });
+            cells.push({ el: cell, img, name, isOnline });
         };
 
         if (players.length > 0) {
-            // Real player data: shuffle + double so we fill the spiral nicely
-            const base = [...players].sort(() => Math.random() - 0.5);
-            const doubled = [...base, ...base.slice().sort(() => Math.random() - 0.5)];
-            for (const p of doubled) buildCell(p.uuid, p.name, p.isOnline);
+            // Shuffle once — each player appears exactly once (no duplicates).
+            const ordered = [...players].sort(() => Math.random() - 0.5);
+            for (const p of ordered) buildCell(p.name, onlineNow.has(p.name.toLowerCase()));
         }
-        // loaded=false OR loaded=true with no players → empty grid, particles only
+        cellsRef.current = cells;
+        // no players → empty grid, particles only
 
         // Phyllotaxis spiral layout — matches the original HTML algorithm
         function layout() {
@@ -322,60 +328,27 @@ export default function ConsoleBackground() {
         });
         ro.observe(container);
 
-        // Cycling blink animations: 90 running concurrently, each restarts after finishing.
-        // Online players pulse with color; offline players blink from grayscale to color and back.
-        const blinking = new Set<number>();
-        const timeoutIds: ReturnType<typeof setTimeout>[] = [];
-        let alive = true;
-
-        function startBlink() {
-            if (!alive) return;
-            let tries = 0, idx = 0;
-            do {
-                idx = Math.floor(Math.random() * cells.length);
-                tries++;
-            } while (blinking.has(idx) && tries < 20);
-            if (blinking.has(idx)) return;
-            blinking.add(idx);
-
-            const cell = cells[idx];
-            const img = cell?.el.querySelector('img') as HTMLImageElement | null;
-            if (!img) { blinking.delete(idx); return; }
-
-            const dur = 1.8 + Math.random() * 1.2;
-            // Online: subtle brightness pulse (stays colored); Offline: grayscale → colored → grayscale
-            img.style.animation = cell.isOnline
-                ? `cb-pulse-online ${dur}s ease-in-out`
-                : `cb-breathe ${dur}s ease-in-out`;
-
-            const done = () => {
-                img.style.animation = '';
-                img.removeEventListener('animationend', done);
-                blinking.delete(idx);
-                if (alive) {
-                    const t = setTimeout(startBlink, 50 + Math.random() * 200);
-                    timeoutIds.push(t);
-                }
-            };
-            img.addEventListener('animationend', done);
-        }
-
-        const initT = setTimeout(() => {
-            for (let k = 0; k < ACTIVE_BLINKS; k++) {
-                const t = setTimeout(startBlink, k * 120);
-                timeoutIds.push(t);
-            }
-        }, 300);
-        timeoutIds.push(initT);
-
+        // Online cells already carry their own continuous glow animation (set in
+        // applyCellState); offline cells are static and dark. No JS blink loop needed.
         return () => {
-            alive = false;
             cancelAnimationFrame(animId);
             ro.disconnect();
-            timeoutIds.forEach(clearTimeout);
+            cellsRef.current = [];
             while (grid.firstChild) grid.removeChild(grid.firstChild);
         };
-    }, [players, loaded]); // Rebuild grid when player data arrives or online status changes
+    }, [players]); // Rebuild the spiral only when the set of players changes
+
+    // Apply live online/offline status in place — no grid rebuild, so the avatars
+    // never flicker or reload. Online players light up + glow; offline go dark.
+    useEffect(() => {
+        for (const cell of cellsRef.current) {
+            const nowOnline = online.has(cell.name.toLowerCase());
+            if (nowOnline !== cell.isOnline) {
+                cell.isOnline = nowOnline;
+                applyCellState(cell.img, nowOnline);
+            }
+        }
+    }, [online]);
 
     return (
         <div
@@ -390,19 +363,20 @@ export default function ConsoleBackground() {
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}
             />
 
-            {/* Player body spiral grid — populated imperatively in useEffect */}
+            {/* Player body spiral grid (above the dark wash so lit players shine) */}
             <div
                 ref={gridRef}
-                style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                style={{ position: 'absolute', inset: 0, zIndex: 3 }}
             />
 
-            {/* Dark vignette — keeps terminal text readable */}
+            {/* Dark base wash (sits BELOW the avatars) so offline players read as
+                "in the dark" and lit online players shine above it. */}
             <div
                 style={{
                     position: 'absolute',
                     inset: 0,
-                    zIndex: 3,
-                    background: 'radial-gradient(ellipse at center, rgba(21,21,16,0.55) 0%, rgba(21,21,16,0.82) 100%)',
+                    zIndex: 2,
+                    background: 'radial-gradient(ellipse at center, rgba(13,12,8,0.62) 0%, rgba(8,7,4,0.9) 100%)',
                     pointerEvents: 'none',
                 }}
             />

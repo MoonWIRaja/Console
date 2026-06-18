@@ -3,6 +3,7 @@
 namespace Pterodactyl\Http\Controllers\Admin\Security;
 
 use Throwable;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -40,6 +41,7 @@ class SecurityController extends Controller
         private SecurityRuleBootstrapService $rules,
         private SecurityAgentService $agents,
         private SecuritySelfTestService $selfTest,
+        private Encrypter $encrypter,
     ) {
     }
 
@@ -70,7 +72,16 @@ class SecurityController extends Controller
             'incidentFilter' => $this->filterMeta($request, 'incidents_verdict', SecurityVocabulary::verdicts(), 'incidents_page', 'All verdicts', 'Verdict'),
             'events' => $this->eventPaginator($request),
             'eventFilter' => $this->filterMeta($request, 'events_verdict', SecurityVocabulary::verdicts(), 'events_page', 'All verdicts', 'Verdict'),
-            'agents' => SecurityAgent::query()->with('node')->latest()->get(),
+            'agents' => SecurityAgent::query()->with('node')->latest()->get()->map(function (SecurityAgent $agent) {
+                try {
+                    $agent->decrypted_secret = is_string($agent->current_secret_encrypted)
+                        ? $this->encrypter->decrypt($agent->current_secret_encrypted)
+                        : null;
+                } catch (\Throwable) {
+                    $agent->decrypted_secret = null;
+                }
+                return $agent;
+            }),
             'artifacts' => $this->artifactPaginator($request),
             'artifactFilter' => $this->filterMeta($request, 'artifacts_status', self::QUARANTINE_STATUSES, 'artifacts_page', 'All artifact statuses'),
             'actions' => SecurityAction::query()->with(['agent', 'incident'])->latest()->limit(100)->get(),

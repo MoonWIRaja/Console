@@ -687,6 +687,15 @@
                                                         @csrf
                                                         <button type="submit" class="btn btn-default btn-sm">Rotate Secret</button>
                                                     </form>
+                                                    @if($agent->decrypted_secret && $agent->node_id)
+                                                    <button type="button" class="btn btn-info btn-sm" style="margin-top:4px;"
+                                                        onclick="copyInstallCommand(this)"
+                                                        data-uuid="{{ $agent->uuid }}"
+                                                        data-secret="{{ $agent->decrypted_secret }}"
+                                                        data-node="{{ $agent->node_id }}">
+                                                        <i class="fa fa-copy"></i> Copy Install Command
+                                                    </button>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @empty
@@ -990,5 +999,25 @@
                 fillFromNode();
             }
         })();
+
+        function copyInstallCommand(btn) {
+            const uuid   = btn.dataset.uuid;
+            const secret = btn.dataset.secret;
+            const node   = btn.dataset.node;
+            const panelUrl = '{{ config('app.url') }}';
+            const cmd = `curl -sSL ${panelUrl}/security-agent-install.sh | bash -s -- "${uuid}" "${secret}" "${node}"`;
+
+            navigator.clipboard.writeText(cmd).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa fa-check"></i> Copied!';
+                btn.classList.replace('btn-info', 'btn-success');
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.classList.replace('btn-success', 'btn-info');
+                }, 2500);
+            }).catch(() => {
+                prompt('Copy command ini:', cmd);
+            });
+        }
     </script>
 @endsection

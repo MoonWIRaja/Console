@@ -1408,12 +1408,14 @@ class BillingPaymentService
             return self::MANUAL_PROVIDER;
         }
 
-        if (filled($invoice->provider)) {
-            return $invoice->provider;
-        }
-
-        if (filled($invoice->subscription?->gateway_provider)) {
-            return (string) $invoice->subscription->gateway_provider;
+        // Manual mode is OFF, so an invoice or subscription that was stamped with the
+        // "manual" provider (e.g. created before the online gateway was configured)
+        // must still be routed through the active gateway rather than being forced to
+        // the manual flow. Only honour a stored provider when it is a real gateway.
+        foreach ([$invoice->provider, $invoice->subscription?->gateway_provider] as $candidate) {
+            if (filled($candidate) && $candidate !== self::MANUAL_PROVIDER) {
+                return (string) $candidate;
+            }
         }
 
         return (string) config('billing.gateway.default', FiuuCheckoutService::PROVIDER);

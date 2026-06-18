@@ -400,7 +400,7 @@ class DownDetectorRunnerService
 
         if ($observedStatus === DownDetectorMonitor::STATUS_UP) {
             $monitor->consecutive_failures = 0;
-            $monitor->consecutive_successes = $previousStatus === DownDetectorMonitor::STATUS_UP
+            $monitor->consecutive_successes = in_array($previousStatus, [DownDetectorMonitor::STATUS_UP, DownDetectorMonitor::STATUS_DOWN], true)
                 ? $monitor->consecutive_successes + 1
                 : 1;
 

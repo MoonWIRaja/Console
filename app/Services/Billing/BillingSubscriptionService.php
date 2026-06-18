@@ -290,12 +290,19 @@ class BillingSubscriptionService
 
         /** @var Server $server */
         $server = $subscription->server;
+
+        // The upgrade target is the TOTAL resource pool for the whole split family.
+        // Resources already carved off to split children must stay with them, so the
+        // main server only receives the pool minus what its splits are using —
+        // otherwise the upgrade silently reclaims the split resources for the main.
+        $reserved = $this->reservedSplitResources($server);
+
         $this->buildModificationService->handle($server, [
-            'memory' => $order->memory_gb * 1024,
+            'memory' => max(0, $order->memory_gb * 1024 - $reserved['memory']),
             'swap' => $server->swap,
             'io' => $server->io,
-            'cpu' => $order->cpu_cores * 100,
-            'disk' => $order->disk_gb * 1024,
+            'cpu' => max(0, $order->cpu_cores * 100 - $reserved['cpu']),
+            'disk' => max(0, $order->disk_gb * 1024 - $reserved['disk']),
             'allocation_id' => $server->allocation_id,
             'oom_disabled' => $server->oom_disabled,
             'allocation_limit' => $server->allocation_limit,
@@ -381,12 +388,14 @@ class BillingSubscriptionService
 
         /** @var Server $server */
         $server = $subscription->server;
+        // Keep split children's resources reserved when reverting the main server too.
+        $reserved = $this->reservedSplitResources($server);
         $this->buildModificationService->handle($server, [
-            'memory' => $effectiveOrder->memory_gb * 1024,
+            'memory' => max(0, $effectiveOrder->memory_gb * 1024 - $reserved['memory']),
             'swap' => $server->swap,
             'io' => $server->io,
-            'cpu' => $effectiveOrder->cpu_cores * 100,
-            'disk' => $effectiveOrder->disk_gb * 1024,
+            'cpu' => max(0, $effectiveOrder->cpu_cores * 100 - $reserved['cpu']),
+            'disk' => max(0, $effectiveOrder->disk_gb * 1024 - $reserved['disk']),
             'allocation_id' => $server->allocation_id,
             'oom_disabled' => $server->oom_disabled,
             'allocation_limit' => $server->allocation_limit,
@@ -417,6 +426,25 @@ class BillingSubscriptionService
         );
 
         return $subscription->fresh(['server', 'nodeConfig', 'gameProfile.egg.nest']);
+    }
+
+    /**
+     * Total resources (in raw server units) currently carved off to a server's split
+     * children, so the main server can be sized for the pool minus its splits.
+     *
+     * @return array{cpu: int, memory: int, disk: int}
+     */
+    private function reservedSplitResources(Server $server): array
+    {
+        $children = Server::query()
+            ->where('split_root_server_id', $server->id)
+            ->get(['cpu', 'memory', 'disk']);
+
+        return [
+            'cpu' => (int) $children->sum('cpu'),
+            'memory' => (int) $children->sum('memory'),
+            'disk' => (int) $children->sum('disk'),
+        ];
     }
 
     private function extractGatewayReferencesFromOrder(BillingOrder $order): array

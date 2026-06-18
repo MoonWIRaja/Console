@@ -135,15 +135,17 @@ const theme = isDark
           background: 'transparent',
           cursor: 'transparent',
           cursorAccent: 'transparent',
-          black: th`colors.black`.toString(),
-          red: '#E54B4B',
-          green: '#9ECE58',
-          yellow: '#FAED70',
-          blue: '#396FE2',
-          magenta: '#BB80B3',
-          cyan: '#2DDAFD',
-          white: '#d0d0d0',
-          brightBlack: 'rgba(255, 255, 255, 0.2)',
+          // Dark ANSI tones (black / dark-grey / dark-blue) are remapped to clearly
+          // readable colours so log lines never sink into the dark console wallpaper.
+          black: '#c2cad6',
+          red: '#FF6B6B',
+          green: '#A6E55A',
+          yellow: '#FFE066',
+          blue: '#6BA6FF',
+          magenta: '#D08CD0',
+          cyan: '#4FE3FF',
+          white: '#eef1f6',
+          brightBlack: '#aab4c3',
           brightRed: '#FF5370',
           brightGreen: '#C3E88D',
           brightYellow: '#FFCB6B',
@@ -184,10 +186,16 @@ const terminalProps: ITerminalOptions = {
     fontSize: 13,
     lineHeight: 1.28,
     letterSpacing: 0.2,
+    // Heavier strokes so console output stays legible over the live-player wallpaper.
+    fontWeight: 600,
+    fontWeightBold: 800,
     // Keep terminal output readable with a true monospace stack even when app-wide font changes.
     fontFamily: `'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace`,
     rows: 30,
-    rendererType: 'dom',
+    rendererType: 'canvas',
+    // Canvas renderer enforces a minimum contrast ratio, forcing even custom 24-bit
+    // hex colours from chat/rank plugins to stay readable against the dark wallpaper.
+    minimumContrastRatio: 7,
     theme: theme,
     // Keep compatibility with environments that block accelerated/canvas renderer optimizations.
     allowProposedApi: true,
