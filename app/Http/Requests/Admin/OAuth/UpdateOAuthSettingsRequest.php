@@ -61,6 +61,21 @@ class UpdateOAuthSettingsRequest extends AdminFormRequest
                     );
                 }
             }
+
+            // Guard against a truncated Google client secret being saved. Google
+            // "GOCSPX-" secrets are always exactly 35 characters; a shorter value
+            // is an incomplete copy/paste and Google rejects it with invalid_client.
+            $googleSecret = trim((string) $this->input('services:google:client_secret', ''));
+            if ($googleSecret !== '' && $googleSecret !== '!e'
+                && str_starts_with($googleSecret, 'GOCSPX-') && mb_strlen($googleSecret) !== 35) {
+                $validator->errors()->add(
+                    'services:google:client_secret',
+                    sprintf(
+                        'The Google client secret looks incomplete (%d characters). A GOCSPX- secret must be exactly 35 characters — copy the full value from Google Cloud Console.',
+                        mb_strlen($googleSecret)
+                    )
+                );
+            }
         });
     }
 
