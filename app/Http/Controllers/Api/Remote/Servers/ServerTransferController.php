@@ -15,6 +15,7 @@ use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Exceptions\Http\HttpForbiddenException;
 use Pterodactyl\Repositories\Eloquent\ServerRepository;
 use Pterodactyl\Repositories\Wings\DaemonServerRepository;
+use Pterodactyl\Services\Billing\BillingTransferSyncService;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 
@@ -27,6 +28,7 @@ class ServerTransferController extends Controller
         private ConnectionInterface $connection,
         private ServerRepository $repository,
         private DaemonServerRepository $daemonServerRepository,
+        private BillingTransferSyncService $billingTransferSync,
     ) {
     }
 
@@ -94,6 +96,20 @@ class ServerTransferController extends Controller
 
             return $server;
         });
+
+        // Keep billing aligned with the server's new node (pricing is per-node). This is
+        // best-effort: the server has already physically moved, so a billing failure must
+        // not fail the transfer completion — log it for follow-up instead.
+        try {
+            $this->billingTransferSync->handleCompletedTransfer($server, $transfer->newNode);
+        } catch (\Throwable $exception) {
+            Log::error('Failed to re-sync billing after server transfer.', [
+                'server_id' => $server->id,
+                'transfer_id' => $transfer->id,
+                'new_node_id' => $transfer->new_node,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
 
         // Delete the server from the old node making sure to point it to the old node so
         // that we do not delete it from the new node the server was transferred to.

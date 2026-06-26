@@ -96,42 +96,59 @@ class BillingNodeSyncService
             ->where('billing_node_config_id', $config->id)
             ->whereIn('status', BillingSubscription::RESOURCE_RESERVATION_STATUSES)
             ->orderBy('id')
-            ->chunkById(100, function ($subscriptions) use ($config, $targetNodeName, &$summary) {
+            ->chunkById(100, function ($subscriptions) use ($config, &$summary) {
                 foreach ($subscriptions as $subscription) {
-                    $pricing = $this->catalogService->calculatePricing(
-                        $config,
-                        (int) $subscription->cpu_cores,
-                        (int) $subscription->memory_gb,
-                        (int) $subscription->disk_gb
-                    );
-
-                    $subscription->forceFill([
-                        'node_name' => $targetNodeName,
-                        'price_per_vcore' => $config->price_per_vcore,
-                        'price_per_gb_ram' => $config->price_per_gb_ram,
-                        'price_per_10gb_disk' => $config->price_per_10gb_disk,
-                        'recurring_total' => $pricing['total'],
-                    ]);
-
-                    if ($subscription->isDirty([
-                        'node_name',
-                        'price_per_vcore',
-                        'price_per_gb_ram',
-                        'price_per_10gb_disk',
-                        'recurring_total',
-                    ])) {
-                        $subscription->saveOrFail();
-                        $summary['subscriptions_repriced']++;
-                    }
-
-                    $summary = $this->mergeSummary(
-                        $summary,
-                        $this->syncOpenRenewalInvoicesForSubscription($subscription, $targetNodeName)
-                    );
+                    $summary = $this->mergeSummary($summary, $this->repriceSubscription($subscription, $config));
                 }
             });
 
         return $summary;
+    }
+
+    /**
+     * Re-point a single subscription at the given node config and recalculate its
+     * pricing (and any open renewal invoice) from that config's rates. Used both by
+     * the per-config sync above and when a server is transferred to a new node.
+     */
+    public function repriceSubscription(BillingSubscription $subscription, BillingNodeConfig $config): array
+    {
+        $config->loadMissing('node');
+
+        $summary = $this->emptySummary();
+        $targetNodeName = $this->resolveNodeName($config);
+
+        $pricing = $this->catalogService->calculatePricing(
+            $config,
+            (int) $subscription->cpu_cores,
+            (int) $subscription->memory_gb,
+            (int) $subscription->disk_gb
+        );
+
+        $subscription->forceFill([
+            'billing_node_config_id' => $config->id,
+            'node_name' => $targetNodeName,
+            'price_per_vcore' => $config->price_per_vcore,
+            'price_per_gb_ram' => $config->price_per_gb_ram,
+            'price_per_10gb_disk' => $config->price_per_10gb_disk,
+            'recurring_total' => $pricing['total'],
+        ]);
+
+        if ($subscription->isDirty([
+            'billing_node_config_id',
+            'node_name',
+            'price_per_vcore',
+            'price_per_gb_ram',
+            'price_per_10gb_disk',
+            'recurring_total',
+        ])) {
+            $subscription->saveOrFail();
+            $summary['subscriptions_repriced']++;
+        }
+
+        return $this->mergeSummary(
+            $summary,
+            $this->syncOpenRenewalInvoicesForSubscription($subscription, $targetNodeName)
+        );
     }
 
     private function syncOpenRenewalInvoicesForSubscription(BillingSubscription $subscription, string $targetNodeName): array

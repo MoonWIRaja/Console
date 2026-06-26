@@ -14,6 +14,7 @@ class BillingSubscriptionRevision extends Model
     public const TYPE_UPGRADE = 'upgrade';
     public const TYPE_REFUND_ROLLBACK = 'refund_rollback';
     public const TYPE_ADMIN_ADJUSTMENT = 'admin_adjustment';
+    public const TYPE_NODE_TRANSFER = 'node_transfer';
 
     protected $table = 'billing_subscription_revisions';
 
