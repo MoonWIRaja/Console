@@ -33,6 +33,7 @@ class FileController extends ClientApiController
     private const HIDDEN_ROOT_DIRECTORIES = [
         '.recycle_bin',
         '.steam',
+        '.backups',
     ];
 
     /**

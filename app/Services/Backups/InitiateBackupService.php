@@ -156,7 +156,7 @@ class InitiateBackupService
                 return false;
             }
 
-            if ($entry === '.recycle_bin') {
+            if ($entry === '.recycle_bin' || $entry === '.backups') {
                 return false;
             }
 

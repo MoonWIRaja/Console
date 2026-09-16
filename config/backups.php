@@ -35,13 +35,13 @@ return [
     // server file system (container data path) instead of using Wings global
     // backup storage.
     'local_container_only' => env('BACKUP_LOCAL_CONTAINER_ONLY', false),
-    'local_container_directory' => env('BACKUP_LOCAL_CONTAINER_DIRECTORY', '/backups'),
+    'local_container_directory' => env('BACKUP_LOCAL_CONTAINER_DIRECTORY', '/.backups'),
 
     // Mirror successful backups into each server's own file system directory so
     // users can see and manage a local copy from File Manager.
     'mirror_to_server' => [
         'enabled' => env('BACKUP_MIRROR_TO_SERVER', false),
-        'directory' => env('BACKUP_MIRROR_DIRECTORY', '/backups'),
+        'directory' => env('BACKUP_MIRROR_DIRECTORY', '/.backups'),
     ],
 
     'disks' => [
