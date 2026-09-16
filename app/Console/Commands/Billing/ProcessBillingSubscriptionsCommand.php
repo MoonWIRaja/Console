@@ -57,8 +57,58 @@ class ProcessBillingSubscriptionsCommand extends Command
         $this->markPastDueSubscriptions($now);
         $this->suspendOverdueSubscriptions($now);
         $this->deleteExpiredSubscriptions($now);
+        $this->reconcileSuspensionDrift();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Self-heal panel/Wings suspension drift.
+     *
+     * The suspend and unsuspend paths (this command's suspendOverdueSubscriptions and
+     * the payment webhook's applyPaidRenewal) both call SuspensionService::toggle(),
+     * which pushes a lightweight Wings /sync call. Because those two paths can fire
+     * within the same minute — a payment can land right as the overdue-suspend check
+     * runs, or Wings can be briefly unreachable during either call — the DB and Wings
+     * can end up disagreeing about a server's suspended state, with nothing afterwards
+     * to notice and fix it. toggle() already re-syncs Wings for free whenever the
+     * requested action matches the DB's current state (its no-op branch), so calling it
+     * every tick for every subscription's expected state is a cheap, idempotent way to
+     * catch and heal that drift within a minute instead of leaving it stuck until
+     * someone manually re-syncs the server.
+     */
+    private function reconcileSuspensionDrift(): void
+    {
+        BillingSubscription::query()
+            ->with('server')
+            ->whereIn('status', [
+                BillingSubscription::STATUS_ACTIVE,
+                BillingSubscription::STATUS_PAST_DUE,
+                BillingSubscription::STATUS_SUSPENDED,
+            ])
+            ->whereNotNull('server_id')
+            ->chunkById(100, function ($subscriptions) {
+                foreach ($subscriptions as $subscription) {
+                    if (!$subscription->server) {
+                        continue;
+                    }
+
+                    $expectedAction = $subscription->status === BillingSubscription::STATUS_SUSPENDED
+                        ? SuspensionService::ACTION_SUSPEND
+                        : SuspensionService::ACTION_UNSUSPEND;
+
+                    try {
+                        $this->suspensionService->toggle($subscription->server, $expectedAction);
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to reconcile billing subscription suspension drift.', [
+                            'subscription_id' => $subscription->id,
+                            'server_id' => $subscription->server_id,
+                            'expected_action' => $expectedAction,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                }
+            });
     }
 
     private function replayPendingGatewayEvents(): void

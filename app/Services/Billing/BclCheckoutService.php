@@ -162,22 +162,40 @@ class BclCheckoutService
         return hash_equals($expected, trim((string) $signature));
     }
 
-    public function amountMatches(BillingInvoice $invoice, ?string $amount): bool
+    /**
+     * Compare the webhook's reported amount against what was actually quoted to the
+     * customer for this specific checkout attempt (falling back to the invoice's current
+     * total only if that quote is unavailable, e.g. a malformed legacy attempt).
+     *
+     * This must NOT compare against the invoice's live grand_total: a coupon can be
+     * applied to an already-open invoice after a checkout session was created (see
+     * BillingInvoiceService::applyCouponToOpenInvoice), which lowers the invoice's total
+     * after the customer already paid the pre-discount amount on the gateway's hosted
+     * page. Comparing against the live total would then reject a genuine, already-settled
+     * payment as an "amount mismatch" and leave the customer paid-but-still-suspended.
+     */
+    public function amountMatches(BillingInvoice $invoice, ?string $amount, ?BillingPaymentAttempt $attempt = null): bool
     {
         if (blank($amount)) {
             return false;
         }
 
-        return $this->formatAmount((float) $invoice->grand_total) === $this->normalizeAmount($amount);
+        $quotedAmount = $attempt ? Arr::get($attempt->raw_request_payload, 'amount') : null;
+        $expected = $quotedAmount !== null ? (float) $quotedAmount : (float) $invoice->grand_total;
+
+        return $this->formatAmount($expected) === $this->normalizeAmount($amount);
     }
 
-    public function currencyMatches(BillingInvoice $invoice, ?string $currency): bool
+    public function currencyMatches(BillingInvoice $invoice, ?string $currency, ?BillingPaymentAttempt $attempt = null): bool
     {
         if (blank($currency)) {
             return false;
         }
 
-        return strtoupper((string) $invoice->currency) === $this->normalizeCurrency($currency);
+        $quotedCurrency = $attempt ? Arr::get($attempt->raw_request_payload, 'currency') : null;
+        $expected = $quotedCurrency !== null ? (string) $quotedCurrency : (string) $invoice->currency;
+
+        return strtoupper($expected) === $this->normalizeCurrency($currency);
     }
 
     private function formUrl(): string

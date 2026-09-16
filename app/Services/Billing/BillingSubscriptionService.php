@@ -4,6 +4,7 @@ namespace Pterodactyl\Services\Billing;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingInvoice;
@@ -143,8 +144,22 @@ class BillingSubscriptionService
             'deletion_scheduled_at' => null,
         ])->saveOrFail();
 
-        if ($subscription->server && $subscription->server->isSuspended()) {
-            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+        // Always drive an unsuspend on renewal. toggle() reconciles Wings even when the
+        // database already shows the server as unsuspended, healing any prior panel/Wings
+        // suspension drift (a paid server that stayed suspended on the daemon side). The
+        // subscription is already committed as active above, so a Wings hiccup here is
+        // left for the suspension-drift reconciler to retry rather than surfacing a
+        // confusing "renewal failed" error for a renewal that actually succeeded.
+        if ($subscription->server) {
+            try {
+                $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to unsuspend server during renewal; leaving it for the suspension-drift reconciler to retry.', [
+                    'subscription_id' => $subscription->id,
+                    'server_id' => $subscription->server_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $subscription->fresh(['server', 'nodeConfig']);
@@ -262,8 +277,28 @@ class BillingSubscriptionService
     {
         $subscription->loadMissing('server');
 
-        if ($subscription->server && $subscription->server->isSuspended()) {
-            $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+        // Always drive an unsuspend on renewal. toggle() reconciles Wings even when the
+        // database already shows the server as unsuspended, healing any prior panel/Wings
+        // suspension drift (a paid server that stayed suspended on the daemon side).
+        //
+        // A Wings hiccup here must not stop the subscription below from being marked paid
+        // and active: if it did, the exception would propagate out of the (unwrapped)
+        // payment-recording flow that calls this method, leaving a genuinely paid invoice
+        // attached to a subscription/server that never got marked active — a state the
+        // suspension-drift reconciler (ProcessBillingSubscriptionsCommand) can't detect or
+        // fix, since it trusts subscription->status as the source of truth for which way to
+        // toggle. Swallowing the failure here instead lets that reconciler retry the actual
+        // Wings unsuspend every minute until it succeeds.
+        if ($subscription->server) {
+            try {
+                $this->suspensionService->toggle($subscription->server, SuspensionService::ACTION_UNSUSPEND);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to unsuspend server during paid renewal; leaving it for the suspension-drift reconciler to retry.', [
+                    'subscription_id' => $subscription->id,
+                    'server_id' => $subscription->server_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         $subscription->forceFill([

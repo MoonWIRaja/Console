@@ -565,8 +565,8 @@ class BillingPaymentService
         if (
             !$matchedViaRecordId
             && (
-                !$this->bclCheckoutService->amountMatches($invoice, $normalized['amount'])
-                || !$this->bclCheckoutService->currencyMatches($invoice, $normalized['currency'])
+                !$this->bclCheckoutService->amountMatches($invoice, $normalized['amount'], $attempt)
+                || !$this->bclCheckoutService->currencyMatches($invoice, $normalized['currency'], $attempt)
             )
         ) {
             $attempt = $this->attemptService->markVerifiedFailed(
