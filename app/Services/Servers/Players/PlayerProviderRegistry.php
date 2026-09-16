@@ -13,6 +13,7 @@ use Pterodactyl\Services\Servers\Players\Providers\FiveMLivePlayerProvider;
 use Pterodactyl\Services\Servers\Players\Providers\ProjectZomboidLivePlayerProvider;
 use Pterodactyl\Services\Servers\Players\Providers\TerrariaLivePlayerProvider;
 use Pterodactyl\Services\Servers\Players\Providers\ArkLivePlayerProvider;
+use Pterodactyl\Services\Servers\Players\Providers\PalworldLivePlayerProvider;
 use Pterodactyl\Services\Servers\Players\Providers\HytaleLivePlayerProvider;
 use Pterodactyl\Services\Servers\Players\Providers\UnavailablePlayerProvider;
 
@@ -51,6 +52,10 @@ class PlayerProviderRegistry
                     $this->commandRepository
                 ),
                 GameType::ARK => new ArkLivePlayerProvider(
+                    $this->fileRepository,
+                    $this->commandRepository
+                ),
+                GameType::PALWORLD => new PalworldLivePlayerProvider(
                     $this->fileRepository,
                     $this->commandRepository
                 ),

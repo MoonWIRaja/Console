@@ -10,6 +10,7 @@ final class GameType
     public const TERRARIA = 'terraria';
     public const PROJECT_ZOMBOID = 'project_zomboid';
     public const ARK = 'ark';
+    public const PALWORLD = 'palworld';
     public const HYTALE = 'hytale';
     public const GENERIC = 'generic';
 
@@ -22,6 +23,7 @@ final class GameType
             self::TERRARIA,
             self::PROJECT_ZOMBOID,
             self::ARK,
+            self::PALWORLD,
             self::HYTALE,
             self::GENERIC,
         ];
@@ -36,6 +38,7 @@ final class GameType
             self::TERRARIA => 'Terraria',
             self::PROJECT_ZOMBOID => 'Project Zomboid',
             self::ARK => 'ARK: Survival Evolved',
+            self::PALWORLD => 'Palworld',
             self::HYTALE => 'Hytale',
             default => 'Generic Game Server',
         };

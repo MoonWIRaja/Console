@@ -20,6 +20,20 @@ class TerrariaLivePlayerProvider extends AbstractLivePlayerProvider
         return GameType::label(GameType::TERRARIA);
     }
 
+    protected function resolveRconCredentials(Server $server): ?array
+    {
+        // Only reached by fetchPlayersViaRcon(), the fallback for a server with
+        // no TShock REST token configured. No RCON variable exists on the real
+        // Terraria egg checked on this installation (it's TShock-based, which
+        // normally exposes its REST API instead of RCON) - best effort only.
+        return $this->resolveRconFromVariables(
+            $server,
+            portVariables: ['RCON_PORT'],
+            passwordVariables: ['RCON_PASSWORD', 'ADMIN_PASSWORD', 'PASSWORD'],
+            defaultPort: 7776,
+        );
+    }
+
     protected function fetchPlayersFromServer(Server $server): array
     {
         try {
@@ -214,9 +228,19 @@ class TerrariaLivePlayerProvider extends AbstractLivePlayerProvider
 
     private function getTShockRestUrl(Server $server): ?string
     {
-        $allocation = $server->allocations()->where('is_default', true)->first();
+        // Was querying allocations.is_default, a column that doesn't exist on
+        // this schema (confirmed live - it raised a SQL error on every call,
+        // meaning this path has never actually worked). "Default" allocation is
+        // the server's own allocation_id foreign key, not a flag on the row.
+        $server->loadMissing('allocation');
+        $allocation = $server->allocation;
         if (!$allocation) return null;
 
+        // NOTE: TShock's REST API conventionally listens on its own port
+        // (default 7878), separate from the game port used here - there's no
+        // variable on this installation's Terraria egg exposing that port, so
+        // this will only work for a setup where REST happens to share the game
+        // port, or once such a variable is added.
         return sprintf('http://%s:%s/v2', $allocation->ip, $allocation->port);
     }
 

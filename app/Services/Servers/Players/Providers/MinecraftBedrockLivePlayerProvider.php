@@ -24,6 +24,20 @@ class MinecraftBedrockLivePlayerProvider extends AbstractLivePlayerProvider
         return GameType::label(GameType::MINECRAFT_BEDROCK);
     }
 
+    protected function resolveRconCredentials(Server $server): ?array
+    {
+        // The player list itself comes from the raknet/query lookup below, not
+        // RCON - this is only reached for action buttons (kick/ban/message),
+        // same as most Bedrock server softwares (PocketMine, Nukkit) which
+        // expose a standard Minecraft-style RCON port/password pair.
+        return $this->resolveRconFromVariables(
+            $server,
+            portVariables: ['RCON_PORT'],
+            passwordVariables: ['RCON_PASSWORD'],
+            defaultPort: 19133,
+        );
+    }
+
     protected function fetchPlayersFromServer(Server $server): array
     {
         try {

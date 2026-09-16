@@ -7,72 +7,78 @@ use Pterodactyl\Models\Server;
 use Pterodactyl\Services\Servers\Players\GameType;
 use Pterodactyl\Services\Servers\Players\Support\PlayerScope;
 
-class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
+class PalworldLivePlayerProvider extends AbstractLivePlayerProvider
 {
     public function gameType(): string
     {
-        return GameType::PROJECT_ZOMBOID;
+        return GameType::PALWORLD;
     }
 
     public function gameLabel(): string
     {
-        return GameType::label(GameType::PROJECT_ZOMBOID);
+        return GameType::label(GameType::PALWORLD);
     }
 
     protected function resolveRconCredentials(Server $server): ?array
     {
-        // The PZ egg on this installation has no RCON_PORT variable at all, so
-        // this falls back to PZ's own default (27015). ADMIN_PASSWORD is a best
-        // effort for the RCON password - confirmed on a real server here that
-        // Project Zomboid's RCONPassword in its .ini is a SEPARATE setting from
-        // the admin account password and was blank, so this will only actually
-        // authenticate once an admin sets RCONPassword in the server's own
-        // config to match (or a future egg exposes it as its own variable).
+        // Verified live against a real Palworld server on this installation:
+        // its egg's startup script pipes stdin through the "rcon" CLI tool onto
+        // this RCON_PORT/ADMIN_PASSWORD pair, and connecting straight to that
+        // port with these names authenticated and returned real ShowPlayers/Info
+        // output.
         return $this->resolveRconFromVariables(
             $server,
             portVariables: ['RCON_PORT'],
-            passwordVariables: ['RCON_PASSWORD', 'ADMIN_PASSWORD'],
-            defaultPort: 27015,
+            passwordVariables: ['ADMIN_PASSWORD'],
+            defaultPort: 25575,
         );
     }
 
     protected function fetchPlayersFromServer(Server $server): array
     {
         try {
-            // PZ RCON command: playerlist
-            $output = $this->sendRconCommand($server, 'playerlist');
+            // Palworld RCON command: ShowPlayers
+            // Output is CSV: "name,playeruid,steamid" header, then one row per
+            // online player (playeruid is Palworld's own numeric player id;
+            // steamid may be blank on non-Steam platforms).
+            $output = $this->sendRconCommand($server, 'ShowPlayers');
 
             if (!$output) return [];
 
-            // Example output: "Player: Username (ID: 0, OnlineID: 76561198...)"
-            $lines = explode("\n", trim($output));
+            $lines = array_values(array_filter(array_map('trim', explode("\n", trim($output)))));
+            if (empty($lines)) return [];
+
+            // First line is always the "name,playeruid,steamid" header - skip it.
+            array_shift($lines);
+
             $players = [];
-
             foreach ($lines as $line) {
-                $line = trim($line);
-                // Parse: "Player: Name (ID: X, OnlineID: Y)"
-                if (preg_match('/Player:\s+(.+?)\s+\(ID:\s*\d+,\s*OnlineID:\s*(\d+)\)/i', $line, $matches)) {
-                    $name = trim($matches[1]);
-                    $onlineId = $matches[2];
+                $parts = str_getcsv($line);
+                $name = trim((string) ($parts[0] ?? ''));
+                if ($name === '') continue;
 
-                    $players[] = [
-                        'id' => $onlineId,
-                        'name' => $name,
-                        'uuid' => 'pz_' . $onlineId,
-                        'source_id' => 'steam:' . $onlineId,
-                        'status' => 'online',
-                        'ping' => 0,
-                        'role' => 'player',
-                        'country' => null,
-                        'avatar_url' => sprintf('https://api.dicebear.com/9.x/identicon/svg?seed=%s', urlencode($name)),
-                        'last_seen_at' => now()->toIso8601String(),
-                    ];
-                }
+                $playerUid = trim((string) ($parts[1] ?? ''));
+                $steamId = trim((string) ($parts[2] ?? ''));
+                $id = $steamId !== '' ? $steamId : $playerUid;
+
+                $players[] = [
+                    'id' => $id,
+                    'name' => $name,
+                    'uuid' => 'palworld_' . $playerUid,
+                    'source_id' => $steamId !== '' ? 'steam:' . $steamId : 'palworld:' . $playerUid,
+                    'status' => 'online',
+                    'ping' => 0,
+                    'role' => 'player',
+                    'country' => null,
+                    'avatar_url' => sprintf('https://api.dicebear.com/9.x/identicon/svg?seed=%s', urlencode($name)),
+                    'last_seen_at' => now()->toIso8601String(),
+                    'meta' => ['player_uid' => $playerUid],
+                ];
             }
 
             return $players;
         } catch (\Throwable $e) {
-            Log::warning('Failed to fetch PZ players via RCON.', [
+            Log::warning('Failed to fetch Palworld players via RCON.', [
                 'server_id' => $server->id,
                 'error' => $e->getMessage(),
             ]);
@@ -87,7 +93,7 @@ class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
 
     protected function fetchMaxPlayersFromServer(Server $server): int
     {
-        // PZ doesn't have a simple RCON command for max players, default to config or 0
+        // Palworld's RCON doesn't expose the configured max player slots.
         return 0;
     }
 
@@ -100,11 +106,13 @@ class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
         $player = $this->findPlayerById($server, $playerId);
         if (!$player) return ['success' => false, 'message' => 'Player not found.'];
 
+        $playerUid = (string) ($player['meta']['player_uid'] ?? '');
+
         try {
             $command = match ($actionId) {
-                'message' => sprintf('say %s', $context['text'] ?? 'Hello'),
-                'kick' => sprintf('kick %s %s', $playerId, $context['reason'] ?? 'Kicked from console'),
-                'ban' => sprintf('ban %s %s', $playerId, $context['reason'] ?? 'Banned from console'),
+                'message' => sprintf('Broadcast %s', $context['text'] ?? 'Hello'),
+                'kick' => sprintf('KickPlayer %s', $playerUid),
+                'ban' => sprintf('BanPlayer %s', $playerUid),
                 default => null,
             };
 
@@ -119,7 +127,7 @@ class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
                 'player' => $player['name'],
             ];
         } catch (\Throwable $e) {
-            Log::error('PZ action failed.', ['error' => $e->getMessage()]);
+            Log::error('Palworld action failed.', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
@@ -135,8 +143,8 @@ class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
                 ['id' => 'name', 'label' => 'Search by Name', 'description' => 'Filter players by name.'],
             ],
             'notes' => [
-                'Project Zomboid provider uses RCON for real-time player data.',
-                'Requires RCON to be enabled in server config.',
+                'Palworld provider uses RCON for real-time player data.',
+                'Requires RCONEnabled=True and a matching AdminPassword in PalWorldSettings.ini.',
             ],
         ];
     }
@@ -159,7 +167,7 @@ class ProjectZomboidLivePlayerProvider extends AbstractLivePlayerProvider
                     'title' => 'Session',
                     'entries' => [
                         ['label' => 'Status', 'value' => ucfirst($player['status'])],
-                        ['label' => 'Game', 'value' => 'Project Zomboid'],
+                        ['label' => 'Game', 'value' => 'Palworld'],
                     ],
                 ],
             ],

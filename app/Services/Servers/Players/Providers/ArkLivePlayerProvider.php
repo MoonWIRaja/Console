@@ -14,6 +14,19 @@ class ArkLivePlayerProvider extends AbstractLivePlayerProvider
         return GameType::ARK;
     }
 
+    protected function resolveRconCredentials(Server $server): ?array
+    {
+        // Common variable names across the community ARK eggs - none verified
+        // live (no ARK server on this installation to test against), so this
+        // is best-effort until one exists to confirm the actual names in use.
+        return $this->resolveRconFromVariables(
+            $server,
+            portVariables: ['RCON_PORT'],
+            passwordVariables: ['ADMIN_PASSWORD', 'SERVER_ADMIN_PASSWORD', 'RCON_PASSWORD'],
+            defaultPort: 27020,
+        );
+    }
+
     public function gameLabel(): string
     {
         return GameType::label(GameType::ARK);

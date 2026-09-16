@@ -21,6 +21,20 @@ class FiveMLivePlayerProvider extends AbstractLivePlayerProvider
         return GameType::label(GameType::FIVEM);
     }
 
+    protected function resolveRconCredentials(Server $server): ?array
+    {
+        // The player list itself comes from FiveM's own /players.json HTTP
+        // endpoint below, not RCON - this is only reached for the kick/ban/
+        // message action buttons. No FiveM server on this installation to
+        // confirm the egg's actual variable names, so this is best effort.
+        return $this->resolveRconFromVariables(
+            $server,
+            portVariables: ['RCON_PORT'],
+            passwordVariables: ['RCON_PASSWORD', 'ADMIN_PASSWORD'],
+            defaultPort: 30120,
+        );
+    }
+
     protected function fetchPlayersFromServer(Server $server): array
     {
         try {

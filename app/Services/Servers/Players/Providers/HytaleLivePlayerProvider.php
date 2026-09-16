@@ -19,6 +19,19 @@ class HytaleLivePlayerProvider extends AbstractLivePlayerProvider
         return GameType::label(GameType::HYTALE);
     }
 
+    protected function resolveRconCredentials(Server $server): ?array
+    {
+        // Hytale hasn't shipped its dedicated server yet at the time of writing,
+        // so there's no real egg or server to confirm variable names against -
+        // best effort using the same convention as the other RCON-based games.
+        return $this->resolveRconFromVariables(
+            $server,
+            portVariables: ['RCON_PORT'],
+            passwordVariables: ['RCON_PASSWORD', 'ADMIN_PASSWORD'],
+            defaultPort: 25575,
+        );
+    }
+
     protected function fetchPlayersFromServer(Server $server): array
     {
         try {

@@ -2,17 +2,28 @@
 
 namespace Pterodactyl\Services\Servers\Players\Providers;
 
+use Throwable;
 use Illuminate\Support\Str;
 use Pterodactyl\Models\Server;
-use Psr\Http\Message\ResponseInterface;
+use Pterodactyl\Models\ServerVariable;
 use Illuminate\Support\Facades\Log;
 use Pterodactyl\Services\Servers\Players\PlayerScope;
 use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Services\Servers\Players\Contracts\PlayerProviderInterface;
 use Pterodactyl\Repositories\Wings\DaemonCommandRepository;
+use Pterodactyl\Services\Servers\Players\Support\SourceRconClient;
 
 abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
 {
+    /**
+     * One connection per server id, reused across the several calls a single
+     * request can make (counts(), list(), profile()...) instead of a fresh
+     * TCP handshake + auth for each.
+     *
+     * @var array<int, SourceRconClient|false>
+     */
+    private array $rconClients = [];
+
     public function __construct(
         protected DaemonFileRepository $fileRepository,
         protected DaemonCommandRepository $commandRepository,
@@ -155,6 +166,16 @@ abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
         array $context = []
     ): array;
 
+    /**
+     * Resolves this server's real RCON host/port/password, or null if RCON isn't
+     * configured/enabled for it (e.g. no port variable set, or explicitly
+     * disabled) - sendRconCommand() then fails closed with an empty response
+     * rather than attempting a connection that can't succeed.
+     *
+     * @return array{host: string, port: int, password: string}|null
+     */
+    abstract protected function resolveRconCredentials(Server $server): ?array;
+
     protected function players(Server $server): array
     {
         return $this->normalizePlayers($this->fetchPlayersFromServer($server));
@@ -171,12 +192,28 @@ abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
         return null;
     }
 
+    /**
+     * Runs a command over a real RCON socket and returns its output.
+     *
+     * This used to go through Wings' "send a console command" API instead
+     * (DaemonCommandRepository::send()) - confirmed empirically against a real
+     * server that this always replies 204 No Content with an empty body, since
+     * it's fire-and-forget by design (console output only exists on the
+     * websocket stream, not as this call's response). Every provider reading
+     * that response was therefore always working from an empty string. Talking
+     * to the game's actual RCON port directly is the only way to get real output
+     * back.
+     */
     protected function sendRconCommand(Server $server, string $command): string
     {
+        $client = $this->rconClient($server);
+        if ($client === null) {
+            return '';
+        }
+
         try {
-            $response = $this->commandRepository->setServer($server)->send($command);
-            return $this->extractDaemonResponseBody($response);
-        } catch (\Throwable $exception) {
+            return $client->execute($command);
+        } catch (Throwable $exception) {
             Log::warning('Live player RCON command failed.', [
                 'server_id' => $server->id,
                 'command' => $command,
@@ -184,8 +221,99 @@ abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
                 'error' => $exception->getMessage(),
             ]);
 
+            unset($this->rconClients[$server->id]);
+
             return '';
         }
+    }
+
+    /**
+     * Shared helper for the common case: RCON port/password come from an egg's
+     * server_variables, and the host is just the server's allocated IP (RCON
+     * listens on the same public interface as the game, on its own port).
+     * Individual providers call this with whichever variable names their egg
+     * actually uses, since there's no universal convention across eggs.
+     *
+     * @param string[] $portVariables Tried in order; first non-empty value wins.
+     * @param string[] $passwordVariables Tried in order; first non-empty value wins.
+     * @return array{host: string, port: int, password: string}|null
+     */
+    protected function resolveRconFromVariables(
+        Server $server,
+        array $portVariables,
+        array $passwordVariables,
+        ?int $defaultPort = null,
+    ): ?array {
+        $server->loadMissing('allocation');
+        if (!$server->allocation) {
+            return null;
+        }
+
+        $values = ServerVariable::query()
+            ->where('server_id', $server->id)
+            ->with('variable')
+            ->get()
+            ->filter(fn (ServerVariable $v) => $v->variable !== null)
+            ->keyBy(fn (ServerVariable $v) => $v->variable->env_variable);
+
+        $findFirst = function (array $names) use ($values): ?string {
+            foreach ($names as $name) {
+                $value = trim((string) ($values->get($name)?->variable_value ?? ''));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return null;
+        };
+
+        $port = $findFirst($portVariables);
+        $port = $port !== null ? (int) $port : $defaultPort;
+        if (!$port) {
+            return null;
+        }
+
+        $password = $findFirst($passwordVariables) ?? '';
+
+        return [
+            'host' => $server->allocation->ip,
+            'port' => $port,
+            'password' => $password,
+        ];
+    }
+
+    private function rconClient(Server $server): ?SourceRconClient
+    {
+        if (array_key_exists($server->id, $this->rconClients)) {
+            return $this->rconClients[$server->id] ?: null;
+        }
+
+        $credentials = $this->resolveRconCredentials($server);
+        if ($credentials === null) {
+            $this->rconClients[$server->id] = false;
+
+            return null;
+        }
+
+        try {
+            $client = new SourceRconClient($credentials['host'], $credentials['port'], $credentials['password']);
+        } catch (Throwable $exception) {
+            Log::warning('Failed to connect to live player RCON.', [
+                'server_id' => $server->id,
+                'host' => $credentials['host'],
+                'port' => $credentials['port'],
+                'provider' => static::class,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->rconClients[$server->id] = false;
+
+            return null;
+        }
+
+        $this->rconClients[$server->id] = $client;
+
+        return $client;
     }
 
     /**
@@ -289,25 +417,4 @@ abstract class AbstractLivePlayerProvider implements PlayerProviderInterface
             || $this->isAdmin($player);
     }
 
-    private function extractDaemonResponseBody(ResponseInterface $response): string
-    {
-        $body = trim((string) $response->getBody());
-        if ($body === '') {
-            return '';
-        }
-
-        $decoded = json_decode($body, true);
-        if (!is_array($decoded)) {
-            return $body;
-        }
-
-        foreach (['output', 'response', 'message', 'data'] as $key) {
-            $value = $decoded[$key] ?? null;
-            if (is_string($value) && trim($value) !== '') {
-                return trim($value);
-            }
-        }
-
-        return $body;
-    }
 }
