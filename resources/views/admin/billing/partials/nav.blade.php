@@ -8,6 +8,7 @@
         <li class="{{ request()->routeIs('admin.billing.subscriptions*') ? 'active' : '' }}"><a href="{{ route('admin.billing.subscriptions') }}">Subscriptions</a></li>
         <li class="{{ request()->routeIs('admin.billing.reconciliation*') ? 'active' : '' }}"><a href="{{ route('admin.billing.reconciliation') }}">Reconciliation</a></li>
         <li class="{{ request()->routeIs('admin.billing.tax-rules*') ? 'active' : '' }}"><a href="{{ route('admin.billing.tax-rules') }}">Tax Rules</a></li>
+        <li class="{{ request()->routeIs('admin.billing.coupons*') ? 'active' : '' }}"><a href="{{ route('admin.billing.coupons') }}">Coupons</a></li>
         <li class="{{ request()->routeIs('admin.billing.webhook-events*') ? 'active' : '' }}"><a href="{{ route('admin.billing.webhook-events') }}">Webhook History</a></li>
         <li class="{{ request()->routeIs('admin.billing.provision-failures*') ? 'active' : '' }}"><a href="{{ route('admin.billing.provision-failures') }}">Provision Failures</a></li>
     </ul>

@@ -8,6 +8,7 @@ use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Services\Billing\BillingCatalogService;
+use Pterodactyl\Services\Billing\BillingCouponService;
 use Pterodactyl\Services\Billing\BillingDocumentService;
 use Pterodactyl\Services\Billing\BillingProfileService;
 use Pterodactyl\Services\Billing\BillingInvoiceService;
@@ -44,8 +45,23 @@ class BillingController extends ClientApiController
         private StripeWebhookService $stripeWebhookService,
         private BillingTicketAutomationService $ticketAutomation,
         private TicketTransformerService $ticketTransformer,
+        private BillingCouponService $couponService,
     ) {
         parent::__construct();
+    }
+
+    public function validateCoupon(Request $request): array
+    {
+        $code = (string) $request->input('code', '');
+        $coupon = $this->couponService->assertRedeemable($code, $request->user());
+
+        return [
+            'data' => [
+                'code' => $coupon->code,
+                'discount_type' => $coupon->discount_type,
+                'discount_value' => (float) $coupon->discount_value,
+            ],
+        ];
     }
 
     public function catalog(): array
@@ -211,7 +227,8 @@ class BillingController extends ClientApiController
             ));
         }
 
-        $invoice = $this->invoiceService->createRenewalInvoice($subscription, true);
+        $couponCode = $request->filled('coupon_code') ? (string) $request->input('coupon_code') : null;
+        $invoice = $this->invoiceService->createRenewalInvoice($subscription, true, $couponCode);
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
         $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this renewal.');
@@ -451,6 +468,8 @@ class BillingController extends ClientApiController
             'subtotal' => (float) $invoice->subtotal,
             'tax_total' => (float) $invoice->tax_total,
             'grand_total' => (float) $invoice->grand_total,
+            'discount_total' => (float) $invoice->discount_total,
+            'coupon_code' => $invoice->coupon_code,
             'provider' => $manualBillingEnabled && !$invoice->paid_at
                 ? BillingPaymentService::MANUAL_PROVIDER
                 : $invoice->provider,

@@ -17,6 +17,7 @@ class StoreBillingOrderRequest extends ClientApiRequest
             'disk_gb' => 'required|integer|min:10',
             'variables' => 'sometimes|array',
             'variables.*' => 'nullable|string',
+            'coupon_code' => 'nullable|string|max:64',
         ];
     }
 }

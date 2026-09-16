@@ -250,6 +250,13 @@ export interface CreateBillingOrderPayload {
     memoryGb: number;
     diskGb: number;
     variables: Record<string, string>;
+    couponCode?: string | null;
+}
+
+export interface BillingCouponValidation {
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
 }
 
 export interface UpgradeBillingSubscriptionPayload {
@@ -573,13 +580,29 @@ const createBillingOrder = async (payload: CreateBillingOrderPayload): Promise<B
         memory_gb: payload.memoryGb,
         disk_gb: payload.diskGb,
         variables: payload.variables,
+        coupon_code: payload.couponCode ?? null,
     });
 
     return mapOrderActionResponse(data.data);
 };
 
-const renewBillingSubscription = async (id: number): Promise<BillingSubscriptionActionResponse> => {
-    const { data } = await http.post(`/api/client/account/billing/subscriptions/${id}/renew`);
+const validateBillingCoupon = async (code: string): Promise<BillingCouponValidation> => {
+    const { data } = await http.post('/api/client/account/billing/coupons/validate', { code });
+
+    return {
+        code: data.data.code,
+        discountType: data.data.discount_type,
+        discountValue: data.data.discount_value,
+    };
+};
+
+const renewBillingSubscription = async (
+    id: number,
+    couponCode?: string | null
+): Promise<BillingSubscriptionActionResponse> => {
+    const { data } = await http.post(`/api/client/account/billing/subscriptions/${id}/renew`, {
+        coupon_code: couponCode ?? null,
+    });
 
     return mapSubscriptionActionResponse(data.data);
 };
@@ -649,6 +672,7 @@ export {
     useBillingInvoices,
     updateBillingProfile,
     createBillingOrder,
+    validateBillingCoupon,
     renewBillingSubscription,
     upgradeBillingSubscription,
     retryBillingInvoicePayment,

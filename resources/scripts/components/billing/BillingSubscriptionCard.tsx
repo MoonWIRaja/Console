@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BillingResourceSlider from '@/components/billing/BillingResourceSlider';
-import { BillingSubscription } from '@/api/account/billing';
+import { BillingCouponValidation, BillingSubscription, validateBillingCoupon } from '@/api/account/billing';
+import { httpErrorToHuman } from '@/api/http';
 
 interface Props {
     subscription: BillingSubscription;
@@ -10,7 +11,7 @@ interface Props {
     togglingAutoRenew: boolean;
     billingProfileReady: boolean;
     billingProfileBlockReason: string | null;
-    onRenew: (subscription: BillingSubscription) => void;
+    onRenew: (subscription: BillingSubscription, couponCode: string | null) => void;
     onUpgrade: (
         subscription: BillingSubscription,
         payload: { cpuCores: number; memoryGb: number; diskGb: number }
@@ -26,6 +27,105 @@ const moneyFormatter = new Intl.NumberFormat('ms-MY', {
 });
 
 const formatMoney = (value: number): string => moneyFormatter.format(Number.isFinite(value) ? value : 0);
+
+// Mirror the server's BillingCoupon::discountFor formula so displayed totals match
+// what is charged. Clamped to [0, amount] so a coupon can never go negative.
+const computeCouponDiscount = (coupon: BillingCouponValidation | null, amount: number): number =>
+    coupon
+        ? Number(
+              Math.min(
+                  coupon.discountType === 'percentage' ? (amount * coupon.discountValue) / 100 : coupon.discountValue,
+                  Math.max(amount, 0)
+              ).toFixed(2)
+          )
+        : 0;
+
+const CouponField = ({
+    applied,
+    onApply,
+    onRemove,
+}: {
+    applied: BillingCouponValidation | null;
+    onApply: (coupon: BillingCouponValidation) => void;
+    onRemove: () => void;
+}) => {
+    const [input, setInput] = useState(applied?.code ?? '');
+    const [checking, setChecking] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const apply = async () => {
+        const code = input.trim();
+        if (code.length < 1) {
+            return;
+        }
+
+        setChecking(true);
+        setError(null);
+
+        try {
+            const coupon = await validateBillingCoupon(code);
+            setInput(coupon.code);
+            onApply(coupon);
+        } catch (e) {
+            setError(httpErrorToHuman(e as Error));
+            onRemove();
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    if (applied) {
+        return (
+            <div className={'mt-3 flex flex-wrap items-center justify-between gap-2'}>
+                <span className={'text-xs font-semibold text-[#742220]'}>
+                    Coupon <strong>{applied.code}</strong> applied
+                </span>
+                <button
+                    type={'button'}
+                    onClick={() => {
+                        setInput('');
+                        setError(null);
+                        onRemove();
+                    }}
+                    className={'billing-ghost-btn'}
+                >
+                    Cancel Coupon
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className={'mt-3'}>
+            <div className={'flex flex-wrap items-center gap-2'}>
+                <input
+                    type={'text'}
+                    value={input}
+                    onChange={(event) => setInput(event.target.value.toUpperCase())}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void apply();
+                        }
+                    }}
+                    placeholder={'Coupon code'}
+                    className={
+                        'min-w-0 flex-1 rounded-full border border-[#742220]/25 bg-[#FEF9E1] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#742220] outline-none focus:border-[#742220]'
+                    }
+                />
+                <button
+                    type={'button'}
+                    onClick={() => void apply()}
+                    disabled={checking || input.trim().length < 1}
+                    className={'billing-secondary-btn'}
+                >
+                    {checking ? 'Checking...' : 'Apply Coupon'}
+                </button>
+            </div>
+            {error && <p className={'mt-2 text-xs font-medium text-rose-600'}>{error}</p>}
+        </div>
+    );
+};
 
 const getStatusClasses = (status: string): string => {
     if (status === 'active') {
@@ -66,12 +166,14 @@ export default ({
     const [cpuCores, setCpuCores] = useState(subscription.cpuCores);
     const [memoryGb, setMemoryGb] = useState(subscription.memoryGb);
     const [diskGb, setDiskGb] = useState(subscription.diskGb);
+    const [renewCoupon, setRenewCoupon] = useState<BillingCouponValidation | null>(null);
 
     useEffect(() => {
         setCpuCores(subscription.cpuCores);
         setMemoryGb(subscription.memoryGb);
         setDiskGb(subscription.diskGb);
         setUpgradeOpen(false);
+        setRenewCoupon(null);
     }, [
         subscription.id,
         subscription.cpuCores,
@@ -89,6 +191,9 @@ export default ({
         ).toFixed(2)
     );
     const additionalUpgradeTotal = Number(Math.max(nextTotal - subscription.recurringTotal, 0).toFixed(2));
+
+    const renewDiscount = computeCouponDiscount(renewCoupon, subscription.recurringTotal);
+    const renewPayable = Number(Math.max(subscription.recurringTotal - renewDiscount, 0).toFixed(2));
 
     const hasUpgradeChanges =
         cpuCores !== subscription.cpuCores || memoryGb !== subscription.memoryGb || diskGb !== subscription.diskGb;
@@ -249,11 +354,39 @@ export default ({
                 </div>
             </div>
 
+            {subscription.canRenew && (
+                <div className={'mt-5 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-4'}>
+                    <div className={'flex flex-wrap items-center justify-between gap-3'}>
+                        <p
+                            className={
+                                'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                            }
+                        >
+                            Renewal Total
+                        </p>
+                        <div className={'text-right'}>
+                            {renewDiscount > 0 && (
+                                <span className={'mr-2 text-xs text-emerald-700 line-through opacity-70'}>
+                                    {formatMoney(subscription.recurringTotal)}
+                                </span>
+                            )}
+                            <span className={'text-lg font-black text-[#742220]'}>{formatMoney(renewPayable)}</span>
+                        </div>
+                    </div>
+                    {renewDiscount > 0 && (
+                        <p className={'mt-1 text-xs font-semibold text-emerald-700'}>
+                            Coupon {renewCoupon?.code}: -{formatMoney(renewDiscount)}
+                        </p>
+                    )}
+                    <CouponField applied={renewCoupon} onApply={setRenewCoupon} onRemove={() => setRenewCoupon(null)} />
+                </div>
+            )}
+
             <div className={'mt-5 flex flex-wrap items-center gap-3'}>
                 <button
                     type={'button'}
                     disabled={!subscription.canRenew || renewing}
-                    onClick={() => onRenew(subscription)}
+                    onClick={() => onRenew(subscription, renewCoupon?.code ?? null)}
                     className={'billing-primary-btn'}
                 >
                     {renewing ? 'Creating...' : 'Create Renewal Invoice'}

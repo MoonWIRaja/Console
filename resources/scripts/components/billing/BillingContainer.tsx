@@ -11,11 +11,13 @@ import {
     BillingGameVariable,
     BillingInvoice,
     BillingNodeCatalog,
+    BillingCouponValidation,
     BillingOrder,
     BillingOrderActionResponse,
     BillingProfile,
     BillingSubscriptionActionResponse,
     createBillingOrder,
+    validateBillingCoupon,
     retryBillingInvoicePayment,
     toggleBillingSubscriptionAutoRenew,
     useBillingCatalog,
@@ -72,7 +74,7 @@ type BillingCheckoutDraft = {
 
 type BillingPendingResumeAction =
     | { type: 'create' }
-    | { type: 'renew'; subscriptionId: number }
+    | { type: 'renew'; subscriptionId: number; couponCode?: string | null }
     | { type: 'upgrade'; subscriptionId: number; payload: UpgradePayload };
 
 type BillingSection = 'plan' | 'subscriptions' | 'invoices' | 'receipts' | 'orders';
@@ -559,6 +561,10 @@ export default () => {
     const [memoryGb, setMemoryGb] = useState(1);
     const [diskGb, setDiskGb] = useState(10);
     const [variables, setVariables] = useState<Record<string, string>>({});
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<BillingCouponValidation | null>(null);
+    const [couponChecking, setCouponChecking] = useState(false);
+    const [couponError, setCouponError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<number | null>(null);
     const [upgradingSubscriptionId, setUpgradingSubscriptionId] = useState<number | null>(null);
@@ -788,6 +794,47 @@ export default () => {
     const memoryTotal = selectedNode ? Number((memoryGb * selectedNode.pricing.perGbRam).toFixed(2)) : 0;
     const diskTotal = selectedNode ? Number((diskUnits * selectedNode.pricing.per10gbDisk).toFixed(2)) : 0;
     const total = Number((cpuTotal + memoryTotal + diskTotal).toFixed(2));
+
+    // Coupon discount mirrors the server formula (BillingCoupon::discountFor) so the
+    // displayed total always matches what is charged. Clamped to [0, total].
+    const couponDiscount = appliedCoupon
+        ? Number(
+              Math.min(
+                  appliedCoupon.discountType === 'percentage'
+                      ? (total * appliedCoupon.discountValue) / 100
+                      : appliedCoupon.discountValue,
+                  total
+              ).toFixed(2)
+          )
+        : 0;
+    const payableTotal = Number(Math.max(total - couponDiscount, 0).toFixed(2));
+
+    const handleApplyCoupon = useCallback(async () => {
+        const code = couponInput.trim();
+        if (code.length < 1) {
+            return;
+        }
+
+        setCouponChecking(true);
+        setCouponError(null);
+
+        try {
+            const coupon = await validateBillingCoupon(code);
+            setAppliedCoupon(coupon);
+            setCouponInput(coupon.code);
+        } catch (error) {
+            setAppliedCoupon(null);
+            setCouponError(httpErrorToHuman(error as Error));
+        } finally {
+            setCouponChecking(false);
+        }
+    }, [couponInput]);
+
+    const handleRemoveCoupon = useCallback(() => {
+        setAppliedCoupon(null);
+        setCouponInput('');
+        setCouponError(null);
+    }, []);
 
     const soldOutReason = (() => {
         if (!selectedNode) {
@@ -1024,6 +1071,7 @@ export default () => {
                 memoryGb,
                 diskGb,
                 variables,
+                couponCode: appliedCoupon?.code ?? null,
             });
 
             if (!response.autoSettled && !response.manualPaymentRequired && response.checkout?.url) {
@@ -1090,13 +1138,13 @@ export default () => {
         }
     };
 
-    const performRenewSubscription = async (subscriptionId: number) => {
+    const performRenewSubscription = async (subscriptionId: number, couponCode?: string | null) => {
         clearFlashes();
         setRenewingSubscriptionId(subscriptionId);
         setFollowUpAction(null);
 
         try {
-            const response = await renewBillingSubscription(subscriptionId);
+            const response = await renewBillingSubscription(subscriptionId, couponCode ?? null);
 
             if (!response.autoSettled && !response.manualPaymentRequired && response.checkout?.url) {
                 if (continueHostedCheckout(response.checkout)) {
@@ -1140,8 +1188,8 @@ export default () => {
             setFollowUpAction(null);
 
             if (
-                handleManualBillingDiscordRequirement(error, () => performRenewSubscription(subscriptionId), {
-                    resumeAction: { type: 'renew', subscriptionId },
+                handleManualBillingDiscordRequirement(error, () => performRenewSubscription(subscriptionId, couponCode), {
+                    resumeAction: { type: 'renew', subscriptionId, couponCode: couponCode ?? null },
                 })
             ) {
                 return;
@@ -1259,7 +1307,7 @@ export default () => {
             case 'create':
                 return performCreateInvoice;
             case 'renew':
-                return () => performRenewSubscription(resumeAction.subscriptionId);
+                return () => performRenewSubscription(resumeAction.subscriptionId, resumeAction.couponCode);
             case 'upgrade':
                 return () => performUpgradeSubscription(resumeAction.subscriptionId, resumeAction.payload);
         }
@@ -1561,13 +1609,13 @@ export default () => {
         );
     };
 
-    const onRenewSubscription = async (subscriptionId: number) => {
+    const onRenewSubscription = async (subscriptionId: number, couponCode?: string | null) => {
         await requestCheckoutGate(
             async () => {
-                await performRenewSubscription(subscriptionId);
+                await performRenewSubscription(subscriptionId, couponCode);
             },
             {
-                resumeAction: { type: 'renew', subscriptionId },
+                resumeAction: { type: 'renew', subscriptionId, couponCode: couponCode ?? null },
             }
         );
     };
@@ -2322,9 +2370,17 @@ export default () => {
                                         <span>Storage</span>
                                         <strong>{diskGb} GB</strong>
                                     </div>
+                                    {appliedCoupon && couponDiscount > 0 ? (
+                                        <div className={'billing-summary-row'}>
+                                            <span>Discount ({appliedCoupon.code})</span>
+                                            <strong className={'text-emerald-700'}>-{formatMoney(couponDiscount)}</strong>
+                                        </div>
+                                    ) : null}
                                     <div className={'billing-summary-row'}>
                                         <span>Total</span>
-                                        <strong className={'text-[color:var(--primary)]'}>{formatMoney(total)}</strong>
+                                        <strong className={'text-[color:var(--primary)]'}>
+                                            {formatMoney(payableTotal)}
+                                        </strong>
                                     </div>
                                 </div>
                             </div>
@@ -2464,8 +2520,13 @@ export default () => {
                             Total
                         </p>
                         <p className={'mt-0.5 text-lg font-black text-[color:var(--primary)] xl:text-[1.1rem]'}>
-                            {formatMoney(total)}
+                            {formatMoney(payableTotal)}
                         </p>
+                        {appliedCoupon && couponDiscount > 0 ? (
+                            <p className={'mt-0.5 text-[10px] font-semibold text-emerald-700 line-through opacity-70'}>
+                                {formatMoney(total)}
+                            </p>
+                        ) : null}
                     </div>
                 </div>
 
@@ -2514,6 +2575,91 @@ export default () => {
                         <div className={'mt-1 text-[13px] text-[color:var(--muted-foreground)]'}>
                             {formatMoney(diskTotal)} {'•'} {diskUnits} x 10 GB block
                         </div>
+                    </div>
+
+                    <div className={'billing-soft-card !rounded-[16px] !p-3'}>
+                        <div className={'flex items-start justify-between gap-3'}>
+                            <p
+                                className={
+                                    'text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]'
+                                }
+                            >
+                                Coupon
+                            </p>
+                            {appliedCoupon && couponDiscount > 0 ? (
+                                <span
+                                    className={
+                                        'rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.22em] billing-status billing-status-active'
+                                    }
+                                >
+                                    Applied
+                                </span>
+                            ) : null}
+                        </div>
+
+                        {appliedCoupon ? (
+                            <div className={'mt-2'}>
+                                <div className={'flex items-center justify-between gap-3 text-[12px]'}>
+                                    <strong className={'text-sm text-[#742220]'}>{appliedCoupon.code}</strong>
+                                    <span className={'font-semibold text-emerald-700'}>
+                                        -{formatMoney(couponDiscount)}{' '}
+                                        <span className={'text-[color:var(--muted-foreground)]'}>
+                                            (
+                                            {appliedCoupon.discountType === 'percentage'
+                                                ? `${appliedCoupon.discountValue}%`
+                                                : formatMoney(appliedCoupon.discountValue)}
+                                            )
+                                        </span>
+                                    </span>
+                                </div>
+                                <button
+                                    type={'button'}
+                                    onClick={handleRemoveCoupon}
+                                    className={
+                                        'mt-2.5 w-full rounded-full border border-[#742220]/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#742220] transition hover:bg-[#742220]/5'
+                                    }
+                                >
+                                    Cancel Coupon
+                                </button>
+                            </div>
+                        ) : (
+                            <div className={'mt-2'}>
+                                <div className={'flex items-center gap-2'}>
+                                    <input
+                                        type={'text'}
+                                        value={couponInput}
+                                        onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                void handleApplyCoupon();
+                                            }
+                                        }}
+                                        placeholder={'Enter coupon code'}
+                                        className={
+                                            'min-w-0 flex-1 rounded-full border border-[#742220]/25 bg-[#FEF9E1] px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-[#742220] outline-none focus:border-[#742220]'
+                                        }
+                                    />
+                                    <button
+                                        type={'button'}
+                                        onClick={() => void handleApplyCoupon()}
+                                        disabled={couponChecking || couponInput.trim().length < 1}
+                                        className={
+                                            'shrink-0 rounded-full border border-[#742220] bg-[#742220] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#FEF9E1] transition disabled:cursor-not-allowed disabled:opacity-50'
+                                        }
+                                    >
+                                        {couponChecking ? 'Checking…' : 'Apply'}
+                                    </button>
+                                </div>
+                                {couponError ? (
+                                    <p className={'mt-2 text-[11px] font-medium text-rose-600'}>{couponError}</p>
+                                ) : (
+                                    <p className={'mt-2 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
+                                        Have a discount code? Apply it to reduce your total.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className={'mt-3 billing-soft-card !rounded-2xl !p-3.5'}>
@@ -2574,63 +2720,6 @@ export default () => {
                                 </span>
                             </div>
                         </div>
-                    </div>
-
-                    <div className={'mt-3 billing-soft-card !rounded-2xl !p-3.5'}>
-                        <div className={'flex items-start justify-between gap-3'}>
-                            <p
-                                className={
-                                    'text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]'
-                                }
-                            >
-                                Node Availability
-                            </p>
-                            <span
-                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.22em] ${
-                                    selectedNode?.availability.isAvailable
-                                        ? 'billing-status billing-status-active'
-                                        : 'billing-status billing-status-rejected'
-                                }`}
-                            >
-                                {selectedNode?.availability.isAvailable ? 'Available' : 'Sold Out'}
-                            </span>
-                        </div>
-                        <div className={'mt-2.5 grid gap-2 text-[12px]'}>
-                            <div className={'flex items-center justify-between gap-3'}>
-                                <span className={'text-[color:var(--muted-foreground)]'}>Max vCore / Order</span>
-                                <span className={'font-semibold text-[#742220]'}>
-                                    {selectedNode?.limits.maxCpu ?? 0}
-                                </span>
-                            </div>
-                            <div className={'flex items-center justify-between gap-3'}>
-                                <span className={'text-[color:var(--muted-foreground)]'}>RAM Remaining</span>
-                                <span className={'font-semibold text-[#742220]'}>
-                                    {selectedNode?.showRemainingCapacity
-                                        ? `${selectedNode.availability.memoryRemainingGb} GB`
-                                        : 'Hidden'}
-                                </span>
-                            </div>
-                            <div className={'flex items-center justify-between gap-3'}>
-                                <span className={'text-[color:var(--muted-foreground)]'}>Storage Remaining</span>
-                                <span className={'font-semibold text-[#742220]'}>
-                                    {selectedNode?.showRemainingCapacity
-                                        ? `${selectedNode.availability.diskRemainingGb} GB`
-                                        : 'Hidden'}
-                                </span>
-                            </div>
-                            <div className={'flex items-center justify-between gap-3'}>
-                                <span className={'text-[color:var(--muted-foreground)]'}>Free Allocations</span>
-                                <span className={'font-semibold text-[#742220]'}>
-                                    {selectedNode?.availability.freeAllocations ?? 0}
-                                </span>
-                            </div>
-                        </div>
-                        {!selectedNode?.showRemainingCapacity && selectedNode ? (
-                            <p className={'mt-2.5 text-[10px] leading-5 text-[color:var(--muted-foreground)]'}>
-                                This billing node hides live RAM and storage remaining. Stock is still enforced during
-                                checkout.
-                            </p>
-                        ) : null}
                     </div>
                 </div>
 
@@ -4010,7 +4099,9 @@ export default () => {
                                             togglingAutoRenew={togglingSubscriptionId === subscription.id}
                                             billingProfileReady={billingProfileComplete}
                                             billingProfileBlockReason={billingProfileMissingLabels || null}
-                                            onRenew={(current) => void onRenewSubscription(current.id)}
+                                            onRenew={(current, couponCode) =>
+                                                void onRenewSubscription(current.id, couponCode)
+                                            }
                                             onUpgrade={(current, payload) =>
                                                 void onUpgradeSubscription(current.id, payload)
                                             }

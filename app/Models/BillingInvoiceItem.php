@@ -14,6 +14,7 @@ class BillingInvoiceItem extends Model
     public const TYPE_UPGRADE_PRORATION = 'upgrade_proration';
     public const TYPE_TAX = 'tax';
     public const TYPE_MANUAL_ADJUSTMENT = 'manual_adjustment';
+    public const TYPE_DISCOUNT = 'discount';
 
     protected $table = 'billing_invoice_items';
 

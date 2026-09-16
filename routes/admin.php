@@ -156,6 +156,13 @@ Route::group(['prefix' => 'billing'], function () {
     Route::get('/tax-rules', [Admin\Billing\TaxRuleController::class, 'index'])->name('admin.billing.tax-rules');
     Route::post('/tax-rules', [Admin\Billing\TaxRuleController::class, 'store'])->name('admin.billing.tax-rules.store');
     Route::patch('/tax-rules/{billingTaxRule:id}', [Admin\Billing\TaxRuleController::class, 'update'])->name('admin.billing.tax-rules.update');
+    Route::get('/coupons', [Admin\Billing\CouponController::class, 'index'])->name('admin.billing.coupons');
+    Route::post('/coupons', [Admin\Billing\CouponController::class, 'store'])->name('admin.billing.coupons.store');
+    Route::post('/coupons/assign', [Admin\Billing\CouponController::class, 'assign'])->name('admin.billing.coupons.assign');
+    Route::get('/coupons/csv-template', [Admin\Billing\CouponController::class, 'csvTemplate'])->name('admin.billing.coupons.csv-template');
+    Route::patch('/coupons/{billingCoupon:id}', [Admin\Billing\CouponController::class, 'update'])->name('admin.billing.coupons.update');
+    Route::post('/coupons/{billingCoupon:id}/toggle', [Admin\Billing\CouponController::class, 'toggle'])->name('admin.billing.coupons.toggle');
+    Route::delete('/coupons/{billingCoupon:id}', [Admin\Billing\CouponController::class, 'destroy'])->name('admin.billing.coupons.destroy');
     Route::get('/nodes/{node:id}', [Admin\Billing\NodeController::class, 'view'])->name('admin.billing.nodes.view');
     Route::patch('/nodes/{node:id}', [Admin\Billing\NodeController::class, 'update'])->name('admin.billing.nodes.update');
     Route::post('/nodes/{node:id}/games', [Admin\Billing\NodeController::class, 'storeGameProfile'])->name('admin.billing.nodes.games.store');

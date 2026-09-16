@@ -10,7 +10,9 @@ use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingProfile;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingPayment;
+use Pterodactyl\Models\BillingPaymentAttempt;
 use Pterodactyl\Models\BillingRefund;
+use Pterodactyl\Models\BillingCoupon;
 use Pterodactyl\Models\BillingInvoiceItem;
 use Pterodactyl\Models\BillingSubscription;
 use Pterodactyl\Models\BillingGameProfile;
@@ -27,6 +29,7 @@ class BillingInvoiceService
         private BillingOrderCreationService $orderCreationService,
         private BillingDocumentService $documentService,
         private BillingAdminNotificationService $adminNotificationService,
+        private BillingCouponService $couponService,
     ) {
     }
 
@@ -35,7 +38,29 @@ class BillingInvoiceService
         $prepared = $this->orderCreationService->prepareDraft($user, $data);
         $profile = $this->profileService->getOrCreateForUser($user);
         $snapshot = $this->profileService->snapshot($profile);
-        $tax = $this->taxCalculationService->calculate(BillingInvoice::TYPE_NEW_SERVER, $snapshot, (float) $prepared['pricing']['total']);
+
+        $baseSubtotal = round((float) $prepared['pricing']['total'], 2);
+        $coupon = $this->couponService->findUsableByCode($data['coupon_code'] ?? null, $user);
+        $discount = $coupon ? $coupon->discountFor($baseSubtotal) : 0.0;
+        $discountedSubtotal = round($baseSubtotal - $discount, 2);
+
+        $tax = $this->taxCalculationService->calculate(BillingInvoice::TYPE_NEW_SERVER, $snapshot, $discountedSubtotal);
+
+        $items = $this->buildNewOrderItems($prepared['pricing']);
+        if ($coupon && $discount > 0) {
+            $items[] = [
+                'type' => BillingInvoiceItem::TYPE_DISCOUNT,
+                'description' => sprintf('Coupon %s', $coupon->code),
+                'quantity' => 1,
+                'unit_amount' => -$discount,
+                'line_subtotal' => -$discount,
+                'meta' => [
+                    'coupon_code' => $coupon->code,
+                    'discount_type' => $coupon->discount_type,
+                    'discount_value' => (float) $coupon->discount_value,
+                ],
+            ];
+        }
 
         return [
             'type' => BillingInvoice::TYPE_NEW_SERVER,
@@ -46,18 +71,27 @@ class BillingInvoiceService
                 'memory_gb' => $prepared['memory_gb'],
                 'disk_gb' => $prepared['disk_gb'],
             ],
+            'base_subtotal' => $baseSubtotal,
+            'discount_total' => round($discount, 2),
+            'coupon_code' => $coupon?->code,
             'subtotal' => $tax['subtotal'],
             'tax_total' => $tax['tax_total'],
             'grand_total' => $tax['grand_total'],
             'profile' => $snapshot,
-            'items' => $this->buildNewOrderItems($prepared['pricing']),
+            'items' => $items,
             'tax_items' => $tax['items'],
         ];
     }
 
     public function createNewOrderInvoice(User $user, array $data): BillingOrder
     {
-        $order = DB::transaction(function () use ($user, $data) {
+        // Validate the coupon (if any) up front so an invalid code fails fast with a
+        // clear message before anything is persisted.
+        $coupon = filled($data['coupon_code'] ?? null)
+            ? $this->couponService->assertRedeemable((string) $data['coupon_code'], $user)
+            : null;
+
+        $order = DB::transaction(function () use ($user, $data, $coupon) {
             $quote = $this->quoteNewOrder($user, $data);
             $profile = $this->profileService->getOrCreateForUser($user);
             $snapshot = $this->profileService->snapshot($profile);
@@ -66,6 +100,8 @@ class BillingInvoiceService
                 'status' => BillingOrder::STATUS_AWAITING_PAYMENT,
                 'order_type' => BillingOrder::TYPE_NEW_SERVER,
                 'billing_profile_snapshot' => $snapshot,
+                'coupon_code' => $quote['coupon_code'],
+                'discount_total' => $quote['discount_total'],
             ]);
 
             $invoice = $this->createInvoiceRecord(
@@ -84,11 +120,18 @@ class BillingInvoiceService
                 subscription: null,
                 notes: 'Initial server order invoice.',
                 dueAt: CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
+                couponCode: $quote['coupon_code'],
+                discountTotal: $quote['discount_total'],
             );
 
             $order->forceFill([
                 'billing_invoice_id' => $invoice->id,
             ])->saveOrFail();
+
+            // Consume a redemption only when a discount was actually applied.
+            if ($coupon && (float) $quote['discount_total'] > 0) {
+                $this->couponService->redeem($coupon);
+            }
 
             return $order->fresh(['invoice', 'user', 'nodeConfig', 'gameProfile']);
         });
@@ -98,13 +141,19 @@ class BillingInvoiceService
         return $order;
     }
 
-    public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false): BillingInvoice
+    public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false, ?string $couponCode = null): BillingInvoice
     {
         $subscription->loadMissing('user', 'nodeConfig', 'lastPaidInvoice', 'order', 'gameProfile', 'server');
 
         if (!$subscription->hasAttachedServer()) {
             throw new DisplayException('This subscription no longer has a server attached.');
         }
+
+        // Validate the coupon (if any) before opening the transaction so an invalid
+        // code fails fast with a clear message.
+        $coupon = filled($couponCode)
+            ? $this->couponService->assertRedeemable((string) $couponCode, $subscription->user)
+            : null;
 
         $openInvoice = $subscription->invoices()
             ->where('type', BillingInvoice::TYPE_RENEWAL)
@@ -113,13 +162,19 @@ class BillingInvoiceService
             ->first();
 
         if ($openInvoice) {
-            return $openInvoice;
+            // Renewal invoices are pre-created ahead of the deadline by the scheduler,
+            // so a coupon the customer enters at renew time must be applied to that
+            // existing invoice — returning it untouched would silently drop the coupon
+            // and charge the full amount.
+            return $coupon ? $this->applyCouponToOpenInvoice($openInvoice, $coupon) : $openInvoice;
         }
 
-        $invoice = DB::transaction(function () use ($subscription) {
+        $invoice = DB::transaction(function () use ($subscription, $coupon) {
             $profile = $this->profileService->getOrCreateForUser($subscription->user);
             $snapshot = $this->profileService->snapshot($profile);
-            $subtotal = (float) $subscription->recurring_total;
+            $baseSubtotal = round((float) $subscription->recurring_total, 2);
+            $discount = $coupon ? $coupon->discountFor($baseSubtotal) : 0.0;
+            $subtotal = round($baseSubtotal - $discount, 2);
             $tax = $this->taxCalculationService->calculate(BillingInvoice::TYPE_RENEWAL, $snapshot, $subtotal);
             $orderAttributes = $this->resolveSubscriptionOrderAttributes($subscription);
 
@@ -146,9 +201,38 @@ class BillingInvoiceService
                 'cpu_total' => round($subscription->cpu_cores * (float) $subscription->price_per_vcore, 2),
                 'memory_total' => round($subscription->memory_gb * (float) $subscription->price_per_gb_ram, 2),
                 'disk_total' => round(ceil($subscription->disk_gb / BillingCatalogService::DISK_STEP_GB) * (float) $subscription->price_per_10gb_disk, 2),
-                'total' => $subtotal,
+                'total' => $baseSubtotal,
+                'coupon_code' => $coupon?->code,
+                'discount_total' => round($discount, 2),
                 'billing_invoice_id' => null,
             ]);
+
+            $items = [[
+                'type' => BillingInvoiceItem::TYPE_BASE_PLAN,
+                'description' => sprintf('Renewal for %s', $subscription->server_name),
+                'quantity' => max($subscription->renewal_period_months, 1),
+                'unit_amount' => round($baseSubtotal / max($subscription->renewal_period_months, 1), 2),
+                'line_subtotal' => round($baseSubtotal, 2),
+                'meta' => [
+                    'subscription_id' => $subscription->id,
+                    'period_months' => $subscription->renewal_period_months,
+                ],
+            ]];
+
+            if ($coupon && $discount > 0) {
+                $items[] = [
+                    'type' => BillingInvoiceItem::TYPE_DISCOUNT,
+                    'description' => sprintf('Coupon %s', $coupon->code),
+                    'quantity' => 1,
+                    'unit_amount' => -$discount,
+                    'line_subtotal' => -$discount,
+                    'meta' => [
+                        'coupon_code' => $coupon->code,
+                        'discount_type' => $coupon->discount_type,
+                        'discount_value' => (float) $coupon->discount_value,
+                    ],
+                ];
+            }
 
             $invoice = $this->createInvoiceRecord(
                 user: $subscription->user,
@@ -158,26 +242,22 @@ class BillingInvoiceService
                 type: BillingInvoice::TYPE_RENEWAL,
                 subtotal: $tax['subtotal'],
                 tax: $tax,
-                items: [[
-                    'type' => BillingInvoiceItem::TYPE_BASE_PLAN,
-                    'description' => sprintf('Renewal for %s', $subscription->server_name),
-                    'quantity' => max($subscription->renewal_period_months, 1),
-                    'unit_amount' => round($subtotal / max($subscription->renewal_period_months, 1), 2),
-                    'line_subtotal' => round($subtotal, 2),
-                    'meta' => [
-                        'subscription_id' => $subscription->id,
-                        'period_months' => $subscription->renewal_period_months,
-                    ],
-                ]],
+                items: $items,
                 order: $order,
                 subscription: $subscription,
                 notes: 'Subscription renewal invoice.',
                 dueAt: $subscription->renews_at
                     ? CarbonImmutable::instance($subscription->renews_at)
                     : CarbonImmutable::now()->addHours((int) config('billing.invoice_due_hours', 24)),
+                couponCode: $coupon?->code,
+                discountTotal: round($discount, 2),
             );
 
             $order->forceFill(['billing_invoice_id' => $invoice->id])->saveOrFail();
+
+            if ($coupon && $discount > 0) {
+                $this->couponService->redeem($coupon);
+            }
 
             return $invoice->fresh(['items', 'order', 'subscription']);
         });
@@ -187,6 +267,119 @@ class BillingInvoiceService
         }
 
         return $invoice;
+    }
+
+    /**
+     * Apply a coupon to an already-open (pre-created) invoice: add the discount line,
+     * rebuild the tax lines off the discounted subtotal, update the invoice/order
+     * totals, and consume a redemption. Any previously-created gateway session is
+     * cleared so checkout can't resume a stale session holding the pre-discount amount.
+     */
+    private function applyCouponToOpenInvoice(BillingInvoice $invoice, BillingCoupon $coupon): BillingInvoice
+    {
+        $invoice->loadMissing('items', 'order', 'subscription');
+
+        // Same coupon already on the invoice — nothing to do.
+        if ($invoice->coupon_code === $coupon->code) {
+            return $invoice;
+        }
+
+        if (filled($invoice->coupon_code)) {
+            throw new DisplayException(sprintf(
+                'Coupon %s is already applied to your open renewal invoice, so %s cannot be added to it.',
+                $invoice->coupon_code,
+                $coupon->code
+            ));
+        }
+
+        // A payment attempt may already be in flight for the current amount; refuse to
+        // change the total underneath it.
+        if ($invoice->status === BillingInvoice::STATUS_PROCESSING) {
+            throw new DisplayException('A payment for this invoice is already being processed, so a coupon can no longer be applied. Complete or cancel that payment first.');
+        }
+
+        return DB::transaction(function () use ($invoice, $coupon) {
+            // Pre-discount base = every line that is not a discount or tax line.
+            $baseSubtotal = round((float) $invoice->items
+                ->whereNotIn('type', [BillingInvoiceItem::TYPE_DISCOUNT, BillingInvoiceItem::TYPE_TAX])
+                ->sum('line_subtotal'), 2);
+
+            $discount = $coupon->discountFor($baseSubtotal);
+            if ($discount <= 0) {
+                return $invoice;
+            }
+
+            $subtotal = round($baseSubtotal - $discount, 2);
+            $tax = $this->taxCalculationService->calculate($invoice->type, (array) $invoice->billing_profile_snapshot, $subtotal);
+
+            $invoice->items()->create([
+                'type' => BillingInvoiceItem::TYPE_DISCOUNT,
+                'description' => sprintf('Coupon %s', $coupon->code),
+                'quantity' => 1,
+                'unit_amount' => round(-$discount, 2),
+                'line_subtotal' => round(-$discount, 2),
+                'meta' => [
+                    'coupon_code' => $coupon->code,
+                    'discount_type' => $coupon->discount_type,
+                    'discount_value' => (float) $coupon->discount_value,
+                ],
+            ]);
+
+            // Rebuild tax lines to reflect the discounted subtotal.
+            $invoice->items()->where('type', BillingInvoiceItem::TYPE_TAX)->delete();
+            foreach ($tax['items'] ?? [] as $taxItem) {
+                $invoice->items()->create([
+                    'type' => BillingInvoiceItem::TYPE_TAX,
+                    'description' => $taxItem['name'],
+                    'quantity' => 1,
+                    'unit_amount' => round((float) $taxItem['amount'], 2),
+                    'line_subtotal' => round((float) $taxItem['amount'], 2),
+                    'meta' => [
+                        'rule_id' => $taxItem['rule_id'] ?? null,
+                        'rate_type' => $taxItem['rate_type'] ?? null,
+                        'rate_value' => $taxItem['rate_value'] ?? null,
+                    ],
+                ]);
+            }
+
+            $invoice->forceFill([
+                'subtotal' => round((float) $tax['subtotal'], 2),
+                'tax_total' => round((float) ($tax['tax_total'] ?? 0), 2),
+                'grand_total' => round((float) $tax['subtotal'] + (float) ($tax['tax_total'] ?? 0), 2),
+                'coupon_code' => $coupon->code,
+                'discount_total' => round($discount, 2),
+                // Drop any gateway session created for the pre-discount amount.
+                'hosted_invoice_url' => null,
+                'provider_checkout_session_id' => null,
+                'provider_payment_intent_id' => null,
+            ])->saveOrFail();
+
+            // Also cancel any not-yet-paid checkout attempt for this invoice. Those were
+            // quoted at the pre-discount total, and startCheckout()'s reuse window would
+            // otherwise hand a customer that stale hosted checkout link/session right back
+            // out — if they complete payment there instead of a fresh checkout, the gateway
+            // charges the old amount and BillingPaymentService's amount-match check (now
+            // compared against the quote actually stored on the attempt, not the invoice's
+            // live total) correctly accepts it — but a fresh checkout for the discounted
+            // total is what the customer should be shown next. verified_paid/verified_failed/
+            // callback_received attempts are left alone: those are already mid-flight with
+            // the gateway and must not be disturbed.
+            BillingPaymentAttempt::query()
+                ->where('invoice_id', $invoice->id)
+                ->whereIn('status', [BillingPaymentAttempt::STATUS_INITIATED, BillingPaymentAttempt::STATUS_REDIRECTED])
+                ->update(['status' => BillingPaymentAttempt::STATUS_CANCELLED]);
+
+            if ($invoice->order) {
+                $invoice->order->forceFill([
+                    'coupon_code' => $coupon->code,
+                    'discount_total' => round($discount, 2),
+                ])->saveOrFail();
+            }
+
+            $this->couponService->redeem($coupon);
+
+            return $this->documentService->syncInvoiceUrl($invoice->fresh(['items', 'order', 'subscription']));
+        });
     }
 
     public function quoteUpgrade(BillingSubscription $subscription, array $data): array
@@ -497,6 +690,8 @@ class BillingInvoiceService
         ?BillingSubscription $subscription = null,
         ?string $notes = null,
         ?CarbonImmutable $dueAt = null,
+        ?string $couponCode = null,
+        float $discountTotal = 0.0,
     ): BillingInvoice {
         $invoice = BillingInvoice::query()->create([
             'invoice_number' => $this->numberService->nextInvoiceNumber(),
@@ -513,6 +708,8 @@ class BillingInvoiceService
             'subtotal' => round($subtotal, 2),
             'tax_total' => round((float) ($tax['tax_total'] ?? 0), 2),
             'grand_total' => round($subtotal + (float) ($tax['tax_total'] ?? 0), 2),
+            'coupon_code' => $couponCode,
+            'discount_total' => round($discountTotal, 2),
             'status' => BillingInvoice::STATUS_OPEN,
             'issued_at' => CarbonImmutable::now(),
             'due_at' => $dueAt,

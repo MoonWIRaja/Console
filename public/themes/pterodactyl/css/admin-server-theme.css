@@ -1013,6 +1013,20 @@ body.skin-blue .admin-billing-table-filter {
     flex: 0 0 auto !important;
 }
 
+body.skin-blue .admin-billing-box-header-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 0 0 auto !important;
+    justify-content: flex-end !important;
+    flex: 0 0 auto !important;
+    flex-wrap: wrap !important;
+}
+
+body.skin-blue .admin-billing-box-header-actions .admin-billing-table-filter {
+    margin: 0 !important;
+}
+
 body.skin-blue .admin-billing-filter-label {
     margin: 0 !important;
     color: var(--admin-theme-text-subtle) !important;
@@ -1030,6 +1044,65 @@ body.skin-blue .admin-billing-table-filter .form-control {
     border-radius: 999px !important;
     font-size: 0.78rem !important;
     font-weight: 800 !important;
+}
+
+/* Reusable on/off switch - a checkbox visually replaced by a sliding track, used
+   anywhere a plain tick checkbox previously stood for an on/off state (active,
+   assign-to-users toggle, etc). The <input> stays functionally a normal checkbox
+   (still submits name/value, still fires change events) - only its appearance
+   changes via the adjacent sibling selectors below. */
+.admin-toggle-switch {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    font-weight: normal !important;
+    margin-bottom: 15px !important;
+}
+
+.admin-toggle-switch input[type='checkbox'] {
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+}
+
+.admin-toggle-switch-track {
+    position: relative !important;
+    display: inline-block !important;
+    width: 42px !important;
+    height: 23px !important;
+    flex-shrink: 0 !important;
+    background: #d2d6de !important;
+    border-radius: 999px !important;
+    transition: background-color 0.15s ease !important;
+}
+
+.admin-toggle-switch-track::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 3px !important;
+    left: 3px !important;
+    width: 17px !important;
+    height: 17px !important;
+    background: #fff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+    transition: transform 0.15s ease !important;
+}
+
+.admin-toggle-switch input:checked + .admin-toggle-switch-track {
+    background: #00a65a !important;
+}
+
+.admin-toggle-switch input:checked + .admin-toggle-switch-track::before {
+    transform: translateX(19px) !important;
+}
+
+.admin-toggle-switch input:focus + .admin-toggle-switch-track {
+    box-shadow: 0 0 0 3px rgba(0, 166, 90, 0.35) !important;
 }
 
 body.skin-blue .admin-billing-pagination {

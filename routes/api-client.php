@@ -45,6 +45,7 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::put('/billing/profile', [Client\BillingController::class, 'updateProfile']);
     Route::get('/billing/catalog', [Client\BillingController::class, 'catalog']);
     Route::post('/billing/orders/quote', [Client\BillingController::class, 'quote']);
+    Route::post('/billing/coupons/validate', [Client\BillingController::class, 'validateCoupon']);
     Route::get('/billing/orders', [Client\BillingController::class, 'orders']);
     Route::get('/billing/invoices', [Client\BillingController::class, 'invoices']);
     Route::get('/billing/invoices/{billingInvoice}', [Client\BillingController::class, 'showInvoice']);
