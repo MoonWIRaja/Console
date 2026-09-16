@@ -19,6 +19,24 @@ const CustomTextarea = styled(Textarea)`
     ${tw`h-32`}
 `;
 
+// Formik's <Field> reads its own `as` prop to choose what to render. styled-components'
+// css prop ALSO treats `as` as a reserved prop (for polymorphic rendering) once babel
+// wraps the element in styled(...) to apply that prop. Putting both `as` and `css` on
+// the same <Field> lets styled-components' `as` handling win: it renders the target
+// directly and never invokes Field's own render logic, so the field never receives
+// Formik's value/onChange/onBlur — it silently becomes an uncontrolled input that
+// visually accepts typing but never updates Formik state (submit always sees the
+// initial empty values). Pre-styling the target components here, and passing the
+// already-styled component as `as` with no css prop on <Field> itself, avoids the
+// collision entirely.
+const StyledNameInput = styled(Input)`
+    ${tw`rounded-lg border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]`}
+`;
+
+const StyledPublicKeyTextarea = styled(CustomTextarea)`
+    ${tw`rounded-lg border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]`}
+`;
+
 export default () => {
     const { clearAndAddHttpError } = useFlashKey('account');
     const { mutate } = useSSHKeys();
@@ -53,11 +71,7 @@ export default () => {
                             name={'name'}
                             css={tw`mb-6 [&>label]:text-white/80 [&>label]:uppercase [&>label]:text-xs [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-white/60 [&>div>p]:text-white/60 [&.has-error>p]:text-red-400 [&.has-error>div>p]:text-red-400`}
                         >
-                            <Field
-                                name={'name'}
-                                as={Input}
-                                css={tw`rounded-lg border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]`}
-                            />
+                            <Field name={'name'} as={StyledNameInput} autoComplete={'off'} />
                         </FormikFieldWrapper>
                         <FormikFieldWrapper
                             label={'Public Key'}
@@ -65,11 +79,7 @@ export default () => {
                             description={'Enter your public SSH key.'}
                             css={tw`[&>label]:text-white/80 [&>label]:uppercase [&>label]:text-xs [&>label]:tracking-wide [&>label]:font-bold [&>p]:text-white/60 [&>div>p]:text-white/60 [&.has-error>p]:text-red-400 [&.has-error>div>p]:text-red-400`}
                         >
-                            <Field
-                                name={'publicKey'}
-                                as={CustomTextarea}
-                                css={tw`rounded-lg border-gray-800 bg-[color:var(--card)] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[color:var(--primary)]`}
-                            />
+                            <Field name={'publicKey'} as={StyledPublicKeyTextarea} autoComplete={'off'} />
                         </FormikFieldWrapper>
                         <div css={tw`flex justify-end mt-6`}>
                             <InteractiveHoverButton
