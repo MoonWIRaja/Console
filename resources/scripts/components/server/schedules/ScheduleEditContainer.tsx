@@ -89,9 +89,13 @@ export default () => {
                         cron={schedule.cron}
                         className={'mb-4 sc-card-inner p-3 sm:hidden'}
                     />
-                    <div className={'sc-card overflow-hidden'}>
+                    {/* The card is a flex item of the theme's flex-column content body, and its
+                        overflow-hidden lets it shrink to the viewport instead of growing. We lean
+                        into that: the card stays fixed (header + cron pinned) and only the task
+                        list below scrolls when there are many tasks. */}
+                    <div className={'sc-card overflow-hidden'} css={tw`flex min-h-0 flex-col`}>
                         <div
-                            css={tw`p-3 sm:flex sm:items-center sm:p-6`}
+                            css={tw`flex-none p-3 sm:flex sm:items-center sm:p-6`}
                             style={{ borderBottom: '2px solid #2D4A3E', background: '#F5EFD5', borderRadius: '20px 20px 0 0' }}
                         >
                             <div css={tw`flex-1`}>
@@ -134,14 +138,15 @@ export default () => {
                                 </Can>
                             </div>
                         </div>
-                        <div css={tw`mb-4 mt-4 hidden grid-cols-5 gap-4 px-4 sm:grid md:grid-cols-5`}>
+                        <div css={tw`mb-4 mt-4 hidden flex-none grid-cols-5 gap-4 px-4 sm:grid md:grid-cols-5`}>
                             <CronBox title={'Minute'} value={schedule.cron.minute} />
                             <CronBox title={'Hour'} value={schedule.cron.hour} />
                             <CronBox title={'Day (Month)'} value={schedule.cron.dayOfMonth} />
                             <CronBox title={'Month'} value={schedule.cron.month} />
                             <CronBox title={'Day (Week)'} value={schedule.cron.dayOfWeek} />
                         </div>
-                        <div css={tw`rounded-b-[1.35rem] bg-transparent`}>
+                        {/* Task list: the only scrolling region — header/cron stay pinned above. */}
+                        <div css={tw`min-h-0 overflow-y-auto rounded-b-[1.35rem] bg-transparent`}>
                             {schedule.tasks.length > 0
                                 ? schedule.tasks
                                       .sort((a, b) =>
