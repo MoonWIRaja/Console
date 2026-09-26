@@ -434,6 +434,18 @@ class AgentPlayerSnapshotProvider implements PlayerProviderInterface
             return $profile;
         }
 
+        // Each lookup here is a real Wings file-API round trip (reads that
+        // player's live playerdata), roughly a second or two each. Live
+        // gamemode is only meaningful for someone actually connected right
+        // now, so skipping it for offline players is both correct and the
+        // difference between a merged 10-player list responding in ~1s vs
+        // ~15-20s (doubled again, since counts() and list() both call this
+        // separately) - confirmed live on a real server with mostly-offline
+        // agent snapshot history, which made the panel time out entirely.
+        if (($profile['status'] ?? 'offline') !== 'online') {
+            return $profile;
+        }
+
         $gamemode = $this->minecraftGamemode($server, (string) ($profile['id'] ?? $profile['uuid'] ?? $profile['name'] ?? ''));
         if ($gamemode === '-') {
             $gamemode = $this->minecraftGamemode($server, (string) ($profile['name'] ?? ''));
