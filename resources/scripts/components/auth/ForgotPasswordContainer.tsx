@@ -47,9 +47,9 @@ const ForgotPasswordContainer = () => {
     const [mode, setMode] = useState<ResetMode>('request');
     const [email, setEmail] = useState('');
     const [resetToken, setResetToken] = useState('');
-    const [requireCaptcha, setRequireCaptcha] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
     const [captchaWidgetFailed, setCaptchaWidgetFailed] = useState(false);
+    const [captchaWidgetKey, setCaptchaWidgetKey] = useState(0);
     const { clearFlashes, addFlash } = useFlash();
     const captcha = useStoreState((state) => state.settings.data!.captcha);
     const captchaEnabled = !!captcha?.enabled && captcha?.provider === 'turnstile' && !!captcha?.siteKey;
@@ -58,11 +58,13 @@ const ForgotPasswordContainer = () => {
         clearFlashes();
     }, [clearFlashes]);
 
-    const handleSecurityError = (error: any) => {
-        if (error?.response?.data?.challenge_required) {
-            setRequireCaptcha(true);
-        }
+    const resetCaptcha = () => {
+        setCaptchaToken('');
+        setCaptchaWidgetKey((key) => key + 1);
+    };
 
+    const handleSecurityError = (error: any) => {
+        resetCaptcha();
         addFlash({ type: 'error', title: 'Error', message: httpErrorToHuman(error) });
     };
 
@@ -85,11 +87,11 @@ const ForgotPasswordContainer = () => {
     const handleRequest = (values: RequestValues, { setSubmitting }: FormikHelpers<RequestValues>) => {
         clearFlashes();
 
-        if (captchaEnabled && requireCaptcha && !captchaToken) {
+        if (captchaEnabled && !captchaToken) {
             addFlash({
                 type: 'error',
                 title: 'Verification Required',
-                message: 'Complete the security verification before continuing.',
+                message: 'Complete the Cloudflare Turnstile check below before continuing.',
             });
             setSubmitting(false);
 
@@ -109,7 +111,7 @@ const ForgotPasswordContainer = () => {
                 setEmail(values.email);
                 setResetToken(response.resetToken || '');
                 setMode('verify');
-                setCaptchaToken('');
+                resetCaptcha();
                 setCaptchaWidgetFailed(false);
             })
             .catch((error) => {
@@ -122,11 +124,11 @@ const ForgotPasswordContainer = () => {
     const handleReset = (values: ResetValues, { setSubmitting }: FormikHelpers<ResetValues>) => {
         clearFlashes();
 
-        if (captchaEnabled && requireCaptcha && !captchaToken) {
+        if (captchaEnabled && !captchaToken) {
             addFlash({
                 type: 'error',
                 title: 'Verification Required',
-                message: 'Complete the security verification before continuing.',
+                message: 'Complete the Cloudflare Turnstile check below before continuing.',
             });
             setSubmitting(false);
 
@@ -159,9 +161,7 @@ const ForgotPasswordContainer = () => {
             <style>{burhanAuthThemeStyles}</style>
             <AuthTopbar />
             <AuthBackdropGame className='burhan-auth-backdrop-full' />
-            <div
-                className='burhan-auth-rail burhan-auth-rail-floating h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-full lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'
-            >
+            <div className='burhan-auth-rail burhan-auth-rail-floating h-full w-full overflow-y-auto px-6 pb-5 pt-24 sm:px-10 sm:pb-6 sm:pt-24 md:px-14 lg:w-full lg:overflow-y-auto lg:px-8 lg:pb-4 lg:pt-24 xl:px-10'>
                 <div
                     className={`burhan-auth-shell burhan-auth-shell-floating mx-auto flex h-full min-h-0 w-full max-w-[32rem] flex-col py-0 ${
                         mode === 'verify' ? 'justify-start' : 'justify-center'
@@ -280,9 +280,17 @@ const ForgotPasswordContainer = () => {
                                                 <i className='fa-solid fa-arrow-right-long text-sm' />
                                             </button>
 
-                                            {captchaEnabled && requireCaptcha && (
+                                            <Link
+                                                to={'/auth/login'}
+                                                className={`${authSecondaryButtonClass} text-center`}
+                                            >
+                                                Return to Login
+                                            </Link>
+
+                                            {captchaEnabled && (
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
+                                                        key={captchaWidgetKey}
                                                         siteKey={captcha.siteKey}
                                                         onVerify={handleCaptchaVerified}
                                                         onExpire={() => setCaptchaToken('')}
@@ -425,23 +433,17 @@ const ForgotPasswordContainer = () => {
                                                 <i className='fa-solid fa-check text-sm' />
                                             </button>
 
-                                            <button
-                                                type='button'
-                                                disabled={isSubmitting}
-                                                onClick={() => {
-                                                    setMode('request');
-                                                    setResetToken('');
-                                                    setCaptchaToken('');
-                                                    setCaptchaWidgetFailed(false);
-                                                }}
-                                                className={authSecondaryButtonClass}
+                                            <Link
+                                                to={'/auth/login'}
+                                                className={`${authSecondaryButtonClass} text-center`}
                                             >
-                                                Back
-                                            </button>
+                                                Return to Login
+                                            </Link>
 
-                                            {captchaEnabled && requireCaptcha && (
+                                            {captchaEnabled && (
                                                 <div className='pt-2'>
                                                     <TurnstileWidget
+                                                        key={captchaWidgetKey}
                                                         siteKey={captcha.siteKey}
                                                         onVerify={handleCaptchaVerified}
                                                         onExpire={() => setCaptchaToken('')}
@@ -462,12 +464,6 @@ const ForgotPasswordContainer = () => {
                             )}
                         </div>
                     </GlowCard>
-
-                    <div className='mt-6 pb-6 text-center'>
-                        <Link className='burhan-auth-meta-link' to={'/auth/login'}>
-                            Return to Login
-                        </Link>
-                    </div>
                 </div>
             </div>
         </div>
