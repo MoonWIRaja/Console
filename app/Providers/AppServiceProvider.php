@@ -37,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
                         ['route' => route('admin.settings'), 'match' => 'admin.settings', 'icon' => 'settings', 'label' => 'Settings'],
                         ['route' => route('admin.oauth'), 'match' => 'admin.oauth', 'icon' => 'account_tree', 'label' => 'OAuth'],
                         ['route' => route('admin.discord'), 'match' => 'admin.discord', 'icon' => 'forum', 'label' => 'Discord'],
+                        ['route' => route('admin.ai'), 'match' => 'admin.ai', 'icon' => 'smart_toy', 'label' => 'AI Assistant'],
                         ['route' => route('admin.always-motd'), 'match' => 'admin.always-motd', 'icon' => 'stream', 'label' => 'Minecraft MOTD'],
                         ['route' => route('admin.down-detector'), 'match' => 'admin.down-detector', 'icon' => 'radar', 'label' => 'Down Detector'],
                         ['route' => route('admin.security'), 'match' => 'admin.security', 'icon' => 'shield', 'label' => 'Security'],

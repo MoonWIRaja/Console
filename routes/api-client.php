@@ -21,6 +21,17 @@ Route::get('/', [Client\ClientController::class, 'index'])->name('api:client.ind
 Route::get('/permissions', [Client\ClientController::class, 'permissions']);
 Route::get('/minecraft-roster', Client\MinecraftRosterController::class)->name('api:client.minecraft-roster');
 
+Route::prefix('/ai')->group(function () {
+    Route::get('/config', [Client\AiController::class, 'config']);
+    Route::get('/conversations', [Client\AiController::class, 'index']);
+    Route::post('/conversations', [Client\AiController::class, 'store']);
+    Route::get('/conversations/{conversation}', [Client\AiController::class, 'show']);
+    Route::delete('/conversations/{conversation}', [Client\AiController::class, 'destroy']);
+    Route::post('/conversations/{conversation}/messages', [Client\AiController::class, 'message'])->middleware('throttle:30,1');
+    Route::post('/conversations/{conversation}/messages/{message}/edit', [Client\AiController::class, 'edit'])->middleware('throttle:30,1');
+    Route::post('/actions/{action}', [Client\AiController::class, 'action'])->middleware('throttle:60,1');
+});
+
 Route::prefix('/account')->middleware(AccountSubject::class)->group(function () {
     Route::prefix('/')->withoutMiddleware(RequireTwoFactorAuthentication::class)->group(function () {
         Route::get('/', [Client\AccountController::class, 'index'])->name('api:client.account');

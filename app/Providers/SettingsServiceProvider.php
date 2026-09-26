@@ -73,6 +73,15 @@ class SettingsServiceProvider extends ServiceProvider
         'services:discord:guild_id',
         'services:discord:role_id',
         'services:discord:bot_token',
+        'ai:enabled',
+        'ai:persona_name',
+        'ai:persona_prompt',
+        'ai:max_steps',
+        'ai:discord:enabled',
+        'ai:discord:bot_token',
+        'ai:discord:bridge_secret',
+        'ai:discord:model_id',
+        'ai:discord:channel_ids',
         'admin_logs:new_account:discord_channel_id',
         'admin_logs:payment:discord_channel_id',
         'admin_logs:security:discord_channel_id',
@@ -183,6 +192,8 @@ class SettingsServiceProvider extends ServiceProvider
         'billing:stripe:webhook_secret',
         'billing:fiuu:verify_key',
         'billing:fiuu:secret_key',
+        'ai:discord:bot_token',
+        'ai:discord:bridge_secret',
     ];
 
     /**

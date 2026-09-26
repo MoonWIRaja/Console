@@ -86,6 +86,26 @@ Route::group(['prefix' => 'oauth'], function () {
     Route::patch('/', [Admin\OAuth\OAuthController::class, 'update'])->name('admin.oauth.update');
 });
 
+Route::group(['prefix' => 'ai'], function () {
+    Route::get('/', [Admin\Ai\AiController::class, 'index'])->name('admin.ai');
+    Route::patch('/settings', [Admin\Ai\AiController::class, 'updateSettings'])->name('admin.ai.settings');
+    Route::post('/providers', [Admin\Ai\AiController::class, 'storeProvider'])->name('admin.ai.providers.store');
+    Route::post('/oauth/{preset}/start', [Admin\Ai\AiController::class, 'oauthStart'])->name('admin.ai.oauth.start');
+    Route::get('/oauth/poll/{session}', [Admin\Ai\AiController::class, 'oauthPoll'])->name('admin.ai.oauth.poll');
+    Route::post('/oauth/complete/{session}', [Admin\Ai\AiController::class, 'oauthComplete'])->name('admin.ai.oauth.complete');
+    Route::get('/oauth/callback/{session}', [Admin\Ai\AiController::class, 'oauthCallback'])->name('admin.ai.oauth.callback');
+    Route::patch('/providers/{provider:id}', [Admin\Ai\AiController::class, 'updateProvider'])->name('admin.ai.providers.update');
+    Route::delete('/providers/{provider:id}', [Admin\Ai\AiController::class, 'destroyProvider'])->name('admin.ai.providers.destroy');
+    Route::post('/providers/{provider:id}/sync', [Admin\Ai\AiController::class, 'syncProvider'])->name('admin.ai.providers.sync');
+    Route::patch('/models/{model:id}', [Admin\Ai\AiController::class, 'updateModel'])->name('admin.ai.models.update');
+    Route::post('/models/{model:id}/default', [Admin\Ai\AiController::class, 'defaultModel'])->name('admin.ai.models.default');
+    Route::post('/models/{model:id}/test', [Admin\Ai\AiController::class, 'testModel'])->name('admin.ai.models.test');
+    Route::post('/skills', [Admin\Ai\AiController::class, 'saveSkill'])->name('admin.ai.skills.store');
+    Route::post('/skills/import', [Admin\Ai\AiController::class, 'importSkill'])->name('admin.ai.skills.import');
+    Route::patch('/skills/{skill:id}', [Admin\Ai\AiController::class, 'saveSkill'])->name('admin.ai.skills.update');
+    Route::delete('/skills/{skill:id}', [Admin\Ai\AiController::class, 'destroySkill'])->name('admin.ai.skills.destroy');
+});
+
 Route::group(['prefix' => 'discord'], function () {
     Route::get('/', [Admin\Discord\DiscordController::class, 'index'])->name('admin.discord');
     Route::patch('/', [Admin\Discord\DiscordController::class, 'update'])->name('admin.discord.update');

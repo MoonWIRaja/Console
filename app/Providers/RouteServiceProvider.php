@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Pterodactyl\Http\Controllers\Billing\BclGatewayController;
 use Pterodactyl\Http\Controllers\Api\Internal\SecurityAgentController;
 use Pterodactyl\Http\Controllers\Api\Internal\TicketDiscordBridgeController;
+use Pterodactyl\Http\Controllers\Api\Internal\AiDiscordBridgeController;
 use Pterodactyl\Http\Controllers\Billing\BillingDocumentController;
 use Pterodactyl\Http\Controllers\Billing\FiuuGatewayController;
 use Pterodactyl\Http\Controllers\Billing\StripeGatewayController;
@@ -108,6 +109,8 @@ class RouteServiceProvider extends ServiceProvider
                 Route::post('/security/agents/report', [SecurityAgentController::class, 'report']);
                 Route::post('/security/agents/pull-actions', [SecurityAgentController::class, 'pullActions']);
                 Route::post('/security/agents/action-result', [SecurityAgentController::class, 'actionResult']);
+                Route::post('/ai/discord/config', [AiDiscordBridgeController::class, 'config']);
+                Route::post('/ai/discord/chat', [AiDiscordBridgeController::class, 'chat']);
             });
 
             Route::middleware(['api', RequireTwoFactorAuthentication::class])->group(function () {

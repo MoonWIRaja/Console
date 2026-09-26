@@ -20,6 +20,7 @@ import AuthenticationRouter from '@/routers/AuthenticationRouter';
 import ConsoleRouter from '@/routers/ConsoleRouter';
 import DashboardRouter from '@/routers/DashboardRouter';
 import ServerRouter from '@/routers/ServerRouter';
+import AiChatWidget from '@/components/ai/AiChatWidget';
 
 interface ExtendedWindow extends Window {
     SiteConfiguration?: SiteSettings;
@@ -100,6 +101,7 @@ const App = () => {
                                 <NotFound />
                             </Route>
                         </Switch>
+                        <AiChatWidget />
                     </Router>
                 </div>
             </StoreProvider>
