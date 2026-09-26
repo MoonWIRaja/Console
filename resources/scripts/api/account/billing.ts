@@ -109,6 +109,7 @@ export interface BillingSubscription {
     deletedAt: Date | null;
     canRenew: boolean;
     canUpgrade: boolean;
+    isOwner: boolean;
     pricing: {
         perVcore: number;
         perGbRam: number;
@@ -310,8 +311,9 @@ const mapSubscription = (item: any): BillingSubscription => ({
     renewAvailableAt: item.renew_available_at ? new Date(item.renew_available_at) : null,
     deletionScheduledAt: item.deletion_scheduled_at ? new Date(item.deletion_scheduled_at) : null,
     deletedAt: item.deleted_at ? new Date(item.deleted_at) : null,
-    canRenew: item.can_renew,
-    canUpgrade: item.can_upgrade,
+    canRenew: item.can_renew && (item.access?.can_renew ?? true),
+    canUpgrade: item.can_upgrade && (item.access?.can_upgrade ?? true),
+    isOwner: item.access?.owner ?? true,
     autoRenew: item.auto_renew ?? false,
     autoRenewAvailable: item.auto_renew_available ?? false,
     autoRenewUnavailableReason: item.auto_renew_unavailable_reason ?? null,

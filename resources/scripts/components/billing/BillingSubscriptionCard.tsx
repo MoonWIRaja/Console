@@ -218,7 +218,18 @@ export default ({
             <div className={'flex flex-wrap items-start justify-between gap-4'}>
                 <div>
                     <div className={'flex flex-wrap items-center gap-3'}>
-                        <h3 className={'billing-subscription-title'}>{subscription.serverName}</h3>
+                        <h3 className={'billing-subscription-title'}>
+                            {subscription.serverName}
+                            {!subscription.isOwner && (
+                                <span
+                                    className={
+                                        'ml-2 rounded-full border border-[#C8BCA0] px-2 py-0.5 align-middle text-[9px] font-bold uppercase tracking-[0.2em] text-[color:var(--muted-foreground)]'
+                                    }
+                                >
+                                    Shared
+                                </span>
+                            )}
+                        </h3>
                         <span
                             className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] ${getStatusClasses(
                                 subscription.status
@@ -306,9 +317,7 @@ export default ({
                 </div>
             )}
 
-            <div
-                className={'mt-5 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-4'}
-            >
+            <div className={'mt-5 rounded-xl border border-[#C8BCA0] bg-[#F5EFD5] px-4 py-4'}>
                 <div className={'flex flex-wrap items-start justify-between gap-3'}>
                     <div>
                         <p
@@ -335,20 +344,28 @@ export default ({
                 </div>
 
                 <div className={'mt-4 flex flex-wrap items-center gap-3'}>
-                    <button
-                        type={'button'}
-                        disabled={togglingAutoRenew || (!subscription.autoRenew && !subscription.autoRenewAvailable)}
-                        onClick={() => onToggleAutoRenew(subscription, !subscription.autoRenew)}
-                        className={subscription.autoRenew ? 'billing-secondary-btn' : 'billing-primary-btn'}
-                    >
-                        {togglingAutoRenew
-                            ? 'Saving...'
-                            : subscription.autoRenew
-                            ? 'Disable Auto Renew'
-                            : 'Enable Auto Renew'}
-                    </button>
+                    {!subscription.isOwner ? (
+                        <p className={'text-xs leading-6 text-[color:var(--muted-foreground)]'}>
+                            This server is shared with you. Only the owner can change auto renew.
+                        </p>
+                    ) : (
+                        <button
+                            type={'button'}
+                            disabled={
+                                togglingAutoRenew || (!subscription.autoRenew && !subscription.autoRenewAvailable)
+                            }
+                            onClick={() => onToggleAutoRenew(subscription, !subscription.autoRenew)}
+                            className={subscription.autoRenew ? 'billing-secondary-btn' : 'billing-primary-btn'}
+                        >
+                            {togglingAutoRenew
+                                ? 'Saving...'
+                                : subscription.autoRenew
+                                ? 'Disable Auto Renew'
+                                : 'Enable Auto Renew'}
+                        </button>
+                    )}
 
-                    {!subscription.autoRenew && subscription.autoRenewUnavailableReason && (
+                    {subscription.isOwner && !subscription.autoRenew && subscription.autoRenewUnavailableReason && (
                         <p className={'text-xs leading-6 text-[#92400e]'}>{subscription.autoRenewUnavailableReason}</p>
                     )}
                 </div>

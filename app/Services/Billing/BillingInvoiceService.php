@@ -141,7 +141,11 @@ class BillingInvoiceService
         return $order;
     }
 
-    public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false, ?string $couponCode = null): BillingInvoice
+    /**
+     * $couponUser is who redeems the coupon (a billing subuser renewing a shared server
+     * uses their own coupons); it defaults to the subscription owner.
+     */
+    public function createRenewalInvoice(BillingSubscription $subscription, bool $notifyUser = false, ?string $couponCode = null, ?User $couponUser = null): BillingInvoice
     {
         $subscription->loadMissing('user', 'nodeConfig', 'lastPaidInvoice', 'order', 'gameProfile', 'server');
 
@@ -152,7 +156,7 @@ class BillingInvoiceService
         // Validate the coupon (if any) before opening the transaction so an invalid
         // code fails fast with a clear message.
         $coupon = filled($couponCode)
-            ? $this->couponService->assertRedeemable((string) $couponCode, $subscription->user)
+            ? $this->couponService->assertRedeemable((string) $couponCode, $couponUser ?? $subscription->user)
             : null;
 
         $openInvoice = $subscription->invoices()

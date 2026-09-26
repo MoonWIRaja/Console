@@ -77,6 +77,13 @@ class Permission extends Model
 
     public const ACTION_ACTIVITY_READ = 'activity.read';
 
+    public const ACTION_AI_READ = 'ai.read';
+    public const ACTION_AI_AGENT = 'ai.agent';
+
+    public const ACTION_BILLING_READ = 'billing.read';
+    public const ACTION_BILLING_RENEW = 'billing.renew';
+    public const ACTION_BILLING_UPGRADE = 'billing.upgrade';
+
     /**
      * Should timestamps be used on this model.
      */
@@ -243,6 +250,23 @@ class Permission extends Model
             'description' => 'Permissions that control a user\'s access to the server activity logs.',
             'keys' => [
                 'read' => 'Allows a user to view the activity logs for the server.',
+            ],
+        ],
+
+        'ai' => [
+            'description' => 'Permissions that control whether this user can use the Anney AI assistant on this server. The assistant never gets more access than the user\'s other permissions.',
+            'keys' => [
+                'read' => 'Allows the user to ask Anney about this server (Ask mode). Anney can only read what the user\'s file and console permissions already allow.',
+                'agent' => 'Allows the user to use Agent mode on this server, where Anney proposes changes. Every change still needs the user\'s approval and the matching file/control permission.',
+            ],
+        ],
+
+        'billing' => [
+            'description' => 'Permissions that control access to this server\'s subscription and invoices. Invoices stay in the owner\'s name; card subscriptions, auto-renew and the owner\'s payment portal remain owner-only.',
+            'keys' => [
+                'read' => 'Allows the user to view this server\'s subscription, due date and invoices.',
+                'renew' => 'Allows the user to create and pay renewal invoices for this server.',
+                'upgrade' => 'Allows the user to upgrade this server\'s resources and pay the upgrade invoice.',
             ],
         ],
     ];

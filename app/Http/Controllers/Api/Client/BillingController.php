@@ -3,6 +3,10 @@
 namespace Pterodactyl\Http\Controllers\Api\Client;
 
 use Illuminate\Http\Request;
+use Pterodactyl\Models\User;
+use Pterodactyl\Models\Subuser;
+use Pterodactyl\Facades\Activity;
+use Pterodactyl\Models\Permission;
 use Pterodactyl\Models\BillingOrder;
 use Pterodactyl\Models\BillingInvoice;
 use Pterodactyl\Models\BillingSubscription;
@@ -115,10 +119,13 @@ class BillingController extends ClientApiController
     {
         $this->reconcilePendingStripeInvoices($request);
 
+        $user = $request->user();
+        $shared = $this->sharedSubscriptionIds($user, Permission::ACTION_BILLING_READ);
+
         return [
             'data' => BillingSubscription::query()
                 ->with(['server', 'nodeConfig', 'gameProfile.egg.nest'])
-                ->where('user_id', $request->user()->id)
+                ->where(fn ($query) => $query->where('user_id', $user->id)->orWhereIn('id', $shared))
                 ->whereNotNull('server_id')
                 ->whereIn('status', [
                     BillingSubscription::STATUS_ACTIVE,
@@ -126,7 +133,7 @@ class BillingController extends ClientApiController
                 ])
                 ->latest()
                 ->get()
-                ->map(fn (BillingSubscription $subscription) => $this->transformSubscription($subscription))
+                ->map(fn (BillingSubscription $subscription) => $this->withAccessFlags($this->transformSubscription($subscription), $subscription, $user))
                 ->all(),
         ];
     }
@@ -147,10 +154,14 @@ class BillingController extends ClientApiController
     {
         $this->reconcilePendingStripeInvoices($request);
 
+        $shared = $this->sharedSubscriptionIds($request->user(), Permission::ACTION_BILLING_READ);
+
         return [
             'data' => BillingInvoice::query()
                 ->with(['items', 'payments.refunds', 'subscription', 'order'])
-                ->where('user_id', $request->user()->id)
+                ->where(fn ($query) => $query
+                    ->where('user_id', $request->user()->id)
+                    ->orWhere(fn ($q) => $q->whereIn('subscription_id', $shared)->whereIn('type', ['renewal', 'upgrade'])))
                 ->latest()
                 ->get()
                 ->map(fn (BillingInvoice $invoice) => $this->transformInvoice($invoice))
@@ -162,7 +173,7 @@ class BillingController extends ClientApiController
     {
         $this->reconcilePendingStripeInvoices($request);
 
-        $invoice = $this->getInvoiceForRequest($request, $billingInvoice);
+        $invoice = $this->getInvoiceForRequest($request, $billingInvoice, in_array($billingInvoice->type, ['renewal', 'upgrade'], true) ? Permission::ACTION_BILLING_READ : null);
 
         return [
             'data' => $this->transformInvoice($invoice->loadMissing(['items', 'payments.refunds', 'subscription', 'order'])),
@@ -171,7 +182,7 @@ class BillingController extends ClientApiController
 
     public function checkout(Request $request, BillingInvoice $billingInvoice): array
     {
-        $invoice = $this->getInvoiceForRequest($request, $billingInvoice);
+        $invoice = $this->getPayableInvoiceForRequest($request, $billingInvoice);
         $checkout = $this->paymentService->startCheckout($invoice);
 
         return [
@@ -185,7 +196,7 @@ class BillingController extends ClientApiController
             throw new DisplayException('Retry payment is disabled while manual billing mode is active. Contact billing admin with your invoice number instead.');
         }
 
-        $invoice = $this->getInvoiceForRequest($request, $billingInvoice);
+        $invoice = $this->getPayableInvoiceForRequest($request, $billingInvoice);
         $checkout = $this->paymentService->retryCheckout($invoice);
 
         return [
@@ -210,7 +221,8 @@ class BillingController extends ClientApiController
     {
         $this->profileCompletenessService->assertCompleteForCheckout($request->user());
         $this->assertDiscordLinkedForManualCheckout($request);
-        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
+        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription, Permission::ACTION_BILLING_RENEW);
+        $isOwner = $request->user()->id === $subscription->user_id || $request->user()->root_admin;
 
         if (
             !$this->manualBillingEnabled()
@@ -228,7 +240,10 @@ class BillingController extends ClientApiController
         }
 
         $couponCode = $request->filled('coupon_code') ? (string) $request->input('coupon_code') : null;
-        $invoice = $this->invoiceService->createRenewalInvoice($subscription, true, $couponCode);
+        $invoice = $this->invoiceService->createRenewalInvoice($subscription, true, $couponCode, $request->user());
+        if (!$isOwner && $subscription->server) {
+            Activity::event('server:billing.renew')->subject($subscription->server)->property(['invoice' => $invoice->invoice_number])->log();
+        }
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
         $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this renewal.');
@@ -240,7 +255,7 @@ class BillingController extends ClientApiController
 
     public function upgradeQuote(UpgradeBillingSubscriptionRequest $request, BillingSubscription $billingSubscription): array
     {
-        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
+        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription, Permission::ACTION_BILLING_UPGRADE);
 
         return [
             'data' => $this->transformQuote($this->invoiceService->quoteUpgrade($subscription, $request->validated())),
@@ -251,8 +266,11 @@ class BillingController extends ClientApiController
     {
         $this->profileCompletenessService->assertCompleteForCheckout($request->user());
         $this->assertDiscordLinkedForManualCheckout($request);
-        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription);
+        $subscription = $this->getSubscriptionForRequest($request, $billingSubscription, Permission::ACTION_BILLING_UPGRADE);
         $invoice = $this->invoiceService->createUpgradeInvoice($subscription, $request->validated(), true);
+        if ($request->user()->id !== $subscription->user_id && !$request->user()->root_admin && $subscription->server) {
+            Activity::event('server:billing.upgrade')->subject($subscription->server)->property(['invoice' => $invoice->invoice_number])->log();
+        }
         $payload = $this->transformSubscription($subscription->fresh());
         $payload['invoice'] = $this->transformInvoice($invoice);
         $this->appendInvoicePaymentState($invoice, $payload, 'No payment was required for this upgrade.');
@@ -572,22 +590,109 @@ class BillingController extends ClientApiController
         ];
     }
 
-    private function getSubscriptionForRequest(Request $request, BillingSubscription $billingSubscription): BillingSubscription
+    /**
+     * Owner and root admins always pass. A subuser passes only when $permission is given
+     * and they hold it on the subscription's server. Owner-only actions pass no permission.
+     */
+    private function getSubscriptionForRequest(Request $request, BillingSubscription $billingSubscription, ?string $permission = null): BillingSubscription
     {
-        if ($request->user()->id !== $billingSubscription->user_id && !$request->user()->root_admin) {
-            throw new NotFoundHttpException(trans('exceptions.api.resource_not_found'));
+        $user = $request->user();
+        if ($user->id === $billingSubscription->user_id || $user->root_admin) {
+            return $billingSubscription;
         }
 
-        return $billingSubscription;
+        if ($permission && $this->hasServerBillingPermission($user, $billingSubscription, $permission)) {
+            return $billingSubscription;
+        }
+
+        throw new NotFoundHttpException(trans('exceptions.api.resource_not_found'));
     }
 
-    private function getInvoiceForRequest(Request $request, BillingInvoice $billingInvoice): BillingInvoice
+    private function getInvoiceForRequest(Request $request, BillingInvoice $billingInvoice, ?string $permission = null): BillingInvoice
     {
-        if ($request->user()->id !== $billingInvoice->user_id && !$request->user()->root_admin) {
-            throw new NotFoundHttpException(trans('exceptions.api.resource_not_found'));
+        $user = $request->user();
+        if ($user->id === $billingInvoice->user_id || $user->root_admin) {
+            return $billingInvoice;
         }
 
-        return $billingInvoice;
+        $subscription = $billingInvoice->subscription;
+        if ($permission && $subscription && $this->hasServerBillingPermission($user, $subscription, $permission)) {
+            return $billingInvoice;
+        }
+
+        throw new NotFoundHttpException(trans('exceptions.api.resource_not_found'));
+    }
+
+    /**
+     * Subusers pay renewal/upgrade invoices of servers shared with them. New-server
+     * invoices and Stripe (recurring card on the owner's customer) stay owner-only.
+     */
+    private function getPayableInvoiceForRequest(Request $request, BillingInvoice $billingInvoice): BillingInvoice
+    {
+        $permission = match ($billingInvoice->type) {
+            'renewal' => Permission::ACTION_BILLING_RENEW,
+            'upgrade' => Permission::ACTION_BILLING_UPGRADE,
+            default => null,
+        };
+
+        $invoice = $this->getInvoiceForRequest($request, $billingInvoice, $permission);
+
+        if ($request->user()->id !== $invoice->user_id && !$request->user()->root_admin) {
+            $providers = [$invoice->provider, $invoice->subscription?->gateway_provider, config('billing.gateway.default')];
+            if (in_array(StripeCheckoutService::PROVIDER, $providers, true)) {
+                throw new DisplayException('Card subscriptions are linked to the server owner\'s account, so only the owner can pay this invoice.');
+            }
+
+            if ($server = $invoice->subscription?->server) {
+                Activity::event('server:billing.pay')->subject($server)->property(['invoice' => $invoice->invoice_number])->log();
+            }
+        }
+
+        return $invoice;
+    }
+
+    private function hasServerBillingPermission(User $user, BillingSubscription $subscription, string $permission): bool
+    {
+        $server = $subscription->server;
+
+        return $server !== null && $server->id === $subscription->server_id && $user->can($permission, $server);
+    }
+
+    /**
+     * IDs of subscriptions owned by someone else whose server is shared with the user with $permission.
+     */
+    private function sharedSubscriptionIds(User $user, string $permission): array
+    {
+        $serverIds = Subuser::query()
+            ->where('user_id', $user->id)
+            ->get()
+            ->filter(fn (Subuser $subuser) => in_array($permission, $subuser->permissions ?? [], true))
+            ->pluck('server_id')
+            ->all();
+
+        if ($serverIds === []) {
+            return [];
+        }
+
+        return BillingSubscription::query()
+            ->whereIn('server_id', $serverIds)
+            ->where('user_id', '!=', $user->id)
+            ->pluck('id')
+            ->all();
+    }
+
+    private function withAccessFlags(array $payload, BillingSubscription $subscription, User $user): array
+    {
+        $owner = $user->id === $subscription->user_id || $user->root_admin;
+        $server = $subscription->server;
+
+        $payload['access'] = [
+            'owner' => $owner,
+            'can_renew' => $owner || ($server && $user->can(Permission::ACTION_BILLING_RENEW, $server)),
+            'can_upgrade' => $owner || ($server && $user->can(Permission::ACTION_BILLING_UPGRADE, $server)),
+        ];
+
+        return $payload;
     }
 
     private function reconcilePendingStripeInvoices(Request $request): void
