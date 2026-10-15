@@ -13,6 +13,7 @@ import Button from '@/components/elements/Button';
 export default () => {
     const server = ServerContext.useStoreState((state) => state.server.data!);
     const uuid = server.uuid;
+    const skipScripts = server.skipScripts;
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
     const setServerFromState = ServerContext.useStoreActions((actions) => actions.server.setServerFromState);
     const [modalVisible, setModalVisible] = useState(false);
@@ -65,6 +66,17 @@ export default () => {
             }
         };
     }, [clearFlashes]);
+
+    if (skipScripts) {
+        return (
+            <TitledGreyBox title={'Reinstall Server'}>
+                <p css={tw`text-sm`}>
+                    Reinstalling this server has been disabled because it is configured to skip its egg&apos;s install
+                    script. If you would like to reinstall this server, contact a server administrator.
+                </p>
+            </TitledGreyBox>
+        );
+    }
 
     return (
         <TitledGreyBox title={'Reinstall Server'} css={tw`relative`}>

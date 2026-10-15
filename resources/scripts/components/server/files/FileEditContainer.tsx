@@ -51,6 +51,8 @@ export default () => {
         suppressLeaveWarning.current = false;
 
         if (action === 'new') {
+            // For a new file the hash is the folder it will be created in.
+            setDirectory(filePath);
             setError('');
             setLoading(false);
             setContent('');

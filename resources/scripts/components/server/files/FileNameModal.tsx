@@ -50,7 +50,7 @@ export default ({ onFileNamed, onDismissed, ...props }: Props) => {
                             autoFocus
                         />
                         <div css={tw`mt-6 text-right`}>
-                            <Button className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}>
+                            <Button type={'submit'} className={'!border-[color:var(--border)] !bg-[color:var(--card)] hover:!border-[#a3ff12] hover:!text-[color:var(--primary)]'}>
                                 Create File
                             </Button>
                         </div>
