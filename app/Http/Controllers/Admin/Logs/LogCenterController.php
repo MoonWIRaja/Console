@@ -41,6 +41,7 @@ class LogCenterController extends Controller
         'change-password' => 'Change Password Logs',
         'change-email' => 'Change Email Logs',
         'ticket' => 'Ticket Logs',
+        'channels' => 'Discord Channels',
     ];
 
     private const ACCOUNT_VERIFICATION_FILTERS = [

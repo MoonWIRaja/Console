@@ -33,7 +33,7 @@ class DownDetectorController extends Controller
     public function index(Request $request): View
     {
         $config = $this->settings->config();
-        $selectedTab = in_array((string) $request->query('tab', 'nodes'), ['nodes', 'servers'], true)
+        $selectedTab = in_array((string) $request->query('tab', 'nodes'), ['nodes', 'servers', 'settings'], true)
             ? (string) $request->query('tab', 'nodes')
             : 'nodes';
 

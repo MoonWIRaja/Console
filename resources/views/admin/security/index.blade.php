@@ -294,6 +294,35 @@
                 flex-direction: column;
             }
         }
+
+        .sc-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #C8BCA0; }
+        .sc-title { font-size: 18px; font-weight: 900; color: #742220; margin: 0; }
+        .sc-sub { font-size: 11px; color: rgba(116,34,32,.6); }
+        .sc-info { position: relative; display: inline-flex; }
+        .sc-info-btn { width: 22px; height: 22px; border-radius: 999px; border: 2px solid #742220; color: #742220; background: #FEF9E1; font-size: 12px; font-weight: 900; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: help; padding: 0; }
+        .sc-info-tip { position: absolute; left: -10px; top: calc(100% + 10px); width: 340px; max-width: 80vw; z-index: 30; background: #FEF9E1; border: 2px solid #2D4A3E; border-radius: 12px; box-shadow: 4px 4px 0 0 #2D4A3E; padding: 12px 14px; font-size: 11px; line-height: 1.6; color: #4B3A2F; opacity: 0; visibility: hidden; transition: opacity .15s; pointer-events: none; }
+        .sc-info:hover .sc-info-tip, .sc-info:focus-within .sc-info-tip { opacity: 1; visibility: visible; }
+        .sc-stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 18px; }
+        .sc-stat { background: #F5EFD5; border: 2px solid #C8BCA0; border-radius: 12px; padding: 12px 14px; }
+        .sc-stat span { display: block; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(116,34,32,.6); }
+        .sc-stat strong { display: block; margin-top: 4px; font-size: 20px; font-weight: 900; color: #4B3A2F; }
+        .sc-stat small { font-size: 10px; color: rgba(116,34,32,.6); }
+        .sc-stat.warn strong { color: #A03A2F; }
+        .sc-stat.good strong { color: #2D6A4F; }
+        /* Every section is a tinted card, like the Down Detector page. */
+        #asMain.as-tabs .security-center-admin .box { background: #F5EFD5 !important; border: 2px solid #C8BCA0 !important; border-radius: 12px !important; box-shadow: none !important; padding: 16px 18px !important; margin: 0 0 18px !important; overflow: hidden !important; }
+        #asMain.as-tabs .security-center-admin .box > .box-header { padding: 0 0 10px !important; margin-bottom: 12px !important; border-bottom: 1px solid #C8BCA0 !important; }
+        #asMain.as-tabs .security-center-admin .box > .box-header .box-title { font-size: 14px !important; letter-spacing: 0 !important; text-transform: none !important; }
+        #asMain.as-tabs .security-center-admin .box-body.table-responsive { overflow-x: auto !important; }
+        #asMain.as-tabs .security-center-admin .table { background: transparent !important; margin-bottom: 0; }
+        #asMain.as-tabs .security-center-admin .table > tbody > tr > td { background: transparent !important; }
+        #asMain.as-tabs .security-center-admin .table td:last-child { white-space: normal !important; }
+        #asMain.as-tabs .security-center-admin .table td:last-child form, #asMain.as-tabs .security-center-admin .table td:last-child .btn { display: inline-block; margin: 2px 0; }
+        .sc-agent-tools { display: grid !important; gap: 18px; grid-template-columns: 1fr; align-items: stretch; }
+        @media (min-width: 1200px) { .sc-agent-tools { grid-template-columns: 1fr 1fr; } }
+        .sc-agent-tools > .box, .sc-agent-tools > form > .box { margin: 0 !important; height: 100%; }
+        .sc-agent-tools + .col-md-12 { margin-top: 18px; }
+        #asMain.as-tabs .security-center-admin .sc-savebar { position: sticky; bottom: -22px; background: #FEF9E1; margin: 0 -22px; padding: 14px 22px 22px; z-index: 3; }
     </style>
 
     <div class="security-center-admin">
@@ -313,35 +342,20 @@
             </div>
         @endif
 
-        <div class="row admin-row-gap-lg">
-            <div class="col-md-3 col-sm-6">
-                <div class="box metric-card">
-                    <span class="eyebrow">Open Incidents</span>
-                    <div class="value">{{ number_format($summary['open_incidents']) }}</div>
-                    <div class="copy">Incidents that still need monitoring, containment, or resolution.</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="box metric-card">
-                    <span class="eyebrow">Blocked 24h</span>
-                    <div class="value">{{ number_format($summary['blocked_events_24h']) }}</div>
-                    <div class="copy">Events that ended with a blocked verdict within the last day.</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="box metric-card">
-                    <span class="eyebrow">Active Agents</span>
-                    <div class="value">{{ number_format($summary['active_agents']) }}</div>
-                    <div class="copy">Security agents that are currently alive and heartbeating to the panel.</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="box metric-card">
-                    <span class="eyebrow">Quarantine</span>
-                    <div class="value">{{ number_format($summary['quarantined_artifacts']) }}</div>
-                    <div class="copy">Artifacts quarantined plus {{ number_format($summary['pending_actions']) }} pending action(s).</div>
-                </div>
-            </div>
+        <div class="sc-head">
+            <h3 class="sc-title">{{ ['overview' => 'Security overview', 'rules' => 'Security rules', 'incidents' => 'Incidents', 'live-events' => 'Live events', 'agents' => 'Security agents', 'quarantine' => 'Quarantine', 'settings' => 'Security settings'][$selectedTab] ?? 'Security' }}</h3>
+            <span class="sc-info" tabindex="0">
+                <button type="button" class="sc-info-btn" aria-label="How the security center works">!</button>
+                <span class="sc-info-tip">The panel is the control plane: it stores rules, incidents, verdicts, the action queue and quarantine state. Security agents on each node pull their policy and report events through a signed API. Rules turn repeated events into incidents and actions (challenge, temp block, block IP, quarantine).</span>
+            </span>
+            <span class="sc-sub">{{ $settings['enabled'] ?? true ? 'Protection on' : 'Protection off' }}</span>
+        </div>
+
+        <div class="sc-stats">
+            <div class="sc-stat {{ $summary['open_incidents'] ? 'warn' : 'good' }}"><span>Open incidents</span><strong>{{ number_format($summary['open_incidents']) }}</strong><small>need monitoring or action</small></div>
+            <div class="sc-stat"><span>Blocked 24h</span><strong>{{ number_format($summary['blocked_events_24h']) }}</strong><small>events blocked today</small></div>
+            <div class="sc-stat {{ $summary['active_agents'] ? 'good' : 'warn' }}"><span>Active agents</span><strong>{{ number_format($summary['active_agents']) }}</strong><small>heartbeating now</small></div>
+            <div class="sc-stat"><span>Quarantine</span><strong>{{ number_format($summary['quarantined_artifacts']) }}</strong><small>{{ number_format($summary['pending_actions']) }} pending action(s)</small></div>
         </div>
 
         <div class="nav-tabs-custom security-tabs">
@@ -578,7 +592,7 @@
                 </div>
                 @elseif($selectedTab === 'agents')
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-12 sc-agent-tools">
                             <div class="box box-default">
                                 <div class="box-header with-border">
                                     <h3 class="box-title">Auto Detect Nodes</h3>
@@ -648,7 +662,7 @@
                                 </div>
                             </form>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <div class="box box-default">
                                 <div class="box-header with-border">
                                     <h3 class="box-title">Agents</h3>
@@ -947,11 +961,11 @@
                                             <input type="number" class="form-control" name="security:retention:incident_days" value="{{ old('security:retention:incident_days', $settings['retention']['incident_days']) }}">
                                         </div>
                                     </div>
-                                    <div class="box-footer">
-                                        <button type="submit" class="btn btn-primary">Save Security Settings</button>
-                                    </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="as-footbar sc-savebar">
+                            <button type="submit" class="btn btn-primary">Save Security Settings</button>
                         </div>
                     </form>
                 @endif

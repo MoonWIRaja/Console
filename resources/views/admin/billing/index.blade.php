@@ -15,73 +15,24 @@
 @section('content')
     @include('admin.billing.partials.nav')
 
-    <div class="row">
-        <div class="col-xs-12">
-            <div class="callout callout-info">
-                <p class="admin-no-margin">
-                    This dashboard is now invoice-driven in manual billing mode. New orders, renewals, and upgrades stay pending until billing admin verifies payment and records settlement.
-                    Use <a href="{{ route('admin.billing.reconciliation') }}">Reconciliation</a> to audit unpaid exposure, refund queue, provisioning risk, and any legacy gateway artefacts that still need cleanup.
-                </p>
-            </div>
-        </div>
+    <div class="bl-head">
+        <h3 class="bl-title">Billing overview</h3>
+        <span class="bl-info" tabindex="0">
+            <button type="button" class="bl-info-btn" aria-label="How billing works">!</button>
+            <span class="bl-info-tip">Billing runs in manual, invoice-driven mode. New orders, renewals and upgrades stay pending until a billing admin verifies the payment and records it. Use <b>Reconciliation</b> to audit unpaid exposure, the refund queue, provisioning risk and old gateway leftovers.</span>
+        </span>
+        <a href="{{ route('admin.billing.reconciliation') }}" class="btn btn-default btn-sm bl-head-btn">Reconciliation</a>
     </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="small-box bg-aqua">
-                <div class="inner">
-                    <h3>{{ $pendingOrders }}</h3>
-                    <p>Awaiting Approval Order{{ $pendingOrders === 1 ? '' : 's' }}</p>
-                </div>
-                <div class="icon"><i class="ion ion-card"></i></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="small-box bg-green">
-                <div class="inner">
-                    <h3>{{ $openInvoices }}</h3>
-                    <p>Open / Processing Invoices</p>
-                </div>
-                <div class="icon"><i class="ion ion-document-text"></i></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="small-box bg-yellow">
-                <div class="inner">
-                    <h3>{{ $activeSubscriptions }}</h3>
-                    <p>Tracked Subscriptions</p>
-                </div>
-                <div class="icon"><i class="ion ion-loop"></i></div>
-            </div>
-        </div>
+    <div class="bl-stats">
+        <div class="bl-stat {{ $pendingOrders ? 'warn' : '' }}"><span>Awaiting approval</span><strong>{{ $pendingOrders }}</strong><small>order{{ $pendingOrders === 1 ? '' : 's' }} to review</small></div>
+        <div class="bl-stat {{ $openInvoices ? 'warn' : '' }}"><span>Open invoices</span><strong>{{ $openInvoices }}</strong><small>open or processing</small></div>
+        <div class="bl-stat good"><span>Paid invoices</span><strong>{{ $reconciliation['paid_invoices'] }}</strong><small>all time</small></div>
+        <div class="bl-stat {{ $reconciliation['failed_payments'] ? 'bad' : '' }}"><span>Failed payments</span><strong>{{ $reconciliation['failed_payments'] }}</strong><small>need follow-up</small></div>
+        <div class="bl-stat {{ $reconciliation['refunds_pending'] ? 'warn' : '' }}"><span>Refunds pending</span><strong>{{ $reconciliation['refunds_pending'] }}</strong><small>in the queue</small></div>
+        <div class="bl-stat"><span>Subscriptions</span><strong>{{ $activeSubscriptions }}</strong><small>tracked</small></div>
     </div>
 
-    <div class="row">
-        <div class="col-md-3">
-            <div class="box box-default">
-                <div class="box-header with-border"><h3 class="box-title">Open Invoices</h3></div>
-                <div class="box-body"><strong>{{ $reconciliation['open_invoices'] }}</strong></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="box box-default">
-                <div class="box-header with-border"><h3 class="box-title">Paid Invoices</h3></div>
-                <div class="box-body"><strong>{{ $reconciliation['paid_invoices'] }}</strong></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="box box-default">
-                <div class="box-header with-border"><h3 class="box-title">Failed Payments</h3></div>
-                <div class="box-body"><strong>{{ $reconciliation['failed_payments'] }}</strong></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="box box-default">
-                <div class="box-header with-border"><h3 class="box-title">Refunds Pending</h3></div>
-                <div class="box-body"><strong>{{ $reconciliation['refunds_pending'] }}</strong></div>
-            </div>
-        </div>
-    </div>
 
     <div class="row">
         <div class="col-xs-12">

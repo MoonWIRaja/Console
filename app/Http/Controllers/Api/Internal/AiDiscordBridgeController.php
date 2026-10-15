@@ -48,6 +48,8 @@ class AiDiscordBridgeController extends Controller
             'channel_id' => 'required|string|max:32',
             'content' => 'required|string|max:4000',
             'is_dm' => 'sometimes|boolean',
+            'channel_name' => 'sometimes|nullable|string|max:100',
+            'guild_name' => 'sometimes|nullable|string|max:100',
             'context' => 'sometimes|array|max:30',
             'context.*.author' => 'required|string|max:100',
             'context.*.reply_to' => 'nullable|string|max:100',
@@ -85,6 +87,9 @@ class AiDiscordBridgeController extends Controller
             $this->chat->send($conversation, $user, $data['content'], AiToolbox::MODE_ASK, $model, [
                 'discord_name' => $data['discord_name'],
                 'dm' => (bool) ($data['is_dm'] ?? false),
+                'location' => !empty($data['is_dm'])
+                    ? 'Discord · DM'
+                    : 'Discord · #' . ($data['channel_name'] ?? $data['channel_id']) . (!empty($data['guild_name']) ? ' (' . $data['guild_name'] . ')' : ''),
                 'channel_context' => $data['context'] ?? [],
                 'replying_to' => $data['replying_to'] ?? null,
             ]);

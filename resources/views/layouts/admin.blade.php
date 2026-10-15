@@ -187,26 +187,66 @@
             <section class="content">
                 <div class="row">
                     <div class="col-xs-12">
+                        {{-- Flash messages render as bottom-right toasts, matching the panel's notifications. --}}
+                        @php($toasts = [])
                         @if (count($errors) > 0)
-                            <div class="alert alert-danger">
-                                There was an error validating the data provided.<br><br>
-                                <ul>
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
+                            @php($toasts[] = ['type' => 'danger', 'message' => implode(' ', $errors->all())])
                         @endif
                         @foreach (Alert::getMessages() as $type => $messages)
                             @foreach ($messages as $message)
-                                <div class="alert alert-{{ $type }} alert-dismissable" role="alert">
-                                    {{ $message }}
-                                </div>
+                                @php($toasts[] = ['type' => $type, 'message' => $message])
                             @endforeach
                         @endforeach
+                        <div id="adminToasts" class="admin-toasts" aria-live="polite">
+                            @foreach ($toasts as $toast)
+                                @php($meta = ['success' => ['✓', 'Success', '#16a34a'], 'danger' => ['✕', 'Error', '#dc2626'], 'error' => ['✕', 'Error', '#dc2626'], 'warning' => ['⚠', 'Warning', '#ca8a04'], 'info' => ['ℹ', 'Info', '#2D4A3E']][$toast['type']] ?? ['•', 'Notice', '#742220'])
+                                <div class="admin-toast" role="{{ in_array($toast['type'], ['danger', 'error']) ? 'alert' : 'status' }}" style="border-left-color: {{ $meta[2] }}" data-timeout="{{ in_array($toast['type'], ['danger', 'error', 'warning']) ? 10000 : 5000 }}">
+                                    <span class="admin-toast-icon" style="color: {{ $meta[2] }}">{{ $meta[0] }}</span>
+                                    <div class="admin-toast-body">
+                                        <div class="admin-toast-title" style="color: {{ $meta[2] }}">{{ $meta[1] }}</div>
+                                        <div class="admin-toast-text">{{ $toast['message'] }}</div>
+                                    </div>
+                                    <button type="button" class="admin-toast-close" aria-label="Close">×</button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <style>
+                            .admin-toasts { position: fixed; right: 20px; bottom: 72px; z-index: 2147483000; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; max-width: calc(100vw - 32px); }
+                            .admin-toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; min-width: 280px; max-width: 360px; padding: 12px 16px; border-radius: 12px; border: 2px solid #2D4A3E; border-left-width: 4px; background-color: #FEF9E1; background-image: repeating-linear-gradient(0deg, transparent, transparent 4.5px, rgba(116,34,32,.04) 4.5px, rgba(116,34,32,.04) 5px), repeating-linear-gradient(60deg, transparent, transparent 4.5px, rgba(116,34,32,.04) 4.5px, rgba(116,34,32,.04) 5px), repeating-linear-gradient(120deg, transparent, transparent 4.5px, rgba(116,34,32,.04) 4.5px, rgba(116,34,32,.04) 5px); box-shadow: 4px 4px 0 0 #2D4A3E; color: #742220; font-family: var(--font-mono, 'Geist Mono', ui-monospace, monospace); font-size: 11px; line-height: 1.5; transform: translateX(120%); opacity: 0; transition: transform .3s ease, opacity .3s ease; }
+                            .admin-toast.is-visible { transform: translateX(0); opacity: 1; }
+                            .admin-toast-icon { font-size: 14px; font-weight: 700; line-height: 1; margin-top: 1px; flex-shrink: 0; }
+                            .admin-toast-body { flex: 1; min-width: 0; }
+                            .admin-toast-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+                            .admin-toast-text { color: rgba(116,34,32,.75); word-break: break-word; }
+                            .admin-toast-close { border: none; background: none; color: rgba(116,34,32,.45); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; flex-shrink: 0; }
+                        </style>
+                        <script>
+                            (function () {
+                                function dismiss(toast) {
+                                    toast.classList.remove('is-visible');
+                                    setTimeout(function () { toast.remove(); }, 300);
+                                }
+                                function init() {
+                                    document.querySelectorAll('#adminToasts .admin-toast').forEach(function (toast, index) {
+                                        setTimeout(function () { toast.classList.add('is-visible'); }, 50 + index * 80);
+                                        var timer = setTimeout(function () { dismiss(toast); }, parseInt(toast.dataset.timeout, 10) || 5000);
+                                        toast.addEventListener('mouseenter', function () { clearTimeout(timer); });
+                                        toast.addEventListener('mouseleave', function () { timer = setTimeout(function () { dismiss(toast); }, 3000); });
+                                        toast.querySelector('.admin-toast-close').addEventListener('click', function () { dismiss(toast); });
+                                    });
+                                }
+                                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+                            })();
+                        </script>
                     </div>
                 </div>
                 @yield('content')
+                @if (request()->routeIs('admin.settings', 'admin.settings.*', 'admin.oauth', 'admin.discord*', 'admin.ai', 'admin.always-motd', 'admin.down-detector*', 'admin.security*', 'admin.logs*', 'admin.subdomains*', 'admin.billing*'))
+                    @include('partials.admin.side-shell')
+                @endif
+                @if (request()->routeIs('admin.databases', 'admin.locations', 'admin.nodes', 'admin.servers', 'admin.users', 'admin.tickets', 'admin.mounts', 'admin.nests', 'admin.api.index'))
+                    @include('partials.admin.list-shell')
+                @endif
             </section>
             </div>
             <footer class="admin-sticky-footer">

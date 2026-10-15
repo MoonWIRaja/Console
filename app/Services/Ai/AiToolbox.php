@@ -36,12 +36,18 @@ class AiToolbox
         'rename_file' => Permission::ACTION_FILE_UPDATE,
         'send_console_command' => Permission::ACTION_CONTROL_CONSOLE,
         'power_action' => null,
+        'download_to_server' => Permission::ACTION_FILE_CREATE,
+        'copy_file' => Permission::ACTION_FILE_CREATE,
+        'compress_files' => Permission::ACTION_FILE_ARCHIVE,
+        'decompress_file' => Permission::ACTION_FILE_ARCHIVE,
+        'chmod_file' => Permission::ACTION_FILE_UPDATE,
     ];
 
     private const READ_TOOLS = [
         'get_server_status' => null,
         'list_files' => Permission::ACTION_FILE_READ,
         'read_file' => Permission::ACTION_FILE_READ_CONTENT,
+        'get_download_link' => Permission::ACTION_FILE_READ_CONTENT,
     ];
 
     public function __construct(
@@ -114,6 +120,11 @@ class AiToolbox
             'tail_lines' => ['type' => 'integer', 'description' => 'Only return the last N lines.'],
         ], ['path']);
 
+        $tools[] = $this->tool('get_download_link', 'Create a private download link (valid 15 minutes) for a file on the server so the user can download it to their computer. Use when the user asks to download/get a file.', [
+            'server' => $serverArg,
+            'path' => ['type' => 'string'],
+        ], ['path']);
+
         if ($mode !== self::MODE_AGENT) {
             return $tools;
         }
@@ -151,6 +162,35 @@ class AiToolbox
             'reason' => ['type' => 'string'],
         ], ['action', 'reason']);
 
+        $tools[] = $this->tool('download_to_server', 'Download a file from a public internet URL straight into the server (for example a mod .jar from Modrinth or CurseForge CDN, a plugin, a datapack). Needs user approval. Prefer official download URLs.', [
+            'server' => $serverArg,
+            'url' => ['type' => 'string', 'description' => 'Direct http(s) download URL.'],
+            'directory' => ['type' => 'string', 'description' => 'Target folder, e.g. "/mods".'],
+            'filename' => ['type' => 'string', 'description' => 'Optional file name to save as.'],
+            'reason' => ['type' => 'string'],
+        ], ['url', 'directory', 'reason']);
+        $tools[] = $this->tool('copy_file', 'Make a copy of a file next to the original. Needs user approval.', [
+            'server' => $serverArg,
+            'path' => ['type' => 'string'],
+            'reason' => ['type' => 'string'],
+        ], ['path', 'reason']);
+        $tools[] = $this->tool('compress_files', 'Create a .tar.gz archive of files/folders that are in the same folder (for example to back up the world or mods before a change). Needs user approval.', [
+            'server' => $serverArg,
+            'paths' => ['type' => 'array', 'items' => ['type' => 'string']],
+            'reason' => ['type' => 'string'],
+        ], ['paths', 'reason']);
+        $tools[] = $this->tool('decompress_file', 'Extract an archive (.zip, .tar.gz, .rar, ...) into the folder it is in. Needs user approval.', [
+            'server' => $serverArg,
+            'path' => ['type' => 'string'],
+            'reason' => ['type' => 'string'],
+        ], ['path', 'reason']);
+        $tools[] = $this->tool('chmod_file', 'Change a file or folder permission mode, e.g. 755 for a start script. Needs user approval.', [
+            'server' => $serverArg,
+            'path' => ['type' => 'string'],
+            'mode' => ['type' => 'string', 'description' => 'Octal mode such as 644 or 755.'],
+            'reason' => ['type' => 'string'],
+        ], ['path', 'mode', 'reason']);
+
         return $tools;
     }
 
@@ -166,7 +206,34 @@ class AiToolbox
                 'ram_gb' => ['type' => 'integer', 'description' => 'RAM in GB for a price quote.'],
                 'disk_gb' => ['type' => 'integer', 'description' => 'Disk in GB for a price quote.'],
             ], []),
+            $this->tool('web_search', 'Search the internet (Brave Search). Use for anything that needs current or detailed facts you are not sure about: competitor hosting prices, game/mod news, versions, guides, errors. Prefer several focused queries over one vague one.', [
+                'query' => ['type' => 'string', 'description' => 'Search query. Add the year or "2026" for recent info.'],
+                'limit' => ['type' => 'integer', 'description' => 'Max results, 1-10 (default 8).'],
+            ], ['query']),
+            $this->tool('read_web_page', 'Read the text of a public web page (for example a result from web_search) to verify details before answering.', [
+                'url' => ['type' => 'string'],
+            ], ['url']),
+            $this->tool('search_modpacks', 'Look up Minecraft modpacks on Modrinth (official API) with real download and follower counts. Use for "newest", "most popular" or "best modpack for X" questions.', [
+                'query' => ['type' => 'string', 'description' => 'Optional keywords, e.g. "tech", "create", "rpg".'],
+                'sort' => ['type' => 'string', 'enum' => ['downloads', 'follows', 'newest', 'updated', 'relevance'], 'description' => 'downloads/follows = most popular, newest = recently released, updated = recently updated.'],
+                'game_version' => ['type' => 'string', 'description' => 'Optional Minecraft version, e.g. "1.21.1".'],
+                'loader' => ['type' => 'string', 'description' => 'Optional: forge, neoforge, fabric or quilt.'],
+                'limit' => ['type' => 'integer'],
+            ], []),
         ];
+    }
+
+    public function runPublic(string $name, array $args): string
+    {
+        $research = app(AiWebResearch::class);
+
+        return match ($name) {
+            'get_plans_and_pricing' => $this->plansAndPricing($args),
+            'web_search' => $research->search((string) ($args['query'] ?? ''), (int) ($args['limit'] ?? 8)),
+            'read_web_page' => $research->readPage((string) ($args['url'] ?? '')),
+            'search_modpacks' => $research->modpacks($args),
+            default => throw new AiToolException('Unknown tool "' . $name . '".'),
+        };
     }
 
     public function billingDefinition(): array
@@ -248,7 +315,7 @@ class AiToolbox
 
     public static function isPublicTool(string $name): bool
     {
-        return $name === 'get_plans_and_pricing';
+        return in_array($name, ['get_plans_and_pricing', 'web_search', 'read_web_page', 'search_modpacks'], true);
     }
 
     public function plansAndPricing(array $args): string
@@ -423,12 +490,12 @@ class AiToolbox
     public function runImmediate(User $user, ?Server $default, string $name, array $args, string $channel): string
     {
         return match ($name) {
-            'get_plans_and_pricing' => $this->plansAndPricing($args),
+            'get_plans_and_pricing', 'web_search', 'read_web_page', 'search_modpacks' => $this->runPublic($name, $args),
             'get_my_billing' => $this->myBilling($user, $args),
             'remember_about_user' => $this->remember($user, (string) ($args['fact'] ?? ''), $channel),
             'forget_about_user' => $this->forget($user, (int) ($args['memory_id'] ?? 0)),
             'list_my_servers' => $this->listServers($user),
-            'get_server_status', 'list_files', 'read_file' => $this->runServerRead($user, $default, $name, $args),
+            'get_server_status', 'list_files', 'read_file', 'get_download_link' => $this->runServerRead($user, $default, $name, $args),
             default => throw new AiToolException('Unknown tool "' . $name . '".'),
         };
     }
@@ -442,6 +509,7 @@ class AiToolbox
             'get_server_status' => $this->status($server),
             'list_files' => $this->listFiles($server, (string) ($args['directory'] ?? '/')),
             'read_file' => $this->readFile($server, (string) $args['path'], isset($args['tail_lines']) ? (int) $args['tail_lines'] : null),
+            'get_download_link' => $this->downloadLink($user, $server, (string) $args['path']),
         };
     }
 
@@ -459,6 +527,11 @@ class AiToolbox
             'rename_file' => $this->renameFile($server, (string) $args['from'], (string) $args['to']),
             'send_console_command' => $this->sendCommand($server, (string) $args['command']),
             'power_action' => $this->powerAction($server, (string) $args['action']),
+            'download_to_server' => $this->downloadToServer($server, (string) $args['url'], (string) ($args['directory'] ?? '/'), $args['filename'] ?? null),
+            'copy_file' => $this->copyFile($server, (string) $args['path']),
+            'compress_files' => $this->compressFiles($server, (array) ($args['paths'] ?? [])),
+            'decompress_file' => $this->decompressFile($server, (string) $args['path']),
+            'chmod_file' => $this->chmodFile($server, (string) $args['path'], (string) ($args['mode'] ?? '')),
             default => throw new AiToolException('Unknown tool "' . $name . '".'),
         };
 
@@ -637,5 +710,69 @@ class AiToolbox
         $this->power->setServer($server)->send($action);
 
         return 'Power action "' . $action . '" sent.';
+    }
+
+    private function downloadLink(User $user, Server $server, string $path): string
+    {
+        $path = '/' . ltrim($path, '/');
+        $token = app(\Pterodactyl\Services\Nodes\NodeJWTService::class)
+            ->setExpiresAt(\Carbon\CarbonImmutable::now()->addMinutes(15))
+            ->setUser($user)
+            ->setClaims(['file_path' => $path, 'server_uuid' => $server->uuid])
+            ->setScopes(\Pterodactyl\Enum\JwtScope::FileDownload)
+            ->handle($server->node, $user->id . $server->uuid);
+        Activity::event('server:file.download')->subject($server)->property('file', $path)->log();
+
+        return 'Download link for ' . $path . ' (valid 15 minutes, only for this user): ' . $server->node->getConnectionAddress() . '/download/file?token=' . $token->toString()
+            . "\nGive the user this link as a markdown link.";
+    }
+
+    private function downloadToServer(Server $server, string $url, string $directory, ?string $filename): string
+    {
+        if (!app(AiWebResearch::class)->isPublicUrl($url)) {
+            throw new AiToolException('Only public http(s) URLs can be downloaded.');
+        }
+        $directory = '/' . trim($directory, '/');
+        $this->files->setServer($server)->pull($url, $directory, array_filter(['filename' => $filename ? basename($filename) : null, 'use_header' => true]));
+
+        return 'Download started into ' . $directory . ' (' . $url . '). Large files finish in the background; list the folder to confirm.';
+    }
+
+    private function copyFile(Server $server, string $path): string
+    {
+        $this->files->setServer($server)->copyFile('/' . ltrim($path, '/'));
+
+        return 'Copied ' . $path . ' (the copy is next to the original).';
+    }
+
+    private function compressFiles(Server $server, array $paths): string
+    {
+        $paths = array_map(fn ($p) => '/' . trim((string) $p, '/'), $paths);
+        $roots = array_unique(array_map('dirname', $paths));
+        if ($paths === [] || count($roots) !== 1) {
+            throw new AiToolException('All paths must be in the same folder.');
+        }
+        $archive = $this->files->setServer($server)->compressFiles($roots[0], array_map('basename', $paths));
+
+        return 'Created archive ' . rtrim($roots[0], '/') . '/' . ($archive['name'] ?? 'archive.tar.gz') . '.';
+    }
+
+    private function decompressFile(Server $server, string $path): string
+    {
+        $path = '/' . trim($path, '/');
+        $this->files->setServer($server)->decompressFile(dirname($path), basename($path));
+
+        return 'Extracted ' . $path . ' into ' . dirname($path) . '.';
+    }
+
+    private function chmodFile(Server $server, string $path, string $mode): string
+    {
+        if (!preg_match('/^[0-7]{3,4}$/', $mode)) {
+            throw new AiToolException('Mode must be octal, e.g. 644 or 755.');
+        }
+        $path = '/' . trim($path, '/');
+        $this->files->setServer($server)->chmodFiles(dirname($path), [['file' => basename($path), 'mode' => $mode]]);
+
+        return 'Set mode ' . $mode . ' on ' . $path . '.';
     }
 }

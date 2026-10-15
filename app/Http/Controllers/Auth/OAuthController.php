@@ -76,6 +76,12 @@ class OAuthController extends AbstractLoginController
         }
 
         $provider = strtolower($provider);
+
+        $cloudState = (string) $request->session()->get('cloud_google_state', '');
+        if ($provider === 'google' && $cloudState !== '' && hash_equals($cloudState, (string) $request->query('state', '')) && $request->user()?->root_admin) {
+            return app(\Pterodactyl\Http\Controllers\Admin\Cloud\CloudController::class)->callback($request);
+        }
+
         $flow = $request->session()->pull(self::SESSION_KEY);
         $intent = is_array($flow) ? (($flow['intent'] ?? null) ?: null) : null;
 

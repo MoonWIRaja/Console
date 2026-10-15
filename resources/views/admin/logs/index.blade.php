@@ -183,44 +183,44 @@
                 flex-direction: column;
             }
         }
+
+        .lg-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #C8BCA0; }
+        .lg-title { font-size: 18px; font-weight: 900; color: #742220; margin: 0; }
+        .lg-info { position: relative; display: inline-flex; }
+        .lg-info-btn { width: 22px; height: 22px; border-radius: 999px; border: 2px solid #742220; color: #742220; background: #FEF9E1; font-size: 12px; font-weight: 900; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: help; padding: 0; }
+        .lg-info-tip { position: absolute; left: -10px; top: calc(100% + 10px); width: 320px; max-width: 80vw; z-index: 30; background: #FEF9E1; border: 2px solid #2D4A3E; border-radius: 12px; box-shadow: 4px 4px 0 0 #2D4A3E; padding: 12px 14px; font-size: 11px; line-height: 1.6; color: #4B3A2F; opacity: 0; visibility: hidden; transition: opacity .15s; pointer-events: none; }
+        .lg-info:hover .lg-info-tip, .lg-info:focus-within .lg-info-tip { opacity: 1; visibility: visible; }
+        .lg-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid #C8BCA0; background: #F5EFD5; padding: 4px 10px; font-size: 10px; font-weight: 800; color: rgba(116,34,32,.7); }
+        .lg-chip.on { border-color: rgba(45,106,79,.45); color: #2D6A4F; }
+        .lg-chip .material-icons-round { font-size: 14px; }
+        .lg-card { background: #F5EFD5; border: 2px solid #C8BCA0; border-radius: 12px; padding: 16px 18px; }
+        .lg-grid { display: grid; gap: 4px 18px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        .lg-label { display: flex !important; align-items: center; gap: 6px; }
+        .lg-label .material-icons-round { font-size: 16px; color: #742220; }
+        #asMain.as-tabs .log-center-admin .box { background: #F5EFD5 !important; border: 2px solid #C8BCA0 !important; border-radius: 12px !important; box-shadow: none !important; padding: 16px 18px !important; margin: 0 0 18px !important; overflow: hidden !important; }
+        #asMain.as-tabs .log-center-admin .box > .box-header { padding: 0 0 10px !important; margin-bottom: 12px !important; border-bottom: 1px solid #C8BCA0 !important; }
+        #asMain.as-tabs .log-center-admin .box > .box-header .box-title { font-size: 14px !important; }
+        #asMain.as-tabs .log-center-admin .box-body.table-responsive { overflow-x: auto !important; }
+        #asMain.as-tabs .log-center-admin .table, #asMain.as-tabs .log-center-admin .table td { background: transparent !important; }
+        #asMain.as-tabs .log-center-admin .table > thead > tr > th:first-child, #asMain.as-tabs .log-center-admin .table > tbody > tr > td:first-child { white-space: nowrap; }
+        #asMain.as-tabs .log-center-admin .table > tbody > tr > td { font-size: 12px; }
+        #asMain .lg-card .as-footbar { background: transparent !important; position: static !important; }
+        #asMain.as-tabs .log-center-admin .box > .box-footer { border-top: 1px solid #C8BCA0 !important; margin-top: 10px !important; padding-top: 10px !important; }
     </style>
 
-    <div class="row log-center-admin">
-        <div class="col-md-4">
-            <form method="POST" action="{{ route('admin.logs.update') }}">
-                @csrf
-                @method('PATCH')
-                <input type="hidden" name="tab" value="{{ $activeTab }}">
-
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title">Discord Channels</h3>
-                    </div>
-                    <div class="box-body">
-                        @foreach([
-                            'admin_logs:new_account:discord_channel_id' => 'New Account',
-                            'admin_logs:payment:discord_channel_id' => 'Payment',
-                            'admin_logs:security:discord_channel_id' => 'Security',
-                            'admin_logs:login:discord_channel_id' => 'Login',
-                            'admin_logs:forgot_password:discord_channel_id' => 'Forget Password',
-                            'admin_logs:change_password:discord_channel_id' => 'Change Password',
-                            'admin_logs:change_email:discord_channel_id' => 'Change Email',
-                            'admin_logs:ticket:discord_channel_id' => 'Ticket',
-                        ] as $key => $label)
-                            <div class="form-group">
-                                <label class="control-label">{{ $label }} Channel ID</label>
-                                <input type="text" class="form-control" name="{{ $key }}" value="{{ old($key, $channelSettings[$key] ?? '') }}" placeholder="123456789012345678">
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="box-footer">
-                        <button type="submit" class="btn btn-primary">Save Log Channels</button>
-                    </div>
-                </div>
-            </form>
+    @php($channelKeys = ['new-account' => 'admin_logs:new_account:discord_channel_id', 'payment' => 'admin_logs:payment:discord_channel_id', 'security' => 'admin_logs:security:discord_channel_id', 'login' => 'admin_logs:login:discord_channel_id', 'forgot-password' => 'admin_logs:forgot_password:discord_channel_id', 'change-password' => 'admin_logs:change_password:discord_channel_id', 'change-email' => 'admin_logs:change_email:discord_channel_id', 'ticket' => 'admin_logs:ticket:discord_channel_id'])
+    <div class="log-center-admin">
+        <div class="lg-head">
+            <h3 class="lg-title">{{ $tabs[$activeTab] }}</h3>
+            <span class="lg-info" tabindex="0">
+                <button type="button" class="lg-info-btn" aria-label="About system logs">!</button>
+                <span class="lg-info-tip">Every log type is recorded here and can also be posted to its own Discord channel. Set the channel IDs in <b>Discord Channels</b>; leave one blank to keep that log in the panel only.</span>
+            </span>
+            @if(isset($channelKeys[$activeTab]))
+                @php($cid = $channelSettings[$channelKeys[$activeTab]] ?? null)
+                <span class="lg-chip {{ $cid ? 'on' : '' }}"><span class="material-icons-round">forum</span>{{ $cid ? 'Posting to Discord #' . $cid : 'Not posted to Discord' }}</span>
+            @endif
         </div>
-
-        <div class="col-md-8">
             <div class="nav-tabs-custom log-center-tabs">
                 <ul class="nav nav-tabs">
                     @foreach($tabs as $key => $label)
@@ -234,7 +234,7 @@
                     @if($activeTab === 'new-account')
                         <div class="box box-default admin-box-tight">
                             <div class="box-header with-border admin-billing-box-header">
-                                <h3 class="box-title">{{ $activeHeading }}</h3>
+                                <h3 class="box-title">Entries</h3>
                                 @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
@@ -321,7 +321,7 @@
                     @elseif($activeTab === 'security')
                         <div class="box box-default admin-box-tight">
                             <div class="box-header with-border admin-billing-box-header">
-                                <h3 class="box-title">{{ $activeHeading }}</h3>
+                                <h3 class="box-title">Entries</h3>
                                 @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
@@ -362,7 +362,7 @@
                     @elseif(in_array($activeTab, ['login', 'forgot-password', 'change-password', 'change-email'], true))
                         <div class="box box-default admin-box-tight">
                             <div class="box-header with-border admin-billing-box-header">
-                                <h3 class="box-title">{{ $activeHeading }}</h3>
+                                <h3 class="box-title">Entries</h3>
                                 @include('admin.billing.partials.table-filter', $payload['filter'])
                             </div>
                             <div class="box-body table-responsive no-padding">
@@ -397,6 +397,33 @@
                                 @include('admin.billing.partials.table-pagination', ['paginator' => $payload['rows']])
                             </div>
                         </div>
+                    @elseif($activeTab === 'channels')
+                        <form method="POST" action="{{ route('admin.logs.update') }}">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="tab" value="channels">
+                            <div class="lg-card">
+                                <p class="text-muted small" style="margin-top:0">Discord channel ID for each log type. Leave blank to keep that log in the panel only.</p>
+                                <div class="lg-grid">
+                                    @foreach([
+                                        'admin_logs:new_account:discord_channel_id' => ['New accounts', 'person_add'],
+                                        'admin_logs:payment:discord_channel_id' => ['Payments', 'payments'],
+                                        'admin_logs:security:discord_channel_id' => ['Security', 'shield'],
+                                        'admin_logs:login:discord_channel_id' => ['Logins', 'login'],
+                                        'admin_logs:forgot_password:discord_channel_id' => ['Forgot password', 'lock_reset'],
+                                        'admin_logs:change_password:discord_channel_id' => ['Password changes', 'password'],
+                                        'admin_logs:change_email:discord_channel_id' => ['Email changes', 'alternate_email'],
+                                        'admin_logs:ticket:discord_channel_id' => ['Tickets', 'confirmation_number'],
+                                    ] as $key => [$label, $icon])
+                                        <div class="form-group">
+                                            <label class="control-label lg-label"><span class="material-icons-round">{{ $icon }}</span>{{ $label }}</label>
+                                            <input type="text" class="form-control" name="{{ $key }}" value="{{ old($key, $channelSettings[$key] ?? '') }}" placeholder="123456789012345678">
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="as-footbar"><button type="submit" class="btn btn-primary">Save channels</button></div>
+                            </div>
+                        </form>
                     @elseif($activeTab === 'ticket')
                         @foreach([
                             'tickets' => 'Recent Tickets',
@@ -440,6 +467,5 @@
                     @endif
                 </div>
             </div>
-        </div>
     </div>
 @endsection

@@ -73,10 +73,13 @@ class SettingsServiceProvider extends ServiceProvider
         'services:discord:guild_id',
         'services:discord:role_id',
         'services:discord:bot_token',
+        'cloud:enabled',
+        'cloud:quota_gb',
         'ai:enabled',
         'ai:persona_name',
         'ai:persona_prompt',
         'ai:max_steps',
+        'ai:brave_search_key',
         'ai:discord:enabled',
         'ai:discord:bot_token',
         'ai:discord:bridge_secret',
@@ -194,6 +197,7 @@ class SettingsServiceProvider extends ServiceProvider
         'billing:fiuu:secret_key',
         'ai:discord:bot_token',
         'ai:discord:bridge_secret',
+        'ai:brave_search_key',
     ];
 
     /**

@@ -23,7 +23,7 @@ use Pterodactyl\Services\Admin\Settings\AdminSettingsStoreService;
 
 class AiController extends Controller
 {
-    private const TABS = ['general', 'providers', 'models', 'skills', 'discord'];
+    private const TABS = ['general', 'providers', 'models', 'skills', 'discord', 'audit'];
 
     public function __construct(
         private AlertsMessageBag $alert,
@@ -31,6 +31,36 @@ class AiController extends Controller
         private AiProviderClient $client,
         private AiOAuthService $oauth,
     ) {
+    }
+
+    private function auditLogs(Request $request)
+    {
+        $query = \Pterodactyl\Models\Ai\AiAuditLog::query()->with(['user:id,username,email', 'server:id,uuidShort,name'])->orderByDesc('id');
+
+        if ($event = $request->query('event')) {
+            $query->where('event', 'like', $event . '%');
+        }
+        match ((string) $request->query('where')) {
+            'panel' => $query->where('channel', 'panel'),
+            'panel-general' => $query->where('location', 'Panel · general chat'),
+            'panel-server' => $query->where('location', 'Panel · server chat'),
+            'discord' => $query->where('channel', 'discord'),
+            'discord-dm' => $query->where('location', 'Discord · DM'),
+            'discord-channel' => $query->where('channel', 'discord')->where('location', '!=', 'Discord · DM'),
+            default => null,
+        };
+        if ($user = trim((string) $request->query('user'))) {
+            $query->where(fn ($q) => ctype_digit($user)
+                ? $q->where('user_id', (int) $user)
+                : $q->whereHas('user', fn ($u) => $u->where('email', 'like', '%' . $user . '%')->orWhere('username', 'like', '%' . $user . '%')));
+        }
+        if ($server = trim((string) $request->query('server'))) {
+            $query->where(fn ($q) => ctype_digit($server)
+                ? $q->where('server_id', (int) $server)
+                : $q->whereHas('server', fn ($s) => $s->where('uuidShort', $server)->orWhere('name', 'like', '%' . $server . '%')));
+        }
+
+        return $query->paginate(50)->withQueryString();
     }
 
     public function index(Request $request): View
@@ -44,6 +74,7 @@ class AiController extends Controller
             'models' => AiModel::query()->with('provider')->orderByDesc('enabled')->orderByDesc('is_default')->orderBy('priority')->orderBy('model_id')->get(),
             'usableModels' => AiModel::usable()->get(),
             'skills' => AiSkill::query()->orderBy('name')->get(),
+            'audit' => $tab === 'audit' ? $this->auditLogs($request) : null,
             'stats' => [
                 'conversations' => AiConversation::query()->count(),
                 'panel_users' => AiConversation::query()->where('channel', 'panel')->distinct('user_id')->count('user_id'),
@@ -62,8 +93,15 @@ class AiController extends Controller
                 'ai:enabled' => 'required|in:true,false',
                 'ai:persona_name' => 'required|string|max:40',
                 'ai:persona_prompt' => 'required|string|max:12000',
-                'ai:max_steps' => 'required|integer|min:1|max:30',
+                'ai:brave_search_key' => 'nullable|string|max:200',
             ]);
+
+            // Blank keeps the saved key; "!e" clears it.
+            if (blank($data['ai:brave_search_key'] ?? null)) {
+                unset($data['ai:brave_search_key']);
+            } elseif ($data['ai:brave_search_key'] === '!e') {
+                $data['ai:brave_search_key'] = '';
+            }
         } else {
             $data = $request->validate([
                 'ai:discord:enabled' => 'required|in:true,false',
@@ -269,11 +307,55 @@ class AiController extends Controller
             'priority' => $data['priority'],
         ]);
 
+        // Editing a model card applies the label and tools to the same model on every
+        // account, and keeps those accounts right behind it in their current order.
+        if ($request->boolean('group') && $model->enabled) {
+            $siblings = AiModel::query()->where('model_id', $model->model_id)->where('enabled', true)
+                ->where('id', '!=', $model->id)->orderBy('priority')->orderBy('id')->get();
+            foreach ($siblings->values() as $i => $sibling) {
+                $sibling->update([
+                    'label' => $model->label,
+                    'supports_tools' => $model->supports_tools,
+                    'priority' => min(10000, $model->priority + $i + 1),
+                ]);
+            }
+        }
+
+        // Removing a model card turns it off on every account.
+        if ($request->boolean('group_disable') && !$model->enabled) {
+            AiModel::query()->where('model_id', $model->model_id)->update(['enabled' => false, 'is_default' => false]);
+        }
+
         if (!$model->enabled && $model->is_default) {
             $model->update(['is_default' => false]);
+            // Keep the default on the same model when another account still serves it.
+            AiModel::query()->where('model_id', $model->model_id)->where('enabled', true)
+                ->orderBy('priority')->orderBy('id')->first()?->update(['is_default' => true]);
         }
 
         $this->alert->success('Model updated.')->flash();
+
+        return redirect()->route('admin.ai', ['tab' => 'models']);
+    }
+
+    /**
+     * Reorders the accounts that serve the same model: the first one is used first,
+     * the others take over when it hits a limit.
+     */
+    public function orderModels(Request $request): RedirectResponse
+    {
+        $ids = array_map('intval', (array) $request->input('ids', []));
+        $rows = AiModel::query()->whereIn('id', $ids)->get()->keyBy('id');
+        if ($rows->count() !== count($ids) || $rows->pluck('model_id')->unique()->count() !== 1) {
+            return $this->fail('Those accounts do not serve the same model.', 'models');
+        }
+
+        $priorities = $rows->pluck('priority')->sort()->values();
+        $wasDefault = $rows->contains('is_default', true);
+        foreach ($ids as $i => $id) {
+            $rows[$id]->update(['priority' => $priorities[$i], 'is_default' => $wasDefault && $i === 0]);
+        }
+        $this->alert->success('Account order saved.')->flash();
 
         return redirect()->route('admin.ai', ['tab' => 'models']);
     }

@@ -19,7 +19,7 @@
     @php($discordConfigured = filled(config('services.discord.client_id')) && filled(config('services.discord.client_secret')))
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-xs-12">
             <form method="POST" action="{{ route('admin.oauth.update') }}">
                 @csrf
                 @method('PATCH')
@@ -29,6 +29,7 @@
                         <h3 class="box-title">Google OAuth</h3>
                     </div>
                     <div class="box-body">
+                        <p class="text-muted small">Google OAuth is only for Google account login and onboarding.</p>
                         <div class="row">
                             <div class="form-group col-md-4">
                                 <label class="control-label">Status</label>
@@ -64,6 +65,7 @@
                         <h3 class="box-title">Discord OAuth</h3>
                     </div>
                     <div class="box-body">
+                        <p class="text-muted small">Discord OAuth is only for Discord account linking and login. The Discord bot, guild, community auto-join and other bot features are managed from <a href="{{ route('admin.discord') }}">Discord Settings</a>.</p>
                         <div class="row">
                             <div class="form-group col-md-4">
                                 <label class="control-label">Status</label>
@@ -99,17 +101,5 @@
             </form>
         </div>
 
-        <div class="col-md-4">
-            <div class="box box-info">
-                <div class="box-header with-border">
-                    <h3 class="box-title">What Lives Here</h3>
-                </div>
-                <div class="box-body">
-                    <p><strong>Google OAuth</strong> is only for Google account login and onboarding.</p>
-                    <p><strong>Discord OAuth</strong> is only for Discord account linking and login.</p>
-                    <p class="text-muted admin-text-last">Discord bot, guild, community auto-join, and other bot-driven features are now managed from <a href="{{ route('admin.discord') }}">Discord Settings</a>.</p>
-                </div>
-            </div>
-        </div>
     </div>
 @endsection

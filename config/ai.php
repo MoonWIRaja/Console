@@ -16,6 +16,9 @@ PROMPT,
 
     'max_steps' => 12,
 
+    // Brave Search API key for Anney's web research (web_search is unavailable without it).
+    'brave_search_key' => env('AI_BRAVE_SEARCH_KEY'),
+
     // Google OAuth client secrets of the Gemini CLI / Antigravity desktop apps (from 9router); kept out of git.
     'oauth_client_secrets' => [
         'antigravity' => env('AI_ANTIGRAVITY_CLIENT_SECRET'),

@@ -102,7 +102,7 @@ class AiRequestExecutor
         }
 
         $headers['Authorization'] = 'Bearer ' . $token;
-        $payload = ['model' => $model, 'messages' => $messages, 'stream' => false];
+        $payload = ['model' => $model, 'messages' => $this->toOpenAiMessages($messages), 'stream' => false];
         if ($tools) {
             $payload['tools'] = $tools;
             $payload['tool_choice'] = 'auto';
@@ -158,7 +158,7 @@ class AiRequestExecutor
             return $this->responsesCall($definition['responses_url'], $headers, $this->toResponses($model, $messages, $tools, false), 'GitHub Copilot');
         }
 
-        $payload = ['model' => $model, 'messages' => $messages, 'stream' => false];
+        $payload = ['model' => $model, 'messages' => $this->toOpenAiMessages($messages), 'stream' => false];
         if ($tools) {
             $payload['tools'] = $tools;
         }
@@ -228,11 +228,21 @@ class AiRequestExecutor
                 $input[] = ['type' => 'function_call_output', 'call_id' => $message['tool_call_id'], 'output' => $text];
                 continue;
             }
-            if ($text !== '') {
+            $images = [];
+            $skipped = [];
+            foreach ($message['media'] ?? [] as $file) {
+                if (str_starts_with($file['mime'], 'image/')) {
+                    $images[] = ['type' => 'input_image', 'image_url' => 'data:' . $file['mime'] . ';base64,' . $file['data']];
+                } else {
+                    $skipped[] = $file['name'];
+                }
+            }
+            $text .= $this->mediaNote($skipped);
+            if ($text !== '' || $images !== []) {
                 $input[] = [
                     'type' => 'message',
                     'role' => $role,
-                    'content' => [['type' => $role === 'assistant' ? 'output_text' : 'input_text', 'text' => $text]],
+                    'content' => array_merge([['type' => $role === 'assistant' ? 'output_text' : 'input_text', 'text' => $text]], $images),
                 ];
             }
             foreach ($message['tool_calls'] ?? [] as $call) {
@@ -361,6 +371,17 @@ class AiRequestExecutor
 
             $blocks = [];
             $text = $this->text($message['content'] ?? '');
+            $skipped = [];
+            foreach ($message['media'] ?? [] as $file) {
+                if (in_array($file['mime'], ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)) {
+                    $blocks[] = ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $file['mime'], 'data' => $file['data']]];
+                } elseif ($file['mime'] === 'application/pdf') {
+                    $blocks[] = ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => $file['data']]];
+                } else {
+                    $skipped[] = $file['name'];
+                }
+            }
+            $text .= $this->mediaNote($skipped);
             if ($text !== '') {
                 $blocks[] = ['type' => 'text', 'text' => $text];
             }
@@ -439,6 +460,10 @@ class AiRequestExecutor
             $text = $this->text($message['content'] ?? '');
             if ($text !== '') {
                 $parts[] = ['text' => $text];
+            }
+            // Gemini reads images, audio, video and PDF natively.
+            foreach ($message['media'] ?? [] as $file) {
+                $parts[] = ['inlineData' => ['mimeType' => $file['mime'], 'data' => $file['data']]];
             }
             foreach ($message['tool_calls'] ?? [] as $call) {
                 $names[$call['id']] = $call['function']['name'];
@@ -576,6 +601,11 @@ class AiRequestExecutor
     {
         $converted = array_map(function ($message) {
             $out = ['role' => $message['role'], 'content' => $this->text($message['content'] ?? '')];
+            $images = array_values(array_filter($message['media'] ?? [], fn ($f) => str_starts_with($f['mime'], 'image/')));
+            if ($images !== []) {
+                $out['images'] = array_column($images, 'data');
+            }
+            $out['content'] .= $this->mediaNote(array_column(array_filter($message['media'] ?? [], fn ($f) => !str_starts_with($f['mime'], 'image/')), 'name'));
             foreach ($message['tool_calls'] ?? [] as $call) {
                 $out['tool_calls'][] = ['function' => ['name' => $call['function']['name'], 'arguments' => json_decode($call['function']['arguments'] ?: '{}', true) ?: new \stdClass()]];
             }
@@ -600,6 +630,40 @@ class AiRequestExecutor
             ], $message['tool_calls'] ?? []),
             'usage' => null,
         ];
+    }
+
+    // ---------------------------------------------------------------- Attachments (images, audio, PDF)
+
+    /**
+     * Messages may carry 'media' => [['mime' => ..., 'data' => base64, 'name' => ...]]. Each provider format
+     * gets the parts it understands; anything it cannot take is mentioned in text so the model knows.
+     */
+    private function mediaNote(array $skipped): string
+    {
+        return $skipped === [] ? '' : "\n\n[Attached but this model cannot open: " . implode(', ', $skipped) . '. Ask the user to describe it or switch to a Gemini model.]';
+    }
+
+    private function toOpenAiMessages(array $messages): array
+    {
+        return array_map(function ($message) {
+            $media = $message['media'] ?? [];
+            unset($message['media']);
+            if ($media === []) {
+                return $message;
+            }
+            $parts = [];
+            $skipped = [];
+            foreach ($media as $file) {
+                if (str_starts_with($file['mime'], 'image/')) {
+                    $parts[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $file['mime'] . ';base64,' . $file['data']]];
+                } else {
+                    $skipped[] = $file['name'];
+                }
+            }
+            $message['content'] = array_merge([['type' => 'text', 'text' => $this->text($message['content'] ?? '') . $this->mediaNote($skipped)]], $parts);
+
+            return $message;
+        }, $messages);
     }
 
     // ---------------------------------------------------------------- HTTP helpers

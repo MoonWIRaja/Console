@@ -54,6 +54,9 @@ class Kernel extends ConsoleKernel
             $schedule->command(PruneCommand::class, ['--model' => [ActivityLog::class]])->daily();
         }
 
+        // AI audit log keeps AiAuditLog::RETENTION_DAYS of history.
+        $schedule->command(PruneCommand::class, ['--model' => [\Pterodactyl\Models\Ai\AiAuditLog::class]])->daily();
+
         if (config('pterodactyl.telemetry.enabled')) {
             $this->registerTelemetry($schedule);
         }

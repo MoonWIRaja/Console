@@ -6,6 +6,7 @@ import DashboardTopbar, { DASHBOARD_TOPBAR_HEIGHT } from '@/components/dashboard
 import AccountProfileContainer from '@/components/dashboard/AccountProfileContainer';
 import BillingContainer from '@/components/billing/BillingContainer';
 import BillingTicketsContainer from '@/components/billing/BillingTicketsContainer';
+import CloudContainer from '@/components/cloud/CloudContainer';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import { useLocation } from 'react-router';
@@ -17,6 +18,13 @@ const BILLING_TOPBAR_TITLES = {
     invoices: 'Invoices',
     receipts: 'Receipts',
     orders: 'My Billing Orders',
+} as const;
+
+const CLOUD_TOPBAR_TITLES = {
+    files: 'My Cloud',
+    recent: 'Recent',
+    anney: 'From Anney',
+    shared: 'Shared with me',
 } as const;
 
 const dashboardPaperBackground = '#D6D2C7';
@@ -34,6 +42,12 @@ export default () => {
     const billingSectionParam = new URLSearchParams(location.search).get('section');
     const billingTopbarTitle =
         BILLING_TOPBAR_TITLES[billingSectionParam as keyof typeof BILLING_TOPBAR_TITLES] || BILLING_TOPBAR_TITLES.plan;
+    const isCloudPage = location.pathname === '/cloud';
+    const cloudTopbarTitle =
+        CLOUD_TOPBAR_TITLES[billingSectionParam as keyof typeof CLOUD_TOPBAR_TITLES] ||
+        (new URLSearchParams(location.search).get('tab') === 'shared'
+            ? CLOUD_TOPBAR_TITLES.shared
+            : CLOUD_TOPBAR_TITLES.files);
 
     useEffect(() => {
         const onResize = () => setIsMobileViewport(window.innerWidth < 1024);
@@ -122,7 +136,7 @@ export default () => {
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 showSearch={isDashboardHome}
-                centerTitle={isBillingPage ? billingTopbarTitle : undefined}
+                centerTitle={isBillingPage ? billingTopbarTitle : isCloudPage ? cloudTopbarTitle : undefined}
             />
             <div
                 style={{
@@ -171,6 +185,9 @@ export default () => {
                                 </Route>
                                 <Route path={'/billing'} exact>
                                     <BillingContainer />
+                                </Route>
+                                <Route path={'/cloud'} exact>
+                                    <CloudContainer />
                                 </Route>
                                 <Route path={'/tickets'} exact>
                                     <BillingTicketsContainer />

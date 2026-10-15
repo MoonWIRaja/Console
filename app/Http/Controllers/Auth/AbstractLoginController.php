@@ -89,10 +89,29 @@ abstract class AbstractLoginController extends Controller
         return new JsonResponse([
             'data' => [
                 'complete' => true,
-                'intended' => $this->redirectPath(),
+                'intended' => $this->intendedPath($request),
                 'user' => $user->toVueObject(),
             ],
         ]);
+    }
+
+    /**
+     * Where to go after login: the page the guest originally requested (for example a
+     * cloud share link), limited to this panel's own paths so it cannot redirect elsewhere.
+     */
+    protected function intendedPath(Request $request): string
+    {
+        $intended = (string) $request->session()->pull('url.intended', '');
+        $base = rtrim((string) config('app.url'), '/');
+
+        if ($intended !== '' && str_starts_with($intended, $base . '/')) {
+            $path = substr($intended, strlen($base));
+            if (str_starts_with($path, '/cloud/s/')) {
+                return $path;
+            }
+        }
+
+        return $this->redirectPath();
     }
 
     /**

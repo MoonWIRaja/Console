@@ -33,6 +33,14 @@ export interface AiMessage {
     model: string | null;
     tools: string[];
     actions: AiAction[];
+    attachments?: AiAttachment[];
+}
+
+export interface AiAttachment {
+    name: string;
+    size: number;
+    download_url: string | null;
+    error?: string | null;
 }
 
 export interface AiConversationSummary {
@@ -44,6 +52,7 @@ export interface AiConversationSummary {
 
 export interface AiConversation extends AiConversationSummary {
     messages: AiMessage[];
+    continuing?: boolean;
 }
 
 const LONG = { timeout: 300000 };
@@ -62,13 +71,50 @@ export const getAiConversation = (uuid: string): Promise<AiConversation> =>
 export const deleteAiConversation = (uuid: string): Promise<void> =>
     http.delete(`/api/client/ai/conversations/${uuid}`).then(() => undefined);
 
+export interface FailedAttachment {
+    name: string;
+    size: number;
+    error: string;
+}
+
 export const sendAiMessage = (
     uuid: string,
     content: string,
     mode: AiMode,
-    model: number | null
-): Promise<AiConversation> =>
-    http.post(`/api/client/ai/conversations/${uuid}/messages`, { content, mode, model }, LONG).then(({ data }) => data);
+    model: number | null,
+    files: File[] = [],
+    cloudFiles: string[] = [],
+    failedFiles: FailedAttachment[] = []
+): Promise<AiConversation> => {
+    if (files.length === 0) {
+        return http
+            .post(
+                `/api/client/ai/conversations/${uuid}/messages`,
+                { content, mode, model, cloud_files: cloudFiles, failed_files: failedFiles },
+                LONG
+            )
+            .then(({ data }) => data);
+    }
+
+    const form = new FormData();
+    form.append('content', content);
+    form.append('mode', mode);
+    if (model) form.append('model', String(model));
+    files.forEach((file) => form.append('files[]', file));
+    cloudFiles.forEach((id) => form.append('cloud_files[]', id));
+    failedFiles.forEach((f, i) => {
+        form.append(`failed_files[${i}][name]`, f.name);
+        form.append(`failed_files[${i}][size]`, String(f.size));
+        form.append(`failed_files[${i}][error]`, f.error);
+    });
+
+    return http
+        .post(`/api/client/ai/conversations/${uuid}/messages`, form, {
+            ...LONG,
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then(({ data }) => data);
+};
 
 export const editAiMessage = (
     uuid: string,
@@ -80,6 +126,9 @@ export const editAiMessage = (
     http
         .post(`/api/client/ai/conversations/${uuid}/messages/${messageId}/edit`, { content, mode, model }, LONG)
         .then(({ data }) => data);
+
+export const continueAiTask = (uuid: string, mode: AiMode, model: number | null): Promise<AiConversation> =>
+    http.post(`/api/client/ai/conversations/${uuid}/continue`, { mode, model }, LONG).then(({ data }) => data);
 
 export const resolveAiAction = (
     uuid: string,

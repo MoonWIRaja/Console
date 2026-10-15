@@ -537,6 +537,15 @@ export default ({
         },
     ];
 
+    const myStorageItems: SidebarSectionLinkItem[] = [
+        {
+            label: 'Cloud Storage',
+            href: '/cloud',
+            icon: createIcon('cloud'),
+            active: location.pathname === '/cloud',
+        },
+    ];
+
     const adminItems: SidebarSectionLinkItem[] = rootAdmin
         ? [
               {
@@ -633,6 +642,7 @@ export default ({
                     >
                         <SidebarSection label='My Server' items={myServerItems} defaultExpanded />
                         <SidebarSection label='My Billing' items={myBillingItems} defaultExpanded />
+                        <SidebarSection label='My Storage' items={myStorageItems} defaultExpanded />
                         <SidebarSection label='My Support' items={mySupportItems} defaultExpanded />
                         {adminItems.length > 0 && <SidebarSection label='Admin' items={adminItems} />}
                     </nav>

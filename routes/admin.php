@@ -86,6 +86,17 @@ Route::group(['prefix' => 'oauth'], function () {
     Route::patch('/', [Admin\OAuth\OAuthController::class, 'update'])->name('admin.oauth.update');
 });
 
+Route::group(['prefix' => 'cloud'], function () {
+    Route::get('/', [Admin\Cloud\CloudController::class, 'index'])->name('admin.cloud');
+    Route::patch('/settings', [Admin\Cloud\CloudController::class, 'updateSettings'])->name('admin.cloud.settings');
+    Route::get('/google/connect', [Admin\Cloud\CloudController::class, 'connect'])->name('admin.cloud.connect');
+    Route::get('/google/callback', [Admin\Cloud\CloudController::class, 'callback'])->name('admin.cloud.callback');
+    Route::post('/accounts/reorder', [Admin\Cloud\CloudController::class, 'reorder'])->name('admin.cloud.reorder');
+    Route::post('/accounts/{account:id}/toggle', [Admin\Cloud\CloudController::class, 'toggle'])->name('admin.cloud.toggle');
+    Route::post('/accounts/{account:id}/refresh', [Admin\Cloud\CloudController::class, 'refresh'])->name('admin.cloud.refresh');
+    Route::delete('/accounts/{account:id}', [Admin\Cloud\CloudController::class, 'destroy'])->name('admin.cloud.destroy');
+});
+
 Route::group(['prefix' => 'ai'], function () {
     Route::get('/', [Admin\Ai\AiController::class, 'index'])->name('admin.ai');
     Route::patch('/settings', [Admin\Ai\AiController::class, 'updateSettings'])->name('admin.ai.settings');
@@ -97,6 +108,7 @@ Route::group(['prefix' => 'ai'], function () {
     Route::patch('/providers/{provider:id}', [Admin\Ai\AiController::class, 'updateProvider'])->name('admin.ai.providers.update');
     Route::delete('/providers/{provider:id}', [Admin\Ai\AiController::class, 'destroyProvider'])->name('admin.ai.providers.destroy');
     Route::post('/providers/{provider:id}/sync', [Admin\Ai\AiController::class, 'syncProvider'])->name('admin.ai.providers.sync');
+    Route::post('/models/order', [Admin\Ai\AiController::class, 'orderModels'])->name('admin.ai.models.order');
     Route::patch('/models/{model:id}', [Admin\Ai\AiController::class, 'updateModel'])->name('admin.ai.models.update');
     Route::post('/models/{model:id}/default', [Admin\Ai\AiController::class, 'defaultModel'])->name('admin.ai.models.default');
     Route::post('/models/{model:id}/test', [Admin\Ai\AiController::class, 'testModel'])->name('admin.ai.models.test');
